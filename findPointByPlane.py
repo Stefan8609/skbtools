@@ -47,10 +47,15 @@ def initializeFunction(xs, ys, zs, pointIdx, transponder): #Given initial condit
     barycenter = np.mean(points, axis=1)
     normVect = getPlane(xs, ys, zs)
     #check orientation of normVect versus point so can correct for normVect direction later
-    if np.dot(np.array(points[:, pointIdx] - barycenter), normVect) > 0:
-        orientation = True
+    if np.dot(np.array([0,0,1]), normVect) > 0: #Testing this method to see if it tracks orientation better for non-rigid gps
+        orientation=True
     else:
-        orientation = False
+        orientation=False
+
+    # if np.dot(np.array(points[:, pointIdx] - barycenter), normVect) > 0:
+    #     orientation = True
+    # else:
+    #     orientation = False
     theta = findTheta(barycenter, transponder, normVect)
     phi = findPhi(barycenter, transponder, points[:, pointIdx], normVect)
     length = lengthDistVect(barycenter, transponder)
@@ -72,7 +77,10 @@ def findTransponder(xs, ys, zs, pointIdx, length, theta, phi, orientation): #Mai
     point = np.array([xs[pointIdx], ys[pointIdx], zs[pointIdx]])
 
     #Confirm same orientation otherwise invert the direction of the normal vector
-    if (np.dot(point - barycenter, normVect) > 0) != orientation:
+    # if (np.dot(point - barycenter, normVect) > 0) != orientation:
+    #     normVect = normVect * -1
+
+    if (np.dot(np.array([0,0,1]), normVect) > 0) != orientation:
         normVect = normVect * -1
 
     normVect_Length = np.linalg.norm(normVect)
@@ -94,7 +102,7 @@ def findTransponder(xs, ys, zs, pointIdx, length, theta, phi, orientation): #Mai
     finalVector = np.matmul(Phi_Matrix, finalVector)
 
     #The scaled and rotated vector should now lie on the position of the transponder
-    return finalVector, barycenter
+    return [finalVector, barycenter]
 
 ###TESTING BELOW
 
@@ -111,7 +119,7 @@ def findTransponder(xs, ys, zs, pointIdx, length, theta, phi, orientation): #Mai
 # test, barycenter = findTransponder(xs,ys,zs,3,length,theta,phi, orientation)
 #
 # print(test+barycenter, transponder)
-#
+
 # ## Rotate and see if it matches for randomly generated rotations
 # for i in range(5):
 #     roll = random.choice((-1, 1)) * random.random()*100 * np.pi/180
