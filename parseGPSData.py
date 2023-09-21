@@ -1,7 +1,9 @@
 import numpy as np
 from findPointByPlane import initializeFunction, findTransponder
 import scipy.io as sio
+import matplotlib.pyplot as plt
 
+np.set_printoptions(suppress=True)
 
 def load_and_process_data(path):
     """Charge et traite les données d'une unité."""
