@@ -41,7 +41,8 @@ pairs = [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)]
 for i, j in pairs:
     xi, yi, zi = filtered_data[i][1], filtered_data[i][2], filtered_data[i][3]
     xj, yj, zj = filtered_data[j][1], filtered_data[j][2], filtered_data[j][3]
-    d = np.sqrt((xi - xj)**2 + (yi - yj)**2 + (zi - zj)**2)
+    # d = np.sqrt((xi - xj)**2 + (yi - yj)**2 + (zi - zj)**2)
+    d = zi - zj
     mean_distance = np.mean(d)
     distances[f"Antenna {i+1}-{j+1}"] = mean_distance
 

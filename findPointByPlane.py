@@ -102,7 +102,7 @@ def findTransponder(xs, ys, zs, pointIdx, length, theta, phi, orientation): #Mai
     finalVector = np.matmul(Phi_Matrix, finalVector)
 
     #The scaled and rotated vector should now lie on the position of the transponder
-    return [finalVector, barycenter]
+    return [finalVector, barycenter, normVect]
 
 ###TESTING BELOW
 
@@ -119,12 +119,12 @@ def findTransponder(xs, ys, zs, pointIdx, length, theta, phi, orientation): #Mai
 # test, barycenter = findTransponder(xs,ys,zs,3,length,theta,phi, orientation)
 #
 # print(test+barycenter, transponder)
-
+#
 # ## Rotate and see if it matches for randomly generated rotations
 # for i in range(5):
-#     roll = random.choice((-1, 1)) * random.random()*100 * np.pi/180
-#     pitch = random.choice((-1, 1)) * random.random()*100 * np.pi/180
-#     yaw = random.choice((-1, 1)) * random.random()*100 * np.pi/180
+#     roll = random.choice((-1, 1)) * random.random()*60 * np.pi/180
+#     pitch = random.choice((-1, 1)) * random.random()*60 * np.pi/180
+#     yaw = random.choice((-1, 1)) * random.random()*60 * np.pi/180
 #
 #     print(roll * 180/np.pi, pitch * 180/np.pi, yaw * 180/np.pi)
 #
@@ -144,13 +144,13 @@ def findTransponder(xs, ys, zs, pointIdx, length, theta, phi, orientation): #Mai
 #     new_barycenter = np.array([sum(newXs)/4, sum(newYs)/4, sum(newZs)/4], dtype=np.float64)
 #     new_transponder = np.matmul(testRot, transponder)
 #
-#     test2 = findTransponder(newXs,newYs, newZs,3,length,theta,phi, orientation)
+#     test2, bary = findTransponder(newXs,newYs, newZs,3,length,theta,phi, orientation)
 #
 #     print(test2, new_transponder-new_barycenter)
-#if needed put under line 54, think this is deprecated at this point though
-# if theta > np.pi:
-#     theta = -theta
-#     phi = np.pi - phi  # Subtract 180 degrees for theta change, then rotate angle of direction because normvect in wrong direction
-
-#For gps data call variables such as ['x'] like that
-#Use chat gpt to save in .mat file before returning information
+# # if needed put under line 54, think this is deprecated at this point though
+# # if theta > np.pi:
+# #     theta = -theta
+# #     phi = np.pi - phi  # Subtract 180 degrees for theta change, then rotate angle of direction because normvect in wrong direction
+#
+# #For gps data call variables such as ['x'] like that
+# #Use chat gpt to save in .mat file before returning information
