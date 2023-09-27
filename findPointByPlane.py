@@ -1,3 +1,4 @@
+### Fits a plane a point cloud
 import numpy as np
 import random
 
