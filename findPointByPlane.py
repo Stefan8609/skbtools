@@ -128,7 +128,6 @@ def findTransponder(xs, ys, zs, pointIdx, length, theta, phi, orientation): #Mai
 #
 #     print(roll * 180/np.pi, pitch * 180/np.pi, yaw * 180/np.pi)
 #
-#
 #     pitchChange = np.array([[1,0,0],[0,np.cos(pitch),-np.sin(pitch)],[0,np.sin(pitch),np.cos(pitch)]])
 #     rollChange = np.array([[np.cos(roll),0,np.sin(roll)],[0,1,0],[-np.sin(roll),0,np.cos(roll)]])
 #     yawChange = np.array([[np.cos(yaw),-np.sin(yaw),0],[np.sin(yaw),np.cos(yaw),0],[0,0,1]])
