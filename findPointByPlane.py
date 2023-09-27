@@ -1,4 +1,54 @@
 ### Fits a plane a point cloud
+##
+#Initialize
+# xs = [-10, -10, 10, -10]
+# ys = [-10, 10, -10, 10]
+# zs = [0, 0, 0, 0]
+# transponder = np.array([15,10,-20])
+#
+# [theta, phi, length, orientation] = initializeFunction(xs, ys, zs, 3, transponder)
+#
+# # print(theta, phi, length, orientation)
+#
+# test, barycenter = findTransponder(xs,ys,zs,3,length,theta,phi, orientation)
+#
+# print(test+barycenter, transponder)
+#
+# ## Rotate and see if it matches for randomly generated rotations
+# for i in range(5):
+#     roll = random.choice((-1, 1)) * random.random()*60 * np.pi/180
+#     pitch = random.choice((-1, 1)) * random.random()*60 * np.pi/180
+#     yaw = random.choice((-1, 1)) * random.random()*60 * np.pi/180
+#
+#     print(roll * 180/np.pi, pitch * 180/np.pi, yaw * 180/np.pi)
+#
+#     pitchChange = np.array([[1,0,0],[0,np.cos(pitch),-np.sin(pitch)],[0,np.sin(pitch),np.cos(pitch)]])
+#     rollChange = np.array([[np.cos(roll),0,np.sin(roll)],[0,1,0],[-np.sin(roll),0,np.cos(roll)]])
+#     yawChange = np.array([[np.cos(yaw),-np.sin(yaw),0],[np.sin(yaw),np.cos(yaw),0],[0,0,1]])
+#
+#     testRot = np.matmul(np.matmul(pitchChange, rollChange),yawChange)
+#     newXs = [0]*len(xs)
+#     newYs = [0]*len(ys)
+#     newZs = [0]*len(zs)
+#
+#     for i in range(len(xs)):
+#         newXs[i], newYs[i], newZs[i] = np.matmul(testRot, np.array([xs[i], ys[i],zs[i]]))
+#
+#     new_barycenter = np.array([sum(newXs)/4, sum(newYs)/4, sum(newZs)/4], dtype=np.float64)
+#     new_transponder = np.matmul(testRot, transponder)
+#
+#     test2, bary = findTransponder(newXs,newYs, newZs,3,length,theta,phi, orientation)
+#
+#     print(test2, new_transponder-new_barycenter)
+# # if needed put under line 54, think this is deprecated at this point though
+# # if theta > np.pi:
+# #     theta = -theta
+# #     phi = np.pi - phi  # Subtract 180 degrees for theta change, then rotate angle of direction because normvect in wrong direction
+#
+# #For gps data call variables such as ['x'] like that
+# #Use chat gpt to save in .mat file before returning information
+# Written by Stefan
+
 import numpy as np
 import random
 
@@ -104,53 +154,3 @@ def findTransponder(xs, ys, zs, pointIdx, length, theta, phi, orientation): #Mai
 
     #The scaled and rotated vector should now lie on the position of the transponder
     return [finalVector, barycenter, normVect]
-
-###TESTING BELOW
-
-#Initialize
-# xs = [-10, -10, 10, -10]
-# ys = [-10, 10, -10, 10]
-# zs = [0, 0, 0, 0]
-# transponder = np.array([15,10,-20])
-#
-# [theta, phi, length, orientation] = initializeFunction(xs, ys, zs, 3, transponder)
-#
-# # print(theta, phi, length, orientation)
-#
-# test, barycenter = findTransponder(xs,ys,zs,3,length,theta,phi, orientation)
-#
-# print(test+barycenter, transponder)
-#
-# ## Rotate and see if it matches for randomly generated rotations
-# for i in range(5):
-#     roll = random.choice((-1, 1)) * random.random()*60 * np.pi/180
-#     pitch = random.choice((-1, 1)) * random.random()*60 * np.pi/180
-#     yaw = random.choice((-1, 1)) * random.random()*60 * np.pi/180
-#
-#     print(roll * 180/np.pi, pitch * 180/np.pi, yaw * 180/np.pi)
-#
-#     pitchChange = np.array([[1,0,0],[0,np.cos(pitch),-np.sin(pitch)],[0,np.sin(pitch),np.cos(pitch)]])
-#     rollChange = np.array([[np.cos(roll),0,np.sin(roll)],[0,1,0],[-np.sin(roll),0,np.cos(roll)]])
-#     yawChange = np.array([[np.cos(yaw),-np.sin(yaw),0],[np.sin(yaw),np.cos(yaw),0],[0,0,1]])
-#
-#     testRot = np.matmul(np.matmul(pitchChange, rollChange),yawChange)
-#     newXs = [0]*len(xs)
-#     newYs = [0]*len(ys)
-#     newZs = [0]*len(zs)
-#
-#     for i in range(len(xs)):
-#         newXs[i], newYs[i], newZs[i] = np.matmul(testRot, np.array([xs[i], ys[i],zs[i]]))
-#
-#     new_barycenter = np.array([sum(newXs)/4, sum(newYs)/4, sum(newZs)/4], dtype=np.float64)
-#     new_transponder = np.matmul(testRot, transponder)
-#
-#     test2, bary = findTransponder(newXs,newYs, newZs,3,length,theta,phi, orientation)
-#
-#     print(test2, new_transponder-new_barycenter)
-# # if needed put under line 54, think this is deprecated at this point though
-# # if theta > np.pi:
-# #     theta = -theta
-# #     phi = np.pi - phi  # Subtract 180 degrees for theta change, then rotate angle of direction because normvect in wrong direction
-#
-# #For gps data call variables such as ['x'] like that
-# #Use chat gpt to save in .mat file before returning information
