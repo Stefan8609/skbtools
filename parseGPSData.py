@@ -1,5 +1,5 @@
 import numpy as np
-from findPointByPlane import initializeFunction, findTransponder
+from findPointByPlane import initializeFunction, findXyzt
 import scipy.io as sio
 import matplotlib.pyplot as plt
 
@@ -68,7 +68,7 @@ final_zs = [0]*len(xyz_array)
 vectors = [0]*len(xyz_array)
 
 for i in range(len(xyz_array)):
-    [vect, barycenter, normVect] = findTransponder(xyz_array[i][0], xyz_array[i][1], xyz_array[i][2], 1, length, theta, phi, orientation)
+    [vect, barycenter, normVect] = findXyzt(xyz_array[i][0], xyz_array[i][1], xyz_array[i][2], 1, length, theta, phi, orientation)
     final_xs[i], final_ys[i], final_zs[i] = vect + barycenter
     vectors[i] = np.ndarray.tolist(vect)
     if i>44940 and i<44943:

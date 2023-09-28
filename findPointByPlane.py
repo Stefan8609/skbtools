@@ -1,25 +1,13 @@
-### Fits a plane a point cloud
-##
-# Written by Stefan
+# Written by Stefan Kildal-Brandt
 
 import numpy as np
-import random
-
-### General Functions
-def getPlane(xs, ys, zs): #General function using singular value decomposition to get least squares regression for plane
-    points = np.array([xs,ys,zs])
-    svd = np.linalg.svd(points - np.mean(points, axis=1, keepdims=True))
-    left = svd[0]
-    normVect = np.array(left[:, -1], dtype=np.float64)
-    return normVect
+from fitPlane import fitPlane
 
 def projectToPlane(pointVect, normVect): #Projects a vector to a plane by subtracting out its component parallel to normal vector
     dot = np.dot(pointVect, normVect)
     normVect_Length = np.linalg.norm(normVect)
     projection = pointVect - (dot * normVect / normVect_Length**2)
     return projection
-
-### Initialization functions
 
 def findTheta(barycenter, xyzt,  normVect): #Finds the angle between the normal vector and the vector between xyzt and plane
     disVect = np.array(xyzt-barycenter)
@@ -49,17 +37,17 @@ def lengthDistVect(barycenter, xyzt): #Find length of vector between barycenter 
 def initializeFunction(xs, ys, zs, pointIdx, xyzt): #Given initial conditions, find the variables required for later analysis
     points = np.array([xs, ys, zs])
     barycenter = np.mean(points, axis=1)
-    normVect = getPlane(xs, ys, zs)
+    normVect = fitPlane(xs, ys, zs)
     #check orientation of normVect versus point so can correct for normVect direction later
-    if np.dot(np.array([0,0,1]), normVect) > 0: #Testing this method to see if it tracks orientation better for non-rigid gps
-        orientation=True
-    else:
-        orientation=False
-
-    # if np.dot(np.array(points[:, pointIdx] - barycenter), normVect) > 0:
-    #     orientation = True
+    # if np.dot(np.array([0,0,1]), normVect) > 0: #Testing this method to see if it tracks orientation better for non-rigid gps
+    #     orientation=True
     # else:
-    #     orientation = False
+    #     orientation=False
+
+    if np.dot(np.array(points[:, pointIdx] - barycenter), normVect) > 0:
+        orientation = True
+    else:
+        orientation = False
     theta = findTheta(barycenter, xyzt, normVect)
     phi = findPhi(barycenter, xyzt, points[:, pointIdx], normVect)
     length = lengthDistVect(barycenter, xyzt)
@@ -75,17 +63,16 @@ def rotationMatrix(angle, vect): #Creates a Rodrigues rotation matrix for given 
     return Rotation_Matrix
 
 def findXyzt(xs, ys, zs, pointIdx, length, theta, phi, orientation): #Main function finding the xyzt given initial conditions
-    #Initialize
     barycenter = np.mean(np.array([xs, ys ,zs]), axis=1)
-    normVect = getPlane(xs, ys, zs)
+    normVect = fitPlane(xs, ys, zs)
     point = np.array([xs[pointIdx], ys[pointIdx], zs[pointIdx]])
 
     #Confirm same orientation otherwise invert the direction of the normal vector
-    # if (np.dot(point - barycenter, normVect) > 0) != orientation:
-    #     normVect = normVect * -1
-
-    if (np.dot(np.array([0,0,1]), normVect) > 0) != orientation:
+    if (np.dot(point - barycenter, normVect) > 0) != orientation:
         normVect = normVect * -1
+    #
+    # if (np.dot(np.array([0,0,1]), normVect) > 0) != orientation:
+    #     normVect = normVect * -1
 
     normVect_Length = np.linalg.norm(normVect)
     unitNorm = normVect / normVect_Length
@@ -108,55 +95,59 @@ def findXyzt(xs, ys, zs, pointIdx, length, theta, phi, orientation): #Main funct
     #The scaled and rotated vector should now lie on the position of the xyzt
     return [finalVector, barycenter, normVect]
 
-#Initialize
-# x,y,z Coordinates input data
-xs = [-10, -10, 10, -10]
-ys = [-10, 10, -10, 10]
-zs = [0, 0, 0, 0]
-# Coordinates of a one more point
-xyzt = np.array([15,10,-20])
-# Runs getPlane to find the plane through xyz and determines angles to xyzt
-# theta is the colatitude with respect to the normal vector of the plane
-# phi is the angle between the projection of xyzt onto the plane and one of the
-# xyzs projected onto the plane
-[theta, phi, length, orientation] = initializeFunction(xs, ys, zs, 3, xyzt)
+"""
+Demo - Demonstrate how a point is inversely found using this method after initialization
+Input:
+    xs (list len=n) = x coordinates of points   
+    ys (list len=n) = y coordinates of points
+    zs (list len=n) = z coordinates of points   (xs, ys, zs are initial states used for initialization purposes)
+    xyzt (list len=3) = xyz of point that we want to find (xyzt is the initial state of this point used for initialization)
+    rot (list len=3) = list containing the xyz rotations applied to points
+    translate (list len=3) = list containing the xyz translations applied to points
+Default:
+    xs = 10 random coordinates between -10 and 10
+    ys = 10 random coordinates between -10 and 10
+    zs = 10 random coordinates between -10 and 10
+    xyzt = random between -25 and 25
+    rot = randomly determined between pi and -pi for each axis (radians)
+    translate = randomly determined -10 and 10 for each coordinate
+"""
+import matplotlib.pyplot as plt
+from plotPlane import plotPlane
 
-# print(theta, phi, length, orientation)
+def demo(xs=np.random.rand(10)*10,
+         ys=np.random.rand(10)*10,
+         zs=np.random.rand(10)*25,
+         xyzt=np.array([15,10,-20]),
+         rot=np.random.rand(3)*np.pi,
+         translate=np.random.rand(3)*10):
+    [theta, phi, length, orientation] = initializeFunction(xs, ys, zs, 3, xyzt)
 
-test, barycenter, blah = findXyzt(xs,ys,zs,3,length,theta,phi, orientation)
-
-print(test+barycenter, xyzt)
-
-## Rotate and see if it matches for randomly generated rotations
-for i in range(5):
-    roll = random.choice((-1, 1)) * random.random()*60 * np.pi/180
-    pitch = random.choice((-1, 1)) * random.random()*60 * np.pi/180
-    yaw = random.choice((-1, 1)) * random.random()*60 * np.pi/180
-
-    print(roll * 180/np.pi, pitch * 180/np.pi, yaw * 180/np.pi)
-
-    pitchChange = np.array([[1,0,0],[0,np.cos(pitch),-np.sin(pitch)],[0,np.sin(pitch),np.cos(pitch)]])
-    rollChange = np.array([[np.cos(roll),0,np.sin(roll)],[0,1,0],[-np.sin(roll),0,np.cos(roll)]])
-    yawChange = np.array([[np.cos(yaw),-np.sin(yaw),0],[np.sin(yaw),np.cos(yaw),0],[0,0,1]])
-
-    testRot = np.matmul(np.matmul(pitchChange, rollChange),yawChange)
-    newXs = [0]*len(xs)
-    newYs = [0]*len(ys)
-    newZs = [0]*len(zs)
+    xRot = np.array([[1, 0, 0], [0, np.cos(rot[0]), -np.sin(rot[0])], [0, np.sin(rot[0]), np.cos(rot[0])]])
+    yRot = np.array([[np.cos(rot[1]), 0, np.sin(rot[1])], [0, 1, 0], [-np.sin(rot[1]), 0, np.cos(rot[1])]])
+    zRot = np.array([[np.cos(rot[2]), -np.sin(rot[2]), 0], [np.sin(rot[2]), np.cos(rot[2]), 0], [0, 0, 1]])
+    totalRot = np.matmul(xRot, np.matmul(yRot, zRot))
 
     for i in range(len(xs)):
-        newXs[i], newYs[i], newZs[i] = np.matmul(testRot, np.array([xs[i], ys[i],zs[i]]))
+        xs[i], ys[i], zs[i] = np.matmul(totalRot, np.array([xs[i], ys[i], zs[i]]))
+        xs[i] +=translate[0]
+        ys[i] += translate[1]
+        zs[i] += translate[2]
+    xyzt = np.matmul(totalRot, xyzt)
+    xyzt = xyzt + translate
 
-    new_barycenter = np.array([sum(newXs)/4, sum(newYs)/4, sum(newZs)/4], dtype=np.float64)
-    new_xyzt = np.matmul(testRot, xyzt)
+    finalVect, barycenter, normVect = findXyzt(xs, ys, zs, 3, length, theta, phi, orientation)
+    print(finalVect, xyzt - barycenter)
 
-    test2, bary, blah = findXyzt(newXs,newYs, newZs,3,length,theta,phi, orientation)
+    ax = plotPlane(barycenter, normVect, [min(xs), max(xs)], [min(ys), max(ys)])
+    ax.scatter(xs, ys, zs, color='g')
+    ax.scatter(xyzt[0], xyzt[1], xyzt[2], color='r')
+    ax.quiver(barycenter[0], barycenter[1], barycenter[2], finalVect[0], finalVect[1], finalVect[2], color='k')
 
-    print(test2, new_xyzt-new_barycenter)
-# if needed put under line 54, think this is deprecated at this point though
-# if theta > np.pi:
-#     theta = -theta
-# #     phi = np.pi - phi  # Subtract 180 degrees for theta change, then rotate angle of direction because normvect in wrong direction
-#
-# #For gps data call variables such as ['x'] like that
-# #Use chat gpt to save in .mat file before returning information
+    plt.show()
+
+demo()
+
+# Runs fitPlane to find the plane through xyz and determines angles to xyzt
+# theta is the colatitude with respect to the normal vector of the plane
+# phi is the angle between the projection of xyzt onto the plane and one of the xyzs projected onto the plane
