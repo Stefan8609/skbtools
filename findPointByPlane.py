@@ -2,12 +2,8 @@
 
 import numpy as np
 from fitPlane import fitPlane
-
-def projectToPlane(pointVect, normVect): #Projects a vector to a plane by subtracting out its component parallel to normal vector
-    dot = np.dot(pointVect, normVect)
-    normVect_Length = np.linalg.norm(normVect)
-    projection = pointVect - (dot * normVect / normVect_Length**2)
-    return projection
+from projectToPlane import projectToPlane
+from rodriguesRotationMatrix import rotationMatrix
 
 def findTheta(barycenter, xyzt,  normVect): #Finds the angle between the normal vector and the vector between xyzt and plane
     disVect = np.array(xyzt-barycenter)
@@ -30,7 +26,7 @@ def findPhi(barycenter, xyzt, point, normVect): #Finds between a point and xyzt 
     phi = np.arctan2(det, dot)
     return phi
 
-def lengthDistVect(barycenter, xyzt): #Find length of vector between barycenter and xyzt
+def findLength(barycenter, xyzt): #Find length of vector between barycenter and xyzt
     length = np.linalg.norm(np.array(xyzt-barycenter))
     return length
 
@@ -50,17 +46,12 @@ def initializeFunction(xs, ys, zs, pointIdx, xyzt): #Given initial conditions, f
         orientation = False
     theta = findTheta(barycenter, xyzt, normVect)
     phi = findPhi(barycenter, xyzt, points[:, pointIdx], normVect)
-    length = lengthDistVect(barycenter, xyzt)
+    length = findLength(barycenter, xyzt)
     return [theta, phi, length, orientation]
 
-### findTheta and findPhi and lengthDistVect above are for initialization with the t=0 state of the ship
+### findTheta and findPhi and findLength above are for initialization with the t=0 state of the ship
 
 ### Below are the functions used finding the xyzt given what we know from the initial state
-
-def rotationMatrix(angle, vect): #Creates a Rodrigues rotation matrix for given angle and unit-vector
-    A_Matrix = np.array([[0, -vect[2], vect[1]],[vect[2], 0, -vect[0]], [-vect[1], vect[0], 0]])
-    Rotation_Matrix = np.identity(3)+A_Matrix*np.sin(angle)+np.matmul(A_Matrix,A_Matrix)*(1-np.cos(angle))
-    return Rotation_Matrix
 
 def findXyzt(xs, ys, zs, pointIdx, length, theta, phi, orientation): #Main function finding the xyzt given initial conditions
     barycenter = np.mean(np.array([xs, ys ,zs]), axis=1)
