@@ -139,6 +139,7 @@ Uncomment below to run demo
 """
 import matplotlib.pyplot as plt
 from plotPlane import plotPlane
+from printTable import printTable
 
 def demo(xs=np.random.rand(10)*10,
          ys=np.random.rand(10)*10,
@@ -163,8 +164,6 @@ def demo(xs=np.random.rand(10)*10,
     xyzt = xyzt + translate
 
     finalVect, barycenter, normVect = findXyzt(xs, ys, zs, 3, length, theta, phi, orientation)
-    print("Final vector: \n",finalVect)
-    print("Vector between barycenter and xyzt: \n", xyzt - barycenter)
 
     #Plot the point cloud, plane of best fit, and vector to xyzt
     ax = plotPlane(barycenter, normVect, [min(xs), max(xs)], [min(ys), max(ys)])
@@ -173,6 +172,14 @@ def demo(xs=np.random.rand(10)*10,
     ax.scatter(xyzt[0], xyzt[1], xyzt[2], color='r')
     ax.quiver(barycenter[0], barycenter[1], barycenter[2], finalVect[0], finalVect[1], finalVect[2], color='k')
 
+    data = []
+    for i in range(len(xs)):
+        tup = (f"point {i}:", xs[i], ys[i], zs[i])
+        data.append(tup)
+    data.append(("barycenter:", barycenter[0], barycenter[1], barycenter[2]))
+    data.append(("xyzt:", barycenter[0]+finalVect[0], barycenter[1]+finalVect[1], barycenter[2]+finalVect[2]))
+    data.append(("Vector btw bary and xyzt", finalVect[0], finalVect[1], finalVect[2]))
+    printTable(["Point","X","Y", "Z"], data)
     plt.show()
 
 demo()
