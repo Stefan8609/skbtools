@@ -128,11 +128,11 @@ Input:
     rot (list len=3) = list containing the xyz rotations applied to points
     translate (list len=3) = list containing the xyz translations applied to points
 Default:
-    xs = 10 random coordinates between -10 and 10
-    ys = 10 random coordinates between -10 and 10
-    zs = 10 random coordinates between -25 and 25
-    xyzt = random between -25 and 25
-    rot = randomly determined between pi and -pi for each axis (radians)
+    xs = 10 random coordinates between 0 and 10
+    ys = 10 random coordinates between 0 and 10
+    zs = 10 random coordinates between 0 and 25
+    xyzt = random between 0 and 25
+    rot = randomly determined between 0 and pi/2 for each axis (radians)
     translate = randomly determined -10 and 10 for each coordinate
     
 Uncomment below to run demo
@@ -141,11 +141,11 @@ import matplotlib.pyplot as plt
 from plotPlane import plotPlane
 from printTable import printTable
 
-def demo(xs=np.random.rand(10)*10,
-         ys=np.random.rand(10)*10,
-         zs=np.random.rand(10)*25,
+def demo(xs=np.random.rand(4)*10,
+         ys=np.random.rand(4)*10,
+         zs=np.random.rand(4)*25,
          xyzt=np.random.rand(3)*25,
-         rot=np.random.rand(3)*np.pi,
+         rot=np.random.rand(3)*np.pi/2,
          translate=np.random.rand(3)*10):
     [theta, phi, length, orientation] = initializeFunction(xs, ys, zs, 3, xyzt)
 
@@ -163,6 +163,13 @@ def demo(xs=np.random.rand(10)*10,
     xyzt = np.matmul(totalRot, xyzt)
     xyzt = xyzt + translate
 
+    #Apply perturbation to some points to investigate how error occurs when points are not
+    #   In exact position after translation/rotation
+    xs[1]=xs[1]+.2
+    ys[2]=ys[2]-.1
+    zs[3]=zs[3]+.3
+    #Error due to perturbation scales fast with perturbation magnitude
+
     finalVect, barycenter, normVect = findXyzt(xs, ys, zs, 3, length, theta, phi, orientation)
 
     #Plot the point cloud, plane of best fit, and vector to xyzt
@@ -176,9 +183,10 @@ def demo(xs=np.random.rand(10)*10,
     for i in range(len(xs)):
         tup = (f"point {i}:", xs[i], ys[i], zs[i])
         data.append(tup)
-    data.append(("barycenter:", barycenter[0], barycenter[1], barycenter[2]))
-    data.append(("xyzt:", barycenter[0]+finalVect[0], barycenter[1]+finalVect[1], barycenter[2]+finalVect[2]))
-    data.append(("Vector btw bary and xyzt", finalVect[0], finalVect[1], finalVect[2]))
+    data.append(("xyzt predicted:", barycenter[0]+finalVect[0], barycenter[1]+finalVect[1], barycenter[2]+finalVect[2]))
+    data.append(("xyzt actual:", xyzt[0], xyzt[1], xyzt[2]))
+    data.append(("Error:", (barycenter[0]+finalVect[0]-xyzt[0])/xyzt[0],(barycenter[1]+finalVect[1]-xyzt[1])/xyzt[1],(barycenter[2]+finalVect[2]-xyzt[2])/xyzt[2]))
+
     printTable(["Point","X","Y", "Z"], data)
     plt.show()
 
