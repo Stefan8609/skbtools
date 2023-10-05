@@ -27,21 +27,20 @@ Inputs:
    ys (array[n]) = y coordinates of the points in the cloud
    zs (array[n]) = z coordinates of the points in the cloud
 Default value for parameters are 10 random points with coordinates between -100 and 100
-
-Uncomment below to run demo
 """
 
-# import matplotlib.pyplot as plt
-# from plotPlane import plotPlane
-#
-# def demo(xs=np.random.rand(10)*100,
-#          ys=np.random.rand(10)*100,
-#          zs=np.random.rand(10)*100):
-#     normVect = fitPlane(xs,ys,zs)
-#     points = np.array([xs,ys,zs])
-#     ax = plotPlane(np.mean(points, axis=1), normVect, [min(xs), max(xs)], [min(ys),max(ys)])
-#     ax.scatter(xs,ys,zs, color='g')
-#
-#     plt.show()
-#
-# demo()
+import matplotlib.pyplot as plt
+from plotPlane import plotPlane
+
+def demo(xs=np.random.rand(10)*100,
+         ys=np.random.rand(10)*100,
+         zs=np.random.rand(10)*100):
+    normVect = fitPlane(xs,ys,zs)
+    points = np.array([xs,ys,zs])
+    ax = plotPlane(np.mean(points, axis=1), normVect, [min(xs), max(xs)], [min(ys),max(ys)])
+    ax.scatter(xs,ys,zs, color='g')
+
+    plt.show()
+
+if __name__ == "__main__":
+    demo()

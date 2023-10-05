@@ -42,13 +42,12 @@ Inputs:
     point (vector len=3) = xyz coordinates of a point in the plane
     normVect (vector len=3) = The normal vector which defines the plane
 Default values are the point (10,-10,5) and the normal vector (-.5, 1, .2)
-
-Uncomment below to run demo
 """
 
-# def demo(point = [10,-10,5], normVect = [-.5, 1, .2]):
-#     ax = plotPlane(point, normVect, [point[0]-10,point[0]+10], [point[1]-10,point[1]+10])
-#     ax.scatter(point[0], point[1], point[2], color='g')
-#     plt.show()
-#
-# demo()
+def demo(point = [10,-10,5], normVect = [-.5, 1, .2]):
+    ax = plotPlane(point, normVect, [point[0]-10,point[0]+10], [point[1]-10,point[1]+10])
+    ax.scatter(point[0], point[1], point[2], color='g')
+    plt.show()
+
+if __name__ == "__main__":
+    demo()

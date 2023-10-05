@@ -1,6 +1,10 @@
 """
 Given an initial cloud of points with a known point of interest, this algorithm finds the point of interest
     after the cloud of points has been translated/rotated
+
+Given a cloud of n points and one additional independent point (POI), determines the relative position of the POI
+with respect to that cloud by first characterizing the cloud by its plane of best fit (found using SVD) and
+
 Written by Stefan Kildal-Brandt
 
 2 functions: Initialization and findXyzt
@@ -134,16 +138,15 @@ Default:
     xyzt = random between 0 and 25
     rot = randomly determined between 0 and pi/2 for each axis (radians)
     translate = randomly determined -10 and 10 for each coordinate
-    
-Uncomment below to run demo
+
 """
 import matplotlib.pyplot as plt
 from plotPlane import plotPlane
 from printTable import printTable
 
-def demo(xs=np.random.rand(4)*10,
-         ys=np.random.rand(4)*10,
-         zs=np.random.rand(4)*25,
+def demo(xs=np.random.rand(100)*10,
+         ys=np.random.rand(100)*10,
+         zs=np.random.rand(100)*2,
          xyzt=np.random.rand(3)*25,
          rot=np.random.rand(3)*np.pi/2,
          translate=np.random.rand(3)*10):
@@ -185,9 +188,10 @@ def demo(xs=np.random.rand(4)*10,
         data.append(tup)
     data.append(("xyzt predicted:", barycenter[0]+finalVect[0], barycenter[1]+finalVect[1], barycenter[2]+finalVect[2]))
     data.append(("xyzt actual:", xyzt[0], xyzt[1], xyzt[2]))
-    data.append(("Error:", (barycenter[0]+finalVect[0]-xyzt[0])/xyzt[0],(barycenter[1]+finalVect[1]-xyzt[1])/xyzt[1],(barycenter[2]+finalVect[2]-xyzt[2])/xyzt[2]))
+    data.append(("Error (x,y,z):", (barycenter[0]+finalVect[0]-xyzt[0])/xyzt[0],(barycenter[1]+finalVect[1]-xyzt[1])/xyzt[1],(barycenter[2]+finalVect[2]-xyzt[2])/xyzt[2]))
 
     printTable(["Point","X","Y", "Z"], data)
     plt.show()
 
-demo()
+if __name__ == "__main__":
+    demo()

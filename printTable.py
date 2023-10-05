@@ -44,13 +44,16 @@ Outputs:
     None
 Uncomment below to run
 """
-# import random
-# import string
-#
-# headers = ["x", "y", "z", "string"]
-# data = []
-# for i in range(10):
-#     tup = (random.random()*10,random.random()*10,random.random()*10, ''.join(random.choices(string.ascii_uppercase +
-#                              string.digits, k=12)))
-#     data.append(tup)
-# printTable(headers, data)
+import random
+import string
+
+def demo():
+    headers = ["x", "y", "z", "string"]
+    data = []
+    for i in range(10):
+        tup = (random.random()*10,random.random()*10,random.random()*10, ''.join(random.choices(string.ascii_uppercase +
+                                 string.digits, k=12)))
+        data.append(tup)
+    printTable(headers, data)
+if __name__ == "__main__":
+    demo()
