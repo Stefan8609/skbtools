@@ -89,7 +89,6 @@ def geigersMethod(guess, CDog, GPS_Coordinates):
         times_guess = calculateTimes(guess, GPS_Coordinates, sound_speed)
         jacobian = computeJacobian(guess, GPS_Coordinates, times_guess, sound_speed)
         delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (times_guess-times_known)
-        print(delta)
         guess = guess + delta
         k+=1
 
