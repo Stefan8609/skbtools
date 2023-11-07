@@ -120,7 +120,7 @@ def findXyzt(xs, ys, zs, pointIdx, length, theta, phi, orientation): #Main funct
     xyztVector = np.matmul(Phi_Matrix, xyztVector)
 
     #The scaled and rotated vector should now lie on the position of the xyzt
-    return [xyztVector, barycenter, normVect]
+    return [xyztVector, barycenter]
 
 """
 Demo - Demonstrate how a point is inversely found using this method after initialization
@@ -140,10 +140,6 @@ Default:
     translate = randomly determined -10 and 10 for each coordinate
 
 """
-import matplotlib.pyplot as plt
-from plotPlane import plotPlane
-from printTable import printTable
-
 def demo(xs=np.random.rand(100)*10,
          ys=np.random.rand(100)*10,
          zs=np.random.rand(100)*2,
@@ -194,4 +190,7 @@ def demo(xs=np.random.rand(100)*10,
     plt.show()
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    from plotPlane import plotPlane
+    from printTable import printTable
     demo()

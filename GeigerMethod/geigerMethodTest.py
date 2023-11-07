@@ -30,7 +30,7 @@ def generateLine(n):
     #Generates GPS data for a line of points
     CDog = np.array([random.uniform(-1000, 1000), random.uniform(-1000,1000), random.uniform(-5500, -4500)])
     x_coords = (np.random.rand(n) * 5000) - 2500
-    y_coords = x_coords + (np.random.rand(n) * 20) - 10
+    y_coords = x_coords + (np.random.rand(n) * 20) - 10 #variation around x-coord
     z_coords = (np.random.rand(n) * 50) - 25
     GPS_Coordinates = np.column_stack((x_coords, y_coords, z_coords))
     GPS_Coordinates = sorted(GPS_Coordinates, key = lambda k: [k[0],k[1],k[2]])
@@ -68,9 +68,6 @@ def computeJacobian(guess, GPS_Coordinates, times, sound_speed):
 def geigersMethod(guess, CDog, GPS_Coordinates):
     #Use Geiger's method to find the guess of CDOG location
     #   which minimizes sum of travel times squared
-
-
-    dataRes = []
     #Define threshold
     epsilon = 10**-6
 
@@ -94,96 +91,98 @@ def geigersMethod(guess, CDog, GPS_Coordinates):
 
     return guess, times_known
 
-CDog, GPS_Coordinates = generateCross(500)
+if __name__ == '__main__':
+    CDog, GPS_Coordinates = generateCross(500)
 
-GPS_Coordinates = GPS_Coordinates + np.random.normal(0, 10**-2, (len(GPS_Coordinates), 3)) #Add noise to GPS
+    GPS_Coordinates = GPS_Coordinates + np.random.normal(0, 10**-2, (len(GPS_Coordinates), 3)) #Add noise to GPS
 
-plt.xlabel('Easting (m)')
-plt.ylabel('Northing (m)')
-plt.title('GPS Coordinates from which arrival times are calculated')
-plt.scatter(GPS_Coordinates[:,0], GPS_Coordinates[:,1], GPS_Coordinates[:,2])
-plt.show()
-# result = geigersMethod([0,10,-5000], CDog, GPS_Coordinates)
-#
-# print(result , CDog, np.linalg.norm(result - CDog))
+    plt.xlabel('Easting (m)')
+    plt.ylabel('Northing (m)')
+    plt.title('GPS Coordinates from which arrival times are calculated')
+    plt.scatter(GPS_Coordinates[:,0], GPS_Coordinates[:,1], GPS_Coordinates[:,2])
+    plt.show()
+    # result = geigersMethod([0,10,-5000], CDog, GPS_Coordinates)
+    #
+    # print(result , CDog, np.linalg.norm(result - CDog))
 
+    result, times_act = geigersMethod(np.array([100,-100,-5000]), CDog, GPS_Coordinates)
+    times_calc = calculateTimes(result, GPS_Coordinates, 1515)
 
-# # Define the dimensions of the grid
-# x_min, x_max = -1000, 1000  # Define your x-coordinate range
-# y_min, y_max = -1000, 1000  # Define your y-coordinate range
-# num_rows, num_columns = 21, 21  # Define the number of rows and columns
-#
-# # Generate coordinate grids
-# x = np.linspace(x_min, x_max, num_columns)
-# y = np.linspace(y_min, y_max, num_rows)
-# X, Y = np.meshgrid(x, y)
-#
-# data = np.zeros((num_rows, num_columns))
-# idx1 = 0
-# idx2 = 0
-# for i in x:
-#     print(i)
-#     for j in y:
-#         result = geigersMethod(np.array([i,j,-5000]), CDog, GPS_Coordinates)
-#         data[idx2, idx1] += np.linalg.norm(result - CDog)
-#         idx2 +=1
-#     idx2=0
-#     idx1+=1
-#
-# # Create the color plot
-# plt.imshow(data, extent=[x_min, x_max, y_min, y_max], origin='lower', cmap='viridis')#, interpolation='bilinear')
-# plt.colorbar()
-# plt.xlabel('X-axis')
-# plt.ylabel('Y-axis')
-# plt.title('2D Color Plot')
-# plt.show()
+    difference_data = times_calc - times_act
+    RMS = np.sqrt(np.nanmean(difference_data ** 2))
+    print(RMS)
 
-result, times_act = geigersMethod(np.array([100,-100,-5000]), CDog, GPS_Coordinates)
-times_calc = calculateTimes(result, GPS_Coordinates, 1515)
+    # Prepare label and plot
+    fig, axes = plt.subplots(2, 2, figsize=(10, 10), gridspec_kw={'width_ratios': [1, 4], 'height_ratios': [4, 1]})
+    fig.suptitle(f'Comparison of GNSS estimation and raw DOG data, Antenna', y=0.92)
 
-difference_data = times_calc - times_act
-RMS = np.sqrt(np.nanmean(difference_data ** 2))
-print(RMS)
+    # Acoustic vs GNSS plot
+    GPS_Coord_Num = list(range(len(GPS_Coordinates)))
 
-# Prepare label and plot
-fig, axes = plt.subplots(2, 2, figsize=(10, 10), gridspec_kw={'width_ratios': [1, 4], 'height_ratios': [4, 1]})
-fig.suptitle(f'Comparison of GNSS estimation and raw DOG data, Antenna', y=0.92)
+    axes[0, 1].scatter(GPS_Coord_Num, times_act, s=5, label='Acoustic data DOG', alpha=0.6, marker='o', color='b', zorder=2)
+    axes[0, 1].scatter(GPS_Coord_Num, times_calc, s=10, label='GNSS estimation', alpha=1, marker='x', color='r', zorder=1)
+    axes[0, 1].set_ylabel('Travel Time (s)')
+    axes[0, 1].text(25, max(times_act), "actual arrival times versus estimated times", bbox=dict(facecolor='yellow', alpha=0.8))
+    axes[0, 1].legend(loc="upper right")
 
-# Acoustic vs GNSS plot
-GPS_Coord_Num = list(range(len(GPS_Coordinates)))
+    # Difference plot
+    axes[1, 1].scatter(GPS_Coord_Num, difference_data, s=1)
+    axes[1, 1].set_xlabel('Position Index')
+    axes[1, 1].set_title('Difference between acoustic Data and GNSS estimation')
+    axes[1, 1].legend()
 
-axes[0, 1].scatter(GPS_Coord_Num, times_act, s=5, label='Acoustic data DOG', alpha=0.6, marker='o', color='b', zorder=2)
-axes[0, 1].scatter(GPS_Coord_Num, times_calc, s=10, label='GNSS estimation', alpha=1, marker='x', color='r', zorder=1)
-axes[0, 1].set_ylabel('Travel Time (s)')
-axes[0, 1].text(25, max(times_act), "actual arrival times versus estimated times", bbox=dict(facecolor='yellow', alpha=0.8))
-axes[0, 1].legend(loc="upper right")
+    # Histogram
+    axes[1, 0].hist(difference_data, orientation='horizontal', bins=30, alpha=0.5)
+    axes[1, 0].set_ylabel('Difference (s)')
+    axes[1, 0].set_xlabel('Frequency')
+    axes[1, 0].invert_xaxis()
+    axes[1, 0].set_title(f"RMS: {round(RMS*1515,4)} m")
+    axes[0, 0].axis('off')
 
-# Difference plot
-axes[1, 1].scatter(GPS_Coord_Num, difference_data, s=1)
-axes[1, 1].set_xlabel('Position Index')
-axes[1, 1].set_title('Difference between acoustic Data and GNSS estimation')
-axes[1, 1].legend()
+    plt.show()
 
-# Histogram
-axes[1, 0].hist(difference_data, orientation='horizontal', bins=30, alpha=0.5)
-axes[1, 0].set_ylabel('Difference (s)')
-axes[1, 0].set_xlabel('Frequency')
-axes[1, 0].invert_xaxis()
-axes[1, 0].set_title(f"RMS: {round(RMS*1515,4)} m")
-axes[0, 0].axis('off')
+    times = np.zeros(49)
+    for n in range(100, 5000, 100):
+        CDog, GPS_Coordinates = generateCross(n)
+        start = time.time()
+        geigersMethod([0,0,-5000], CDog, GPS_Coordinates)
+        end = time.time()
+        times[int(n/100)-1]=(end-start)*100
+    plt.plot(list(range(100,5000,100)), times)
+    plt.xlabel("Number of iterations")
+    plt.ylabel("Run Time (ms)")
+    plt.title("Run time of Geiger's Method Algorithm")
+    plt.show()
 
 
-plt.show()
 
-times = np.zeros(49)
-for n in range(100, 5000, 100):
-    CDog, GPS_Coordinates = generateCross(n)
-    start = time.time()
-    geigersMethod([0,0,-5000], CDog, GPS_Coordinates)
-    end = time.time()
-    times[int(n/100)-1]=(end-start)*100
-plt.plot(list(range(100,5000,100)), times)
-plt.xlabel("Number of iterations")
-plt.ylabel("Run Time (ms)")
-plt.title("Run time of Geiger's Method Algorithm")
-plt.show()
+
+    # # Define the dimensions of the grid
+    # x_min, x_max = -1000, 1000  # Define your x-coordinate range
+    # y_min, y_max = -1000, 1000  # Define your y-coordinate range
+    # num_rows, num_columns = 21, 21  # Define the number of rows and columns
+    #
+    # # Generate coordinate grids
+    # x = np.linspace(x_min, x_max, num_columns)
+    # y = np.linspace(y_min, y_max, num_rows)
+    # X, Y = np.meshgrid(x, y)
+    #
+    # data = np.zeros((num_rows, num_columns))
+    # idx1 = 0
+    # idx2 = 0
+    # for i in x:
+    #     print(i)
+    #     for j in y:
+    #         result = geigersMethod(np.array([i,j,-5000]), CDog, GPS_Coordinates)
+    #         data[idx2, idx1] += np.linalg.norm(result - CDog)
+    #         idx2 +=1
+    #     idx2=0
+    #     idx1+=1
+    #
+    # # Create the color plot
+    # plt.imshow(data, extent=[x_min, x_max, y_min, y_max], origin='lower', cmap='viridis')#, interpolation='bilinear')
+    # plt.colorbar()
+    # plt.xlabel('X-axis')
+    # plt.ylabel('Y-axis')
+    # plt.title('2D Color Plot')
+    # plt.show()
