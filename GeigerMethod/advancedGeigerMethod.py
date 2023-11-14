@@ -8,17 +8,17 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 from findPointByPlane import initializeFunction, findXyzt
-np.set_printoptions(precision = 6, suppress = True)
+# np.set_printoptions(precision = 6, suppress = True)
 
 def generateRandomData(n): #Generate the random data in the form of numpy arrays
     #Generate CDog
-    CDog = np.array([random.uniform(-2000, 2000), random.uniform(-2000,2000), random.uniform(-5500, -4500)])
+    CDog = np.array([random.uniform(-1000, 1000), random.uniform(-1000,1000), random.uniform(-5500, -4500)])
 
     #Generate and initial GPS point to base all others off of
     xyz_point = np.array([random.uniform(-1000, 1000), random.uniform(-1000,1000), random.uniform(-100, 100)])
 
     #Generate the translations from initial point (random x,y,z translation with z/100) for each time step
-    translations = (np.random.rand(n,3) * 5000) - 2500
+    translations = (np.random.rand(n,3) * 6000) - 3000
     translations = np.matmul(translations, np.array([[1,0,0],[0,1,0],[0,0,1/100]]))
 
     #Generate rotations from initial point for each time step (yaw, pitch, roll) between -pi/2 to pi/2
@@ -53,7 +53,7 @@ def generateRandomData(n): #Generate the random data in the form of numpy arrays
 
 def generateLine(n):
     #Initialize CDog and GPS locations
-    CDog = np.array([random.uniform(-2000, 2000), random.uniform(-2000,2000), random.uniform(-5500, -4500)])
+    CDog = np.array([random.uniform(-1000, 1000), random.uniform(-1000,1000), random.uniform(-5500, -4500)])
     x_coords = (np.random.rand(n) * 5000) - 2500
     y_coords = x_coords + (np.random.rand(n) * 50) - 25  # variation around x-coord
     z_coords = (np.random.rand(n) * 50) - 25
@@ -84,12 +84,13 @@ def generateLine(n):
 def generateCross(n):
     # Initialize CDog and GPS locations
     CDog = np.array([random.uniform(-1000, 1000), random.uniform(-1000, 1000), random.uniform(-5500, -4500)])
-    x_coords = (np.random.rand(n) * 5000) - 2500
+    x_coords1 = (np.random.rand(n//2) * 5000) - 2500
+    x_coords2 = (np.random.rand(n//2) * 5000) - 2500
+    x_coords = np.concatenate((np.sort(x_coords1), np.sort(x_coords2)))
     y_coords = x_coords + (np.random.rand(n) * 50) - 25  # variation around x-coord
     y_coords[n//2:] *= -1
     z_coords = (np.random.rand(n) * 50) - 25
     GPS1_Coordinates = np.column_stack((x_coords, y_coords, z_coords))
-    GPS1_Coordinates = sorted(GPS1_Coordinates, key=lambda k: [k[0], k[1], k[2]])
 
     GPS_Coordinates = np.zeros((n, 4, 3))
     transponder_coordinates = np.zeros((n, 3))
@@ -117,10 +118,9 @@ def generateCross(n):
 
 def findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder):
     #Add some noise to initial information
-    gps1_to_others += np.random.normal(0, 2*10**-2, (4,3))
-    gps1_to_transponder += np.random.normal(0, 2*10**-2, 3)
-
-    print('here', gps1_to_others, gps1_to_transponder)
+    # gps1_to_others += np.random.normal(0, 2*10**-3, (4,3))
+    # gps1_to_transponder += np.random.normal(0, 2*10**-3, 3)
+    # gps1_to_transponder += np.array([0,0,0])
 
     # Given initial information relative GPS locations and transponder and GPS Coords at each timestep
     xs, ys, zs = gps1_to_others.T
@@ -170,7 +170,6 @@ def geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coord
     delta = 1
     #Loop until change in guess is less than the threshold
     while np.linalg.norm(delta) > epsilon and k<100:
-        print(guess, CDog)
         times_guess = calculateTimes(guess, transponder_coordinates_Found, sound_speed)
         jacobian = computeJacobian(guess, transponder_coordinates_Found, times_guess, sound_speed)
         delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (times_guess-times_known)
@@ -178,88 +177,28 @@ def geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coord
         k+=1
     return guess, times_known
 
-CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(1000)
+if __name__ == "__main__":
+    from experimentPathPlot import experimentPathPlot
+    from geigerTimePlot import geigerTimePlot
+    from leverHist import leverHist
 
-#Add noise to GPS on scale of 2 cm
-GPS_Coordinates += np.random.normal(0, 2*10**-2, (len(GPS_Coordinates), 4, 3))
+    CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(2000)
 
-transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
+    #Add noise to GPS on scale of 2 cm
+    GPS_Coordinates += np.random.normal(0, 2*10**-2, (len(GPS_Coordinates), 4, 3))
 
-# differences = np.sum(np.abs(transponder_coordinates_Found-transponder_coordinates_Actual)**2,axis=-1)
-# print(differences)
-# plt.hist(differences, orientation='horizontal', bins=30, alpha=0.5)
-# plt.show()
+    transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
 
-#Plot histograms of coordinate differences between found transponder and actual transponder
-fig, axs = plt.subplots(1, 3, figsize=(15, 5))
-fig.suptitle("Coordinate differences between calculated transponder and actual transponder", y=0.92)
+    #Plot histograms of coordinate differences between found transponder and actual transponder
+    leverHist(transponder_coordinates_Actual,transponder_coordinates_Found)
 
-axs[0].hist(transponder_coordinates_Found[:,0]-transponder_coordinates_Actual[:,0], bins=30, color="blue", alpha=0.7)
-axs[0].set_xlabel('X-difference(m)')
+    #Plot path of experiment
+    experimentPathPlot(transponder_coordinates_Actual, CDog)
 
-axs[1].hist(transponder_coordinates_Found[:,1]-transponder_coordinates_Actual[:,1], bins=30, color="blue", alpha=0.7)
-axs[1].set_xlabel('Y-difference(m)')
+    #Plot comparison of times
+    initial_guess = [-2000, 3000, -5000]
+    geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, gps1_to_transponder)
 
-axs[2].hist(transponder_coordinates_Found[:,2]-transponder_coordinates_Actual[:,2], bins=30, color="blue", alpha=0.7)
-axs[2].set_xlabel('Z-difference(m)')
-fig.text(0.04, 0.5, 'Frequency', va='center', rotation='vertical')
-plt.show()
-
-guess, times_known = geigersMethod([-5000, 5000, -5000], CDog, transponder_coordinates_Actual, transponder_coordinates_Found)
-
-print(np.linalg.norm(CDog - guess))
-
-#Plot path of experiment
-plt.scatter(GPS_Coordinates[:,0,0], GPS_Coordinates[:,0,1], label="GPS1")
-plt.scatter(GPS_Coordinates[:,1,0], GPS_Coordinates[:,1,1], label="GPS2")
-plt.scatter(GPS_Coordinates[:,2,0], GPS_Coordinates[:,2,1], label="GPS3")
-plt.scatter(GPS_Coordinates[:,3,0], GPS_Coordinates[:,3,1], label="GPS4")
-plt.scatter(transponder_coordinates_Actual[:,0], transponder_coordinates_Actual[:,1], label="Transponder")
-plt.scatter(CDog[0], CDog[1], label="CDog")
-
-plt.xlabel('Easting (m)')
-plt.ylabel('Northing (m)')
-plt.title('GPS and transducer coordinates over course of experimental path')
-plt.legend(loc = "upper right")
-plt.show()
-
-times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
-
-difference_data = times_calc - times_known
-RMS = np.sqrt(np.nanmean(difference_data ** 2))
-print(RMS)
-
-# Prepare label and plot
-fig, axes = plt.subplots(2, 2, figsize=(10, 10), gridspec_kw={'width_ratios': [1, 4], 'height_ratios': [4, 1]})
-fig.suptitle("Comparison of calculated arrival times and actual arrival times", y=0.92)
-fig.text(0.05, 0.85, "Noise: \n GPS: 2cm \n Arrival time: 20\u03BCs \n Lever arms: 2cm",
-         fontsize=12, bbox=dict(facecolor='yellow', alpha=0.8))
-fig.text(0.05, 0.7, f"Distance between \npredicted and actual \nCDog location:\n{np.round(np.linalg.norm(CDog-guess)*100, 4)}cm",
-         fontsize=12, bbox=dict(facecolor='green', alpha=0.8))
-
-# Acoustic vs GNSS plot
-GPS_Coord_Num = list(range(len(GPS_Coordinates)))
-
-axes[0, 1].scatter(GPS_Coord_Num, times_known, s=5, label='Acoustic data DOG', alpha=0.6, marker='o', color='b', zorder=2)
-axes[0, 1].scatter(GPS_Coord_Num, times_calc, s=10, label='GNSS estimation', alpha=1, marker='x', color='r', zorder=1)
-axes[0, 1].set_ylabel('Travel Time (s)')
-axes[0, 1].text(25, max(times_known), "actual arrival times versus estimated times",bbox=dict(facecolor='yellow', alpha=0.8))
-axes[0, 1].legend(loc="upper right")
-
-# Difference plot
-axes[1, 1].scatter(GPS_Coord_Num, difference_data, s=1)
-axes[1, 1].set_xlabel('Position Index')
-axes[1, 1].set_title('Difference between acoustic Data and GNSS estimation')
-
-# Histogram
-axes[1, 0].hist(difference_data, orientation='horizontal', bins=30, alpha=0.5)
-axes[1, 0].set_ylabel('Difference (s)')
-axes[1, 0].set_xlabel('Frequency')
-axes[1, 0].invert_xaxis()
-axes[1, 0].set_title(f"RMS: {round(RMS * 1515, 4)*100} cm")
-axes[0, 0].axis('off')
-
-plt.show()
 
 
 #Need to correct functions for generating line data and cross data
@@ -269,3 +208,22 @@ plt.show()
     # Being off in terms of initial information given to findTransponder function introduces skew in the x,y,z coordinate
     # difference histograms. This greatly affects the quality of the data
     # This skew is not seen in the Acoustic vs GNNS arrival time plots, meaning that it is hidden beneath the RMS
+
+
+#Potential areas of exploration. With noise of lever arms and gps locations,
+#   create an inversion to find the best lever arm to minimize error further down the line
+#   See if this has the potential to work because this could fix skew with
+#   high noise in the lever arm (real scenario for our gps)
+
+#Save as pdf or eps, scale plot 1x1 in x and y, just transponder, smaller dots
+
+#Put standard deviation in histograms, make them all in the same scale, also plot normal distribution
+#   Color them different. Plot the noise gaussian as well.
+
+#Get an understanding of the systematic offset (I'm off in the leverarms)
+    # Error should be completely structured
+    # Next algorithm needs to be able to find the systematic offset in lever arms
+    # Inversion technique to place transducer
+    # Figure out how to untrend residuals...
+
+    #Simulated annealing could work may be expensive in time though

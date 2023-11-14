@@ -1,12 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-from geigerMethodTest import generateRandomData, generateCross, generateLine, calculateTimes, computeJacobian
+from advancedGeigerMethod import generateRandomData, generateCross, generateLine, calculateTimes, computeJacobian, findTransponder
 
-CDog, GPS_Coordinates = generateLine(300)
+CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateLine(300)
 
-GPS_Coordinates = GPS_Coordinates + np.random.normal(0, 10**-2, (len(GPS_Coordinates), 3)) #Add noise to GPS
-times_known = calculateTimes(CDog, GPS_Coordinates, 1515) + np.random.normal(0,10**-5,len(GPS_Coordinates))
+GPS_Coordinates += np.random.normal(0, 2*10**-2, (len(GPS_Coordinates), 4, 3)) #Add noise to GPS
+times_known = calculateTimes(CDog, transponder_coordinates_Actual, 1515) + np.random.normal(0,2*10**-5,len(transponder_coordinates_Actual))
+
+transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
 
 a = np.linspace(CDog[0]-2000,CDog[0]+2000,51)
 b = np.linspace(CDog[1]-2000,CDog[1]+2000,51)
@@ -20,39 +22,41 @@ for i in a:
     print(idx1)
     idx2=0
     for j in b:
-        times = calculateTimes([i,j,-5000], GPS_Coordinates, 1515)
-        jacobian = computeJacobian([i,j,-5000], GPS_Coordinates, times, 1515)
+        times = calculateTimes([i,j,-5000], transponder_coordinates_Found, 1515)
+        jacobian = computeJacobian([i,j,-5000], transponder_coordinates_Found, times, 1515)
         delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (times-times_known)
         vals[idx1,idx2] = np.linalg.norm(delta)
         idx2+=1
     idx1+=1
 
+#Set scale of color map so contours and colorplot are the same color scale
 norm = mcolors.Normalize(vmin=vals.min(), vmax=vals.max())
+
 plt.xlim(CDog[0]-2000,CDog[0]+2000)
 plt.ylim(CDog[1]-2000,CDog[1]+2000)
-plt.contourf(A,B, vals, levels=100, cmap="jet", norm=norm)
+plt.contourf(A,B, vals, levels=100, cmap="jet", norm=norm, zorder=1)
 plt.colorbar(label="Model Update Distance (m)")
 plt.xlabel('Easting (m)')
 plt.ylabel('Northing (m)')
-plt.title('Absolute Model Update with 20 \u03BCs arrival time noise')
+plt.title('Absolute Model Update with 10 \u03BCs arrival time noise')
 plt.legend(loc="upper left")
-contour_levels = np.arange(0, 2250, 250)
-contour = plt.contour(A,B, distances, levels=contour_levels, cmap='jet', norm=norm)
-plt.scatter(GPS_Coordinates[:,0], GPS_Coordinates[:,1], s=10, color="k", label="GPS Coordinates (1 cm noise)")
-plt.scatter(CDog[0], CDog[1], s=40, color="w", marker="x", label="CDOG")
+contour_levels = np.arange(0, 3000, 250)
+contour = plt.contour(A,B, distances, levels=contour_levels, cmap='jet', norm=norm, zorder=2)
+plt.scatter(transponder_coordinates_Actual[:,0], transponder_coordinates_Actual[:,1], s=10, color="k", label="Transducer Coordinates", zorder=3)
+plt.scatter(CDog[0], CDog[1], s=40, color="w", marker="x", label="CDOG", zorder=4)
 plt.legend(loc="upper left")
 plt.show()
 
 #Plot eigenvalues of (Jt * J)^-1 (no obvious relationship)
 
-test_guess = [1000, 1000, -5000]
-times = calculateTimes(test_guess, GPS_Coordinates, 1515)
-jacobian = computeJacobian(test_guess, GPS_Coordinates, times, 1515)
-mtrx = np.linalg.inv(jacobian.T @ jacobian)
-eigenvalues, eigenvectors = np.linalg.eig(mtrx)
-print(CDog, test_guess)
-print(CDog-test_guess)
-print(eigenvalues, eigenvectors)
+# test_guess = [1000, 1000, -5000]
+# times = calculateTimes(test_guess, GPS_Coordinates, 1515)
+# jacobian = computeJacobian(test_guess, GPS_Coordinates, times, 1515)
+# mtrx = np.linalg.inv(jacobian.T @ jacobian)
+# eigenvalues, eigenvectors = np.linalg.eig(mtrx)
+# print(CDog, test_guess)
+# print(CDog-test_guess)
+# print(eigenvalues, eigenvectors)
 
 
 # # Create the color plot (This version is deprecated because contour version of higher priority)
@@ -73,15 +77,6 @@ print(eigenvalues, eigenvectors)
 #   How many eigenvalues ( plot as stem plot )
 #   Is one noticably smaller than the other eigenvalues (z less impactful than x and y)
 
-
 #   Need to see horizontals separated from the verticals (what is the influence of z in optimization)
 
-
-#Plot contours of distance from CDog, plot them in same color as underlying field
-#Add label to color bar
-#Add figures into overleaf latex
-#show where CDog is in the plot
 #Add noise level onto the plot
-#label as delta(m)
-
-#Read the 2 papers in bibtek
