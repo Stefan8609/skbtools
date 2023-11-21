@@ -7,9 +7,10 @@ This file creates random coordinates for GPS points (orientations include line, 
     Gauss-Newton Optimization (Geiger's method) using an initial guess to estimate the
     position of the CDOG using the noisy data.
 
-Written by Stefan Kildal-Brandt
+This assumes that the known GPS points are the transducer point, advancedGeigerMethod.py handles
+case where transducer is separate from GPS.
 
-Try different Geometries (gps in line, cross, etc)
+Written by Stefan Kildal-Brandt
 """
 
 import numpy as np

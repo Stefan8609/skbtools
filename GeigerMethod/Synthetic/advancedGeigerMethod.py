@@ -6,9 +6,7 @@ Written by Stefan Kildal-Brandt
 
 import numpy as np
 import random
-import matplotlib.pyplot as plt
 from findPointByPlane import initializeFunction, findXyzt
-# np.set_printoptions(precision = 6, suppress = True)
 
 def generateRandomData(n): #Generate the random data in the form of numpy arrays
     #Generate CDog
@@ -153,7 +151,7 @@ def computeJacobian(guess, transponder_coordinates, times, sound_speed):
     return jacobian
 
 #Goal is to minimize sum of the difference of times squared
-def geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found):
+def geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, noise):
     #Use Geiger's method to find the guess of CDOG location which minimizes sum of travel times squared
     #Define threshold
     epsilon = 10**-5
@@ -164,7 +162,8 @@ def geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coord
     #Get known times
     times_known = calculateTimes(CDog, transponder_coordinates_Actual, sound_speed)
     #Apply noise to known times on scale of 20 microseconds
-    times_known+=np.random.normal(0,2*10**-5,len(transponder_coordinates_Actual))
+    # times_known+=np.random.normal(0,2*10**-5,len(transponder_coordinates_Actual))
+    times_known+=noise
 
     k=0
     delta = 1
@@ -183,6 +182,7 @@ if __name__ == "__main__":
     from leverHist import leverHist
 
     CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(2000)
+
 
     #Add noise to GPS on scale of 2 cm
     GPS_Coordinates += np.random.normal(0, 2*10**-2, (len(GPS_Coordinates), 4, 3))
