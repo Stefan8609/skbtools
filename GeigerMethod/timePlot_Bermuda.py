@@ -11,6 +11,11 @@ def geigerTimePlot(initial_guess, times_known, transponder_coordinates_Found, ti
     difference_data = times_calc - times_known
     RMS = np.sqrt(np.nanmean(difference_data ** 2))
 
+    ## For identifying outlying items
+    # for idx, item in enumerate(difference_data):
+    #     if abs(item*1515*100) > 500:
+    #         print(idx)
+
     # Prepare label and plot
     fig, axes = plt.subplots(2, 2, figsize=(10, 10), gridspec_kw={'width_ratios': [1, 4], 'height_ratios': [4, 1]})
     fig.suptitle("Comparison of calculated arrival times and actual arrival times", y=0.92)

@@ -141,6 +141,11 @@ def calculateTimes(guess, transponder_coordinates, sound_speed):
         times[i] = distance / sound_speed
     return times
 
+def calculateTimesRayTracing(guess, transponder_coordinates, cz, depth, gradc):
+    #Need the look up table for this to work (should be easy to implement once I have it)
+    return
+
+
 def computeJacobian(guess, transponder_coordinates, times, sound_speed):
     #Computes the Jacobian, parameters are xyz coordinates and functions are the travel times
     jacobian = np.zeros((len(transponder_coordinates), 3))
@@ -151,7 +156,7 @@ def computeJacobian(guess, transponder_coordinates, times, sound_speed):
     return jacobian
 
 #Goal is to minimize sum of the difference of times squared
-def geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, noise):
+def geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found):
     #Use Geiger's method to find the guess of CDOG location which minimizes sum of travel times squared
     #Define threshold
     epsilon = 10**-5
@@ -162,8 +167,8 @@ def geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coord
     #Get known times
     times_known = calculateTimes(CDog, transponder_coordinates_Actual, sound_speed)
     #Apply noise to known times on scale of 20 microseconds
-    # times_known+=np.random.normal(0,2*10**-5,len(transponder_coordinates_Actual))
-    times_known+=noise
+    times_known+=np.random.normal(0,2*10**-5,len(transponder_coordinates_Actual))
+    # times_known+=noise
 
     k=0
     delta = 1
@@ -180,6 +185,10 @@ if __name__ == "__main__":
     from experimentPathPlot import experimentPathPlot
     from geigerTimePlot import geigerTimePlot
     from leverHist import leverHist
+
+    cz = np.loadtxt('../../Thalia_Stuff/data/cz_cast2_big.txt')
+    depth = np.loadtxt('../../Thalia_Stuff/data/depth_cast2_big.txt')
+    gradc = np.loadtxt('../../Thalia_Stuff/data/gradc_cast2_big.txt')
 
     CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(2000)
 
@@ -200,30 +209,4 @@ if __name__ == "__main__":
     geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, gps1_to_transponder)
 
 
-
-#Need to correct functions for generating line data and cross data
-#Need a good function to plot experimental paths (maybe dual plot comparing calculated transponder with actual location)
-
-#Interesting things to note:
-    # Being off in terms of initial information given to findTransponder function introduces skew in the x,y,z coordinate
-    # difference histograms. This greatly affects the quality of the data
-    # This skew is not seen in the Acoustic vs GNNS arrival time plots, meaning that it is hidden beneath the RMS
-
-
-#Potential areas of exploration. With noise of lever arms and gps locations,
-#   create an inversion to find the best lever arm to minimize error further down the line
-#   See if this has the potential to work because this could fix skew with
-#   high noise in the lever arm (real scenario for our gps)
-
-#Save as pdf or eps, scale plot 1x1 in x and y, just transponder, smaller dots
-
-#Put standard deviation in histograms, make them all in the same scale, also plot normal distribution
-#   Color them different. Plot the noise gaussian as well.
-
-#Get an understanding of the systematic offset (I'm off in the leverarms)
-    # Error should be completely structured
-    # Next algorithm needs to be able to find the systematic offset in lever arms
-    # Inversion technique to place transducer
-    # Figure out how to untrend residuals...
-
-    #Simulated annealing could work may be expensive in time though
+# Geometric Dilusion of Precision is the square root of the trace of (J.t*J)^_1

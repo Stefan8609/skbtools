@@ -4,11 +4,11 @@ from advancedGeigerMethod import geigersMethod, calculateTimes
 
 
 def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
-                   transponder_coordinates_Found, gps1_to_transponder,noise, lever=[None,None,None]):
+                   transponder_coordinates_Found, gps1_to_transponder, lever=[None,None,None]):
     if not lever[0]:
         lever = gps1_to_transponder
     print(lever)
-    guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, noise)
+    guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found)
 
     times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
 
@@ -18,15 +18,15 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     # Prepare label and plot
     fig, axes = plt.subplots(2, 2, figsize=(10, 10), gridspec_kw={'width_ratios': [1, 4], 'height_ratios': [4, 1]})
     fig.suptitle("Comparison of calculated arrival times and actual arrival times", y=0.92)
-    # fig.text(0.05, 0.85, "Noise: \n GPS: 2cm \n Arrival time: 20\u03BCs",
-    #          fontsize=12, bbox=dict(facecolor='yellow', alpha=0.8))
-    # fig.text(0.05, 0.7,
-    #          f"Distance between \npredicted and actual \nCDog location:\n{np.round(np.linalg.norm(CDog - guess) * 100, 4)}cm",
-    #          fontsize=12, bbox=dict(facecolor='green', alpha=0.8))
-    # fig.text(0.05, 0.5, f"Initial Guess (x,y,z):\n({initial_guess[0]}, {initial_guess[1]}, {initial_guess[2]})"
-    #                      f"\nAverage of residuals:\n{round(np.average(difference_data) * 1000, 4)}ms"
-    #                      f"\nActual vs. Found lever:\n({round(lever[0]-gps1_to_transponder[0],3)},{round(lever[1]-gps1_to_transponder[1],3)},{round(lever[2]-gps1_to_transponder[2],3)})m",
-    #          fontsize=12, bbox=dict(facecolor='red', alpha=0.8))
+    fig.text(0.05, 0.85, "Noise: \n GPS: 2cm \n Arrival time: 20\u03BCs",
+             fontsize=12, bbox=dict(facecolor='yellow', alpha=0.8))
+    fig.text(0.05, 0.7,
+             f"Distance between \npredicted and actual \nCDog location:\n{np.round(np.linalg.norm(CDog - guess) * 100, 4)}cm",
+             fontsize=12, bbox=dict(facecolor='green', alpha=0.8))
+    fig.text(0.05, 0.5, f"Initial Guess (x,y,z):\n({initial_guess[0]}, {initial_guess[1]}, {initial_guess[2]})"
+                         f"\nAverage of residuals:\n{round(np.average(difference_data) * 1000, 4)}ms"
+                         f"\nActual vs. Found lever:\n({round(lever[0]-gps1_to_transponder[0],3)},{round(lever[1]-gps1_to_transponder[1],3)},{round(lever[2]-gps1_to_transponder[2],3)})m",
+             fontsize=12, bbox=dict(facecolor='red', alpha=0.8))
 
     # Acoustic vs GNSS plot
     GPS_Coord_Num = list(range(len(GPS_Coordinates)))

@@ -8,7 +8,6 @@ from timePlot_Bermuda import geigerTimePlot
 def simulatedAnnealing_Bermuda(n, GPS_Coordinates, initial_guess, times_known, gps1_to_others, old_lever, timestamps, sound_speed):
     #Get initial values
     transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
-    experimentPathPlot(transponder_coordinates_Found, initial_guess)
 
     guess = geigersMethod(initial_guess, times_known, transponder_coordinates_Found, sound_speed)
     print(guess)
@@ -17,7 +16,7 @@ def simulatedAnnealing_Bermuda(n, GPS_Coordinates, initial_guess, times_known, g
     old_RMS = np.sqrt(np.nanmean(difference_data ** 2))
 
     #Plot initial conditions
-    experimentPathPlot(transponder_coordinates_Found, initial_guess)
+    # experimentPathPlot(transponder_coordinates_Found, initial_guess)
     geigerTimePlot(initial_guess, times_known, transponder_coordinates_Found, timestamps, sound_speed)
 
     #Run simulated annealing
@@ -48,7 +47,18 @@ def simulatedAnnealing_Bermuda(n, GPS_Coordinates, initial_guess, times_known, g
     print(old_lever)
 
     transponder_coordinates_Final = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
+    experimentPathPlot(transponder_coordinates_Final, guess)
+
     geigerTimePlot(initial_guess, times_known, transponder_coordinates_Final, timestamps, sound_speed)
+
+    plt.scatter(GPS_Coordinates[:,0,0], GPS_Coordinates[:,0,1], color="r", s=3)
+    plt.scatter(GPS_Coordinates[:,1,0], GPS_Coordinates[:,1,1], color="y", s=3)
+    plt.scatter(GPS_Coordinates[:,2,0], GPS_Coordinates[:,2,1], color="g", s=3)
+    plt.scatter(GPS_Coordinates[:,3,0], GPS_Coordinates[:,3,1], color="b", s=3)
+    plt.scatter(transponder_coordinates_Final[:,0], transponder_coordinates_Final[:,1], color='k', s=3)
+    plt.show()
+
+    print(guess)
 
     return old_lever
 

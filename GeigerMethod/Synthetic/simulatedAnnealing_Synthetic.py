@@ -25,7 +25,6 @@ def tempSchedule(RMSE):
 
 def simulatedAnnealing(n):
     CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(1000)
-    noise = np.random.normal(0, 2 * 10 ** -5, len(transponder_coordinates_Actual))
 
     # gps1_to_others += np.random.normal(0, 2*10**-2, (4,3))
     GPS_Coordinates += np.random.normal(0, 2 * 10 ** -2, (len(GPS_Coordinates), 4, 3))
@@ -35,15 +34,15 @@ def simulatedAnnealing(n):
     transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
     initial_guess = [-2000, 3000, -5000]
     guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual,
-                                       transponder_coordinates_Found, noise)
+                                       transponder_coordinates_Found)
     times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
     difference_data = times_calc - times_known
     old_RMS = np.sqrt(np.nanmean(difference_data ** 2))
 
     #Plot initial conditions
-    # experimentPathPlot(transponder_coordinates_Actual, CDog)
-    # leverHist(transponder_coordinates_Actual, transponder_coordinates_Found)
-    # geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, gps1_to_transponder, old_lever)
+    experimentPathPlot(transponder_coordinates_Actual, CDog)
+    leverHist(transponder_coordinates_Actual, transponder_coordinates_Found)
+    geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, gps1_to_transponder, old_lever)
 
     #Run simulated annealing
     k=0
@@ -52,7 +51,7 @@ def simulatedAnnealing(n):
         # if k<n/2:
         #     temp = 1-(k+1)/n
         # else:
-        temp = np.exp(-7 * (k/n))
+        temp = np.exp(-k*7*(1/(n))) #temp schdule
         # temp = tempSchedule(old_RMS)
         print(temp)
         best_displacement=[0,0,0]
@@ -73,7 +72,7 @@ def simulatedAnnealing(n):
         #Find RMS
         transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, lever)
         guess, times_known = geigersMethod(guess, CDog, transponder_coordinates_Actual,
-                                           transponder_coordinates_Found, noise)
+                                           transponder_coordinates_Found)
         times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
         difference_data = times_calc - times_known
         RMS = np.sqrt(np.nanmean(difference_data ** 2))
@@ -93,7 +92,7 @@ def simulatedAnnealing(n):
     transponder_coordinates_Final = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
     leverHist(transponder_coordinates_Actual, transponder_coordinates_Final)
     geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
-                   transponder_coordinates_Final, gps1_to_transponder, noise, old_lever)
+                   transponder_coordinates_Final, gps1_to_transponder, old_lever)
 
     return old_lever
 
