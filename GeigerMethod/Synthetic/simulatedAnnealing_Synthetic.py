@@ -90,3 +90,5 @@ simulatedAnnealing(300)
 
 #See what pathing I get if I have straight cross in x-y and no perturbation in z
 #Break down the error
+
+#Testing for github authentication
