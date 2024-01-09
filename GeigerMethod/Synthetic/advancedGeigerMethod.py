@@ -7,16 +7,22 @@ Written by Stefan Kildal-Brandt
 import numpy as np
 import random
 from findPointByPlane import initializeFunction, findXyzt
+import scipy.io as sio
+
+esv_table = sio.loadmat('../../GPSData/global_table_esv.mat')
+dz_array = esv_table['distance'].flatten()
+angle_array = esv_table['angle'].flatten()
+esv_matrix = esv_table['matrice']
 
 def generateRandomData(n): #Generate the random data in the form of numpy arrays
     #Generate CDog
-    CDog = np.array([random.uniform(-1000, 1000), random.uniform(-1000,1000), random.uniform(-5500, -4500)])
+    CDog = np.array([random.uniform(-1000, 1000), random.uniform(-1000,1000), random.uniform(-5225, -5235)])
 
     #Generate and initial GPS point to base all others off of
-    xyz_point = np.array([random.uniform(-1000, 1000), random.uniform(-1000,1000), random.uniform(-100, 100)])
+    xyz_point = np.array([random.uniform(-1000, 1000), random.uniform(-1000,1000), random.uniform(-10, 10)])
 
     #Generate the translations from initial point (random x,y,z translation with z/100) for each time step
-    translations = (np.random.rand(n,3) * 6000) - 3000
+    translations = (np.random.rand(n,3) * 15000) - 7500
     translations = np.matmul(translations, np.array([[1,0,0],[0,1,0],[0,0,1/100]]))
 
     #Generate rotations from initial point for each time step (yaw, pitch, roll) between -pi/2 to pi/2
@@ -51,10 +57,10 @@ def generateRandomData(n): #Generate the random data in the form of numpy arrays
 
 def generateLine(n):
     #Initialize CDog and GPS locations
-    CDog = np.array([random.uniform(-1000, 1000), random.uniform(-1000,1000), random.uniform(-5500, -4500)])
-    x_coords = (np.random.rand(n) * 5000) - 2500
+    CDog = np.array([random.uniform(-1000, 1000), random.uniform(-1000,1000), random.uniform(-5225, -5235)])
+    x_coords = (np.random.rand(n) * 15000) - 7500
     y_coords = x_coords + (np.random.rand(n) * 50) - 25  # variation around x-coord
-    z_coords = (np.random.rand(n) * 50) - 25
+    z_coords = (np.random.rand(n) * 5) - 10
     GPS1_Coordinates = np.column_stack((x_coords, y_coords, z_coords))
     GPS1_Coordinates = sorted(GPS1_Coordinates, key=lambda k: [k[0], k[1], k[2]])
 
@@ -81,13 +87,13 @@ def generateLine(n):
 
 def generateCross(n):
     # Initialize CDog and GPS locations
-    CDog = np.array([random.uniform(-1000, 1000), random.uniform(-1000, 1000), random.uniform(-5500, -4500)])
-    x_coords1 = (np.random.rand(n//2) * 5000) - 2500
-    x_coords2 = (np.random.rand(n//2) * 5000) - 2500
+    CDog = np.array([random.uniform(-1000, 1000), random.uniform(-1000, 1000), random.uniform(-5225, -5235)])
+    x_coords1 = (np.random.rand(n//2) * 15000) - 7500
+    x_coords2 = (np.random.rand(n//2) * 15000) - 7500
     x_coords = np.concatenate((np.sort(x_coords1), np.sort(x_coords2)))
     y_coords = x_coords + (np.random.rand(n) * 50) - 25  # variation around x-coord
     y_coords[n//2:] *= -1
-    z_coords = (np.random.rand(n) * 50) - 25
+    z_coords = (np.random.rand(n) * 5) - 10
     GPS1_Coordinates = np.column_stack((x_coords, y_coords, z_coords))
 
     GPS_Coordinates = np.zeros((n, 4, 3))
@@ -141,9 +147,23 @@ def calculateTimes(guess, transponder_coordinates, sound_speed):
         times[i] = distance / sound_speed
     return times
 
-def calculateTimesRayTracing(guess, transponder_coordinates, cz, depth, gradc):
-    #Need the look up table for this to work (should be easy to implement once I have it)
-    return
+# Function to find closest ESV value based on dz and beta
+def find_esv(beta, dz):
+    idx_closest_dz = np.argmin(np.abs(dz_array[:, None] - dz), axis=0)
+    idx_closest_beta = np.argmin(np.abs(angle_array[:, None] - beta), axis=0)
+    closest_esv = esv_matrix[idx_closest_dz, idx_closest_beta]
+    return closest_esv[0]
+
+def calculateTimesRayTracing(guess, transponder_coordinates):
+    times = np.zeros(len(transponder_coordinates))
+    for i in range(len(transponder_coordinates)):
+        hori_dist = np.sqrt((transponder_coordinates[i,0]-guess[0])**2 + (transponder_coordinates[i,1]-guess[1])**2)
+        abs_dist = np.linalg.norm(transponder_coordinates[i] - guess)
+        beta = np.arccos(hori_dist/abs_dist) * 180 / np.pi
+        dz = abs(guess[2] - transponder_coordinates[i,2])
+        esv = find_esv(beta, dz)
+        times[i] = abs_dist/esv
+    return times
 
 
 def computeJacobian(guess, transponder_coordinates, times, sound_speed):
@@ -165,7 +185,9 @@ def geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coord
     sound_speed = 1515
 
     #Get known times
-    times_known = calculateTimes(CDog, transponder_coordinates_Actual, sound_speed)
+    # times_known = calculateTimes(CDog, transponder_coordinates_Actual, sound_speed)
+    times_known = calculateTimesRayTracing(CDog, transponder_coordinates_Actual)
+
     #Apply noise to known times on scale of 20 microseconds
     times_known+=np.random.normal(0,2*10**-5,len(transponder_coordinates_Actual))
     # times_known+=noise
@@ -174,7 +196,8 @@ def geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coord
     delta = 1
     #Loop until change in guess is less than the threshold
     while np.linalg.norm(delta) > epsilon and k<100:
-        times_guess = calculateTimes(guess, transponder_coordinates_Found, sound_speed)
+        # times_guess = calculateTimes(guess, transponder_coordinates_Found, sound_speed)
+        times_guess = calculateTimesRayTracing(guess, transponder_coordinates_Found)
         jacobian = computeJacobian(guess, transponder_coordinates_Found, times_guess, sound_speed)
         delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (times_guess-times_known)
         guess = guess + delta
@@ -186,12 +209,11 @@ if __name__ == "__main__":
     from geigerTimePlot import geigerTimePlot
     from leverHist import leverHist
 
-    cz = np.loadtxt('../../Thalia_Stuff/data/cz_cast2_big.txt')
-    depth = np.loadtxt('../../Thalia_Stuff/data/depth_cast2_big.txt')
-    gradc = np.loadtxt('../../Thalia_Stuff/data/gradc_cast2_big.txt')
-
     CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(2000)
 
+    # print(calculateTimes(CDog, transponder_coordinates_Actual, 1515))
+    # print(calculateTimesRayTracing(CDog, transponder_coordinates_Actual))
+    # print(calculateTimes(CDog, transponder_coordinates_Actual, 1515)-calculateTimesRayTracing(CDog, transponder_coordinates_Actual))
 
     #Add noise to GPS on scale of 2 cm
     GPS_Coordinates += np.random.normal(0, 2*10**-2, (len(GPS_Coordinates), 4, 3))
@@ -205,8 +227,10 @@ if __name__ == "__main__":
     experimentPathPlot(transponder_coordinates_Actual, CDog)
 
     #Plot comparison of times
-    initial_guess = [-2000, 3000, -5000]
+    initial_guess = [-10000, 5000, -4000]
     geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, gps1_to_transponder)
 
 
 # Geometric Dilusion of Precision is the square root of the trace of (J.t*J)^_1
+
+#Evaluate error distribution at the truth and compare with the best guess

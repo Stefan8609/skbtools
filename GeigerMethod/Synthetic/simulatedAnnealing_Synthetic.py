@@ -30,12 +30,16 @@ def simulatedAnnealing(n):
     GPS_Coordinates += np.random.normal(0, 2 * 10 ** -2, (len(GPS_Coordinates), 4, 3))
 
     #Get initial values
-    old_lever = np.array([-10, 6, -13])
+    old_lever = np.array([-7.5079, 6.411, -13.033])
     transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
-    initial_guess = [-2000, 3000, -5000]
+    initial_guess = [-2000, 3000, -4000]
     guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual,
                                        transponder_coordinates_Found)
-    times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
+
+    # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
+    times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)
+
+
     difference_data = times_calc - times_known
     old_RMS = np.sqrt(np.nanmean(difference_data ** 2))
 
@@ -60,7 +64,10 @@ def simulatedAnnealing(n):
             displacement = ((np.random.rand(3)*2)-[1,1,1]) * temp
             print(old_lever + displacement)
             transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, old_lever+displacement)
-            times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
+
+            # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
+            times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)
+
             difference_data = times_calc - times_known
             RMSE = np.sqrt(np.nanmean(difference_data ** 2))
             if best_RMSE > RMSE:
@@ -73,7 +80,10 @@ def simulatedAnnealing(n):
         transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, lever)
         guess, times_known = geigersMethod(guess, CDog, transponder_coordinates_Actual,
                                            transponder_coordinates_Found)
-        times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
+
+        # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
+        times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)
+
         difference_data = times_calc - times_known
         RMS = np.sqrt(np.nanmean(difference_data ** 2))
         if RMS - old_RMS < 0: #What is acceptance condition?

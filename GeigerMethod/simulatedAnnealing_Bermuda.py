@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from geigerMethod_Bermuda import findTransponder, calculateTimes, geigersMethod
+from geigerMethod_Bermuda import findTransponder, calculateTimes, geigersMethod, calculateTimesRayTracing
 from Synthetic.experimentPathPlot import experimentPathPlot
 from timePlot_Bermuda import geigerTimePlot
 
@@ -10,8 +10,10 @@ def simulatedAnnealing_Bermuda(n, GPS_Coordinates, initial_guess, times_known, g
     transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
 
     guess = geigersMethod(initial_guess, times_known, transponder_coordinates_Found, sound_speed)
-    print(guess)
+
     times_calc = calculateTimes(guess, transponder_coordinates_Found, sound_speed)
+    # times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)
+
     difference_data = times_calc - times_known
     old_RMS = np.sqrt(np.nanmean(difference_data ** 2))
 
@@ -30,7 +32,10 @@ def simulatedAnnealing_Bermuda(n, GPS_Coordinates, initial_guess, times_known, g
         #Find RMS
         transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, lever)
         guess = geigersMethod(initial_guess, times_known, transponder_coordinates_Found, sound_speed)
+
         times_calc = calculateTimes(guess, transponder_coordinates_Found, sound_speed)
+        # times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)
+
         difference_data = times_calc - times_known
         RMS = np.sqrt(np.nanmean(difference_data ** 2))
         if RMS - old_RMS < 0:
@@ -58,7 +63,7 @@ def simulatedAnnealing_Bermuda(n, GPS_Coordinates, initial_guess, times_known, g
     plt.scatter(transponder_coordinates_Final[:,0], transponder_coordinates_Final[:,1], color='k', s=3)
     plt.show()
 
-    print(guess)
+    print(old_lever)
 
     return old_lever
 

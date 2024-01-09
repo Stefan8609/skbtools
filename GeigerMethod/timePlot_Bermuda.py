@@ -1,12 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from geigerMethod_Bermuda import geigersMethod, calculateTimes
+from geigerMethod_Bermuda import geigersMethod, calculateTimes, calculateTimesRayTracing
 
 
 def geigerTimePlot(initial_guess, times_known, transponder_coordinates_Found, timestamps, sound_speed):
     guess = geigersMethod(initial_guess, times_known, transponder_coordinates_Found, sound_speed)
-
+    print(guess)
     times_calc = calculateTimes(guess, transponder_coordinates_Found, sound_speed)
+    # times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)
 
     difference_data = times_calc - times_known
     RMS = np.sqrt(np.nanmean(difference_data ** 2))
