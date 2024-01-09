@@ -11,7 +11,7 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found)
 
     # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
-    times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)
+    times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
 
     difference_data = times_calc - times_known
     RMS = np.sqrt(np.nanmean(difference_data ** 2))

@@ -5,24 +5,6 @@ from geigerTimePlot import geigerTimePlot
 from experimentPathPlot import experimentPathPlot
 from leverHist import leverHist
 
-def tempSchedule(RMSE):
-    if RMSE * 100 * 1515 > 100:
-        temp = 1
-    elif RMSE * 100 * 1515 > 50:
-        temp = .5
-    elif RMSE * 100 * 1515 > 10:
-        temp = .25
-    elif RMSE * 100 * 1515 > 6:
-        temp = .1
-    elif RMSE * 100 * 1515 > 5.1:
-        temp = .01
-    elif RMSE * 100 * 1515 > 4.9:
-        temp = .002
-    else:
-        temp = .0007
-    return temp
-
-
 def simulatedAnnealing(n):
     CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(1000)
 
@@ -37,7 +19,7 @@ def simulatedAnnealing(n):
                                        transponder_coordinates_Found)
 
     # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
-    times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)
+    times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
 
 
     difference_data = times_calc - times_known
@@ -52,29 +34,9 @@ def simulatedAnnealing(n):
     k=0
     RMS_arr = [0]*(n-1)
     while k<n-1: #Figure out how to work temp threshold
-        # if k<n/2:
-        #     temp = 1-(k+1)/n
-        # else:
         temp = np.exp(-k*7*(1/(n))) #temp schdule
-        # temp = tempSchedule(old_RMS)
-        print(temp)
-        best_displacement=[0,0,0]
-        best_RMSE = np.inf
-        for i in range(1):
-            displacement = ((np.random.rand(3)*2)-[1,1,1]) * temp
-            print(old_lever + displacement)
-            transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, old_lever+displacement)
-
-            # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
-            times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)
-
-            difference_data = times_calc - times_known
-            RMSE = np.sqrt(np.nanmean(difference_data ** 2))
-            if best_RMSE > RMSE:
-                best_RMSE = RMSE
-                best_displacement = displacement
-
-        lever = old_lever + best_displacement
+        displacement = ((np.random.rand(3)*2)-[1,1,1]) * temp
+        lever = old_lever + displacement
 
         #Find RMS
         transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, lever)
@@ -82,7 +44,7 @@ def simulatedAnnealing(n):
                                            transponder_coordinates_Found)
 
         # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
-        times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)
+        times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
 
         difference_data = times_calc - times_known
         RMS = np.sqrt(np.nanmean(difference_data ** 2))

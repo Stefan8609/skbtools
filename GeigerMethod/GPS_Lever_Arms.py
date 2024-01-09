@@ -13,7 +13,6 @@ from fitPlane import fitPlane
 from projectToPlane import projectToPlane
 np.set_printoptions(suppress=True)
 
-
 def GPS_Lever_arms(GPS_Coordinates):
     all_arms = np.zeros((4,len(GPS_Coordinates),3))
     for i in range(len(GPS_Coordinates)):
