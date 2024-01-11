@@ -166,16 +166,6 @@ def calculateTimes(guess, transponder_coordinates, sound_speed):
 #     return times
 
 #This is to test vectorization
-
-def find_esv_test(beta, dz):
-    dz_diff = np.abs(dz_array[:, None] - dz)
-    beta_diff = np.abs(angle_array[:, None] - beta)
-
-    idx_closest_dz = np.argmin(dz_diff, axis=0)
-    idx_closest_beta = np.argmin(beta_diff, axis=0)
-    closest_esv = esv_matrix[idx_closest_dz, idx_closest_beta]
-    return closest_esv
-
 def find_esv(beta, dz):
     idx_closest_dz = np.searchsorted(dz_array, dz)
     idx_closest_dz = np.clip(idx_closest_dz, 0, len(dz_array)-1)
