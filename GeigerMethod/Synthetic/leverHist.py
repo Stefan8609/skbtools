@@ -16,7 +16,7 @@ def leverHist(transponder_coordinates_Actual, transponder_coordinates_Found):
         axs[i].set_ylim(0, 275)
         n, bins, patches = axs[i].hist(
             (transponder_coordinates_Found[:, i] - transponder_coordinates_Actual[:, i]) * 100,
-            bins=30, color=colors[i], alpha=0.7)
+            bins=30, color=colors[i], alpha=0.7, density=True)
         n_arr[i] = n.max()
         mu_arr[i], std_arr[i] = norm.fit(
             (transponder_coordinates_Found[:, i] - transponder_coordinates_Actual[:, i]) * 100)
@@ -26,9 +26,7 @@ def leverHist(transponder_coordinates_Actual, transponder_coordinates_Found):
         axs[i].set_xlim(xmin, xmax)
         axs[i].set_ylim(0, max(n_arr))
         p = norm.pdf(x, mu_arr[i], std_arr[i])
-        p_noise = norm.pdf(x, 0, 2)
-        p *= n_arr[i] / p.max()
-        p_noise *= n_arr[i] / p_noise.max()
+        p_noise = norm.pdf(x, 0, 2) #noise of GPS in centimeters
         axs[i].plot(x, p, 'k', linewidth=2, label="Normal Distribution of Differences")
         axs[i].plot(x, p_noise, color='y', linewidth=2, label="GPS Noise Distribution")
         if i==2:

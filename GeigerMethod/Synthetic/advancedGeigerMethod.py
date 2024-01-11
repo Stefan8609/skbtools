@@ -166,9 +166,21 @@ def calculateTimes(guess, transponder_coordinates, sound_speed):
 #     return times
 
 #This is to test vectorization
+
+def find_esv_test(beta, dz):
+    dz_diff = np.abs(dz_array[:, None] - dz)
+    beta_diff = np.abs(angle_array[:, None] - beta)
+
+    idx_closest_dz = np.argmin(dz_diff, axis=0)
+    idx_closest_beta = np.argmin(beta_diff, axis=0)
+    closest_esv = esv_matrix[idx_closest_dz, idx_closest_beta]
+    return closest_esv
+
 def find_esv(beta, dz):
-    idx_closest_dz = np.argmin(np.abs(dz_array[:, None] - dz), axis=0)
-    idx_closest_beta = np.argmin(np.abs(angle_array[:, None] - beta), axis=0)
+    idx_closest_dz = np.searchsorted(dz_array, dz)
+    idx_closest_dz = np.clip(idx_closest_dz, 0, len(dz_array)-1)
+    idx_closest_beta = np.searchsorted(angle_array, beta)
+    idx_closest_beta = np.clip(idx_closest_beta, 0, len(angle_array)-1)
     closest_esv = esv_matrix[idx_closest_dz, idx_closest_beta]
     return closest_esv
 
@@ -204,7 +216,7 @@ def geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coord
 
     #Get known times
     # times_known = calculateTimes(CDog, transponder_coordinates_Actual, sound_speed)
-    times_known, esv= calculateTimesRayTracing(CDog, transponder_coordinates_Actual)
+    times_known, esv = calculateTimesRayTracing(CDog, transponder_coordinates_Actual)
 
     #Apply noise to known times on scale of 20 microseconds
     times_known+=np.random.normal(0,2*10**-5,len(transponder_coordinates_Actual))
@@ -215,7 +227,8 @@ def geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coord
     #Loop until change in guess is less than the threshold
     while np.linalg.norm(delta) > epsilon and k<100:
         # times_guess = calculateTimes(guess, transponder_coordinates_Found, sound_speed)
-        times_guess, esv= calculateTimesRayTracing(guess, transponder_coordinates_Found)
+        times_guess, esv = calculateTimesRayTracing(guess, transponder_coordinates_Found)
+        # jacobian = computeJacobian(guess, transponder_coordinates_Found, times_guess, sound_speed)
         jacobian = computeJacobianRayTracing(guess, transponder_coordinates_Found, times_guess, esv)
         delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (times_guess-times_known)
         guess = guess + delta
