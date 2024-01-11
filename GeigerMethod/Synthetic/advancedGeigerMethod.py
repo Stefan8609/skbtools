@@ -7,6 +7,7 @@ Written by Stefan Kildal-Brandt
 import numpy as np
 import random
 from findPointByPlane import initializeFunction, findXyzt
+from RigidBodyMovementProblem import findRotationAndDisplacement
 import scipy.io as sio
 
 esv_table = sio.loadmat('../../GPSData/global_table_esv.mat')
@@ -123,21 +124,18 @@ def generateCross(n):
 def findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder):
     #Add some noise to initial information
     # gps1_to_others += np.random.normal(0, 2*10**-3, (4,3))
-    # gps1_to_transponder += np.random.normal(0, 2*10**-3, 3)
+    # gps1_to_transponder += np.random.normal(0, 2*10**-2, 3)
     # gps1_to_transponder += np.array([0,0,0])
 
     # Given initial information relative GPS locations and transponder and GPS Coords at each timestep
     xs, ys, zs = gps1_to_others.T
     initial_transponder = gps1_to_transponder
-    theta, phi, length, orientation = initializeFunction(xs, ys, zs, 0, initial_transponder)
-
     n = len(GPS_Coordinates)
     transponder_coordinates = np.zeros((n, 3))
     for i in range(n):
         new_xs, new_ys, new_zs = GPS_Coordinates[i].T
-        xyzt_vector, barycenter = findXyzt(new_xs, new_ys, new_zs, 0, length, theta, phi, orientation)
-        transponder_coordinates[i] = xyzt_vector + barycenter
-
+        R_mtrx, d = findRotationAndDisplacement(np.array([xs,ys,zs]), np.array([new_xs, new_ys, new_zs]))
+        transponder_coordinates[i] = np.matmul(R_mtrx, initial_transponder) + d
     return transponder_coordinates
 
 def calculateTimes(guess, transponder_coordinates, sound_speed):
@@ -146,24 +144,6 @@ def calculateTimes(guess, transponder_coordinates, sound_speed):
         distance = np.linalg.norm(transponder_coordinates[i] - guess)
         times[i] = distance / sound_speed
     return times
-
-# Function to find closest ESV value based on dz and beta
-# def find_esv(beta, dz):
-#     idx_closest_dz = np.argmin(np.abs(dz_array[:, None] - dz), axis=0)
-#     idx_closest_beta = np.argmin(np.abs(angle_array[:, None] - beta), axis=0)
-#     closest_esv = esv_matrix[idx_closest_dz, idx_closest_beta]
-#     return closest_esv[0]
-#
-# def calculateTimesRayTracing(guess, transponder_coordinates):
-#     times = np.zeros(len(transponder_coordinates))
-#     for i in range(len(transponder_coordinates)):
-#         hori_dist = np.sqrt((transponder_coordinates[i,0]-guess[0])**2 + (transponder_coordinates[i,1]-guess[1])**2)
-#         abs_dist = np.linalg.norm(transponder_coordinates[i] - guess)
-#         beta = np.arccos(hori_dist/abs_dist) * 180 / np.pi
-#         dz = abs(guess[2] - transponder_coordinates[i,2])
-#         esv = find_esv(beta, dz)
-#         times[i] = abs_dist/esv
-#     return times
 
 #This is to test vectorization
 def find_esv(beta, dz):
@@ -256,7 +236,3 @@ if __name__ == "__main__":
 
 #Evaluate error distribution at the truth and compare with the best guess
 
-
-#The jacobian is not using an esv for the sound speed - its using a constant sound speed despite
-#The raytracing sound speed being different
-#Need to implement the new version of the jacobian calculation
