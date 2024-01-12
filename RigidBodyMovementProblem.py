@@ -12,7 +12,7 @@ def findRotationAndDisplacement(xyzs_init, xyzs_final):
     B_mtrx = xyzs_final - centroid_final
 
     #Get a matrix product of the the two matrices above and find its SVD
-    C_mtrx = B_mtrx@(A_mtrx.T)
+    C_mtrx = np.tensordot(B_mtrx, A_mtrx, axes=(1,1))
     U, S, V_t = np.linalg.svd(C_mtrx)
 
     #Use the SVD to compute the rotation matrix and displacement between the point clouds
@@ -52,9 +52,9 @@ def demo(xs=np.random.rand(4)*10-5,
 
     #Apply perturbation to some points to investigate how error occurs when points are not
     #   In exact position after translation/rotation
-    xs += np.random.normal(0, .02, 4)
-    ys += np.random.normal(0, .02, 4)
-    zs += np.random.normal(0, .02, 4)
+    # xs += np.random.normal(0, .02, 4)
+    # ys += np.random.normal(0, .02, 4)
+    # zs += np.random.normal(0, .02, 4)
     #Error due to perturbation scales fast with perturbation magnitude
 
     xyzs_final = np.array([xs,ys,zs])

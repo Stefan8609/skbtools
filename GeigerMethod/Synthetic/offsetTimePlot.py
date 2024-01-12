@@ -1,21 +1,25 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from advancedGeigerMethod import geigersMethod, calculateTimes, calculateTimesRayTracing
+from GeigerMethod.Synthetic.advancedGeigerMethod import geigersMethod, calculateTimesRayTracing
 from scipy.stats import norm
 
 
-def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
-                   transponder_coordinates_Found, gps1_to_transponder, lever=[None,None,None]):
+def geigerTimePlotOffset(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
+                   transponder_coordinates_Found, gps1_to_transponder, times_known, offset, points, lever=[None,None,None]):
     if not lever[0]:
         lever = gps1_to_transponder
-    print(lever)
-    guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found)
+    guess = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found)[0]
 
-    # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
     times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
 
     difference_data = times_calc - times_known
+    difference_data[points//2 - offset:points//2] = 0
+
     RMS = np.sqrt(np.nanmean(difference_data ** 2))
+
+    for i in range(len(difference_data)):
+        if abs(difference_data[i]) > .1:
+            print(i)
 
     # Prepare label and plot
     fig, axes = plt.subplots(2, 3, figsize=(15, 10), gridspec_kw={'width_ratios': [1, 4, 2], 'height_ratios': [4, 1]})

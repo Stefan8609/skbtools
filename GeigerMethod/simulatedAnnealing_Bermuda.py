@@ -1,25 +1,24 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from geigerMethod_Bermuda import findTransponder, calculateTimes, geigersMethod, calculateTimesRayTracing
+from geigerMethod_Bermuda import findTransponder, geigersMethod, calculateTimesRayTracing
 from Synthetic.experimentPathPlot import experimentPathPlot
 from timePlot_Bermuda import geigerTimePlot
 
 
-def simulatedAnnealing_Bermuda(n, GPS_Coordinates, initial_guess, times_known, gps1_to_others, old_lever, timestamps, sound_speed):
+def simulatedAnnealing_Bermuda(n, GPS_Coordinates, initial_guess, times_known, gps1_to_others, old_lever, timestamps):
     #Get initial values
     transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
 
-    guess = geigersMethod(initial_guess, times_known, transponder_coordinates_Found, sound_speed)
+    guess = geigersMethod(initial_guess, times_known, transponder_coordinates_Found)
 
-    times_calc = calculateTimes(guess, transponder_coordinates_Found, sound_speed)
-    # times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)
+    times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
 
     difference_data = times_calc - times_known
     old_RMS = np.sqrt(np.nanmean(difference_data ** 2))
 
     #Plot initial conditions
     # experimentPathPlot(transponder_coordinates_Found, initial_guess)
-    geigerTimePlot(initial_guess, times_known, transponder_coordinates_Found, timestamps, sound_speed)
+    geigerTimePlot(initial_guess, times_known, transponder_coordinates_Found, timestamps)
 
     #Run simulated annealing
     k=0
@@ -31,18 +30,17 @@ def simulatedAnnealing_Bermuda(n, GPS_Coordinates, initial_guess, times_known, g
 
         #Find RMS
         transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, lever)
-        guess = geigersMethod(initial_guess, times_known, transponder_coordinates_Found, sound_speed)
+        guess = geigersMethod(initial_guess, times_known, transponder_coordinates_Found)
 
-        times_calc = calculateTimes(guess, transponder_coordinates_Found, sound_speed)
-        # times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)
+        times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
 
         difference_data = times_calc - times_known
         RMS = np.sqrt(np.nanmean(difference_data ** 2))
         if RMS - old_RMS < 0:
             old_lever = lever
             old_RMS = RMS
-        print(k, old_RMS*100*sound_speed, temp)
-        RMS_arr[k]=RMS*100*sound_speed
+        print(k, old_RMS*100*1515, temp)
+        RMS_arr[k]=RMS*100*1515
         k+=1
     plt.plot(list(range(n-1)), RMS_arr)
     plt.xlabel("Simulated Annealing Iteration")
@@ -54,7 +52,7 @@ def simulatedAnnealing_Bermuda(n, GPS_Coordinates, initial_guess, times_known, g
     transponder_coordinates_Final = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
     experimentPathPlot(transponder_coordinates_Final, guess)
 
-    geigerTimePlot(initial_guess, times_known, transponder_coordinates_Final, timestamps, sound_speed)
+    geigerTimePlot(initial_guess, times_known, transponder_coordinates_Final, timestamps)
 
     plt.scatter(GPS_Coordinates[:,0,0], GPS_Coordinates[:,0,1], color="r", s=3)
     plt.scatter(GPS_Coordinates[:,1,0], GPS_Coordinates[:,1,1], color="y", s=3)

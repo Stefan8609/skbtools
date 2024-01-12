@@ -5,7 +5,7 @@ Written by Stefan Kildal-Brandt
 """
 
 import numpy as np
-from findPointByPlane import initializeFunction, findXyzt
+from RigidBodyMovementProblem import findRotationAndDisplacement
 import scipy.io as sio
 from pymap3d import geodetic2ecef, ecef2geodetic
 from geopy import distance
@@ -19,15 +19,12 @@ def findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder):
     # Given initial information relative GPS locations and transponder and GPS Coords at each timestep
     xs, ys, zs = gps1_to_others.T
     initial_transponder = gps1_to_transponder
-    theta, phi, length, orientation = initializeFunction(xs, ys, zs, 0, initial_transponder)
-
     n = len(GPS_Coordinates)
     transponder_coordinates = np.zeros((n, 3))
     for i in range(n):
         new_xs, new_ys, new_zs = GPS_Coordinates[i].T
-        xyzt_vector, barycenter = findXyzt(new_xs, new_ys, new_zs, 0, length, theta, phi, orientation)
-        transponder_coordinates[i] = xyzt_vector + barycenter
-
+        R_mtrx, d = findRotationAndDisplacement(np.array([xs,ys,zs]), np.array([new_xs, new_ys, new_zs]))
+        transponder_coordinates[i] = np.matmul(R_mtrx, initial_transponder) + d
     return transponder_coordinates
 
 def calculateTimes(guess, transponder_coordinates, sound_speed):
@@ -49,44 +46,31 @@ def haversine_distance(lat1, lon1, lat2, lon2): #Modified from Thalia
     return R * c
 #Make sure that this is actually right - Might be more accurate ways to do this
 
-def find_esv(beta, dz): #Modified from Thalia
-    idx_closest_dz = np.argmin(np.abs(dz_array[:, None] - dz), axis=0)
-    idx_closest_beta = np.argmin(np.abs(angle_array[:, None] - beta), axis=0)
+def find_esv(beta, dz):
+    idx_closest_dz = np.searchsorted(dz_array, dz, side="left")
+    idx_closest_dz = np.clip(idx_closest_dz, 0, len(dz_array)-1)
+    idx_closest_beta = np.searchsorted(angle_array, beta, side="left")
+    idx_closest_beta = np.clip(idx_closest_beta, 0, len(angle_array)-1)
     closest_esv = esv_matrix[idx_closest_dz, idx_closest_beta]
-    return closest_esv[0]
+    return closest_esv
 
 def calculateTimesRayTracing(guess, transponder_coordinates):
-    times = np.zeros(len(transponder_coordinates))
-    for i in range(len(transponder_coordinates)):
-        lat_guess, lon_guess, depth_guess = ecef2geodetic(guess[0], guess[1], guess[2])
-        lat_transponder, lon_transponder, depth_transponder = ecef2geodetic(transponder_coordinates[i,0],transponder_coordinates[i,1],transponder_coordinates[i,2])
-        dz = abs(depth_guess - depth_transponder)
-        dh = haversine_distance(lat_transponder, lon_transponder, lat_guess, lon_guess)
-        print(distance.distance((lat_guess, lon_guess), (lat_transponder, lon_transponder)).km * 1000, dh)
-        dh = distance.distance((lat_guess, lon_guess), (lat_transponder, lon_transponder)).km * 1000
-        beta = 180/np.pi * np.arctan2(dz, dh)
-        esv = find_esv(beta, dz)
+    hori_dist = np.sqrt((transponder_coordinates[:, 0] - guess[0])**2 + (transponder_coordinates[:, 1] - guess[1])**2)
+    abs_dist = np.linalg.norm(transponder_coordinates - guess, axis=1)
+    beta = np.arccos(hori_dist / abs_dist) * 180 / np.pi
+    dz = np.abs(guess[2] - transponder_coordinates[:, 2])
+    esv = find_esv(beta, dz)
+    times = abs_dist / esv
+    return times, esv
 
-        abs_dist = np.linalg.norm(guess - transponder_coordinates[i])
-        times[i] = abs_dist/esv
-        # print(esv, beta, dz)
-    return times
-    #Make sure that this is absolutely right, make it faster by using lat/lon coordinates
-    #From the start. Consider how much the curvature of the earth affects our results
-    #Instead of working in lat/lon, can use depth from conversion, then just use trig to
-    #estimate dh
-
-def computeJacobian(guess, transponder_coordinates, times, sound_speed):
-    #Computes the Jacobian, parameters are xyz coordinates and functions are the travel times
-    jacobian = np.zeros((len(transponder_coordinates), 3))
-    for i in range(len(transponder_coordinates)):
-        jacobian[i, 0] = (-1 * transponder_coordinates[i, 0] + guess[0]) / (times[i]*(sound_speed**2))
-        jacobian[i, 1] = (-1 * transponder_coordinates[i, 1] + guess[1]) / (times[i]*(sound_speed**2))
-        jacobian[i, 2] = (-1 * transponder_coordinates[i, 2] + guess[2]) / (times[i]*(sound_speed**2))
+def computeJacobianRayTracing(guess, transponder_coordinates, times, sound_speed):
+    # Computes the Jacobian, parameters are xyz coordinates and functions are the travel times
+    diffs = transponder_coordinates - guess
+    jacobian = -diffs / (times[:, np.newaxis] * (sound_speed[:, np.newaxis] ** 2))
     return jacobian
 
 #Goal is to minimize sum of the difference of times squared
-def geigersMethod(guess, times_known, transponder_coordinates_Found, sound_speed):
+def geigersMethod(guess, times_known, transponder_coordinates_Found):
     #Use Geiger's method to find the guess of CDOG location which minimizes sum of travel times squared
     #Define threshold
     epsilon = 10**-5
@@ -96,10 +80,9 @@ def geigersMethod(guess, times_known, transponder_coordinates_Found, sound_speed
     delta = 1
     #Loop until change in guess is less than the threshold
     while np.linalg.norm(delta) > epsilon and k<100:
-        times_guess = calculateTimes(guess, transponder_coordinates_Found, sound_speed)
+        times_guess, esv = calculateTimesRayTracing(guess, transponder_coordinates_Found)
         # times_guess = calculateTimesRayTracing(guess, transponder_coordinates_Found)
-
-        jacobian = computeJacobian(guess, transponder_coordinates_Found, times_guess, sound_speed)
+        jacobian = computeJacobianRayTracing(guess, transponder_coordinates_Found, times_guess, esv)
         delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (times_guess-times_known)
         guess = guess + delta
         k+=1

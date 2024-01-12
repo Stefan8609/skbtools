@@ -137,6 +137,7 @@ def findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder):
         R_mtrx, d = findRotationAndDisplacement(np.array([xs,ys,zs]), np.array([new_xs, new_ys, new_zs]))
         transponder_coordinates[i] = np.matmul(R_mtrx, initial_transponder) + d
     return transponder_coordinates
+    #Next step in speed is vectorizing this function
 
 def calculateTimes(guess, transponder_coordinates, sound_speed):
     times = np.zeros(len(transponder_coordinates))
@@ -147,9 +148,9 @@ def calculateTimes(guess, transponder_coordinates, sound_speed):
 
 #This is to test vectorization
 def find_esv(beta, dz):
-    idx_closest_dz = np.searchsorted(dz_array, dz)
+    idx_closest_dz = np.searchsorted(dz_array, dz, side="left")
     idx_closest_dz = np.clip(idx_closest_dz, 0, len(dz_array)-1)
-    idx_closest_beta = np.searchsorted(angle_array, beta)
+    idx_closest_beta = np.searchsorted(angle_array, beta, side="left")
     idx_closest_beta = np.clip(idx_closest_beta, 0, len(angle_array)-1)
     closest_esv = esv_matrix[idx_closest_dz, idx_closest_beta]
     return closest_esv
@@ -210,7 +211,7 @@ if __name__ == "__main__":
     from geigerTimePlot import geigerTimePlot
     from leverHist import leverHist
 
-    CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(2000)
+    CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(20000)
 
     # print(calculateTimes(CDog, transponder_coordinates_Actual, 1515))
     # print(calculateTimesRayTracing(CDog, transponder_coordinates_Actual))
@@ -236,3 +237,7 @@ if __name__ == "__main__":
 
 #Evaluate error distribution at the truth and compare with the best guess
 
+#Next steps to include:
+#   Allow for an offset in the matching of GPS and arrival times (see how much of an impact this has on performance)
+#   Write in code that makes it so the match GPS coordinates are at the time when emission arrives at receiver
+#       Hence, the boat is actually displaced from the place where it emitted the acoustic pulse...

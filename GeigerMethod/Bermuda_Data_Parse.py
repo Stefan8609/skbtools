@@ -47,7 +47,7 @@ for i in range(len(filtered_data[0,0])):
 #Initialize Dog Acoustic Data
 
 #offset:RMSE, 68116:222.186, 68126:165.453, 68136:219.04, 68130:184.884, 68128: 170.04, 68124: 168.05, 68125:167
-offset = 68126#66828#68126 This is approximately overlaying them now
+offset = 68116#66828#68126 This is approximately overlaying them now
 data_DOG = sio.loadmat('../GPSData/DOG1-camp.mat')['tags'].astype(float)
 acoustic_DOG = np.unwrap(data_DOG[:,1] / 1e9*2*np.pi) / (2*np.pi)
 time_DOG = (data_DOG[:, 0] + offset) / 3600
@@ -86,7 +86,6 @@ GPS_Coordinates = GPS_Coordinates[0::30]
 
 initial_dog_guess = np.mean(GPS_Coordinates[:,0], axis=0)
 initial_dog_guess[2] += 5000
-sound_speed = 1515 #Changing sound speed gets better fit
 # initial_dog_guess=np.array([1979509.5631926274, -5077550.411986372, 3312551.0725191827]) #Thalia's guess for CDOG3
 # initial_dog_guess[2] += 5225
 
@@ -106,7 +105,7 @@ gps1_to_others = np.array([[0,0,0],[-2.4054, -4.20905, 0.060621], [-12.1105,-0.9
 initial_lever_guess = np.array([-12.4, 15.46, -15.24])
 # initial_lever_guess = np.array([-10.43, 2.58, -3.644])
 
-simulatedAnnealing_Bermuda(300, GPS_Coordinates, initial_dog_guess, valid_acoustic_DOG, gps1_to_others, initial_lever_guess, valid_timestamp, sound_speed)
+simulatedAnnealing_Bermuda(300, GPS_Coordinates, initial_dog_guess, valid_acoustic_DOG, gps1_to_others, initial_lever_guess, valid_timestamp)
 
 # transponder_coordinates_found = findTransponder(GPS_Coordinates, gps1_to_others, [-7.56446, 7.54666, -3.661])
 # transponder_coordinates_found = findTransponder(GPS_Coordinates, gps1_to_others, initial_lever_guess)
@@ -122,12 +121,6 @@ simulatedAnnealing_Bermuda(300, GPS_Coordinates, initial_dog_guess, valid_acoust
 
 #Try modifying lever arms between gps and see what happens
 
-#Next step - Build out synthetic where actual travel times are determined from ray tracing
-#   Then using a constant sound velocity find calc times and find best RMSE and compare to what I'm getting here
-#   If they are similar then the high RMSE can possibly be due to not adequately accomodating sound velocity
-#   then implement ray tracing in determination of calc times to see if it lowers RMSE
-#   then implement ray tracing in this analysis of data.
-
 # [ 1979507.8868552  -5077545.65205964  3312550.35393797]
 # [ 1979508.02136779 -5077545.99643553  3312550.57786073]
 
@@ -142,3 +135,12 @@ simulatedAnnealing_Bermuda(300, GPS_Coordinates, initial_dog_guess, valid_acoust
 #Third and Fourth manuscripts are not relevant right now
 #First and Second are relevant to seafloor geodesy
 
+#Add an offset into the synthetic to see how it affects things
+
+#I think their is still a major problem with matching the emission arrival with the point where emitted
+#   Need to take the (arrival time - travel time) to find the GPS coordinates to use for emission point
+#   This seems like a potentially difficult problem as travel time is a considerable unknown
+#   Maybe can estimate with the approximate esv from known GPS at time of arrival
+#       Idea: Take the travel time from the given location at arrival time and subtract from given time
+#           To find the time of emission (then can do further corrections by seeing how travel time changes)
+#           Kinda will descend towards the actual emission time

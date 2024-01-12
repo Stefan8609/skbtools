@@ -31,6 +31,6 @@ def leverHist(transponder_coordinates_Actual, transponder_coordinates_Found):
         axs[i].plot(x, p_noise, color='y', linewidth=2, label="GPS Noise Distribution")
         if i==2:
             axs[i].legend(loc="upper right", fontsize = "8")
-        axs[i].set_xlabel(f'{axis[i]}-difference(cm) std={round(std_arr[i], 4)} (cm)')
+        axs[i].set_xlabel(f'{axis[i]}-difference std={round(std_arr[i], 4)} (cm)')
     plt.show()
     return axs

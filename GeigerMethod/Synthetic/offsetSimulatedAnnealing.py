@@ -1,12 +1,11 @@
 import matplotlib.pyplot as plt
-import numpy as np
 from advancedGeigerMethod import *
-from geigerTimePlot import geigerTimePlot
+from offsetTimePlot import geigerTimePlotOffset
 from experimentPathPlot import experimentPathPlot
 from leverHist import leverHist
 
-def simulatedAnnealing(n):
-    CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(20000)
+def simulatedAnnealingOffset(n, points, offset):
+    CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(points)
 
     # gps1_to_others += np.random.normal(0, 2*10**-2, (4,3))
     GPS_Coordinates += np.random.normal(0, 2 * 10 ** -2, (len(GPS_Coordinates), 4, 3))
@@ -18,17 +17,24 @@ def simulatedAnnealing(n):
     guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual,
                                        transponder_coordinates_Found)
 
+    GPS_Coordinates = GPS_Coordinates[offset:]
+    transponder_coordinates_Found = transponder_coordinates_Found[offset:]
+    transponder_coordinates_Actual = transponder_coordinates_Actual[offset:]
+    times_known = times_known[:len(transponder_coordinates_Found)]
+
     # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
     times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
 
-
     difference_data = times_calc - times_known
+    difference_data[points//2 - offset:points//2] = 0
+
     old_RMS = np.sqrt(np.nanmean(difference_data ** 2))
 
     #Plot initial conditions
     experimentPathPlot(transponder_coordinates_Actual, CDog)
     leverHist(transponder_coordinates_Actual, transponder_coordinates_Found)
-    geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, gps1_to_transponder, old_lever)
+    geigerTimePlotOffset(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
+                         transponder_coordinates_Found, gps1_to_transponder, times_known, offset, points, old_lever)
 
     #Run simulated annealing
     k=0
@@ -40,13 +46,15 @@ def simulatedAnnealing(n):
 
         #Find RMS
         transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, lever)
-        guess, times_known = geigersMethod(guess, CDog, transponder_coordinates_Actual,
-                                           transponder_coordinates_Found)
+        guess = geigersMethod(guess, CDog, transponder_coordinates_Actual,
+                                           transponder_coordinates_Found)[0]
 
         # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
         times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
 
         difference_data = times_calc - times_known
+        difference_data[points // 2 - offset:points // 2] = 0
+
         RMS = np.sqrt(np.nanmean(difference_data ** 2))
         if RMS - old_RMS < 0: #What is acceptance condition?
             old_lever = lever
@@ -63,32 +71,12 @@ def simulatedAnnealing(n):
 
     transponder_coordinates_Final = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
     leverHist(transponder_coordinates_Actual, transponder_coordinates_Final)
-    geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
-                   transponder_coordinates_Final, gps1_to_transponder, old_lever)
+    geigerTimePlotOffset(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
+                   transponder_coordinates_Final, gps1_to_transponder, times_known, offset, points, old_lever)
 
     return old_lever
 
-simulatedAnnealing(300)
+simulatedAnnealingOffset(300, 10000, 2)
 
-#at each time step keep the cdog location and then calculate a bunch of deviations
-#   and keep the best one at each time step --Could speed up
-#   Also scale with RMSE (see if this works for temperature)
-#   Genetic algorithm, Neighborhood algorithm
-#   Plot the ones I keep on the plot
-#   Markov Chain Monte Carlo - https://agupubs.onlinelibrary.wiley.com/doi/10.1029/94JB03097
-#   Base off barycenter rather then GPS1
-#   Solve for all 4 gps offsets and see if position matches
-#   Derben-Watson test
-
-#   Normalize histogram by normalizing area of bins to be 1
-#   See what histogram noise looks like with no time noise
-#   Then do the same with no gps noise with time noise to see how histograms change
-#   Variance Reduction
-
-#Add panel to time plot giving a zoomed window of points explaining the trajectory and
-#On same axis show the same thing
-
-#See what pathing I get if I have straight cross in x-y and no perturbation in z
-#Break down the error
-
-#Testing for github authentication
+#Seems that an offset has a major effect on the shape and ability to zone in on a graph
+#   Also the gps lands in the wrong spot with an offset
