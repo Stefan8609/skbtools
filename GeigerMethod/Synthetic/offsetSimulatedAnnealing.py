@@ -76,7 +76,7 @@ def simulatedAnnealingOffset(n, points, offset):
 
     return old_lever
 
-simulatedAnnealingOffset(300, 10000, 2)
+simulatedAnnealingOffset(300, 4000, 0)
 
 #Seems that an offset has a major effect on the shape and ability to zone in on a graph
 #   Also the gps lands in the wrong spot with an offset

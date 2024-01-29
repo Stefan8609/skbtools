@@ -1,4 +1,6 @@
-#Inspiration from Inge Soderkvist "Using SVD for Some Fitting Problems"
+'''
+Inspiration from Inge Soderkvist "Using SVD for Some Fitting Problems"
+'''
 
 import numpy as np
 
@@ -23,8 +25,9 @@ def findRotationAndDisplacement(xyzs_init, xyzs_final):
     d = d.T[0]
     return R_mtrx, d
 
-
-
+'''
+DEMO BELOW
+'''
 
 def demo(xs=np.random.rand(4)*10-5,
          ys=np.random.rand(4)*10-5,

@@ -1,6 +1,7 @@
 import scipy.io as sio
 import numpy as np
 from simulatedAnnealing_Bermuda import simulatedAnnealing_Bermuda
+from GPS_Lever_Arms import GPS_Lever_arms
 from timePlot_Bermuda import geigerTimePlot
 from geigerMethod_Bermuda import findTransponder
 from pymap3d import geodetic2ecef
@@ -47,9 +48,10 @@ for i in range(len(filtered_data[0,0])):
 #Initialize Dog Acoustic Data
 
 #offset:RMSE, 68116:222.186, 68126:165.453, 68136:219.04, 68130:184.884, 68128: 170.04, 68124: 168.05, 68125:167
-offset = 68116#66828#68126 This is approximately overlaying them now
+offset = 68126#66828#68126 This is approximately overlaying them now
 data_DOG = sio.loadmat('../GPSData/DOG1-camp.mat')['tags'].astype(float)
-acoustic_DOG = np.unwrap(data_DOG[:,1] / 1e9*2*np.pi) / (2*np.pi)
+acoustic_DOG = np.unwrap(data_DOG[:,1] / 1e9*2*np.pi) / (2*np.pi)  #Numpy page describes how unwrap works
+    #I don't think the periodicity for unwrap function is 2*pi as what is set now
 time_DOG = (data_DOG[:, 0] + offset) / 3600
 condition_DOG = (time_DOG >=25) & (time_DOG <= 40.9)
 time_DOG, acoustic_DOG = time_DOG[condition_DOG], acoustic_DOG[condition_DOG]
@@ -67,6 +69,8 @@ GPS_Coordinates = GPS_Coordinates[common_indices]
 repeat = np.full(len(time_DOG), False)
 for i in range(1,len(time_DOG)):
     if time_DOG[i-1] == time_DOG[i]:
+        print(time_DOG[i] * 3600 - offset)
+        print(acoustic_DOG[i], acoustic_DOG[i-1])
         repeat[i] = True
 
 time_DOG = time_DOG[~repeat]
@@ -84,24 +88,19 @@ valid_acoustic_DOG=valid_acoustic_DOG[0::30]
 valid_timestamp=valid_timestamp[0::30]
 GPS_Coordinates = GPS_Coordinates[0::30]
 
+print('\n')
+GPS_Lever_arms(GPS_Coordinates)
+print('\n')
+
+print(valid_acoustic_DOG)
+
 initial_dog_guess = np.mean(GPS_Coordinates[:,0], axis=0)
 initial_dog_guess[2] += 5000
-# initial_dog_guess=np.array([1979509.5631926274, -5077550.411986372, 3312551.0725191827]) #Thalia's guess for CDOG3
-# initial_dog_guess[2] += 5225
 
-## For testing the potential of deleting outlying items in GPS coordinates
-# valid_acoustic_DOG = np.delete(valid_acoustic_DOG, 859, 0)
-# GPS_Coordinates = np.delete(GPS_Coordinates, 859, 0)
-# valid_timestamp = np.delete(valid_timestamp, 859, 0)
-# valid_acoustic_DOG = np.delete(valid_acoustic_DOG, 1154, 0)
-# GPS_Coordinates = np.delete(GPS_Coordinates, 1154, 0)
-# valid_timestamp = np.delete(valid_timestamp, 1154, 0)
-# valid_acoustic_DOG = np.delete(valid_acoustic_DOG, 1154, 0)
-# GPS_Coordinates = np.delete(GPS_Coordinates, 1154, 0)
-# valid_timestamp = np.delete(valid_timestamp, 1154, 0)
+# gps1_to_others = np.array([[0,0,0],[0, -4.93, 0], [-10.2,-7.11,0],[-10.1268,0,0]])
+gps1_to_others = np.array([[0,0,0],[-2.4054, -4.20905, 0.060621], [-12.1105,-0.956145,0.00877],[-8.70446831,5.165195, 0.04880436]])
+#Design a program to find the optimal gps1_to_others
 
-# gps1_to_others = np.array([[0,0,0],[0, -4.93, 0], [-10.2,-7.11,0],[-10.1268,0,0]]
-gps1_to_others = np.array([[0,0,0],[-2.4054, -4.20905, 0.060621], [-12.1105,-0.956145,0.00877],[-8.70446831,5.165195,0.04880436]])
 initial_lever_guess = np.array([-12.4, 15.46, -15.24])
 # initial_lever_guess = np.array([-10.43, 2.58, -3.644])
 
@@ -144,3 +143,11 @@ simulatedAnnealing_Bermuda(300, GPS_Coordinates, initial_dog_guess, valid_acoust
 #       Idea: Take the travel time from the given location at arrival time and subtract from given time
 #           To find the time of emission (then can do further corrections by seeing how travel time changes)
 #           Kinda will descend towards the actual emission time
+
+#Use the 'elev' tag in the MATLAB file to get the z-distance when calculating sound speed.
+
+#Check periodicity of unwrap function and make sure that it is right
+
+#Get absolute distance (diff in xyzs) and the vertical diff (diff in elev), then find the
+#   Hori distance using Hi = sqrt(absDist^2 - vertDist^2)
+
