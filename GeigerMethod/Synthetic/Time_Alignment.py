@@ -91,24 +91,28 @@ initial_lever_guess = np.array([-12.4, 15.46, -15.24])
 transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, initial_lever_guess)
 CDOG = [-1000, -1000, -5000]
 
-CDOG_time = calculateTimesRayTracing(CDOG, transponder_coordinates)[0]
-CDOG_time += np.arange(len(CDOG_time))
+travel_times = calculateTimesRayTracing(CDOG, transponder_coordinates)[0]
+CDOG_time = travel_times + np.arange(len(travel_times))
 CDOG_remain, CDOG_int = np.modf(CDOG_time)
+
 
 """Remove values at random indices"""
 # removal_indices = np.random.choice(len(CDOG_time), 10000, replace=False)
-# CDOG_remain = np.delete(CDOG_remain, removal_indices)
-# CDOG_time = np.delete(CDOG_time, removal_indices)
+removal_indices = np.s_[10000:10500]
+removed_unwrapped = np.unwrap(CDOG_remain[10000:10500] * 2 * np.pi)/(2*np.pi)
+travel_times = np.delete(travel_times, removal_indices)
+CDOG_remain = np.delete(CDOG_remain, removal_indices)
+CDOG_time = np.delete(CDOG_time, removal_indices)
 
-
-print(CDOG_remain[:200])
 acoustic_DOG = np.unwrap(CDOG_remain * 2 * np.pi) / (2*np.pi)  #Numpy page describes how unwrap works
 
-test = acoustic_DOG + CDOG_time[0]
-print(test)
+test = acoustic_DOG + travel_times[0] - CDOG_remain[0]
 
-plt.scatter(list(range(len(acoustic_DOG))), test, s=1)
+# plt.scatter(list(range(len(acoustic_DOG))), test, s=1)
 
+# plt.scatter(list(range(len(acoustic_DOG))), test - travel_times, s=1)
+
+plt.scatter(CDOG_time, test, s=1)
 
 # plt.scatter(list(range(len(CDOG_time))), CDOG_time, s=1)
 # plt.scatter(GPS_Coordinates[:,0,0],GPS_Coordinates[:,0,1], s=1)
@@ -120,4 +124,13 @@ Find a way to save CDOG_time to a matlab file in the same way that the CDOG data
 Try to get the data to mimic what we see in the real data
 
 Currently x,y,z of dog is not very good (the ecef coords don't have z correspondign to depth)
+
+Sometime when indices are removed the CDOG data - travel time is given integers instead of 0
+This is due to wrapping -- Jumps are too big i.e. 5.7 to 5.01 goes to 6.01
+    How do I automatically find whether these jumps are too big and correct for it when data is missing?
+    
+    Could interpolate data for missing CDOG points -- Find the closest that matches all GPS positions
+    
+    Plot wrapped time versus absolute time -- From here should be able to find a way to correct for 
+    false movements
 """

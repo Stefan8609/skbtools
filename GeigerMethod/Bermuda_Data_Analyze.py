@@ -5,8 +5,7 @@ Looks at the shape of the C-DOG files to get an understanding of what they look 
 
 import scipy.io as sio
 import numpy as np
-from simulatedAnnealing_Bermuda import simulatedAnnealing_Bermuda
-from GPS_Lever_Arms import GPS_Lever_arms
+from geigerMethod_Bermuda import calculateTimesRayTracing, find_esv
 import matplotlib.pyplot as plt
 
 #Load GNSS Data during the time of expedition (25 through 40.9) hours
@@ -58,6 +57,14 @@ time_DOG = (data_DOG[:, 0] + offset) / 3600
 # condition_DOG = (time_DOG >=25) & (time_DOG <= 40.9)
 # time_DOG, acoustic_DOG = time_DOG[condition_DOG], acoustic_DOG[condition_DOG]
 
-plt.scatter(list(range(len(acoustic_DOG))),acoustic_DOG + data_DOG[:,0], s=1)
+
+plt.scatter(acoustic_DOG + data_DOG[:,0], acoustic_DOG, s=1)
+# plt.scatter(list(range(len(acoustic_DOG))),acoustic_DOG + data_DOG[:,0], s=1)
 # plt.scatter(list(range(len(acoustic_DOG))),acoustic_DOG, s=1)
 plt.show()
+
+
+"""
+Good next step -- overlay plot of best CDOG guess and calculated travel times from GPS on top of plot of 
+    wrapped dog versus absolute dog time (can figure out offset and scaling).
+"""
