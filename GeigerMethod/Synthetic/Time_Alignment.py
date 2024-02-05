@@ -13,6 +13,7 @@ import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
 from RigidBodyMovementProblem import findRotationAndDisplacement
+from pymap3d import geodetic2ecef
 
 esv_table = sio.loadmat('../../GPSData/global_table_esv.mat')
 dz_array = esv_table['distance'].flatten()
@@ -53,9 +54,12 @@ def load_and_process_data(path):
     days = data['days'].flatten() - 59015
     times = data['times'].flatten()
     datetimes = (days * 24 * 3600) + times
-    condition_GNSS = (datetimes/3600 >= 25) & (datetimes / 3600 <= 40.9)
-    time_GNSS = datetimes[condition_GNSS]/3600
-    x,y,z = data['x'].flatten()[condition_GNSS], data['y'].flatten()[condition_GNSS], data['z'].flatten()[condition_GNSS]
+    # condition_GNSS = (datetimes/3600 >= 25) & (datetimes / 3600 <= 40.9)
+    # time_GNSS = datetimes[condition_GNSS]/3600
+    # x,y,z = data['x'].flatten()[condition_GNSS], data['y'].flatten()[condition_GNSS], data['z'].flatten()[condition_GNSS]
+
+    time_GNSS = datetimes/3600
+    x,y,z = data['x'].flatten(), data['y'].flatten(), data['z'].flatten()
     return time_GNSS, x,y,z
 
 paths = [
@@ -85,39 +89,67 @@ for i in range(len(filtered_data[0,0])):
         GPS_Coordinates[i, j, 1] = filtered_data[j, 2, i]
         GPS_Coordinates[i, j, 2] = filtered_data[j, 3, i]
 
+CDOG = [31.46356091, 291.29859266, -5271.47395559]
+CDOG = np.array(geodetic2ecef(CDOG[0], CDOG[1], CDOG[2])) - np.mean(GPS_Coordinates, axis=0)[0]
+
 GPS_Coordinates = GPS_Coordinates - np.mean(GPS_Coordinates, axis=0)
 gps1_to_others = np.array([[0,0,0],[-2.4054, -4.20905, 0.060621], [-12.1105,-0.956145,0.00877],[-8.70446831,5.165195, 0.04880436]])
 initial_lever_guess = np.array([-12.4, 15.46, -15.24])
 transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, initial_lever_guess)
-CDOG = [-1000, -1000, -5000]
 
+# CDOG = [-1000, -1000, -5000]
+
+# offset = 1000
 travel_times = calculateTimesRayTracing(CDOG, transponder_coordinates)[0]
-CDOG_time = travel_times + np.arange(len(travel_times))
+GPS_time = filtered_data[0,0] * 3600 - 85185
+CDOG_time = travel_times + GPS_time #+ offset
 CDOG_remain, CDOG_int = np.modf(CDOG_time)
-
 
 """Remove values at random indices"""
 # removal_indices = np.random.choice(len(CDOG_time), 10000, replace=False)
-removal_indices = np.s_[10000:10500]
-removed_unwrapped = np.unwrap(CDOG_remain[10000:10500] * 2 * np.pi)/(2*np.pi)
-travel_times = np.delete(travel_times, removal_indices)
-CDOG_remain = np.delete(CDOG_remain, removal_indices)
-CDOG_time = np.delete(CDOG_time, removal_indices)
+# removal_indices = np.s_[10000:10500]
+# print(removal_indices)
+# removed_unwrapped = np.unwrap(CDOG_remain[10000:10500] * 2 * np.pi)/(2*np.pi)
+# travel_times = np.delete(travel_times, removal_indices)
+# CDOG_remain = np.delete(CDOG_remain, removal_indices)
+# CDOG_time = np.delete(CDOG_time, removal_indices)
 
 acoustic_DOG = np.unwrap(CDOG_remain * 2 * np.pi) / (2*np.pi)  #Numpy page describes how unwrap works
 
 test = acoustic_DOG + travel_times[0] - CDOG_remain[0]
 
-# plt.scatter(list(range(len(acoustic_DOG))), test, s=1)
-
-# plt.scatter(list(range(len(acoustic_DOG))), test - travel_times, s=1)
-
-plt.scatter(CDOG_time, test, s=1)
+# print(test[57900:57925])
+# print(travel_times[57900:57925])
+# print(CDOG_time[57900:57925])
+# print(GPS_Coordinates[57900:57925])
+plt.scatter(CDOG_time, test - travel_times, s=1, color='b', label = "Unwrapped CDOG data minus travel time")
+plt.scatter(CDOG_time, test, s=1, color='r', label = "Unwrapped CDOG data")
+plt.legend(loc="upper right")
+plt.xlabel("Absolute Time (s)")
+plt.ylabel("Travel Time (s)")
 
 # plt.scatter(list(range(len(CDOG_time))), CDOG_time, s=1)
 # plt.scatter(GPS_Coordinates[:,0,0],GPS_Coordinates[:,0,1], s=1)
 # plt.scatter(CDOG[0], CDOG[1])
 plt.show()
+
+CDOG_mat = np.stack((CDOG_int, CDOG_remain), axis=0)
+CDOG_mat = CDOG_mat.T
+
+#Remove random indices from CDOG data
+for i in range(10):
+    length_to_remove = np.random.randint(50, 500)
+    start_index = np.random.randint(0, len(CDOG_mat) - length_to_remove + 1)  # Start index cannot exceed len(array) - max_length
+    indices_to_remove = np.arange(start_index, start_index + length_to_remove)
+    CDOG_mat = np.delete(CDOG_mat, indices_to_remove, axis=0)
+
+mat_unwrapped = np.unwrap(CDOG_mat[:,1] * 2 * np.pi) / (2*np.pi)  #Numpy page describes how unwrap works
+print(mat_unwrapped)
+plt.scatter(CDOG_mat[:,0] + CDOG_mat[:,1], mat_unwrapped, s=1)
+plt.show()
+
+#Save the synthetic to a matlabfile
+sio.savemat("../../GPSData/Synthetic_CDOG.mat", {"tags":CDOG_mat})
 
 """
 Find a way to save CDOG_time to a matlab file in the same way that the CDOG data is actually saved
@@ -133,4 +165,6 @@ This is due to wrapping -- Jumps are too big i.e. 5.7 to 5.01 goes to 6.01
     
     Plot wrapped time versus absolute time -- From here should be able to find a way to correct for 
     false movements
+    
+How do I account for the wrapping when there are big jumps from missing data points?
 """

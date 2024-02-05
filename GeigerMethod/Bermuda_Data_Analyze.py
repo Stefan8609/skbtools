@@ -5,8 +5,9 @@ Looks at the shape of the C-DOG files to get an understanding of what they look 
 
 import scipy.io as sio
 import numpy as np
-from geigerMethod_Bermuda import calculateTimesRayTracing, find_esv
+from geigerMethod_Bermuda import findTransponder, calculateTimesRayTracing, find_esv
 import matplotlib.pyplot as plt
+from pymap3d import geodetic2ecef
 
 #Load GNSS Data during the time of expedition (25 through 40.9) hours
 def load_and_process_data(path):
@@ -14,9 +15,13 @@ def load_and_process_data(path):
     days = data['days'].flatten() - 59015
     times = data['times'].flatten()
     datetimes = (days * 24 * 3600) + times
-    condition_GNSS = (datetimes/3600 >= 25) & (datetimes / 3600 <= 40.9)
-    time_GNSS = datetimes[condition_GNSS]/3600
-    x,y,z = data['x'].flatten()[condition_GNSS], data['y'].flatten()[condition_GNSS], data['z'].flatten()[condition_GNSS]
+    # condition_GNSS = (datetimes/3600 >= 25) & (datetimes / 3600 <= 40.9)
+    # time_GNSS = datetimes[condition_GNSS]/3600
+    # x,y,z = data['x'].flatten()[condition_GNSS], data['y'].flatten()[condition_GNSS], data['z'].flatten()[condition_GNSS]
+
+    time_GNSS = datetimes/3600
+    x,y,z = data['x'].flatten(), data['y'].flatten(), data['z'].flatten()
+
     return time_GNSS, x,y,z
 
 paths = [
@@ -46,8 +51,15 @@ for i in range(len(filtered_data[0,0])):
         GPS_Coordinates[i, j, 1] = filtered_data[j, 2, i]
         GPS_Coordinates[i, j, 2] = filtered_data[j, 3, i]
 
-#Initialize Dog Acoustic Data
+#Initialize GNSS time
+time_GNSS = filtered_data[0,0] * 3600 - 68126
+print(time_GNSS)
 
+#Initialize CDOG Guess
+CDOG = [31.46356091, 291.29859266, -5271.47395559]
+CDOG = np.array(geodetic2ecef(CDOG[0], CDOG[1], CDOG[2]))
+
+#Initialize Dog Acoustic Data
 #offset:RMSE, 68116:222.186, 68126:165.453, 68136:219.04, 68130:184.884, 68128: 170.04, 68124: 168.05, 68125:167
 offset = 68126#66828#68126 This is approximately overlaying them now
 data_DOG = sio.loadmat('../GPSData/DOG1-camp.mat')['tags'].astype(float)
@@ -57,8 +69,17 @@ time_DOG = (data_DOG[:, 0] + offset) / 3600
 # condition_DOG = (time_DOG >=25) & (time_DOG <= 40.9)
 # time_DOG, acoustic_DOG = time_DOG[condition_DOG], acoustic_DOG[condition_DOG]
 
+#Find travel times from GPS to CDOG guess
+gps1_to_others = np.array([[0,0,0],[-2.4054, -4.20905, 0.060621], [-12.1105,-0.956145,0.00877],[-8.70446831,5.165195, 0.04880436]])
+initial_lever_guess = np.array([-12.4, 15.46, -15.24])
+transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, initial_lever_guess)
+travel_times = calculateTimesRayTracing(CDOG, transponder_coordinates)[0]
 
-plt.scatter(acoustic_DOG + data_DOG[:,0], acoustic_DOG, s=1)
+print(acoustic_DOG + data_DOG[:,0])
+print(time_GNSS + travel_times)
+
+plt.scatter(acoustic_DOG + data_DOG[:,0], acoustic_DOG, s=1, color='b')
+plt.scatter(time_GNSS + travel_times, travel_times, s=1, color='r')
 # plt.scatter(list(range(len(acoustic_DOG))),acoustic_DOG + data_DOG[:,0], s=1)
 # plt.scatter(list(range(len(acoustic_DOG))),acoustic_DOG, s=1)
 plt.show()
@@ -67,4 +88,8 @@ plt.show()
 """
 Good next step -- overlay plot of best CDOG guess and calculated travel times from GPS on top of plot of 
     wrapped dog versus absolute dog time (can figure out offset and scaling).
+    
+Coincidence that the wrapping time matches up with the actual travel time
+
+Need to create an algorithm to automatically find the best time offset
 """
