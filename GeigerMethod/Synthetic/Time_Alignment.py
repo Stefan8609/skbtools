@@ -133,6 +133,9 @@ plt.ylabel("Travel Time (s)")
 # plt.scatter(CDOG[0], CDOG[1])
 plt.show()
 
+offset = 5600
+CDOG_int += offset
+
 CDOG_mat = np.stack((CDOG_int, CDOG_remain), axis=0)
 CDOG_mat = CDOG_mat.T
 
@@ -151,6 +154,9 @@ plt.show()
 #Save the synthetic to a matlabfile
 sio.savemat("../../GPSData/Synthetic_CDOG.mat", {"tags":CDOG_mat})
 
+#Save transponder data
+sio.savemat("../../GPSData/Synthetic_transponder.mat", {"time":GPS_time, "xyz": transponder_coordinates})
+
 """
 Find a way to save CDOG_time to a matlab file in the same way that the CDOG data is actually saved
 Try to get the data to mimic what we see in the real data
@@ -159,6 +165,10 @@ Currently x,y,z of dog is not very good (the ecef coords don't have z correspond
 
 Sometime when indices are removed the CDOG data - travel time is given integers instead of 0
 This is due to wrapping -- Jumps are too big i.e. 5.7 to 5.01 goes to 6.01
+
+    This also sometimes happens when we are missing large swaths of GPS data (This should only be a
+        synthetic problem because synthetic CDOG is based on the travel times given)
+
     How do I automatically find whether these jumps are too big and correct for it when data is missing?
     
     Could interpolate data for missing CDOG points -- Find the closest that matches all GPS positions
