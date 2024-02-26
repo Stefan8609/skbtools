@@ -103,8 +103,10 @@ transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, initi
 travel_times = calculateTimesRayTracing(CDOG, transponder_coordinates)[0]
 GPS_time = filtered_data[0,0] * 3600 - 85185
 
+
+offset = 5605.49
 #Add some noise too
-CDOG_time = travel_times + GPS_time + np.random.normal(0,2*10**-5, len(GPS_time)) #+ offset
+CDOG_time = travel_times + GPS_time + np.random.normal(0,2*10**-5, len(GPS_time)) + offset
 CDOG_remain, CDOG_int = np.modf(CDOG_time)
 
 """Remove values at random indices"""
@@ -135,8 +137,8 @@ plt.ylabel("Travel Time (s)")
 # plt.scatter(CDOG[0], CDOG[1])
 plt.show()
 
-offset = 5600
-CDOG_int += offset
+# offset = 5600
+# CDOG_int += offset
 
 CDOG_mat = np.stack((CDOG_int, CDOG_remain), axis=0)
 CDOG_mat = CDOG_mat.T
@@ -154,10 +156,10 @@ plt.scatter(CDOG_mat[:,0] + CDOG_mat[:,1], mat_unwrapped, s=1)
 plt.show()
 
 #Save the synthetic to a matlabfile
-sio.savemat("../../GPSData/Synthetic_CDOG_noise.mat", {"tags":CDOG_mat})
+sio.savemat("../../GPSData/Synthetic_CDOG_noise_subint.mat", {"tags":CDOG_mat})
 
 #Save transponder data
-sio.savemat("../../GPSData/Synthetic_transponder_noise.mat", {"time":GPS_time, "xyz": transponder_coordinates})
+sio.savemat("../../GPSData/Synthetic_transponder_noise_subint.mat", {"time":GPS_time, "xyz": transponder_coordinates})
 
 """
 Find a way to save CDOG_time to a matlab file in the same way that the CDOG data is actually saved

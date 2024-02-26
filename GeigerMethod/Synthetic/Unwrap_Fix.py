@@ -5,8 +5,7 @@ Goal of this file is to fix the unwrapping issue that occurs when there are big 
 
 Should rename variables because right now its confusing
 
-Should make this alignment process more efficient (right now it too slow)
-    Possibly could do this using cross correlation ? Cuz this can use FFT
+ESV not properly aligned
 """
 
 import numpy as np
@@ -16,8 +15,16 @@ from scipy import signal
 from advancedGeigerMethod import calculateTimesRayTracing
 
 #Function to index data in both sets according to an absolute time
-def index_data(offset, data_DOG, acoustic_DOG, GPS_time, travel_times, transponder_coordinates, esv=None):
-    # Get DOG indexed approximately with time
+def index_data(offset, data_DOG, GPS_time, travel_times, transponder_coordinates, true_offset = False):
+
+    #Get the unwrapping of DOG data to start at the right initial value
+    acoustic_DOG = np.unwrap(data_DOG[:, 1] * 2 * np.pi) / (2 * np.pi)
+    if true_offset == True:
+        acoustic_DOG += data_DOG[0,0] + data_DOG[0,1] - offset - acoustic_DOG[0]
+    else:
+        acoustic_DOG += travel_times[0] - acoustic_DOG[0]
+
+    # Get DOG/GPS indexed approximately with time
     times_DOG = np.round(data_DOG[:, 0] + data_DOG[:, 1])
     times_GPS = np.round(GPS_time[0] + travel_times + offset)
 
@@ -30,9 +37,6 @@ def index_data(offset, data_DOG, acoustic_DOG, GPS_time, travel_times, transpond
     unique_travel_times = travel_times[indices_GPS]
     unique_transponder_coordinates = transponder_coordinates[indices_GPS]
 
-    if esv is not None:
-        unique_esv = esv[indices_GPS]
-
     # Create arrays for DOG and GPS data
     min_time = min(unique_times_GPS.min(), unique_times_DOG.min())
     max_time = max(unique_times_GPS.max(), unique_times_DOG.max())
@@ -40,9 +44,6 @@ def index_data(offset, data_DOG, acoustic_DOG, GPS_time, travel_times, transpond
     dog_data = np.full(full_times.shape, np.nan)
     GPS_data = np.full(full_times.shape, np.nan)
     transponder_data = np.full((len(full_times),3), np.nan)
-
-    if esv is not None:
-        esv_data = np.full(full_times.shape, np.nan)
 
     # For dog_data
     indices_dog = np.searchsorted(full_times, unique_times_DOG)
@@ -55,9 +56,6 @@ def index_data(offset, data_DOG, acoustic_DOG, GPS_time, travel_times, transpond
     GPS_data[indices_gps[mask_gps]] = unique_travel_times[mask_gps]
     transponder_data[indices_gps[mask_gps]] = unique_transponder_coordinates[mask_gps]
 
-    if esv is not None:
-        esv_data[indices_GPS[mask_gps]] = unique_esv[mask_gps]
-
     #Remove nan values from the three arrays
     mask = ~np.isnan(dog_data) & ~np.isnan(GPS_data)
     dog_data = dog_data[mask]
@@ -65,16 +63,11 @@ def index_data(offset, data_DOG, acoustic_DOG, GPS_time, travel_times, transpond
     transponder_data = transponder_data[mask]
     full_times = full_times[mask]
 
-    if esv is not None:
-        esv_data = esv_data[mask]
-        print(esv)
-
-    if esv is not None:
-        return full_times, dog_data, GPS_data, transponder_data, esv_data
     return full_times, dog_data, GPS_data, transponder_data
 
 #Function to find the offset which maximizes correlation between the two data sets
-def find_offset(data_DOG, acoustic_DOG, GPS_time, travel_times, transponder_coordinates):
+#Works only for integer difference currently.
+def find_int_offset(data_DOG, GPS_time, travel_times, transponder_coordinates):
     #Set initial parameters
     offset = 0
     k = 0
@@ -83,7 +76,7 @@ def find_offset(data_DOG, acoustic_DOG, GPS_time, travel_times, transponder_coor
     #Loop through
     while lag != 0 and k<10:
         #Get indexed data according to offset
-        dog_data, GPS_data = index_data(offset, data_DOG, acoustic_DOG, GPS_time, travel_times, transponder_coordinates)[1:3]
+        dog_data, GPS_data = index_data(offset, data_DOG, GPS_time, travel_times, transponder_coordinates)[1:3]
 
         #Get fractional parts of the data
         GPS_fp = np.modf(GPS_data)[0]
@@ -96,22 +89,50 @@ def find_offset(data_DOG, acoustic_DOG, GPS_time, travel_times, transponder_coor
 
         #Adjust the offset by the optimal lag
         offset+=lag
-        print(lag)
+        k+=1
     return offset
 
+#This works but is slow...
+#If gets too small, then can run into issues with Geiger's Method
+#   Could have an iteration technique where I add more decimals as the guess approaches a good value.
+#but most importantly this is slow and need to become quicker
+def find_subint_offset(offset, data_DOG, GPS_time, travel_times, transponder_coordinates):
+    #Initalize values for loop
+    l, u = offset-0.5, offset+0.5
+    intervals = np.array([0.1, 0.01])
+    best_offset = offset
+    best_RMSE = np.inf
+
+    #Iterate through each decimal offset
+    for interval in intervals:
+        for lag in np.arange(l, u+interval, interval):
+            #Round to prevent numpy float errors
+            lag = np.round(lag, 4)
+            dog_data, GPS_data = index_data(lag, data_DOG, GPS_time, travel_times, transponder_coordinates, True)[1:3]
+
+            #If off by around an int then add that int in
+            abs_diff = np.abs(dog_data - GPS_data)
+            indices = np.where(abs_diff >= 0.9)
+            dog_data[indices] += np.round(GPS_data[indices] - dog_data[indices])
+
+            #Find minimum RMSE and set that as best offset
+            diff_data = GPS_data - dog_data
+            RMSE = np.sqrt(np.nanmean(diff_data**2))
+            if RMSE < best_RMSE:
+                best_offset = lag
+                best_RMSE = RMSE
+        l, u = best_offset - interval, best_offset + interval
+    return best_offset
 
 #Steps to alignment: Find offset, adjust for integer differences, return time series
-def align(data_DOG, acoustic_DOG, GPS_time, travel_times, transponder_coordinates, esv=None):
-    #Here we have "acoustic_DOG += travel_times[0] - acoustic_DOG[0]" Later
-
+def align(data_DOG, GPS_time, travel_times, transponder_coordinates):
     #Find offset, and get new time series corresponding with that offset
-    offset = find_offset(data_DOG, acoustic_DOG, GPS_time, travel_times, transponder_coordinates)
+    offset = find_int_offset(data_DOG, GPS_time, travel_times, transponder_coordinates)
+    sub_offset = find_subint_offset(offset, data_DOG, GPS_time, travel_times, transponder_coordinates)
+    print(sub_offset)
+    offset = sub_offset
 
-    #Propogate ESV through same changes as GPS data
-    if esv is not None:
-        full_times, dog_data, GPS_data, transponder_data, esv = index_data(offset, data_DOG, acoustic_DOG, GPS_time, travel_times, transponder_coordinates, esv)
-    else:
-        full_times, dog_data, GPS_data, transponder_data = index_data(offset, data_DOG, acoustic_DOG, GPS_time, travel_times, transponder_coordinates)
+    full_times, dog_data, GPS_data, transponder_data = index_data(offset, data_DOG, GPS_time, travel_times, transponder_coordinates, True)
 
     #If off by around an integer, adjust by that integer amount
     abs_diff = np.abs(dog_data - GPS_data)
@@ -135,22 +156,19 @@ def align(data_DOG, acoustic_DOG, GPS_time, travel_times, transponder_coordinate
     ax2.set_title("Residual Plot")
 
     plt.show()
-    if esv is not None:
-        full_times, dog_data, GPS_data, transponder_data, esv
 
     return full_times, dog_data, GPS_data, transponder_data
 
 if __name__ == "__main__":
-    data_DOG = sio.loadmat('../../GPSData/Synthetic_CDOG_noise.mat')['tags'].astype(float)
+    data_DOG = sio.loadmat('../../GPSData/Synthetic_CDOG_noise_subint.mat')['tags'].astype(float)
     acoustic_DOG = np.unwrap(data_DOG[:, 1] * 2 * np.pi) / (2 * np.pi)
 
-    transponder_coordinates = sio.loadmat('../../GPSData/Synthetic_transponder_noise.mat')['xyz'].astype(float)
-    GPS_time = sio.loadmat('../../GPSData/Synthetic_transponder_noise.mat')['time'].astype(float)
+    transponder_coordinates = sio.loadmat('../../GPSData/Synthetic_transponder_noise_subint.mat')['xyz'].astype(float)
+    GPS_time = sio.loadmat('../../GPSData/Synthetic_transponder_noise_subint.mat')['time'].astype(float)
 
     CDOG = np.array([-1979.9094551, 4490.73551826, -2011.85148619])
     travel_times = calculateTimesRayTracing(CDOG, transponder_coordinates)[0]
 
-    # TEST (I like it!)
     acoustic_DOG += travel_times[0] - acoustic_DOG[0]
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10))
@@ -176,9 +194,9 @@ if __name__ == "__main__":
     plt.title("Residual Plot")
     plt.show()
 
-    full_times, dog_data, GPS_data = align(data_DOG, acoustic_DOG, GPS_time, travel_times, transponder_coordinates)
+    full_times, dog_data, GPS_data, transponder_data = align(data_DOG, GPS_time, travel_times, transponder_coordinates)
 
-    print(np.sqrt(np.nanmean((dog_data - GPS_data) ** 2)) * 1515 * 100, "cm")
+    print(np.sqrt(np.nanmean((dog_data - GPS_data) ** 2)), "cm")
 
 
 # sio.savemat("../../GPSData/Aligned_Synthetic.mat", {"full_times": full_times, "dog_data": dog_data, "GPS_data": GPS_data})
@@ -194,16 +212,3 @@ if __name__ == "__main__":
 
 
 """deprecated functions"""
-#Only use this up to integer differences
-# def find_offset(data_DOG, acoustic_DOG, GPS_time, travel_times):
-#     l, u = 0, 10000
-#     # intervals = np.array([100, 10, 1])
-#     intervals = np.array([1])
-#     best_offset = 0
-#     for interval in intervals:
-#         offsets = np.arange(l, u, interval)
-#         vals = np.array([index_data(offset, data_DOG, acoustic_DOG, GPS_time, travel_times)[0] for offset in offsets])
-#         best_index = np.argmin(vals)
-#         best_offset = offsets[best_index]
-#         l, u = best_offset - interval, best_offset + interval
-#     return best_offset

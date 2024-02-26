@@ -21,26 +21,21 @@ Need a Geiger's Method which can accept data in the form that I have
 One thing about alignment is the scaling of the unwrapping with the first index of travel time. In reality, this first index
     will not correspond with the first unwrapping index. Hence, it will be scaled off by some factor. This may not be a problem
     and actually might make it easier for my algorithm to recognize the correct alignment
+    
+Problem with the fact that first index of dog and first index of travel times are always a match
+    Need to find a way to counteract this - maybe compare difference between consecutive travel times?
 """
 
-data_DOG = sio.loadmat('../../GPSData/Synthetic_CDOG_noise.mat')['tags'].astype(float)
-acoustic_DOG = np.unwrap(data_DOG[:, 1] * 2 * np.pi) / (2 * np.pi)
+data_DOG = sio.loadmat('../../GPSData/Synthetic_CDOG_noise_subint.mat')['tags'].astype(float)
 
-transponder_coordinates = sio.loadmat('../../GPSData/Synthetic_transponder_noise.mat')['xyz'].astype(float)
-GPS_time = sio.loadmat('../../GPSData/Synthetic_transponder_noise.mat')['time'].astype(float)
+transponder_coordinates = sio.loadmat('../../GPSData/Synthetic_transponder_noise_subint.mat')['xyz'].astype(float)
+GPS_time = sio.loadmat('../../GPSData/Synthetic_transponder_noise_subint.mat')['time'].astype(float)
 
 CDOG = np.array([-1979.9094551, 4490.73551826, -2011.85148619])
 
-travel_times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates)
-
 # TEST (I like it!) -> This starts the unwrapping at a reasonable value instead of 0 time
-acoustic_DOG += travel_times[0] - acoustic_DOG[0]
-
-full_times, dog_data, GPS_data, transponder_coordinates, esv_data = align(data_DOG, acoustic_DOG, GPS_time, travel_times, esv)
 
 #Next add Geiger's Method suited for the given data
-
-#I need to propogate transponder coordinates through as well
 
 def computeJacobianRayTracing(guess, transponder_coordinates, times, sound_speed):
     # Computes the Jacobian, parameters are xyz coordinates and functions are the travel times
@@ -48,18 +43,45 @@ def computeJacobianRayTracing(guess, transponder_coordinates, times, sound_speed
     jacobian = -diffs / (times[:, np.newaxis] * (sound_speed[:, np.newaxis] ** 2))
     return jacobian
 
-# def geigersMethod(guess, times_known, transponder_coordinates_Found):
-#     epsilon = 10**-5
-#     k=0
-#     delta = 1
-#     #Loop until change in guess is less than the threshold
-#     while np.linalg.norm(delta) > epsilon and k<100:
-#         jacobian = computeJacobianRayTracing(guess, transponder_coordinates_Found, times_guess, esv)
-#         delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (times_guess-times_known)
-#         guess = guess + delta
-#         k+=1
-#     return guess
+def geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time):
+    epsilon = 10**-5
+    k=0
+    delta = 1
+
+    #add noise to transponder_coordinates
+    # transponder_coordinates += np.random.normal(0, 2*10**-2, (len(transponder_coordinates), 3))
+
+    # Find initial times
+    travel_times, esv = calculateTimesRayTracing(guess, transponder_coordinates)
+
+    # Align Data Initially
+    full_times, dog_data, GPS_data, transponder_data = align(data_DOG, GPS_time, travel_times,
+                                                                       transponder_coordinates)
+    #Loop until change in guess is less than the threshold
+    while np.linalg.norm(delta) > epsilon and k<10:
+        #Find times
+        travel_times_guess, esv = calculateTimesRayTracing(guess, transponder_data)
+
+        #Do Gauss-Newton Iteration
+        jacobian = computeJacobianRayTracing(guess, transponder_data, travel_times_guess, esv)
+
+        delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (travel_times_guess - dog_data)
+        guess = guess + delta
+        print(np.sqrt(np.sum((CDOG - guess)**2)) * 100, "cm")
+        k+=1
+    return guess
+
+#If guess is too far - iterate gauss newton a couple times
+guess = np.array([-1971.9094551, 4505.73551826, -2007.85148619])
+
+new_guess = geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time)
+
+new_guess = geigersMethod(new_guess, transponder_coordinates, data_DOG, GPS_time)
 
 
+print(new_guess)
+print(CDOG)
 
-
+travel_times, esv = calculateTimesRayTracing(new_guess, transponder_coordinates)
+full_times, dog_data, GPS_data, transponder_data = align(data_DOG, GPS_time, travel_times,
+                                                         transponder_coordinates)
