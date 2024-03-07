@@ -103,82 +103,81 @@ transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, initi
 travel_times = calculateTimesRayTracing(CDOG, transponder_coordinates)[0]
 GPS_time = filtered_data[0,0] * 3600 - 85185
 
-
 offset = 5605.49
 #Add some noise too
 CDOG_time = travel_times + GPS_time + np.random.normal(0,2*10**-5, len(GPS_time)) + offset
 CDOG_remain, CDOG_int = np.modf(CDOG_time)
 
-"""Remove values at random indices"""
-# removal_indices = np.random.choice(len(CDOG_time), 10000, replace=False)
-# removal_indices = np.s_[10000:10500]
-# print(removal_indices)
-# removed_unwrapped = np.unwrap(CDOG_remain[10000:10500] * 2 * np.pi)/(2*np.pi)
-# travel_times = np.delete(travel_times, removal_indices)
-# CDOG_remain = np.delete(CDOG_remain, removal_indices)
-# CDOG_time = np.delete(CDOG_time, removal_indices)
-
 acoustic_DOG = np.unwrap(CDOG_remain * 2 * np.pi) / (2*np.pi)  #Numpy page describes how unwrap works
 
-test = acoustic_DOG + travel_times[0] - CDOG_remain[0]
-
-# print(test[57900:57925])
-# print(travel_times[57900:57925])
-# print(CDOG_time[57900:57925])
-# print(GPS_Coordinates[57900:57925])
-plt.scatter(CDOG_time, test - travel_times, s=1, color='b', label = "Unwrapped CDOG data minus travel time")
-plt.scatter(CDOG_time, test, s=1, color='r', label = "Unwrapped CDOG data")
+plt.scatter(CDOG_time, travel_times, s=1, marker="o", label="True Travel Times")
+plt.scatter(CDOG_time, acoustic_DOG, s=1, marker="x", label="True Unwrapped Times")
 plt.legend(loc="upper right")
-plt.xlabel("Absolute Time (s)")
-plt.ylabel("Travel Time (s)")
-
-# plt.scatter(list(range(len(CDOG_time))), CDOG_time, s=1)
-# plt.scatter(GPS_Coordinates[:,0,0],GPS_Coordinates[:,0,1], s=1)
-# plt.scatter(CDOG[0], CDOG[1])
+plt.xlabel("Absolute Time")
+plt.ylabel("Travel Times")
 plt.show()
 
-# offset = 5600
-# CDOG_int += offset
+plt.scatter(list(range(len(CDOG_time))), CDOG_time, s=1)
+plt.xlabel("Time Index")
+plt.ylabel("True CDOG Pulse Arrival Time")
+plt.show()
+
+plt.scatter(list(range(len(CDOG_remain)-1)), CDOG_remain[1:]-CDOG_remain[:len(CDOG_remain)-1], s=1)
+plt.xlabel("Time Index")
+plt.ylabel("Difference between i and i-1 true CDOG nanosecond clock times")
+plt.show()
+
+plt.scatter(list(range(len(travel_times)-1)), travel_times[1:]-travel_times[:len(travel_times)-1], s=1)
+plt.xlabel("Time Index")
+plt.ylabel("Difference between i and i-1 true travel times")
+plt.show()
+
+test = acoustic_DOG #+ travel_times[0] - CDOG_remain[0]
 
 CDOG_mat = np.stack((CDOG_int, CDOG_remain), axis=0)
 CDOG_mat = CDOG_mat.T
 
+removed_CDOG = np.array([])
+removed_travel_times = np.array([])
+temp_travel_times = np.copy(travel_times)
 #Remove random indices from CDOG data
 for i in range(10):
-    length_to_remove = np.random.randint(50, 500)
+    length_to_remove = np.random.randint(200, 1000)
     start_index = np.random.randint(0, len(CDOG_mat) - length_to_remove + 1)  # Start index cannot exceed len(array) - max_length
     indices_to_remove = np.arange(start_index, start_index + length_to_remove)
+    removed_CDOG = np.append(removed_CDOG, CDOG_mat[indices_to_remove, 0]+CDOG_mat[indices_to_remove, 1])
+    removed_travel_times = np.append(removed_travel_times, temp_travel_times[indices_to_remove])
     CDOG_mat = np.delete(CDOG_mat, indices_to_remove, axis=0)
+    temp_travel_times = np.delete(temp_travel_times, indices_to_remove, axis=0)
 
 mat_unwrapped = np.unwrap(CDOG_mat[:,1] * 2 * np.pi) / (2*np.pi)  #Numpy page describes how unwrap works
-print(mat_unwrapped)
-plt.scatter(CDOG_mat[:,0] + CDOG_mat[:,1], mat_unwrapped, s=1)
+
+plt.scatter(CDOG_mat[:,0] + CDOG_mat[:,1], temp_travel_times, s=1, label="Corrupted Travel Times")
+plt.scatter(removed_CDOG, removed_travel_times, s=1, label="Removed Travel Times")
+plt.scatter(CDOG_mat[:,0] + CDOG_mat[:,1], mat_unwrapped, s=1, label="Corrupted Unwrapping")
+plt.legend(loc="upper right")
+plt.xlabel("Absolute Time")
+plt.ylabel("Travel Times")
+plt.show()
+
+plt.scatter(CDOG_mat[:,0] + CDOG_mat[:,1], mat_unwrapped, s=1, label="Corrupted Unwrapping")
+plt.scatter(CDOG_time, acoustic_DOG, s=1, label="True Unwrapping")
+plt.legend(loc="upper right")
+plt.xlabel("Absolute Time")
+plt.ylabel("Travel Times")
+plt.show()
+
+plt.scatter(list(range(len(CDOG_mat)-1)), CDOG_mat[1:,1]-CDOG_mat[:len(CDOG_mat)-1,1], s=1)
+plt.xlabel("Index")
+plt.ylabel("Difference between i and i-1 corrupted nanosecond clock times")
 plt.show()
 
 #Save the synthetic to a matlabfile
-sio.savemat("../../GPSData/Synthetic_CDOG_noise_subint.mat", {"tags":CDOG_mat})
+sio.savemat("../../GPSData/Synthetic_CDOG_noise_subint_new.mat", {"tags":CDOG_mat})
 
 #Save transponder data
-sio.savemat("../../GPSData/Synthetic_transponder_noise_subint.mat", {"time":GPS_time, "xyz": transponder_coordinates})
+sio.savemat("../../GPSData/Synthetic_transponder_noise_subint_new.mat", {"time":GPS_time, "xyz": transponder_coordinates})
 
 """
-Find a way to save CDOG_time to a matlab file in the same way that the CDOG data is actually saved
-Try to get the data to mimic what we see in the real data
-
 Currently x,y,z of dog is not very good (the ecef coords don't have z correspondign to depth)
-
-Sometime when indices are removed the CDOG data - travel time is given integers instead of 0
-This is due to wrapping -- Jumps are too big i.e. 5.7 to 5.01 goes to 6.01
-
-    This also sometimes happens when we are missing large swaths of GPS data (This should only be a
-        synthetic problem because synthetic CDOG is based on the travel times given)
-
-    How do I automatically find whether these jumps are too big and correct for it when data is missing?
-    
-    Could interpolate data for missing CDOG points -- Find the closest that matches all GPS positions
-    
-    Plot wrapped time versus absolute time -- From here should be able to find a way to correct for 
-    false movements
-    
-How do I account for the wrapping when there are big jumps from missing data points?
 """

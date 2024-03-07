@@ -24,6 +24,9 @@ One thing about alignment is the scaling of the unwrapping with the first index 
     
 Problem with the fact that first index of dog and first index of travel times are always a match
     Need to find a way to counteract this - maybe compare difference between consecutive travel times?
+    
+IMPORTANT NOTE
+GNSS time series is always corresponding with transducer output!
 """
 
 data_DOG = sio.loadmat('../../GPSData/Synthetic_CDOG_noise_subint.mat')['tags'].astype(float)

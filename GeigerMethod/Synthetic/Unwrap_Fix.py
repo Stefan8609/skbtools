@@ -25,8 +25,11 @@ def index_data(offset, data_DOG, GPS_time, travel_times, transponder_coordinates
         acoustic_DOG += travel_times[0] - acoustic_DOG[0]
 
     # Get DOG/GPS indexed approximately with time
-    times_DOG = np.round(data_DOG[:, 0] + data_DOG[:, 1])
-    times_GPS = np.round(GPS_time[0] + travel_times + offset)
+    # times_DOG = np.round(data_DOG[:, 0] + data_DOG[:, 1])
+    # times_GPS = np.round(GPS_time[0] + travel_times + offset)
+
+    times_DOG = np.floor(data_DOG[:, 0] + data_DOG[:, 1])
+    times_GPS = np.floor(GPS_time[0] + travel_times + offset)
 
     # Get unique times and corresponding acoustic data for DOG
     unique_times_DOG, indices_DOG = np.unique(times_DOG, return_index=True)
@@ -142,6 +145,8 @@ def align(data_DOG, GPS_time, travel_times, transponder_coordinates):
     #Plot overlaying time series and the residual plot
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 9))
 
+    """Make the bottom plot for 3 std around mean (say in paper that we plot 99% of data)"""
+
     ax1.scatter(full_times, dog_data, s=10, marker="x", label="Unwrapped/Adjusted Synthetic Dog Travel Time")
     ax1.scatter(full_times, GPS_data, s=1, marker="o", label="Calculated GPS Travel Times")
     ax1.legend(loc="upper right")
@@ -189,6 +194,7 @@ if __name__ == "__main__":
 
     plt.scatter(data_DOG[:, 0] + data_DOG[:, 1], acoustic_DOG, s=1, color='r', label="Synthetic Dog Travel Time")
     plt.scatter(GPS_time, travel_times, s=1, color='b', label="Calculated GPS travel times")
+    plt.legend(loc="upper right")
     plt.xlabel("Absolute Time (s)")
     plt.ylabel("Difference between calculated and unwrapped times (s)")
     plt.title("Residual Plot")
@@ -196,7 +202,7 @@ if __name__ == "__main__":
 
     full_times, dog_data, GPS_data, transponder_data = align(data_DOG, GPS_time, travel_times, transponder_coordinates)
 
-    print(np.sqrt(np.nanmean((dog_data - GPS_data) ** 2)), "cm")
+    print(np.sqrt(np.nanmean((dog_data - GPS_data) ** 2)) * 100, "cm")
 
 
 # sio.savemat("../../GPSData/Aligned_Synthetic.mat", {"full_times": full_times, "dog_data": dog_data, "GPS_data": GPS_data})
