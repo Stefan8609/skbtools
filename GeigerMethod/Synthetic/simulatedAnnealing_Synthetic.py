@@ -6,7 +6,7 @@ from experimentPathPlot import experimentPathPlot
 from leverHist import leverHist
 
 def simulatedAnnealing(n):
-    CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(20000)
+    CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(10000)
 
     # gps1_to_others += np.random.normal(0, 2*10**-2, (4,3))
     GPS_Coordinates += np.random.normal(0, 2 * 10 ** -2, (len(GPS_Coordinates), 4, 3))

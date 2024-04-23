@@ -175,8 +175,10 @@ plt.show()
 #Save the synthetic to a matlabfile
 sio.savemat("../../GPSData/Synthetic_CDOG_noise_subint_new.mat", {"tags":CDOG_mat})
 
-#Save transponder data
+#Save transponder + GPS data
 sio.savemat("../../GPSData/Synthetic_transponder_noise_subint_new.mat", {"time":GPS_time, "xyz": transponder_coordinates})
+sio.savemat("../../GPSData/Synthetic_GPS_noise_subint_new.mat", {"time":GPS_time, "xyz": GPS_Coordinates})
+
 
 """
 Currently x,y,z of dog is not very good (the ecef coords don't have z correspondign to depth)

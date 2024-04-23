@@ -19,12 +19,16 @@ def index_data(offset, data_DOG, GPS_time, travel_times, transponder_coordinates
 
     #Get the unwrapping of DOG data to start at the right initial value
     acoustic_DOG = np.unwrap(data_DOG[:, 1] * 2 * np.pi) / (2 * np.pi)
+
+    #Determine the initial travel time
     if true_offset == True:
-        acoustic_DOG += data_DOG[0,0] + data_DOG[0,1] - offset - acoustic_DOG[0]
+        #When offset is found -> the initial travel time is the first arrival time minus the offset
+        acoustic_DOG += data_DOG[0,0] - offset
     else:
+        #When finding alignment -> estimate that the initial travel time is the first calculated time
         acoustic_DOG += travel_times[0] - acoustic_DOG[0]
 
-    # Get DOG/GPS indexed approximately with time
+    # Get DOG/GPS indexed approximately with time (either floor or round)
     # times_DOG = np.round(data_DOG[:, 0] + data_DOG[:, 1])
     # times_GPS = np.round(GPS_time[0] + travel_times + offset)
 
@@ -132,7 +136,6 @@ def align(data_DOG, GPS_time, travel_times, transponder_coordinates):
     #Find offset, and get new time series corresponding with that offset
     offset = find_int_offset(data_DOG, GPS_time, travel_times, transponder_coordinates)
     sub_offset = find_subint_offset(offset, data_DOG, GPS_time, travel_times, transponder_coordinates)
-    print(sub_offset)
     offset = sub_offset
 
     full_times, dog_data, GPS_data, transponder_data = index_data(offset, data_DOG, GPS_time, travel_times, transponder_coordinates, True)
@@ -162,7 +165,7 @@ def align(data_DOG, GPS_time, travel_times, transponder_coordinates):
 
     plt.show()
 
-    return full_times, dog_data, GPS_data, transponder_data
+    return full_times, dog_data, GPS_data, transponder_data, offset
 
 if __name__ == "__main__":
     data_DOG = sio.loadmat('../../GPSData/Synthetic_CDOG_noise_subint.mat')['tags'].astype(float)
@@ -197,10 +200,10 @@ if __name__ == "__main__":
     plt.legend(loc="upper right")
     plt.xlabel("Absolute Time (s)")
     plt.ylabel("Difference between calculated and unwrapped times (s)")
-    plt.title("Residual Plot")
+    plt.title("Pre-Alignment Time Series")
     plt.show()
 
-    full_times, dog_data, GPS_data, transponder_data = align(data_DOG, GPS_time, travel_times, transponder_coordinates)
+    full_times, dog_data, GPS_data, transponder_data, offset = align(data_DOG, GPS_time, travel_times, transponder_coordinates)
 
     print(np.sqrt(np.nanmean((dog_data - GPS_data) ** 2)) * 100, "cm")
 

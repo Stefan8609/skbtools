@@ -6,7 +6,7 @@ def leverHist(transponder_coordinates_Actual, transponder_coordinates_Found):
     # Plot histograms of coordinate differences between found transponder and actual transponder
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))
     fig.suptitle(
-        "Coordinate differences between calculated transponder and actual transponder, 2cm noise in GPS", y=0.92)
+        "Coordinate differences between calculated transponder and actual transponder, 2cm noise in each GPS", y=0.92)
     xmin, xmax = -15, 15
     colors = ["blue", 'red', 'green']
     axis = ["x", "y", "z"]
