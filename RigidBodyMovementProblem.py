@@ -33,7 +33,7 @@ def demo(xs=np.random.rand(4)*10-5,
          ys=np.random.rand(4)*10-5,
          zs=np.random.rand(4)*2-1,
          xyzt=np.random.rand(3)*30-25,
-         rot=np.random.rand(3)*np.pi/2-np.pi/4,
+         rot=np.random.rand(3)*np.pi-2*np.pi,
          translate=np.random.rand(3)*10-5):
 
     xyzs_init = np.array([xs,ys,zs])
@@ -55,9 +55,9 @@ def demo(xs=np.random.rand(4)*10-5,
 
     #Apply perturbation to some points to investigate how error occurs when points are not
     #   In exact position after translation/rotation
-    # xs += np.random.normal(0, .02, 4)
-    # ys += np.random.normal(0, .02, 4)
-    # zs += np.random.normal(0, .02, 4)
+    xs += np.random.normal(0, .02, 4)
+    ys += np.random.normal(0, .02, 4)
+    zs += np.random.normal(0, .02, 4)
     #Error due to perturbation scales fast with perturbation magnitude
 
     xyzs_final = np.array([xs,ys,zs])
