@@ -29,12 +29,13 @@ def findRotationAndDisplacement(xyzs_init, xyzs_final):
 DEMO BELOW
 '''
 
-def demo(xs=np.random.rand(4)*10-5,
-         ys=np.random.rand(4)*10-5,
-         zs=np.random.rand(4)*2-1,
-         xyzt=np.random.rand(3)*30-25,
-         rot=np.random.rand(3)*np.pi-2*np.pi,
-         translate=np.random.rand(3)*10-5):
+def demo():
+    xs = np.random.rand(4) * 10 - 5
+    ys = np.random.rand(4) * 10 - 5
+    zs = np.random.rand(4) * 2 - 1
+    xyzt = np.random.rand(3) * 30 - 25
+    rot = np.random.rand(3) * np.pi - 2 * np.pi
+    translate = np.random.rand(3) * 10 - 5
 
     xyzs_init = np.array([xs,ys,zs])
     xyzt_init = xyzt
@@ -75,9 +76,4 @@ if __name__ == "__main__":
     from plotPlane import plotPlane
     from printTable import printTable
 
-    xs = np.array([0, 2, -12, -8], dtype=np.float64)
-    ys = np.array([0, 10, -2, 9], dtype=np.float64)
-    zs = np.array([1, 3, -2, -1], dtype=np.float64)
-    xyzt = np.array([-7, -10, -15], dtype=np.float64)
-
-    demo(xs, ys, zs, xyzt)
+    demo()
