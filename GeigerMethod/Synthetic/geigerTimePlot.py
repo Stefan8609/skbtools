@@ -5,70 +5,101 @@ from scipy.stats import norm
 
 
 def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
-                   transponder_coordinates_Found, gps1_to_transponder, lever=[None,None,None]):
+                   transponder_coordinates_Found, gps1_to_transponder, sound_velocity, depth,
+                   lever=[None,None,None], sim = 0):
     if not lever[0]:
         lever = gps1_to_transponder
-    print(lever)
     guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found)
 
     # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
     times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
 
     difference_data = times_calc - times_known
+
+    difference_data = np.round(difference_data, 10)
+
     RMS = np.sqrt(np.nanmean(difference_data ** 2))
 
     # Prepare label and plot
-    fig, axes = plt.subplots(2, 3, figsize=(15, 10), gridspec_kw={'width_ratios': [1, 4, 2], 'height_ratios': [4, 1]})
-    fig.suptitle("Comparison of calculated arrival times and actual arrival times", y=0.92)
-    fig.text(0.05, 0.85, "Noise: \n GPS: 2cm \n Arrival time: 20\u03BCs",
-             fontsize=12, bbox=dict(facecolor='yellow', alpha=0.8))
-    fig.text(0.05, 0.7,
+    fig, axes = plt.subplots(3, 3, figsize=(17, 10), gridspec_kw={'width_ratios': [1, 4, 2], 'height_ratios': [2, 2, 1]})
+    # fig.suptitle("Comparison of calculated arrival times and actual arrival times", y=0.92)
+
+    fig.text(0.07, 0.85, "Noise: \n GPS: 2cm \n Arrival time: 20\u03BCs",
+             fontsize=12, bbox=dict(facecolor='white', alpha=0.8))
+    fig.text(0.07, 0.75,
              f"Distance between \npredicted and actual \nCDog location:\n{np.round(np.linalg.norm(CDog - guess) * 100, 4)}cm",
-             fontsize=12, bbox=dict(facecolor='green', alpha=0.8))
-    fig.text(0.05, 0.5, f"Initial Guess (x,y,z):\n({initial_guess[0]}, {initial_guess[1]}, {initial_guess[2]})"
+             fontsize=12, bbox=dict(facecolor='white', alpha=0.8))
+    fig.text(0.07, 0.61, f"Initial Guess (x,y,z):\n({initial_guess[0]}, {initial_guess[1]}, {initial_guess[2]})"
                          f"\nAverage of residuals:\n{round(np.average(difference_data) * 1000, 4)}ms"
                          f"\nActual vs. Found lever:\n({round(lever[0]-gps1_to_transponder[0],3)},{round(lever[1]-gps1_to_transponder[1],3)},{round(lever[2]-gps1_to_transponder[2],3)})m",
-             fontsize=12, bbox=dict(facecolor='red', alpha=0.8))
+             fontsize=12, bbox=dict(facecolor="white", alpha=0.8))
+
+
+    axes[0, 0].axis('off')
+
+    axes[0, 1].scatter(transponder_coordinates_Actual[:, 0], transponder_coordinates_Actual[:, 1], s=3, marker="o",
+                       label="Transponder")
+    axes[0, 1].scatter(CDog[0], CDog[1], s=50, marker="x", color="k", label="C-DOG")
+    axes[0, 1].set_xlabel('Easting (m)')
+    axes[0, 1].set_ylabel('Northing (m)')
+    axes[0, 1].legend(loc="upper right")
+    axes[0, 1].axis("equal")
+
+    axes[0, 2].scatter(CDog[0], CDog[1], s=50, marker="x", color="k", label="C-DOG")
+    axes[0, 2].scatter(guess[0], guess[1], s=50, marker="o", color="r", label="C-DOG Guess")
+    axes[0, 2].set_xlim(CDog[0]-5, CDog[0]+5)
+    axes[0, 2].set_ylim(CDog[1]-5, CDog[1]+5)
+    axes[0, 2].legend(loc="upper right")
+
+    axes[1, 0].plot(sound_velocity, depth, color='b')
+    axes[1, 0].invert_yaxis()
+    axes[1, 0].set_xlim(min(sound_velocity), max(sound_velocity))
+    axes[1, 0].set_ylabel('Depth')
+    axes[1, 0].set_xlabel('Sound Velocity')
 
     # Acoustic vs GNSS plot
     GPS_Coord_Num = list(range(len(GPS_Coordinates)))
 
-    axes[0, 1].scatter(GPS_Coord_Num, times_known, s=5, label='Acoustic data DOG', alpha=0.6, marker='o', color='b',
+    axes[1, 1].scatter(GPS_Coord_Num, times_known, s=5, label='Observed Travel Times', alpha=0.6, marker='o', color='b',
                        zorder=2)
-    axes[0, 1].scatter(GPS_Coord_Num, times_calc, s=10, label='GNSS estimation', alpha=1, marker='x', color='r', zorder=1)
-    axes[0, 1].set_ylabel('Travel Time (s)')
-    axes[0, 1].text(25, max(times_known), "actual arrival times versus estimated times",
-                    bbox=dict(facecolor='yellow', alpha=0.8))
-    axes[0, 1].legend(loc="upper right")
+    axes[1, 1].scatter(GPS_Coord_Num, times_calc, s=10, label='Modelled Travel Times', alpha=1, marker='x', color='r', zorder=1)
+    axes[1, 1].set_ylabel('Travel Time (s)')
+    # axes[1, 1].text(25, max(times_known), "actual arrival times versus estimated times",
+    #                 bbox=dict(facecolor='yellow', alpha=0.8))
+    axes[1, 1].legend(loc="upper right")
 
-    axes[0, 2].scatter(GPS_Coord_Num[475:525], times_known[475:525], s=5, label='Acoustic data DOG', alpha=0.6, marker='o', color='b',
+    axes[1, 2].scatter(GPS_Coord_Num[475:525], times_known[475:525], s=5, label='Observed Travel Times', alpha=0.6, marker='o', color='b',
                        zorder=2)
-    axes[0, 2].scatter(GPS_Coord_Num[475:525], times_calc[475:525], s=10, label='GNSS estimation', alpha=1, marker='x', color='r', zorder=1)
-    axes[0, 2].set_ylabel('Travel Time (s)')
-    axes[0, 2].text(25, max(times_known), "actual arrival times versus estimated times",
-                    bbox=dict(facecolor='yellow', alpha=0.8))
-    axes[0, 2].legend(loc="upper right")
+    axes[1, 2].scatter(GPS_Coord_Num[475:525], times_calc[475:525], s=10, label='Modelled Travel Times', alpha=1, marker='x', color='r', zorder=1)
+    # axes[1, 2].text(25, max(times_known), "actual arrival times versus estimated times",
+    #                 bbox=dict(facecolor='yellow', alpha=0.8))
+    axes[1, 2].legend(loc="upper right")
 
     # Difference plot
-    axes[1, 1].scatter(GPS_Coord_Num, difference_data * 1000, s=1)
-    axes[1, 1].set_xlabel('Position Index')
+    axes[2, 1].scatter(GPS_Coord_Num, difference_data * 1000, s=1)
+    axes[2, 1].set_xlabel('Position Index')
 
-    axes[1, 2].scatter(GPS_Coord_Num[475:525], difference_data[475:525] * 1000, s=1)
-    axes[1, 2].set_xlabel('Position Index')
+    axes[2, 2].scatter(GPS_Coord_Num[475:525], difference_data[475:525] * 1000, s=1)
+    axes[2, 2].set_xlabel('Position Index')
 
     # Histogram
-    n, bins, patches = axes[1, 0].hist(difference_data * 1000, orientation='horizontal', bins=30, alpha=0.5, density=True)
+    n, bins, patches = axes[2, 0].hist(difference_data * 1000, orientation='horizontal', bins=30, alpha=0.5, density=True)
     mu, std = norm.fit(difference_data * 1000)
     x = np.linspace(mu-3*std, mu+3*std, 100)
-    axes[1, 0].set_xlim([n.min(), n.max()])
-    axes[1, 0].set_ylim([mu-3*std, mu+3*std])
+    axes[2, 0].set_xlim([n.min(), n.max()])
+    axes[2, 0].set_ylim([mu-3*std, mu+3*std])
     p = norm.pdf(x, mu, std)
-    axes[1, 0].plot(p, x, 'k', linewidth=2, label="Normal Distribution of Differences")
-    axes[1, 0].set_ylabel('Difference (ms)')
-    axes[1, 0].set_xlabel('Normalized Frequency')
-    axes[1, 0].invert_xaxis()
-    axes[1, 0].set_title(f"RMSE: {round(RMS * 1515 * 100, 3)} cm")
-    axes[0, 0].axis('off')
+    axes[2, 0].plot(p, x, 'k', linewidth=2, label="Normal Distribution of Differences")
+    axes[2, 0].set_ylabel('Difference (ms)')
+    axes[2, 0].set_xlabel('Normalized Frequency')
+    axes[2, 0].invert_xaxis()
+    # axes[2, 0].axis('off')
 
+    if sim == 1:
+        plt.savefig('../../Figs/init_sim_noise_ray_tracing.png')
+    elif sim == 2:
+        plt.savefig('../../Figs/final_sim_noise_ray_tracing.png')
+    else:
+        plt.savefig('../../Figs/Noise_ray_tracing.png')
     plt.show()
     return axes

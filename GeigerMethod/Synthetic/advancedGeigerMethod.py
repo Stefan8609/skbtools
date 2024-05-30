@@ -11,6 +11,8 @@ from RigidBodyMovementProblem import findRotationAndDisplacement
 import scipy.io as sio
 
 esv_table = sio.loadmat('../../GPSData/global_table_esv.mat')
+cz = np.genfromtxt('../../GPSData/cz_cast2_smoothed.txt')[::100]
+depth = np.genfromtxt('../../GPSData/depth_cast2_smoothed.txt')[::100]
 dz_array = esv_table['distance'].flatten()
 angle_array = esv_table['angle'].flatten()
 esv_matrix = esv_table['matrice']
@@ -223,14 +225,15 @@ if __name__ == "__main__":
     transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
 
     #Plot histograms of coordinate differences between found transponder and actual transponder
-    leverHist(transponder_coordinates_Actual,transponder_coordinates_Found)
+    # leverHist(transponder_coordinates_Actual,transponder_coordinates_Found)
 
     #Plot path of experiment
-    experimentPathPlot(transponder_coordinates_Actual, CDog)
+    # experimentPathPlot(transponder_coordinates_Actual, CDog)
 
     #Plot comparison of times
     initial_guess = [-10000, 5000, -4000]
-    geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, gps1_to_transponder)
+    geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual, transponder_coordinates_Found,
+                   gps1_to_transponder, cz, depth)
 
 
 # Geometric Dilusion of Precision is the square root of the trace of (J.t*J)^_1

@@ -27,6 +27,8 @@ Problem with the fact that first index of dog and first index of travel times ar
     
 IMPORTANT NOTE
 GNSS time series is always corresponding with transducer output!
+
+Something is wrong with the alignment I believe, sub-integer wise. resulting in an incorrect local minimium
 """
 
 data_DOG = sio.loadmat('../../GPSData/Synthetic_CDOG_noise_subint.mat')['tags'].astype(float)
@@ -65,6 +67,7 @@ def geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time):
     while old_offset != offset and iterations < 5:
     #Loop until change in guess is less than the threshold
         print(offset)
+        k=0
         while np.linalg.norm(delta) > epsilon and k<10:
             #Find times
             travel_times_guess, esv = calculateTimesRayTracing(guess, transponder_data)
@@ -77,6 +80,7 @@ def geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time):
             # print(np.sqrt(np.sum((CDOG - guess)**2)) * 100, "cm")
             k+=1
 
+        #Update based on new guess
         old_offset = offset
         travel_times, esv = calculateTimesRayTracing(guess, transponder_coordinates)
         full_times, dog_data, GPS_data, transponder_data, offset = align(data_DOG, GPS_time, travel_times,
@@ -85,10 +89,10 @@ def geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time):
     return guess
 
 #If guess is too far - iterate gauss newton a couple times
-guess = np.array([-1971.9094551, 4480.73551826, -1999.85148619])
+guess = np.array([-1971.9094551, 4475.73551826, -2007.85148619])
 
 #Not converging when guess too far (prob some errors somewhere)
-    #If it is hitting  local min that would be bad :(
+    #If it is hitting local min that would be sad :(
 
 
 new_guess = geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time)

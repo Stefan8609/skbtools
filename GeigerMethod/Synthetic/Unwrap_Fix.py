@@ -32,6 +32,21 @@ def index_data(offset, data_DOG, GPS_time, travel_times, transponder_coordinates
     # times_DOG = np.round(data_DOG[:, 0] + data_DOG[:, 1])
     # times_GPS = np.round(GPS_time[0] + travel_times + offset)
 
+#Trying something new...
+    acoustic_DOG = np.delete(acoustic_DOG, np.where(data_DOG < 0.01)[0], axis=0)
+    data_DOG = np.delete(data_DOG, np.where(data_DOG < 0.01)[0], axis=0)
+    acoustic_DOG = np.delete(acoustic_DOG, np.where(data_DOG[:, 1] > 0.99), axis=0)
+    data_DOG = np.delete(data_DOG, np.where(data_DOG[:, 1] > 0.99), axis=0)
+
+    temp_travel = np.delete(travel_times, np.where((GPS_time[0] + travel_times + offset) % 1 < 0.01))
+    GPS_time = np.delete(GPS_time, np.where((GPS_time[0] + travel_times + offset) % 1 < 0.01))
+    travel_times = temp_travel
+    temp_travel = np.delete(travel_times, np.where((GPS_time[0] + travel_times + offset) % 1 > 0.99))
+    GPS_time = np.delete(GPS_time, np.where((GPS_time[0] + travel_times + offset) % 1 > 0.99))
+    travel_times = temp_travel
+
+    GPS_time = GPS_time[np.newaxis,:]
+
     times_DOG = np.floor(data_DOG[:, 0] + data_DOG[:, 1])
     times_GPS = np.floor(GPS_time[0] + travel_times + offset)
 
@@ -110,7 +125,7 @@ def find_subint_offset(offset, data_DOG, GPS_time, travel_times, transponder_coo
     best_offset = offset
     best_RMSE = np.inf
 
-    #Iterate through each decimal offset
+    #Iterate through each decimal offset (check this function to make sure it works properly)
     for interval in intervals:
         for lag in np.arange(l, u+interval, interval):
             #Round to prevent numpy float errors
@@ -155,7 +170,7 @@ def align(data_DOG, GPS_time, travel_times, transponder_coordinates):
     ax1.legend(loc="upper right")
     ax1.set_xlabel("Arrivals in Absolute Time (s)")
     ax1.set_ylabel("Travel Times (s)")
-    ax1.set_title("Synthetic travel times")
+    ax1.set_title(f"Synthetic travel times with offset: {offset}")
 
     diff_data = dog_data - GPS_data
     ax2.scatter(full_times, diff_data, s=1)
@@ -199,7 +214,7 @@ if __name__ == "__main__":
     plt.scatter(GPS_time, travel_times, s=1, color='b', label="Calculated GPS travel times")
     plt.legend(loc="upper right")
     plt.xlabel("Absolute Time (s)")
-    plt.ylabel("Difference between calculated and unwrapped times (s)")
+    plt.ylabel("Travel Times (s)")
     plt.title("Pre-Alignment Time Series")
     plt.show()
 

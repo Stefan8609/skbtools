@@ -5,6 +5,9 @@ from geigerTimePlot import geigerTimePlot
 from experimentPathPlot import experimentPathPlot
 from leverHist import leverHist
 
+cz = np.genfromtxt('../../GPSData/cz_cast2_smoothed.txt')[::100]
+depth = np.genfromtxt('../../GPSData/depth_cast2_smoothed.txt')[::100]
+
 def simulatedAnnealing(n):
     CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(10000)
 
@@ -26,9 +29,10 @@ def simulatedAnnealing(n):
     old_RMS = np.sqrt(np.nanmean(difference_data ** 2))
 
     #Plot initial conditions
-    experimentPathPlot(transponder_coordinates_Actual, CDog)
-    leverHist(transponder_coordinates_Actual, transponder_coordinates_Found)
-    geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, gps1_to_transponder, old_lever)
+    # experimentPathPlot(transponder_coordinates_Actual, CDog)
+    # leverHist(transponder_coordinates_Actual, transponder_coordinates_Found)
+    geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
+                   transponder_coordinates_Found, gps1_to_transponder, cz, depth, old_lever, sim=1)
 
     #Run simulated annealing
     k=0
@@ -62,9 +66,10 @@ def simulatedAnnealing(n):
     print(old_lever, gps1_to_transponder)
 
     transponder_coordinates_Final = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
-    leverHist(transponder_coordinates_Actual, transponder_coordinates_Final)
+    # leverHist(transponder_coordinates_Actual, transponder_coordinates_Final)
     geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
-                   transponder_coordinates_Final, gps1_to_transponder, old_lever)
+                   transponder_coordinates_Final, gps1_to_transponder, cz,
+                   depth, old_lever, sim=2)
 
     return old_lever
 
