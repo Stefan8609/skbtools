@@ -32,7 +32,7 @@ def index_data(offset, data_DOG, GPS_time, travel_times, transponder_coordinates
     # times_DOG = np.round(data_DOG[:, 0] + data_DOG[:, 1])
     # times_GPS = np.round(GPS_time[0] + travel_times + offset)
 
-#Trying something new...
+#MOST RECENT ATTEMPTS AT SOMETHING NEW
     acoustic_DOG = np.delete(acoustic_DOG, np.where(data_DOG < 0.01)[0], axis=0)
     data_DOG = np.delete(data_DOG, np.where(data_DOG < 0.01)[0], axis=0)
     acoustic_DOG = np.delete(acoustic_DOG, np.where(data_DOG[:, 1] > 0.99), axis=0)
@@ -87,8 +87,7 @@ def index_data(offset, data_DOG, GPS_time, travel_times, transponder_coordinates
 
     return full_times, dog_data, GPS_data, transponder_data
 
-#Function to find the offset which maximizes correlation between the two data sets
-#Works only for integer difference currently.
+#I think this may not work because indices do not necessarily correspond to seconds (maybe change them to)
 def find_int_offset(data_DOG, GPS_time, travel_times, transponder_coordinates):
     #Set initial parameters
     offset = 0
