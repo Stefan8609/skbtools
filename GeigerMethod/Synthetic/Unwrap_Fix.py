@@ -38,9 +38,11 @@ def index_data(offset, data_DOG, GPS_time, travel_times, transponder_coordinates
     acoustic_DOG = np.delete(acoustic_DOG, np.where(data_DOG[:, 1] > 0.99), axis=0)
     data_DOG = np.delete(data_DOG, np.where(data_DOG[:, 1] > 0.99), axis=0)
 
+    transponder_coordinates = np.delete(transponder_coordinates, np.where((GPS_time[0] + travel_times + offset) % 1 < 0.01), axis=0)
     temp_travel = np.delete(travel_times, np.where((GPS_time[0] + travel_times + offset) % 1 < 0.01))
     GPS_time = np.delete(GPS_time, np.where((GPS_time[0] + travel_times + offset) % 1 < 0.01))
     travel_times = temp_travel
+    transponder_coordinates = np.delete(transponder_coordinates, np.where((GPS_time[0] + travel_times + offset) % 1 > 0.99), axis=0)
     temp_travel = np.delete(travel_times, np.where((GPS_time[0] + travel_times + offset) % 1 > 0.99))
     GPS_time = np.delete(GPS_time, np.where((GPS_time[0] + travel_times + offset) % 1 > 0.99))
     travel_times = temp_travel
@@ -87,7 +89,6 @@ def index_data(offset, data_DOG, GPS_time, travel_times, transponder_coordinates
 
     return full_times, dog_data, GPS_data, transponder_data
 
-#I think this may not work because indices do not necessarily correspond to seconds (maybe change them to)
 def find_int_offset(data_DOG, GPS_time, travel_times, transponder_coordinates):
     #Set initial parameters
     offset = 0

@@ -64,7 +64,7 @@ def geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time):
                                                                        transponder_coordinates)
     old_offset = 0
     iterations = 0
-    while old_offset != offset and iterations < 5:
+    while old_offset != offset and iterations < 7:
     #Loop until change in guess is less than the threshold
         print(offset)
         k=0
@@ -89,7 +89,7 @@ def geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time):
     return guess
 
 #If guess is too far - iterate gauss newton a couple times
-guess = np.array([-1971.9094551, 4475.73551826, -2007.85148619])
+guess = np.array([-1974.9094551, 4485.73551826, -2007.85148619])
 
 #Not converging when guess too far (prob some errors somewhere)
     #If it is hitting local min that would be sad :(
