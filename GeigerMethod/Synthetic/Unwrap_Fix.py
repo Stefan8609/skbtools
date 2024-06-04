@@ -33,21 +33,21 @@ def index_data(offset, data_DOG, GPS_time, travel_times, transponder_coordinates
     # times_GPS = np.round(GPS_time[0] + travel_times + offset)
 
 #MOST RECENT ATTEMPTS AT SOMETHING NEW
-    acoustic_DOG = np.delete(acoustic_DOG, np.where(data_DOG < 0.01)[0], axis=0)
-    data_DOG = np.delete(data_DOG, np.where(data_DOG < 0.01)[0], axis=0)
-    acoustic_DOG = np.delete(acoustic_DOG, np.where(data_DOG[:, 1] > 0.99), axis=0)
-    data_DOG = np.delete(data_DOG, np.where(data_DOG[:, 1] > 0.99), axis=0)
-
-    transponder_coordinates = np.delete(transponder_coordinates, np.where((GPS_time[0] + travel_times + offset) % 1 < 0.01), axis=0)
-    temp_travel = np.delete(travel_times, np.where((GPS_time[0] + travel_times + offset) % 1 < 0.01))
-    GPS_time = np.delete(GPS_time, np.where((GPS_time[0] + travel_times + offset) % 1 < 0.01))
-    travel_times = temp_travel
-    transponder_coordinates = np.delete(transponder_coordinates, np.where((GPS_time[0] + travel_times + offset) % 1 > 0.99), axis=0)
-    temp_travel = np.delete(travel_times, np.where((GPS_time[0] + travel_times + offset) % 1 > 0.99))
-    GPS_time = np.delete(GPS_time, np.where((GPS_time[0] + travel_times + offset) % 1 > 0.99))
-    travel_times = temp_travel
-
-    GPS_time = GPS_time[np.newaxis,:]
+    # acoustic_DOG = np.delete(acoustic_DOG, np.where(data_DOG < 0.01)[0], axis=0)
+    # data_DOG = np.delete(data_DOG, np.where(data_DOG < 0.01)[0], axis=0)
+    # acoustic_DOG = np.delete(acoustic_DOG, np.where(data_DOG[:, 1] > 0.99), axis=0)
+    # data_DOG = np.delete(data_DOG, np.where(data_DOG[:, 1] > 0.99), axis=0)
+    #
+    # transponder_coordinates = np.delete(transponder_coordinates, np.where((GPS_time[0] + travel_times + offset) % 1 < 0.01), axis=0)
+    # temp_travel = np.delete(travel_times, np.where((GPS_time[0] + travel_times + offset) % 1 < 0.01))
+    # GPS_time = np.delete(GPS_time, np.where((GPS_time[0] + travel_times + offset) % 1 < 0.01))
+    # travel_times = temp_travel
+    # transponder_coordinates = np.delete(transponder_coordinates, np.where((GPS_time[0] + travel_times + offset) % 1 > 0.99), axis=0)
+    # temp_travel = np.delete(travel_times, np.where((GPS_time[0] + travel_times + offset) % 1 > 0.99))
+    # GPS_time = np.delete(GPS_time, np.where((GPS_time[0] + travel_times + offset) % 1 > 0.99))
+    # travel_times = temp_travel
+    #
+    # GPS_time = GPS_time[np.newaxis,:]
 
     times_DOG = np.floor(data_DOG[:, 0] + data_DOG[:, 1])
     times_GPS = np.floor(GPS_time[0] + travel_times + offset)

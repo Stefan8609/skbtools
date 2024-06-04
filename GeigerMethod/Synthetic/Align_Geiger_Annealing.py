@@ -38,8 +38,6 @@ GPS_time = sio.loadmat('../../GPSData/Synthetic_transponder_noise_subint.mat')['
 
 CDOG = np.array([-1979.9094551, 4490.73551826, -2011.85148619])
 
-# TEST (I like it!) -> This starts the unwrapping at a reasonable value instead of 0 time
-
 #Next add Geiger's Method suited for the given data
 
 def computeJacobianRayTracing(guess, transponder_coordinates, times, sound_speed):
@@ -50,7 +48,6 @@ def computeJacobianRayTracing(guess, transponder_coordinates, times, sound_speed
 
 def geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time):
     epsilon = 10**-7
-    k=0
     delta = 1
 
     #add noise to transponder_coordinates
@@ -62,6 +59,7 @@ def geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time):
     # Align Data Initially
     full_times, dog_data, GPS_data, transponder_data, offset = align(data_DOG, GPS_time, travel_times,
                                                                        transponder_coordinates)
+
     old_offset = 0
     iterations = 0
     while old_offset != offset and iterations < 7:
@@ -76,6 +74,7 @@ def geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time):
             jacobian = computeJacobianRayTracing(guess, transponder_data, travel_times_guess, esv)
 
             delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (travel_times_guess - dog_data)
+
             guess = guess + delta
             # print(np.sqrt(np.sum((CDOG - guess)**2)) * 100, "cm")
             k+=1
@@ -85,6 +84,7 @@ def geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time):
         travel_times, esv = calculateTimesRayTracing(guess, transponder_coordinates)
         full_times, dog_data, GPS_data, transponder_data, offset = align(data_DOG, GPS_time, travel_times,
                                                                      transponder_coordinates)
+
         iterations +=1
     return guess
 
