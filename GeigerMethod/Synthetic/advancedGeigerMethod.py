@@ -179,8 +179,8 @@ def computeJacobianRayTracing(guess, transponder_coordinates, times, sound_speed
     return jacobian
 
 #Goal is to minimize sum of the difference of times squared
-def geigersMethod(guess, CDog, GPS_Coordinates, transponder_coordinates_Actual,
-                  gps1_to_others, gps1_to_transponder, time_noise=2*10**-5, position_noise=0):
+def geigersMethod(guess, CDog, transponder_coordinates_Actual,
+                  transponder_coordinates_Found, time_noise=0):
     #Use Geiger's method to find the guess of CDOG location which minimizes sum of travel times squared
     #Define threshold
     epsilon = 10**-5
@@ -193,12 +193,8 @@ def geigersMethod(guess, CDog, GPS_Coordinates, transponder_coordinates_Actual,
     times_known, esv = calculateTimesRayTracing(CDog, transponder_coordinates_Actual)
 
     #Apply noise to known times
-    times_known+=np.random.normal(0,time_noise,len(transponder_coordinates_Actual))
+    times_known+=np.random.normal(0, time_noise, len(transponder_coordinates_Actual))
     # times_known+=noise
-
-    #Apply noise to position
-    GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
-    transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
 
     k=0
     delta = 1
@@ -211,7 +207,7 @@ def geigersMethod(guess, CDog, GPS_Coordinates, transponder_coordinates_Actual,
         delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (times_guess-times_known)
         guess = guess + delta
         k+=1
-    return guess, times_known, transponder_coordinates_Found
+    return guess, times_known
 
 if __name__ == "__main__":
     from geigerTimePlot import geigerTimePlot
@@ -226,10 +222,14 @@ if __name__ == "__main__":
     time_noise = 2*10**-5
     position_noise = 2*10**-2
 
+    #Apply noise to position
+    GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
+    transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
+
     #Make plot
     initial_guess = [-10000, 5000, -4000]
-    geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
-                   gps1_to_others ,gps1_to_transponder, cz, depth, time_noise, position_noise)
+    geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual, transponder_coordinates_Found,
+                   gps1_to_transponder, cz, depth, time_noise, position_noise)
 
 
 # Geometric Dilusion of Precision is the square root of the trace of (J.t*J)^_1

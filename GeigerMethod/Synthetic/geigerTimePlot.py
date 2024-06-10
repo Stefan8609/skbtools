@@ -4,13 +4,12 @@ from advancedGeigerMethod import geigersMethod, calculateTimes, calculateTimesRa
 from scipy.stats import norm
 
 
-def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
-                   gps1_to_others, gps1_to_transponder, sound_velocity, depth,
-                   time_noise, position_noise, lever=[None,None,None], sim = 0):
+def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual, transponder_coordinates_Found,
+                   gps1_to_transponder, sound_velocity, depth, time_noise, position_noise, lever=[None,None,None], sim = 0):
     if not lever[0]:
         lever = gps1_to_transponder
-    guess, times_known, transponder_coordinates_Found = geigersMethod(initial_guess, CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others,
-                                                                      gps1_to_transponder, time_noise, position_noise)
+
+    guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, time_noise)
 
     # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
     times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
@@ -97,11 +96,11 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     axes[2, 0].invert_xaxis()
     # axes[2, 0].axis('off')
 
-    if sim == 1:
-        plt.savefig('../../Figs/init_sim_noise_ray_tracing.png')
-    elif sim == 2:
-        plt.savefig('../../Figs/final_sim_noise_ray_tracing.png')
-    else:
-        plt.savefig('../../Figs/Noise_ray_tracing.png')
+    # if sim == 1:
+    #     plt.savefig('../../Figs/init_sim_noise_ray_tracing.png')
+    # elif sim == 2:
+    #     plt.savefig('../../Figs/final_sim_noise_ray_tracing.png')
+    # else:
+    #     plt.savefig('../../Figs/Noise_ray_tracing.png')
     plt.show()
     return axes

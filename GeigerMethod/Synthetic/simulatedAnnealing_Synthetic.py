@@ -8,11 +8,14 @@ from leverHist import leverHist
 cz = np.genfromtxt('../../GPSData/cz_cast2_smoothed.txt')[::100]
 depth = np.genfromtxt('../../GPSData/depth_cast2_smoothed.txt')[::100]
 
-def simulatedAnnealing(n):
+"""This program feels inefficient recalculating times known a bunch of times"""
+
+def simulatedAnnealing(n, time_noise, position_noise):
     CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(10000)
 
+    #Apply position noise
     # gps1_to_others += np.random.normal(0, 2*10**-2, (4,3))
-    GPS_Coordinates += np.random.normal(0, 2 * 10 ** -2, (len(GPS_Coordinates), 4, 3))
+    GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 
     #Get initial values
     old_lever = np.array([-7.5079, 6.411, -13.033])
@@ -21,10 +24,14 @@ def simulatedAnnealing(n):
     guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual,
                                        transponder_coordinates_Found)
 
+    #Apply time noise
+    times_known+=np.random.normal(0, time_noise, len(transponder_coordinates_Actual))
+
+    #Calculate times from initial guess and lever arm
     # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
     times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
 
-
+    #Calculate the initial RMSE
     difference_data = times_calc - times_known
     old_RMS = np.sqrt(np.nanmean(difference_data ** 2))
 
@@ -32,7 +39,7 @@ def simulatedAnnealing(n):
     # experimentPathPlot(transponder_coordinates_Actual, CDog)
     # leverHist(transponder_coordinates_Actual, transponder_coordinates_Found)
     geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
-                   transponder_coordinates_Found, gps1_to_transponder, cz, depth, old_lever, sim=1)
+                   transponder_coordinates_Found, gps1_to_transponder, cz, depth, time_noise, position_noise, old_lever, sim=1)
 
     #Run simulated annealing
     k=0
@@ -44,8 +51,8 @@ def simulatedAnnealing(n):
 
         #Find RMS
         transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, lever)
-        guess, times_known = geigersMethod(guess, CDog, transponder_coordinates_Actual,
-                                           transponder_coordinates_Found)
+        guess = geigersMethod(guess, CDog, transponder_coordinates_Actual,
+                                           transponder_coordinates_Found)[0]
 
         # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
         times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
@@ -69,11 +76,11 @@ def simulatedAnnealing(n):
     # leverHist(transponder_coordinates_Actual, transponder_coordinates_Final)
     geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
                    transponder_coordinates_Final, gps1_to_transponder, cz,
-                   depth, old_lever, sim=2)
+                   depth, time_noise, position_noise, old_lever, sim=2)
 
     return old_lever
 
-simulatedAnnealing(300)
+simulatedAnnealing(300, 2*10**-5, 2*10**-2)
 
 #at each time step keep the cdog location and then calculate a bunch of deviations
 #   and keep the best one at each time step --Could speed up
