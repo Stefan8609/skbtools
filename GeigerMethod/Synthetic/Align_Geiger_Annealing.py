@@ -46,6 +46,52 @@ def computeJacobianRayTracing(guess, transponder_coordinates, times, sound_speed
     jacobian = -diffs / (times[:, np.newaxis] * (sound_speed[:, np.newaxis] ** 2))
     return jacobian
 
+# def geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time):
+#     epsilon = 10**-7
+#     delta = 1
+#
+#     #add noise to transponder_coordinates
+#     # transponder_coordinates += np.random.normal(0, 2*10**-2, (len(transponder_coordinates), 3))
+#
+#     # Find initial times
+#     travel_times, esv = calculateTimesRayTracing(guess, transponder_coordinates)
+#
+#     # Align Data Initially
+#     full_times, dog_data, GPS_data, transponder_data, offset = align(data_DOG, GPS_time, travel_times,
+#                                                                        transponder_coordinates)
+#
+#     old_offset = 0
+#     iterations = 0
+#     while old_offset != offset and iterations < 7:
+#     #Loop until change in guess is less than the threshold
+#         print(offset)
+#         k=0
+#         while np.linalg.norm(delta) > epsilon and k<10:
+#             #Find times
+#             travel_times_guess, esv = calculateTimesRayTracing(guess, transponder_data)
+#
+#             #Do Gauss-Newton Iteration
+#             jacobian = computeJacobianRayTracing(guess, transponder_data, travel_times_guess, esv)
+#
+#             delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (travel_times_guess - dog_data)
+#
+#             guess = guess + delta
+#             # print(np.sqrt(np.sum((CDOG - guess)**2)) * 100, "cm")
+#             k+=1
+#
+#         #Update based on new guess
+#         old_offset = offset
+#         travel_times, esv = calculateTimesRayTracing(guess, transponder_coordinates)
+#         full_times, dog_data, GPS_data, transponder_data, offset = align(data_DOG, GPS_time, travel_times,
+#                                                                      transponder_coordinates)
+#
+#         iterations +=1
+#     return guess
+
+
+"""This works better, but needs to be more efficient
+    Include ESV as one of the things reindexed in the alignment process :))
+    Still gets caught in local minima"""
 def geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time):
     epsilon = 10**-7
     delta = 1
@@ -68,7 +114,12 @@ def geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time):
         k=0
         while np.linalg.norm(delta) > epsilon and k<10:
             #Find times
+            old_offset = offset
+            travel_times, esv = calculateTimesRayTracing(guess, transponder_coordinates)
+            full_times, dog_data, GPS_data, transponder_data, offset = align(data_DOG, GPS_time, travel_times,
+                                                                             transponder_coordinates)
             travel_times_guess, esv = calculateTimesRayTracing(guess, transponder_data)
+
 
             #Do Gauss-Newton Iteration
             jacobian = computeJacobianRayTracing(guess, transponder_data, travel_times_guess, esv)
@@ -80,16 +131,12 @@ def geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time):
             k+=1
 
         #Update based on new guess
-        old_offset = offset
-        travel_times, esv = calculateTimesRayTracing(guess, transponder_coordinates)
-        full_times, dog_data, GPS_data, transponder_data, offset = align(data_DOG, GPS_time, travel_times,
-                                                                     transponder_coordinates)
 
         iterations +=1
     return guess
 
 #If guess is too far - iterate gauss newton a couple times
-guess = np.array([-1974.9094551, 4485.73551826, -2007.85148619])
+guess = np.array([-1975.9094551, 4484.73551826, -2007.85148619])
 
 #Not converging when guess too far (prob some errors somewhere)
     #If it is hitting local min that would be sad :(

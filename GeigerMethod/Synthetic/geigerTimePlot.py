@@ -5,16 +5,18 @@ from scipy.stats import norm
 
 
 def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
-                   transponder_coordinates_Found, gps1_to_transponder, sound_velocity, depth,
-                   lever=[None,None,None], sim = 0):
+                   gps1_to_others, gps1_to_transponder, sound_velocity, depth,
+                   time_noise, position_noise, lever=[None,None,None], sim = 0):
     if not lever[0]:
         lever = gps1_to_transponder
-    guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found)
+    guess, times_known, transponder_coordinates_Found = geigersMethod(initial_guess, CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others,
+                                                                      gps1_to_transponder, time_noise, position_noise)
 
     # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
     times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
 
     difference_data = times_calc - times_known
+    print(np.std(difference_data))
 
     difference_data = np.round(difference_data, 10)
 
@@ -24,7 +26,7 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     fig, axes = plt.subplots(3, 3, figsize=(17, 10), gridspec_kw={'width_ratios': [1, 4, 2], 'height_ratios': [2, 2, 1]})
     # fig.suptitle("Comparison of calculated arrival times and actual arrival times", y=0.92)
 
-    fig.text(0.07, 0.85, "Noise: \n GPS: 2cm \n Arrival time: 20\u03BCs",
+    fig.text(0.07, 0.85, f"Noise: \n GPS: {position_noise*100}cm \n Arrival time: {time_noise*10**6}\u03BCs",
              fontsize=12, bbox=dict(facecolor='white', alpha=0.8))
     fig.text(0.07, 0.75,
              f"Distance between \npredicted and actual \nCDog location:\n{np.round(np.linalg.norm(CDog - guess) * 100, 4)}cm",

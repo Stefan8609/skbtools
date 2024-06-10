@@ -179,7 +179,8 @@ def computeJacobianRayTracing(guess, transponder_coordinates, times, sound_speed
     return jacobian
 
 #Goal is to minimize sum of the difference of times squared
-def geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found):
+def geigersMethod(guess, CDog, GPS_Coordinates, transponder_coordinates_Actual,
+                  gps1_to_others, gps1_to_transponder, time_noise=2*10**-5, position_noise=0):
     #Use Geiger's method to find the guess of CDOG location which minimizes sum of travel times squared
     #Define threshold
     epsilon = 10**-5
@@ -191,9 +192,13 @@ def geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coord
     # times_known = calculateTimes(CDog, transponder_coordinates_Actual, sound_speed)
     times_known, esv = calculateTimesRayTracing(CDog, transponder_coordinates_Actual)
 
-    #Apply noise to known times on scale of 20 microseconds
-    times_known+=np.random.normal(0,2*10**-5,len(transponder_coordinates_Actual))
+    #Apply noise to known times
+    times_known+=np.random.normal(0,time_noise,len(transponder_coordinates_Actual))
     # times_known+=noise
+
+    #Apply noise to position
+    GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
+    transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
 
     k=0
     delta = 1
@@ -206,34 +211,25 @@ def geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coord
         delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (times_guess-times_known)
         guess = guess + delta
         k+=1
-    return guess, times_known
+    return guess, times_known, transponder_coordinates_Found
 
 if __name__ == "__main__":
-    from experimentPathPlot import experimentPathPlot
     from geigerTimePlot import geigerTimePlot
     from leverHist import leverHist
 
     CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(20000)
 
-    # print(calculateTimes(CDog, transponder_coordinates_Actual, 1515))
-    # print(calculateTimesRayTracing(CDog, transponder_coordinates_Actual))
-    # print(calculateTimes(CDog, transponder_coordinates_Actual, 1515)-calculateTimesRayTracing(CDog, transponder_coordinates_Actual))
-
-    #Add noise to GPS on scale of 2 cm
-    GPS_Coordinates += np.random.normal(0, 2*10**-2, (len(GPS_Coordinates), 4, 3))
-
-    transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
-
     #Plot histograms of coordinate differences between found transponder and actual transponder
     # leverHist(transponder_coordinates_Actual,transponder_coordinates_Found)
 
-    #Plot path of experiment
-    # experimentPathPlot(transponder_coordinates_Actual, CDog)
+    #Define noise
+    time_noise = 2*10**-5
+    position_noise = 2*10**-2
 
-    #Plot comparison of times
+    #Make plot
     initial_guess = [-10000, 5000, -4000]
-    geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual, transponder_coordinates_Found,
-                   gps1_to_transponder, cz, depth)
+    geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
+                   gps1_to_others ,gps1_to_transponder, cz, depth, time_noise, position_noise)
 
 
 # Geometric Dilusion of Precision is the square root of the trace of (J.t*J)^_1
