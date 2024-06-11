@@ -11,7 +11,7 @@ depth = np.genfromtxt('../../GPSData/depth_cast2_smoothed.txt')[::100]
 """This program feels inefficient recalculating times known a bunch of times"""
 
 def simulatedAnnealing(n, time_noise, position_noise):
-    CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateCross(10000)
+    CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(10000)
 
     #Apply position noise
     # gps1_to_others += np.random.normal(0, 2*10**-2, (4,3))

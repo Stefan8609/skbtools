@@ -83,14 +83,28 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     axes[2, 2].scatter(GPS_Coord_Num[475:525], difference_data[475:525] * 1000, s=1)
     axes[2, 2].set_xlabel('Position Index')
 
-    # Histogram
+    # Histogram and normal distributions
     n, bins, patches = axes[2, 0].hist(difference_data * 1000, orientation='horizontal', bins=30, alpha=0.5, density=True)
     mu, std = norm.fit(difference_data * 1000)
     x = np.linspace(mu-3*std, mu+3*std, 100)
     axes[2, 0].set_xlim([n.min(), n.max()])
     axes[2, 0].set_ylim([mu-3*std, mu+3*std])
     p = norm.pdf(x, mu, std)
+    point1, point2 = norm.pdf(np.array([-std, std]), mu, std)
     axes[2, 0].plot(p, x, 'k', linewidth=2, label="Normal Distribution of Differences")
+    axes[2, 0].scatter([point1, point2], [-std, std], s=10, color='r', zorder=1)
+    
+    #add horizontal lines for the noise and uncertainty
+    axes[2, 0].axhline(-std, color='r', label="Observed Noise")
+    axes[2, 0].axhline(std, color='r')
+    if position_noise!=0:
+        axes[2, 0].axhline(-position_noise / 1515 * 1000, color='g', label="Input Position Noise")
+        axes[2, 0].axhline(position_noise / 1515 * 1000, color='g')
+    if time_noise!=0:
+        axes[2, 0].axhline(-time_noise * 1000, color='y', label="Input Time Noise")
+        axes[2, 0].axhline(time_noise * 1000, color='y')
+
+    #invert axis and plot
     axes[2, 0].set_ylabel('Difference (ms)')
     axes[2, 0].set_xlabel('Normalized Frequency')
     axes[2, 0].invert_xaxis()
