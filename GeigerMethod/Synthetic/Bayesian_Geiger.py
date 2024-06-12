@@ -23,7 +23,7 @@ def  Bayesian_Geiger(iterations, n, time_noise, position_noise):
     print(np.linalg.norm(np.mean(guess_arr, axis=0) - CDog)*100)
 
     plt.scatter(CDog[0], CDog[1], s=100, color="r", marker="x", zorder=2, label = "CDOG Position")
-    plt.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.5, zorder=1, label="Guesses")
+    plt.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Guesses")
     plt.xlim([CDog[0]-0.05, CDog[0]+0.05])
     plt.ylim([CDog[1]-0.05, CDog[1]+0.05])
     plt.xlabel("Easting (m)")
@@ -35,7 +35,7 @@ def  Bayesian_Geiger(iterations, n, time_noise, position_noise):
     dist_arr = np.linalg.norm(guess_arr-CDog, axis=1)*100
     plt.hist(dist_arr, bins=25, density=True)
     plt.title(f"Histogram of residual distance from {iterations} CDOG guesses")
-    plt.xlabel("Distance from guess to CDOG")
+    plt.xlabel("Distance from guess to CDOG (cm)")
     plt.ylabel("Distribution")
     plt.show()
 
