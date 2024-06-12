@@ -33,8 +33,8 @@ def time_dependence(n):
     plt.scatter(np.logspace(-5, -1, 25), noise_arr)
     plt.xscale('log')
     plt.yscale('log')
-    plt.xlabel('1 Std Input Time Noise')
-    plt.ylabel('1 Std Output Derived Uncertainty in Guess Position')
+    plt.xlabel('Input Time Noise')
+    plt.ylabel('Derived Uncertainty in Guess Position')
     plt.show()
 
 def spatial_dependence(n):
@@ -59,14 +59,44 @@ def spatial_dependence(n):
     plt.scatter(np.logspace(-3, 0, 25), noise_arr)
     plt.xscale('log')
     plt.yscale('log')
-    plt.xlabel('1 Std Input GPS Noise')
-    plt.ylabel('1 Std Output Derived Uncertainty in Guess Position')
+    plt.xlabel('Input GPS Noise')
+    plt.ylabel('Derived Uncertainty in Guess Position')
     plt.show()
 
+def point_dependence(time_noise, position_noise):
+    point_arr = []
+    for n in np.logspace(1, 5, 25):
+        n = int(n)
+        CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(n)
+        initial_guess = [-10000, 5000, -4000]
 
-# time_dependence(1000)
+        GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
+        transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
 
+        guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual,
+                                           transponder_coordinates_Found, time_noise)
+
+        times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
+
+        diff_data = times_calc - times_known
+        std_diff = np.std(diff_data)
+
+        point_arr.append(std_diff)
+
+    plt.scatter(np.logspace(1, 5, 25), point_arr)
+    plt.xscale('log')
+    plt.xlabel('Number of Points')
+    plt.ylabel('Derived Uncertainty in Guess Position')
+    plt.ylim([0, (time_noise + position_noise/1515) * 1.1 ])
+    plt.axhline(time_noise, color='y', label=f"Time Noise: {time_noise*1000} ms")
+    plt.axhline(position_noise/1515, color='r', label=f"Position Noise: {position_noise*100} cm")
+    plt.axhline(time_noise + position_noise/1515, color='b', label="Time and Position Noise")
+    plt.legend(loc = "lower right")
+    plt.show()
+
+time_dependence(1000)
 spatial_dependence(1000)
+point_dependence(2*10**-5, 2*10**-2)
 
 
 

@@ -136,11 +136,11 @@ def generateRealistic(n):
     y_coords4 = -7500 + (np.random.rand(n//4) * 50) - 25
     x_coords = np.concatenate((x_coords1, x_coords2, x_coords3, x_coords4))
     y_coords = np.concatenate((y_coords1, y_coords2, y_coords3, y_coords4))
-    z_coords = (np.random.rand(n) * 5) - 10
+    z_coords = (np.random.rand(n//4 * 4) * 5) - 10
     GPS1_Coordinates = np.column_stack((x_coords, y_coords, z_coords))
 
-    GPS_Coordinates = np.zeros((n, 4, 3))
-    transponder_coordinates = np.zeros((n, 3))
+    GPS_Coordinates = np.zeros((n//4 * 4, 4, 3))
+    transponder_coordinates = np.zeros((n//4 * 4, 3))
     GPS_Coordinates[:, 0] = GPS1_Coordinates
 
     # Randomize boat yaw, pitch, and roll at each time step
@@ -148,7 +148,7 @@ def generateRealistic(n):
     gps1_to_others = np.array([[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64)
     gps1_to_transponder = np.array([-10, 3, -15], dtype=np.float64)
 
-    for i in range(n):
+    for i in range(n//4 * 4):
         # Build rotation matrix at each time step
         xRot = np.array(
             [[1, 0, 0], [0, np.cos(rot[i, 0]), -np.sin(rot[i, 0])], [0, np.sin(rot[i, 0]), np.cos(rot[i, 0])]])

@@ -105,7 +105,7 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
         axes[2, 0].axhline(time_noise * 1000, color='y')
 
     #invert axis and plot
-    axes[2, 0].set_ylabel('Difference (ms)')
+    axes[2, 0].set_ylabel(f'Difference (ms) \n Std: {np.round(std, 3)} ms')
     axes[2, 0].set_xlabel('Normalized Frequency')
     axes[2, 0].invert_xaxis()
     # axes[2, 0].axis('off')
