@@ -56,7 +56,7 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     axes[1, 0].invert_yaxis()
     axes[1, 0].set_xlim(min(sound_velocity), max(sound_velocity))
     axes[1, 0].set_ylabel('Depth')
-    axes[1, 0].set_xlabel('Sound Velocity')
+    axes[1, 0].set_xlabel('Sound Velocity (m/s)')
 
     # Acoustic vs GNSS plot
     GPS_Coord_Num = list(range(len(GPS_Coordinates)))
@@ -78,10 +78,10 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
 
     # Difference plot
     axes[2, 1].scatter(GPS_Coord_Num, difference_data * 1000, s=1)
-    axes[2, 1].set_xlabel('Position Index')
+    axes[2, 1].set_xlabel('Time(s)')
 
     axes[2, 2].scatter(GPS_Coord_Num[475:525], difference_data[475:525] * 1000, s=1)
-    axes[2, 2].set_xlabel('Position Index')
+    axes[2, 2].set_xlabel('Time(s)')
 
     # Histogram and normal distributions
     n, bins, patches = axes[2, 0].hist(difference_data * 1000, orientation='horizontal', bins=30, alpha=0.5, density=True)
