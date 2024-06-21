@@ -259,8 +259,8 @@ if __name__ == "__main__":
     # leverHist(transponder_coordinates_Actual,transponder_coordinates_Found)
 
     #Define noise
-    time_noise = 2*10**-5
-    position_noise = 2*10**-2
+    time_noise = 0*10**-5
+    position_noise = 0*10**-2
 
     #Apply noise to position
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
@@ -272,7 +272,7 @@ if __name__ == "__main__":
                    gps1_to_transponder, cz, depth, time_noise, position_noise)
 
 
-# Geometric Dilusion of Precision is the square root of the trace of (J.t*J)^_1
+# Geometric Dilulion of Precision is the square root of the trace of (J.t*J)^_1
 
 #Evaluate error distribution at the truth and compare with the best guess
 

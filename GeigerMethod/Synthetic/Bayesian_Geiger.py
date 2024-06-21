@@ -40,3 +40,8 @@ def  Bayesian_Geiger(iterations, n, time_noise, position_noise):
     plt.show()
 
 Bayesian_Geiger(10000, 100, 2*10**-5, 2*10**-2)
+
+#Make new a function which creates a trajectory of 10000 points with noise in time and space
+#   Sample random sets of 100 points and run geiger's method
+#   Sample consecutive sets of 100 points and run geiger's method
+#       See how close the average final guess is from these 100 runs to the actual CDOG location
