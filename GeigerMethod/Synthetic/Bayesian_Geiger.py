@@ -1,3 +1,13 @@
+"""
+File to use Bayesian Analysis to find the Posterior distribution of the CDOG estimate
+
+Prior is a uniform distribution between -10000 to 10000 in x,y and -4000 to -6000 in z.
+Sampled likelihood found using Gauss-Newton Inversion
+
+Need to plot the 1,2,3 std of the posterior distribution.
+"""
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 import random
@@ -127,9 +137,9 @@ def Consecutive_Geiger(iterations, n, sample_size, time_noise, position_noise):
     plt.ylabel("Distribution")
     plt.show()
 
-Bayesian_Geiger(10000, 100, 2*10**-5, 2*10**-2)
+# Bayesian_Geiger(10000, 100, 2*10**-5, 2*10**-2)
 # Sampled_Geiger(10000, 10000, 100, 2*10**-5, 2*10**-2)
-# Consecutive_Geiger(10, 10000, 1000, 2*10**-5, 2*10**-2)
+Consecutive_Geiger(10, 10000, 1000, 2*10**-5, 2*10**-2)
 
 #Make new a function which creates a trajectory of 10000 points with noise in time and space
 #   Sample random sets of 100 points and run geiger's method

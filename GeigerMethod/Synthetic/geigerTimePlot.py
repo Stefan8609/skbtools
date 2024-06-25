@@ -30,7 +30,7 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     fig.text(0.07, 0.75,
              f"Distance between \npredicted and actual \nCDog location:\n{np.round(np.linalg.norm(CDog - guess) * 100, 4)}cm",
              fontsize=12, bbox=dict(facecolor='white', alpha=0.8))
-    fig.text(0.07, 0.61, f"Initial Guess (x,y,z):\n({initial_guess[0]}, {initial_guess[1]}, {initial_guess[2]})"
+    fig.text(0.07, 0.61, f"Initial Guess (x,y,z):\n({np.round(initial_guess[0],2)}, {np.round(initial_guess[1],2)}, {np.round(initial_guess[2]),2})"
                          f"\nAverage of residuals:\n{round(np.average(difference_data) * 1000, 4)}ms"
                          f"\nActual vs. Found lever:\n({round(lever[0]-gps1_to_transponder[0],3)},{round(lever[1]-gps1_to_transponder[1],3)},{round(lever[2]-gps1_to_transponder[2],3)})m",
              fontsize=12, bbox=dict(facecolor="white", alpha=0.8))

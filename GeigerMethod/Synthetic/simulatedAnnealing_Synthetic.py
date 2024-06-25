@@ -10,17 +10,18 @@ depth = np.genfromtxt('../../GPSData/depth_cast2_smoothed.txt')[::100]
 
 """This program feels inefficient recalculating times known a bunch of times"""
 
-def simulatedAnnealing(n, time_noise, position_noise):
-    CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(10000)
+def simulatedAnnealing(n, iter, time_noise, position_noise, geom_noise=0, main=True):
+    CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(n)
 
     #Apply position noise
-    # gps1_to_others += np.random.normal(0, 2*10**-2, (4,3))
+    gps1_to_others += np.random.normal(0, geom_noise, (4,3))
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 
     #Get initial values
-    old_lever = np.array([-7.5079, 6.411, -13.033])
+    old_lever = np.array([random.uniform(-15, -5), random.uniform(0, 10), random.uniform(-10, -20)])
     transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
-    initial_guess = [-2000, 3000, -4000]
+    initial_guess = np.array(
+        [random.uniform(-10000, 10000), random.uniform(-10000, 10000), random.uniform(-4000, -6000)])
     guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual,
                                        transponder_coordinates_Found)
 
@@ -38,14 +39,15 @@ def simulatedAnnealing(n, time_noise, position_noise):
     #Plot initial conditions
     # experimentPathPlot(transponder_coordinates_Actual, CDog)
     # leverHist(transponder_coordinates_Actual, transponder_coordinates_Found)
-    geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
+    if main == True:
+        geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
                    transponder_coordinates_Found, gps1_to_transponder, cz, depth, time_noise, position_noise, old_lever, sim=1)
 
     #Run simulated annealing
     k=0
-    RMS_arr = [0]*(n-1)
-    while k<n-1: #Figure out how to work temp threshold
-        temp = np.exp(-k*7*(1/(n))) #temp schdule
+    RMS_arr = [0]*(iter-1)
+    while k<iter-1: #Figure out how to work temp threshold
+        temp = np.exp(-k*7*(1/(iter))) #temp schdule
         displacement = ((np.random.rand(3)*2)-[1,1,1]) * temp
         lever = old_lever + displacement
 
@@ -65,22 +67,26 @@ def simulatedAnnealing(n, time_noise, position_noise):
         print(k, old_RMS*100*1515, old_lever)
         RMS_arr[k]=RMS*100*1515
         k+=1
-    plt.plot(list(range(n-1)), RMS_arr)
-    plt.xlabel("Simulated Annealing Iteration")
-    plt.ylabel("RMSE from Inversion (cm)")
-    plt.title("Simulated Annealing Inversion for GPS to Transducer Lever Arm")
-    plt.show()
-    print(old_lever, gps1_to_transponder)
 
-    transponder_coordinates_Final = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
     # leverHist(transponder_coordinates_Actual, transponder_coordinates_Final)
-    geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
+
+    if main==True:
+        plt.plot(list(range(iter - 1)), RMS_arr)
+        plt.xlabel("Simulated Annealing Iteration")
+        plt.ylabel("RMSE from Inversion (cm)")
+        plt.title("Simulated Annealing Inversion for GPS to Transducer Lever Arm")
+        plt.show()
+
+        print(old_lever, gps1_to_transponder)
+        transponder_coordinates_Final = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
+        geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
                    transponder_coordinates_Final, gps1_to_transponder, cz,
                    depth, time_noise, position_noise, old_lever, sim=2)
 
-    return old_lever
+    return guess, old_lever
 
-simulatedAnnealing(300, 2*10**-5, 2*10**-2)
+if __name__ == "__main__":
+    simulatedAnnealing(10000, 300, 2*10**-5, 2*10**-2)
 
 #at each time step keep the cdog location and then calculate a bunch of deviations
 #   and keep the best one at each time step --Could speed up
