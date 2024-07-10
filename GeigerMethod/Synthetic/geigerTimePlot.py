@@ -9,7 +9,7 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     if not lever[0]:
         lever = gps1_to_transponder
 
-    guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, time_noise)
+    guess, times_known, estimate_arr = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, time_noise)
 
     # times_calc = calculateTimes(guess, transponder_coordinates_Found, 1515)
     times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
@@ -47,7 +47,9 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     axes[0, 1].axis("equal")
 
     axes[0, 2].scatter(CDog[0], CDog[1], s=50, marker="x", color="k", label="C-DOG")
-    axes[0, 2].scatter(guess[0], guess[1], s=50, marker="o", color="r", label="C-DOG Guess")
+    axes[0, 2].scatter(guess[0], guess[1], s=50, marker="o", color="r", label="Final Estimate")
+    axes[0, 2].scatter(initial_guess[0], initial_guess[1], s=50, marker="o", color="g", label="Initial Guess")
+    axes[0, 2].scatter(estimate_arr[:,0], estimate_arr[:,1], s=50, marker="o", color="b", label="Estimate Iterations")
     axes[0, 2].set_xlim(CDog[0]-5, CDog[0]+5)
     axes[0, 2].set_ylim(CDog[1]-5, CDog[1]+5)
     axes[0, 2].legend(loc="upper right")
@@ -76,13 +78,6 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     #                 bbox=dict(facecolor='yellow', alpha=0.8))
     axes[1, 2].legend(loc="upper right")
 
-    # Difference plot
-    axes[2, 1].scatter(GPS_Coord_Num, difference_data * 1000, s=1)
-    axes[2, 1].set_xlabel('Time(s)')
-
-    axes[2, 2].scatter(GPS_Coord_Num[475:525], difference_data[475:525] * 1000, s=1)
-    axes[2, 2].set_xlabel('Time(s)')
-
     # Histogram and normal distributions
     n, bins, patches = axes[2, 0].hist(difference_data * 1000, orientation='horizontal', bins=30, alpha=0.5, density=True)
     mu, std = norm.fit(difference_data * 1000)
@@ -109,6 +104,16 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     axes[2, 0].set_xlabel('Normalized Frequency')
     axes[2, 0].invert_xaxis()
     # axes[2, 0].axis('off')
+
+    # Difference plot
+    axes[2, 1].scatter(GPS_Coord_Num, difference_data * 1000, s=1)
+    axes[2, 1].set_xlabel('Time(s)')
+    axes[2, 1].set_ylim([mu-3*std, mu+3*std])
+
+    axes[2, 2].scatter(GPS_Coord_Num[475:525], difference_data[475:525] * 1000, s=1)
+    axes[2, 2].set_xlabel('Time(s)')
+    axes[2, 2].set_ylim([mu-3*std, mu+3*std])
+
 
     # if sim == 1:
     #     plt.savefig('../../Figs/init_sim_noise_ray_tracing.png')

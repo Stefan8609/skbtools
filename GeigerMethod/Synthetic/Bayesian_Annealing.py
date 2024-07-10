@@ -21,7 +21,9 @@ def Bayesian_Annealing(iterations, n, time_noise, position_noise, geom_noise):
     lever_arr = np.zeros((iterations, 3))
 
     for i in range(iterations):
-        guess, lever = simulatedAnnealing(n, 300, time_noise, position_noise, geom_noise, False)
+        guess, lever = simulatedAnnealing(n, 300, time_noise, position_noise, geom_noise, False,
+                                          CDog, GPS_Coordinates, transponder_coordinates_Actual,
+                                          gps1_to_others, gps1_to_transponder)
 
         guess_arr[i] = guess
         lever_arr[i] = lever
@@ -41,6 +43,8 @@ def Bayesian_Annealing(iterations, n, time_noise, position_noise, geom_noise):
     plt.title(f"Distribution of CDOG position Guesses for {iterations} iterations")
     plt.legend(loc = "upper right")
     plt.show()
+
+    #Add Histograms for lever arms
 
 
 Bayesian_Annealing(10, 1000, 2*10**-5, 2*10**-2, 0)

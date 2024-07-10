@@ -10,20 +10,24 @@ depth = np.genfromtxt('../../GPSData/depth_cast2_smoothed.txt')[::100]
 
 """This program feels inefficient recalculating times known a bunch of times"""
 
-def simulatedAnnealing(n, iter, time_noise, position_noise, geom_noise=0, main=True):
-    CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(n)
+def simulatedAnnealing(n, iter, time_noise, position_noise, geom_noise=0, main=True,
+                       CDog=None, GPS_Coordinates_in=None, transponder_coordinates_Actual=None,
+                       gps1_to_others_in=None, gps1_to_transponder=None):
+    if main==True:
+        CDog, GPS_Coordinates_in, transponder_coordinates_Actual, gps1_to_others_in, gps1_to_transponder = generateRealistic(n)
 
     #Apply position noise
-    gps1_to_others += np.random.normal(0, geom_noise, (4,3))
-    GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
+    gps1_to_others = gps1_to_others_in + np.random.normal(0, geom_noise, (4,3))
+    GPS_Coordinates = GPS_Coordinates_in + np.random.normal(0, position_noise, (len(GPS_Coordinates_in), 4, 3))
 
     #Get initial values
+    times_known = calculateTimesRayTracing(CDog, transponder_coordinates_Actual)[0]
     old_lever = np.array([random.uniform(-15, -5), random.uniform(0, 10), random.uniform(-10, -20)])
     transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
     initial_guess = np.array(
         [random.uniform(-10000, 10000), random.uniform(-10000, 10000), random.uniform(-4000, -6000)])
-    guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual,
-                                       transponder_coordinates_Found)
+    guess = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual,
+                                       transponder_coordinates_Found)[0]
 
     #Apply time noise
     times_known+=np.random.normal(0, time_noise, len(transponder_coordinates_Actual))
@@ -83,10 +87,14 @@ def simulatedAnnealing(n, iter, time_noise, position_noise, geom_noise=0, main=T
                    transponder_coordinates_Final, gps1_to_transponder, cz,
                    depth, time_noise, position_noise, old_lever, sim=2)
 
+    transponder_coordinates_Final = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
+    guess = geigersMethod(guess, CDog, transponder_coordinates_Actual,
+                          transponder_coordinates_Final)[0]
+
     return guess, old_lever
 
 if __name__ == "__main__":
-    simulatedAnnealing(10000, 300, 2*10**-5, 2*10**-2)
+    simulatedAnnealing(1000, 300, 2*10**-5, 2*10**-2)
 
 #at each time step keep the cdog location and then calculate a bunch of deviations
 #   and keep the best one at each time step --Could speed up

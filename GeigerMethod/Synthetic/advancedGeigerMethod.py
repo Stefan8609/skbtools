@@ -238,6 +238,7 @@ def geigersMethod(guess, CDog, transponder_coordinates_Actual,
 
     k=0
     delta = 1
+    estimate_arr = np.array([])
     #Loop until change in guess is less than the threshold
     while np.linalg.norm(delta) > epsilon and k<100:
         # times_guess = calculateTimes(guess, transponder_coordinates_Found, sound_speed)
@@ -246,8 +247,10 @@ def geigersMethod(guess, CDog, transponder_coordinates_Actual,
         jacobian = computeJacobianRayTracing(guess, transponder_coordinates_Found, times_guess, esv)
         delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (times_guess-times_known)
         guess = guess + delta
+        estimate_arr = np.append(estimate_arr, guess, axis=0)
         k+=1
-    return guess, times_known
+    estimate_arr = np.reshape(estimate_arr, (-1, 3))
+    return guess, times_known, estimate_arr
 
 if __name__ == "__main__":
     from geigerTimePlot import geigerTimePlot
@@ -259,8 +262,8 @@ if __name__ == "__main__":
     # leverHist(transponder_coordinates_Actual,transponder_coordinates_Found)
 
     #Define noise
-    time_noise = 0*10**-5
-    position_noise = 0*10**-2
+    time_noise = 2*10**-5
+    position_noise = 2*10**-2
 
     #Apply noise to position
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
