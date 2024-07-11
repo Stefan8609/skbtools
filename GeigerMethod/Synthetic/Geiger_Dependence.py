@@ -9,6 +9,7 @@ from advancedGeigerMethod import geigersMethod, generateCross
 
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 from advancedGeigerMethod import generateRealistic, geigersMethod, calculateTimesRayTracing, findTransponder
 
 def time_dependence(n):
@@ -94,9 +95,46 @@ def point_dependence(time_noise, position_noise):
     plt.legend(loc = "lower right")
     plt.show()
 
-time_dependence(1000)
-spatial_dependence(1000)
-point_dependence(2*10**-5, 2*10**-2)
+
+"""
+Add in the expected contours for the noise using black lines overlapping for combined dependence
+"""
+
+def combined_dependence(n):
+    space_axis = np.linspace(2*10**-2, 2*10**-1, 50)
+    time_axis = np.linspace(2*10**-5, 2*10**-4, 50)
+
+    [X, Y] = np.meshgrid(space_axis, time_axis)
+
+    Z = np.zeros((len(Y[:,0]), len(X[0])))
+
+    for i in range(len(X[0])):
+        print(i)
+        for j in range(len(Y[:,0])):
+            CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(n)
+            initial_guess = np.array([random.uniform(-10000, 10000), random.uniform(-10000, 10000), random.uniform(-4000, -6000)])
+
+            GPS_Coordinates += np.random.normal(0, X[0,i], (len(GPS_Coordinates), 4, 3))
+            transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
+
+            guess, times_known, est = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual,
+                                               transponder_coordinates_Found, Y[j,0])
+
+            times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
+            diff_data = times_calc - times_known
+            std_diff = np.std(diff_data)
+            Z[j, i] = std_diff
+
+    plt.contourf(X*100, Y*1000, Z*1515*100)
+    cbar = plt.colorbar()
+    cbar.set_label("Estimate Position Noise (cm)", rotation= 270, labelpad = 15)
+    plt.xlabel("GPS Position Noise (cm)")
+    plt.ylabel("C-DOG Time Noise (ms)")
+    plt.title("Contour dependence of position and time noise")
+    plt.show()
 
 
-
+# time_dependence(1000)
+# spatial_dependence(1000)
+# point_dependence(2*10**-5, 2*10**-2)
+combined_dependence(1000)

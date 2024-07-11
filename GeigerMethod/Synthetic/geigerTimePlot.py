@@ -89,8 +89,7 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     axes[1, 2].scatter(GPS_Coord_Num[zoom_idx:zoom_idx+zoom_length], times_known[zoom_idx:zoom_idx+zoom_length], s=5, label='Observed Travel Times', alpha=0.6, marker='o', color='b',
                        zorder=2)
     axes[1, 2].scatter(GPS_Coord_Num[zoom_idx:zoom_idx+zoom_length], times_calc[zoom_idx:zoom_idx+zoom_length], s=10, label='Modelled Travel Times', alpha=1, marker='x', color='r', zorder=1)
-    # axes[1, 2].text(25, max(times_known), "actual arrival times versus estimated times",
-    #                 bbox=dict(facecolor='yellow', alpha=0.8))
+
     axes[1, 2].legend(loc="upper right")
 
     # Histogram and normal distributions
