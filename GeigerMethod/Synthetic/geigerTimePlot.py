@@ -26,6 +26,7 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
 
     #Get range of times for zoom in
     zoom_idx = np.random.randint(0, len(GPS_Coordinates)-100)
+    zoom_length = 100
 
     # RMS = np.sqrt(np.nanmean(difference_data ** 2))
 
@@ -80,14 +81,14 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     axes[1, 1].scatter(GPS_Coord_Num, times_known, s=5, label='Observed Travel Times', alpha=0.6, marker='o', color='b',
                        zorder=2)
     axes[1, 1].scatter(GPS_Coord_Num, times_calc, s=10, label='Modelled Travel Times', alpha=1, marker='x', color='r', zorder=1)
-    axes[1, 1].axvline(zoom_idx, color='k')
-    axes[1, 1].axvline(zoom_idx+100, color='k')
+    axes[1, 1].axvline(zoom_idx, color='k', linestyle="--")
+    axes[1, 1].axvline(zoom_idx+100, color='k', linestyle="--")
     axes[1, 1].set_ylabel('Travel Time (s)')
     axes[1, 1].legend(loc="upper right")
 
-    axes[1, 2].scatter(GPS_Coord_Num[zoom_idx:zoom_idx+100], times_known[zoom_idx:zoom_idx+100], s=5, label='Observed Travel Times', alpha=0.6, marker='o', color='b',
+    axes[1, 2].scatter(GPS_Coord_Num[zoom_idx:zoom_idx+zoom_length], times_known[zoom_idx:zoom_idx+zoom_length], s=5, label='Observed Travel Times', alpha=0.6, marker='o', color='b',
                        zorder=2)
-    axes[1, 2].scatter(GPS_Coord_Num[zoom_idx:zoom_idx+100], times_calc[zoom_idx:zoom_idx+100], s=10, label='Modelled Travel Times', alpha=1, marker='x', color='r', zorder=1)
+    axes[1, 2].scatter(GPS_Coord_Num[zoom_idx:zoom_idx+zoom_length], times_calc[zoom_idx:zoom_idx+zoom_length], s=10, label='Modelled Travel Times', alpha=1, marker='x', color='r', zorder=1)
     # axes[1, 2].text(25, max(times_known), "actual arrival times versus estimated times",
     #                 bbox=dict(facecolor='yellow', alpha=0.8))
     axes[1, 2].legend(loc="upper right")
@@ -105,12 +106,17 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     #add horizontal lines for the noise and uncertainty
     axes[2, 0].axhline(-std, color='r', label="Observed Noise")
     axes[2, 0].axhline(std, color='r')
+    axes[2, 0].text(-0.2, std * 1.2, "$\\sigma_p$", va="center", color='r')
+
     if position_noise!=0:
         axes[2, 0].axhline(-position_noise / 1515 * 1000, color='g', label="Input Position Noise")
         axes[2, 0].axhline(position_noise / 1515 * 1000, color='g')
+        axes[2, 0].text(-0.2, position_noise / 1515 * 1000 * .5, "$\\sigma_x$", va="center", color='g')
+
     if time_noise!=0:
         axes[2, 0].axhline(-time_noise * 1000, color='y', label="Input Time Noise")
         axes[2, 0].axhline(time_noise * 1000, color='y')
+        axes[2, 0].text(-0.2, time_noise * 1000, "$\\sigma_t$", va="center", color='y')
 
     #invert axis and plot
     axes[2, 0].set_ylabel(f'Difference (ms) \n Std: {np.round(std, 3)} ms')
@@ -120,12 +126,12 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
 
     # Difference plot
     axes[2, 1].scatter(GPS_Coord_Num, difference_data * 1000, s=1)
-    axes[2, 1].axvline(zoom_idx, color='k')
-    axes[2, 1].axvline(zoom_idx+100, color='k')
+    axes[2, 1].axvline(zoom_idx, color='k', linestyle="--")
+    axes[2, 1].axvline(zoom_idx+100, color='k', linestyle="--")
     axes[2, 1].set_xlabel('Time(s)')
     axes[2, 1].set_ylim([mu-3*std, mu+3*std])
 
-    axes[2, 2].scatter(GPS_Coord_Num[zoom_idx:zoom_idx+100], difference_data[zoom_idx:zoom_idx+100] * 1000, s=1)
+    axes[2, 2].scatter(GPS_Coord_Num[zoom_idx:zoom_idx+zoom_length], difference_data[zoom_idx:zoom_idx+zoom_length] * 1000, s=1)
     axes[2, 2].set_xlabel('Time(s)')
     axes[2, 2].set_ylim([mu-3*std, mu+3*std])
 
