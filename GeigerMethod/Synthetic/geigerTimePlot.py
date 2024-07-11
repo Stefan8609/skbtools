@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
 import numpy as np
 from advancedGeigerMethod import geigersMethod, calculateTimes, calculateTimesRayTracing
 from scipy.stats import norm
@@ -19,7 +20,14 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
 
     difference_data = np.round(difference_data, 10)
 
-    RMS = np.sqrt(np.nanmean(difference_data ** 2))
+    #Fit the residuals to a normal distribution
+    mu, std = norm.fit(difference_data * 1000)
+    position_std = std*1515/1000
+
+    #Get range of times for zoom in
+    zoom_idx = np.random.randint(0, len(GPS_Coordinates)-100)
+
+    # RMS = np.sqrt(np.nanmean(difference_data ** 2))
 
     # Prepare label and plot
     fig, axes = plt.subplots(3, 3, figsize=(17, 10), gridspec_kw={'width_ratios': [1, 4, 2], 'height_ratios': [2, 2, 1]})
@@ -50,8 +58,14 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     axes[0, 2].scatter(guess[0], guess[1], s=50, marker="o", color="r", label="Final Estimate")
     axes[0, 2].scatter(initial_guess[0], initial_guess[1], s=50, marker="o", color="g", label="Initial Guess")
     axes[0, 2].scatter(estimate_arr[:,0], estimate_arr[:,1], s=50, marker="o", color="b", label="Estimate Iterations")
-    axes[0, 2].set_xlim(CDog[0]-5, CDog[0]+5)
-    axes[0, 2].set_ylim(CDog[1]-5, CDog[1]+5)
+    axes[0, 2].set_xlim(CDog[0]-(3.1*position_std), CDog[0]+(3.1*position_std))
+    axes[0, 2].set_ylim(CDog[1]-(3.1*position_std), CDog[1]+(3.1*position_std))
+    for i in range(1,4):
+        ell = Ellipse(xy=(CDog[0], CDog[1]),
+                      width= position_std * i * 2, height= position_std * i * 2,
+                      angle=45, color='k')
+        ell.set_facecolor('none')
+        axes[0, 2].add_artist(ell)
     axes[0, 2].legend(loc="upper right")
 
     axes[1, 0].plot(sound_velocity, depth, color='b')
@@ -66,21 +80,20 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     axes[1, 1].scatter(GPS_Coord_Num, times_known, s=5, label='Observed Travel Times', alpha=0.6, marker='o', color='b',
                        zorder=2)
     axes[1, 1].scatter(GPS_Coord_Num, times_calc, s=10, label='Modelled Travel Times', alpha=1, marker='x', color='r', zorder=1)
+    axes[1, 1].axvline(zoom_idx, color='k')
+    axes[1, 1].axvline(zoom_idx+100, color='k')
     axes[1, 1].set_ylabel('Travel Time (s)')
-    # axes[1, 1].text(25, max(times_known), "actual arrival times versus estimated times",
-    #                 bbox=dict(facecolor='yellow', alpha=0.8))
     axes[1, 1].legend(loc="upper right")
 
-    axes[1, 2].scatter(GPS_Coord_Num[475:525], times_known[475:525], s=5, label='Observed Travel Times', alpha=0.6, marker='o', color='b',
+    axes[1, 2].scatter(GPS_Coord_Num[zoom_idx:zoom_idx+100], times_known[zoom_idx:zoom_idx+100], s=5, label='Observed Travel Times', alpha=0.6, marker='o', color='b',
                        zorder=2)
-    axes[1, 2].scatter(GPS_Coord_Num[475:525], times_calc[475:525], s=10, label='Modelled Travel Times', alpha=1, marker='x', color='r', zorder=1)
+    axes[1, 2].scatter(GPS_Coord_Num[zoom_idx:zoom_idx+100], times_calc[zoom_idx:zoom_idx+100], s=10, label='Modelled Travel Times', alpha=1, marker='x', color='r', zorder=1)
     # axes[1, 2].text(25, max(times_known), "actual arrival times versus estimated times",
     #                 bbox=dict(facecolor='yellow', alpha=0.8))
     axes[1, 2].legend(loc="upper right")
 
     # Histogram and normal distributions
     n, bins, patches = axes[2, 0].hist(difference_data * 1000, orientation='horizontal', bins=30, alpha=0.5, density=True)
-    mu, std = norm.fit(difference_data * 1000)
     x = np.linspace(mu-3*std, mu+3*std, 100)
     axes[2, 0].set_xlim([n.min(), n.max()])
     axes[2, 0].set_ylim([mu-3*std, mu+3*std])
@@ -107,10 +120,12 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
 
     # Difference plot
     axes[2, 1].scatter(GPS_Coord_Num, difference_data * 1000, s=1)
+    axes[2, 1].axvline(zoom_idx, color='k')
+    axes[2, 1].axvline(zoom_idx+100, color='k')
     axes[2, 1].set_xlabel('Time(s)')
     axes[2, 1].set_ylim([mu-3*std, mu+3*std])
 
-    axes[2, 2].scatter(GPS_Coord_Num[475:525], difference_data[475:525] * 1000, s=1)
+    axes[2, 2].scatter(GPS_Coord_Num[zoom_idx:zoom_idx+100], difference_data[zoom_idx:zoom_idx+100] * 1000, s=1)
     axes[2, 2].set_xlabel('Time(s)')
     axes[2, 2].set_ylim([mu-3*std, mu+3*std])
 
