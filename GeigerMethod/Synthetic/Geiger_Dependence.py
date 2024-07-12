@@ -122,23 +122,18 @@ def combined_dependence(n):
             std_diff = np.std(diff_data)
             Z[j, i] = std_diff
 
-    #Plot expected uncertainty contours -> code inspired by matplotlib documentation
+    #Plot expected uncertainty contours
     Z_exp = np.sqrt(0.00103**2*np.square(X) + np.square(Y))
-    class nf(float):
-        def __repr__(self):
-            s = f'{self:.1f}'
-            return f'{self:.0f}' if s[-1] == '0' else s
 
-    CS = plt.contour(X*100, Y*1000, Z_exp*1515*100, colors="k")
-    CS.levels = [nf(val) for val in CS.levels]
+    CS = plt.contour(X*100, Y*1000, Z_exp*1515*100, colors="k", levels=np.arange(0,50,5))
     plt.clabel(CS, CS.levels, inline=True, fontsize=10)
 
-    plt.contourf(X*100, Y*1000, Z*1515*100)
+    plt.contourf(X*100, Y*1000, Z*1515*100, levels=np.arange(0,50,5))
     cbar = plt.colorbar()
     cbar.set_label("Estimate Position Noise (cm)", rotation= 270, labelpad = 15)
     plt.xlabel("GPS Position Noise (cm)")
     plt.ylabel("C-DOG Time Noise (ms)")
-    plt.title("Contour dependence of position and time noise")
+    plt.title("Combined dependence of GPS position and C-DOG time noise")
     plt.show()
 
 
