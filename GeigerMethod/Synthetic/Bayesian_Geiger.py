@@ -10,11 +10,12 @@ Need to plot the 1,2,3 std of the posterior distribution.
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
 import random
 from advancedGeigerMethod import geigersMethod, calculateTimesRayTracing, generateRealistic, findTransponder
 
 #Using same GPS Coords with random spatial noise added each iteration
-def  Bayesian_Geiger(iterations, n, time_noise, position_noise):
+def Bayesian_Geiger(iterations, n, time_noise, position_noise):
     CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(n)
 
     guess_arr = np.zeros((iterations, 3))
@@ -33,17 +34,43 @@ def  Bayesian_Geiger(iterations, n, time_noise, position_noise):
     print(np.mean(guess_arr, axis=0) - CDog)
     print(np.linalg.norm(np.mean(guess_arr, axis=0) - CDog)*100)
 
-    plt.scatter(CDog[0], CDog[1], s=100, color="r", marker="x", zorder=2, label = "CDOG Position")
-    plt.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Guesses")
-    plt.xlim([CDog[0]-0.05, CDog[0]+0.05])
-    plt.ylim([CDog[1]-0.05, CDog[1]+0.05])
-    plt.axis('equal')
-    plt.xlabel("Easting (m)")
-    plt.ylabel("Northing (m)")
-    plt.title(f"Distribution of CDOG position Guesses for {iterations} iterations")
-    plt.legend(loc = "upper right")
+    expected_std = np.sqrt(0.00103**2 * position_noise**2 + time_noise**2) * 1515
+    print('expected', expected_std)
+
+    #Plot points and contours
+    fig, ax = plt.subplots(figsize=(6, 6))
+
+    #Plot ellipses of expected standard deviation from input noise
+    for i in range(1,4):
+        ell = Ellipse(xy=(CDog[0], CDog[1]),
+                      width= expected_std * i * 2, height= expected_std * i * 2,
+                      angle=0, color='k', zorder=3)
+        ell.set_facecolor('none')
+        ax.add_artist(ell)
+
+    #Plot ellipses derived from covariance matrix of estimates
+    cov = np.cov(guess_arr[:,:2], rowvar=False)
+    eigval, eigvec = np.linalg.eig(cov)
+    angle = np.degrees(np.arctan2(eigvec[1, 0], eigvec[0, 0]))
+    w, h = np.sqrt(eigval) * 2
+    for i in range(1,4):
+        ell = Ellipse(xy=(CDog[0], CDog[1]), width = i*w, height = i*h, angle=angle,
+                      color='r', linewidth=2-i/2, zorder=3)
+        ell.set_facecolor('none')
+        ax.add_artist(ell)
+
+    #Scatter estimate points and C-DOG
+    ax.scatter(CDog[0], CDog[1], s=100, color="r", marker="x", zorder=2, label = "CDOG Position")
+    ax.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Guesses")
+    ax.set_xlim([CDog[0]-3.1*expected_std, CDog[0]+3.1*expected_std])
+    ax.set_ylim([CDog[1]-3.1*expected_std, CDog[1]+3.1*expected_std])
+    ax.set_xlabel("Easting (m)")
+    ax.set_ylabel("Northing (m)")
+    ax.set_title(f"Distribution of CDOG position Guesses for {iterations} iterations")
+    ax.legend(loc = "upper right")
     plt.show()
 
+    #Plot histogram of how far estimates are from C-DOG location
     dist_arr = np.linalg.norm(guess_arr-CDog, axis=1)*100
     plt.hist(dist_arr, bins=25, density=True)
     plt.title(f"Histogram of residual distance from {iterations} CDOG guesses")
@@ -72,17 +99,43 @@ def Sampled_Geiger(iterations, n, sample_size, time_noise, position_noise):
     print(np.mean(guess_arr, axis=0) - CDog)
     print(np.linalg.norm(np.mean(guess_arr, axis=0) - CDog)*100)
 
-    plt.scatter(CDog[0], CDog[1], s=100, color="r", marker="x", zorder=2, label = "CDOG Position")
-    plt.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Guesses")
-    plt.xlim([CDog[0]-0.05, CDog[0]+0.05])
-    plt.ylim([CDog[1]-0.05, CDog[1]+0.05])
-    plt.axis('equal')
-    plt.xlabel("Easting (m)")
-    plt.ylabel("Northing (m)")
-    plt.title(f"Distribution of CDOG position Guesses for {iterations} iterations")
-    plt.legend(loc = "upper right")
+    expected_std = np.sqrt(0.00103**2 * position_noise**2 + time_noise**2) * 1515
+    print('expected', expected_std)
+
+    #Plot points and contours
+    fig, ax = plt.subplots(figsize=(6, 6))
+
+    #Plot ellipses of expected standard deviation from input noise
+    for i in range(1,4):
+        ell = Ellipse(xy=(CDog[0], CDog[1]),
+                      width= expected_std * i * 2, height= expected_std * i * 2,
+                      angle=0, color='k', zorder=3)
+        ell.set_facecolor('none')
+        ax.add_artist(ell)
+
+    #Plot ellipses derived from covariance matrix of estimates
+    cov = np.cov(guess_arr[:,:2], rowvar=False)
+    eigval, eigvec = np.linalg.eig(cov)
+    angle = np.degrees(np.arctan2(eigvec[1, 0], eigvec[0, 0]))
+    w, h = np.sqrt(eigval) * 2
+    for i in range(1,4):
+        ell = Ellipse(xy=(CDog[0], CDog[1]), width = i*w, height = i*h, angle=angle,
+                      color='r', linewidth=2-i/2, zorder=3)
+        ell.set_facecolor('none')
+        ax.add_artist(ell)
+
+    #Scatter estimate points and C-DOG
+    ax.scatter(CDog[0], CDog[1], s=100, color="r", marker="x", zorder=2, label = "CDOG Position")
+    ax.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Guesses")
+    ax.set_xlim([CDog[0]-3.1*expected_std, CDog[0]+3.1*expected_std])
+    ax.set_ylim([CDog[1]-3.1*expected_std, CDog[1]+3.1*expected_std])
+    ax.set_xlabel("Easting (m)")
+    ax.set_ylabel("Northing (m)")
+    ax.set_title(f"Distribution of CDOG position Guesses for {iterations} iterations")
+    ax.legend(loc = "upper right")
     plt.show()
 
+    #Plot histogram of how far estimates are from C-DOG location
     dist_arr = np.linalg.norm(guess_arr-CDog, axis=1)*100
     plt.hist(dist_arr, bins=25, density=True)
     plt.title(f"Histogram of residual distance from {iterations} CDOG guesses")
@@ -120,16 +173,43 @@ def Consecutive_Geiger(iterations, n, sample_size, time_noise, position_noise):
     print(np.mean(guess_arr, axis=0) - CDog)
     print(np.linalg.norm(np.mean(guess_arr, axis=0) - CDog)*100)
 
-    plt.scatter(CDog[0], CDog[1], s=100, color="r", marker="x", zorder=2, label = "CDOG Position")
-    plt.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Guesses")
-    plt.xlim([CDog[0]-0.05, CDog[0]+0.05])
-    plt.ylim([CDog[1]-0.05, CDog[1]+0.05])
-    plt.xlabel("Easting (m)")
-    plt.ylabel("Northing (m)")
-    plt.title(f"Distribution of CDOG position Guesses for {iterations} iterations")
-    plt.legend(loc = "upper right")
+    expected_std = np.sqrt(0.00103**2 * position_noise**2 + time_noise**2) * 1515
+    print('expected', expected_std)
+
+    #Plot points and contours
+    fig, ax = plt.subplots(figsize=(6, 6))
+
+    #Plot ellipses of expected standard deviation from input noise
+    for i in range(1,4):
+        ell = Ellipse(xy=(CDog[0], CDog[1]),
+                      width= expected_std * i * 2, height= expected_std * i * 2,
+                      angle=0, color='k', zorder=3)
+        ell.set_facecolor('none')
+        ax.add_artist(ell)
+
+    #Plot ellipses derived from covariance matrix of estimates
+    cov = np.cov(guess_arr[:,:2], rowvar=False)
+    eigval, eigvec = np.linalg.eig(cov)
+    angle = np.degrees(np.arctan2(eigvec[1, 0], eigvec[0, 0]))
+    w, h = np.sqrt(eigval) * 2
+    for i in range(1,4):
+        ell = Ellipse(xy=(CDog[0], CDog[1]), width = i*w, height = i*h, angle=angle,
+                      color='r', linewidth=2-i/2, zorder=3)
+        ell.set_facecolor('none')
+        ax.add_artist(ell)
+
+    #Scatter estimate points and C-DOG
+    ax.scatter(CDog[0], CDog[1], s=100, color="r", marker="x", zorder=2, label = "CDOG Position")
+    ax.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Guesses")
+    ax.set_xlim([CDog[0]-3.1*expected_std, CDog[0]+3.1*expected_std])
+    ax.set_ylim([CDog[1]-3.1*expected_std, CDog[1]+3.1*expected_std])
+    ax.set_xlabel("Easting (m)")
+    ax.set_ylabel("Northing (m)")
+    ax.set_title(f"Distribution of CDOG position Guesses for {iterations} iterations")
+    ax.legend(loc = "upper right")
     plt.show()
 
+    #Plot histogram of how far estimates are from C-DOG location
     dist_arr = np.linalg.norm(guess_arr-CDog, axis=1)*100
     plt.hist(dist_arr, bins=25, density=True)
     plt.title(f"Histogram of residual distance from {iterations} CDOG guesses")
@@ -138,10 +218,5 @@ def Consecutive_Geiger(iterations, n, sample_size, time_noise, position_noise):
     plt.show()
 
 # Bayesian_Geiger(10000, 100, 2*10**-5, 2*10**-2)
-Sampled_Geiger(1000, 10000, 100, 2*10**-5, 2*10**-2)
+Sampled_Geiger(10000, 10000, 100, 2*10**-5, 2*10**-2)
 # Consecutive_Geiger(10, 10000, 1000, 2*10**-5, 2*10**-2)
-
-#Make new a function which creates a trajectory of 10000 points with noise in time and space
-#   Sample random sets of 100 points and run geiger's method
-#   Sample consecutive sets of 100 points and run geiger's method
-#       See how close the average final guess is from these 100 runs to the actual CDOG location

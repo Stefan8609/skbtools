@@ -64,7 +64,7 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     for i in range(1,4):
         ell = Ellipse(xy=(CDog[0], CDog[1]),
                       width= position_std * i * 2, height= position_std * i * 2,
-                      angle=45, color='k')
+                      angle=0, color='k')
         ell.set_facecolor('none')
         axes[0, 2].add_artist(ell)
     axes[0, 2].legend(loc="upper right")
