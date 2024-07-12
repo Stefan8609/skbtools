@@ -24,7 +24,7 @@ def  Bayesian_Geiger(iterations, n, time_noise, position_noise):
         transponder_coordinates_Found = findTransponder(GPS_Coordinates_iter, gps1_to_others, gps1_to_transponder)
 
         guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual,
-                                           transponder_coordinates_Found, time_noise)
+                                           transponder_coordinates_Found, time_noise)[:2]
 
         guess_arr[i] = guess
 
@@ -64,7 +64,7 @@ def Sampled_Geiger(iterations, n, sample_size, time_noise, position_noise):
         transponder_coordinates_Actual_iter = transponder_coordinates_Actual[indices]
         transponder_coordinates_Found = findTransponder(GPS_Coordinates_iter, gps1_to_others, gps1_to_transponder)
         guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual_iter,
-                                           transponder_coordinates_Found, time_noise)
+                                           transponder_coordinates_Found, time_noise)[:2]
         guess_arr[i] = guess
 
     print(np.mean(guess_arr, axis=0))
@@ -107,7 +107,7 @@ def Consecutive_Geiger(iterations, n, sample_size, time_noise, position_noise):
         transponder_coordinates_Actual_iter = transponder_coordinates_Actual[indices]
         transponder_coordinates_Found = findTransponder(GPS_Coordinates_iter, gps1_to_others, gps1_to_transponder)
         guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual_iter,
-                                           transponder_coordinates_Found, time_noise)
+                                           transponder_coordinates_Found, time_noise)[:2]
         guess_arr[i] = guess
 
         # plt.scatter(GPS_Coordinates_iter[:, 0, 0], GPS_Coordinates_iter[:, 0, 1], color='b')
@@ -138,8 +138,8 @@ def Consecutive_Geiger(iterations, n, sample_size, time_noise, position_noise):
     plt.show()
 
 # Bayesian_Geiger(10000, 100, 2*10**-5, 2*10**-2)
-# Sampled_Geiger(10000, 10000, 100, 2*10**-5, 2*10**-2)
-Consecutive_Geiger(10, 10000, 1000, 2*10**-5, 2*10**-2)
+Sampled_Geiger(1000, 10000, 100, 2*10**-5, 2*10**-2)
+# Consecutive_Geiger(10, 10000, 1000, 2*10**-5, 2*10**-2)
 
 #Make new a function which creates a trajectory of 10000 points with noise in time and space
 #   Sample random sets of 100 points and run geiger's method

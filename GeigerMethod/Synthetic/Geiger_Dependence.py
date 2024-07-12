@@ -1,12 +1,3 @@
-#TO DO: Add standard deviation points to plot, and error std to plot
-#Make 4 plot with sections for each inclusion of error: make error a part of the geiger's method module
-    #Make the plot modular with input noise too
-#Plot observed uncertainty versus noise added
-#Plot RMS contour plot
-#Run 100 times to get statistical analysis of it
-
-from advancedGeigerMethod import geigersMethod, generateCross
-
 import numpy as np
 import matplotlib.pyplot as plt
 import random
@@ -22,7 +13,7 @@ def time_dependence(n):
 
         transponder_coordinates_Found = transponder_coordinates_Actual
 
-        guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, noise)
+        guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, noise)[:2]
 
         times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
 
@@ -31,11 +22,16 @@ def time_dependence(n):
 
         noise_arr.append(std_diff)
 
+    #Plot y=x line
+    x = np.logspace(-5.5, -.5, 100)
+    plt.plot(x, x, color='k')
+
     plt.scatter(np.logspace(-5, -1, 25), noise_arr)
     plt.xscale('log')
     plt.yscale('log')
+    plt.xlim([10**-5.1, .09])
     plt.xlabel('Input Time Noise')
-    plt.ylabel('Derived Uncertainty in Guess Position')
+    plt.ylabel('Derived Uncertainty in Estimation Position')
     plt.show()
 
 def spatial_dependence(n):
@@ -48,7 +44,7 @@ def spatial_dependence(n):
         transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
 
         guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual,
-                                           transponder_coordinates_Found, 0)
+                                           transponder_coordinates_Found, 0)[:2]
 
         times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
 
@@ -57,11 +53,17 @@ def spatial_dependence(n):
 
         noise_arr.append(std_diff)
 
+    #Find and plot regression line
+    m,b = np.polyfit(np.logspace(-3, 0, 25), noise_arr, deg=1)
+    x = np.logspace(-3, 0, 25)
+    plt.plot(x, x*m, color='k')
+    print(f"Slope = {np.round(m,5)} and intercept = {np.round(b,5)}")
+
     plt.scatter(np.logspace(-3, 0, 25), noise_arr)
     plt.xscale('log')
     plt.yscale('log')
     plt.xlabel('Input GPS Noise')
-    plt.ylabel('Derived Uncertainty in Guess Position')
+    plt.ylabel('Derived Uncertainty in Estimation Position')
     plt.show()
 
 def point_dependence(time_noise, position_noise):
@@ -75,7 +77,7 @@ def point_dependence(time_noise, position_noise):
         transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
 
         guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual,
-                                           transponder_coordinates_Found, time_noise)
+                                           transponder_coordinates_Found, time_noise)[:2]
 
         times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
 
@@ -87,18 +89,13 @@ def point_dependence(time_noise, position_noise):
     plt.scatter(np.logspace(1, 5, 25), point_arr)
     plt.xscale('log')
     plt.xlabel('Number of Points')
-    plt.ylabel('Derived Uncertainty in Guess Position')
+    plt.ylabel('Derived Uncertainty in Estimation Position')
     plt.ylim([0, (time_noise + position_noise/1515) * 1.1 ])
     plt.axhline(time_noise, color='y', label=f"Time Noise: {time_noise*1000} ms")
     plt.axhline(position_noise/1515, color='r', label=f"Position Noise: {position_noise*100} cm")
     plt.axhline(time_noise + position_noise/1515, color='b', label="Time and Position Noise")
     plt.legend(loc = "lower right")
     plt.show()
-
-
-"""
-Add in the expected contours for the noise using black lines overlapping for combined dependence
-"""
 
 def combined_dependence(n):
     space_axis = np.linspace(2*10**-2, 2*10**-1, 50)
@@ -124,6 +121,17 @@ def combined_dependence(n):
             diff_data = times_calc - times_known
             std_diff = np.std(diff_data)
             Z[j, i] = std_diff
+
+    #Plot expected uncertainty contours -> code inspired by matplotlib documentation
+    Z_exp = np.sqrt(0.00103**2*np.square(X) + np.square(Y))
+    class nf(float):
+        def __repr__(self):
+            s = f'{self:.1f}'
+            return f'{self:.0f}' if s[-1] == '0' else s
+
+    CS = plt.contour(X*100, Y*1000, Z_exp*1515*100, colors="k")
+    CS.levels = [nf(val) for val in CS.levels]
+    plt.clabel(CS, CS.levels, inline=True, fontsize=10)
 
     plt.contourf(X*100, Y*1000, Z*1515*100)
     cbar = plt.colorbar()
