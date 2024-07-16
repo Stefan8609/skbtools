@@ -24,14 +24,15 @@ def time_dependence(n):
 
     #Plot y=x line
     x = np.logspace(-5.5, -.5, 100)
-    plt.plot(x, x, color='k')
+    plt.plot(x, x, color='k', label="Line y=x")
 
-    plt.scatter(np.logspace(-5, -1, 25), noise_arr)
+    plt.scatter(np.logspace(-5, -1, 25), noise_arr, label="Observed Noise")
     plt.xscale('log')
     plt.yscale('log')
     plt.xlim([10**-5.1, .09])
     plt.xlabel('Input Time Noise')
     plt.ylabel('Derived Uncertainty in Estimation Position')
+    plt.legend()
     plt.show()
 
 def spatial_dependence(n):
@@ -56,14 +57,15 @@ def spatial_dependence(n):
     #Find and plot regression line
     m,b = np.polyfit(np.logspace(-3, 0, 25), noise_arr, deg=1)
     x = np.logspace(-3, 0, 25)
-    plt.plot(x, x*m, color='k')
+    plt.plot(x, x*m, color='k', label=f"Line y={np.round(m,5)}*x")
     print(f"Slope = {np.round(m,5)} and intercept = {np.round(b,5)}")
 
-    plt.scatter(np.logspace(-3, 0, 25), noise_arr)
+    plt.scatter(np.logspace(-3, 0, 25), noise_arr, label="Observed Noise")
     plt.xscale('log')
     plt.yscale('log')
     plt.xlabel('Input GPS Noise')
     plt.ylabel('Derived Uncertainty in Estimation Position')
+    plt.legend()
     plt.show()
 
 def point_dependence(time_noise, position_noise):
@@ -136,8 +138,7 @@ def combined_dependence(n):
     plt.title("Combined dependence of GPS position and C-DOG time noise")
     plt.show()
 
-
-# time_dependence(1000)
-# spatial_dependence(1000)
+time_dependence(1000)
+spatial_dependence(1000)
 # point_dependence(2*10**-5, 2*10**-2)
 combined_dependence(1000)

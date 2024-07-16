@@ -3,10 +3,7 @@ File to use Bayesian Analysis to find the Posterior distribution of the CDOG est
 
 Prior is a uniform distribution between -10000 to 10000 in x,y and -4000 to -6000 in z.
 Sampled likelihood found using Gauss-Newton Inversion
-
-Need to plot the 1,2,3 std of the posterior distribution.
 """
-
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -32,7 +29,7 @@ def Bayesian_Geiger(iterations, n, time_noise, position_noise):
     print(np.mean(guess_arr, axis=0))
     print(CDog)
     print(np.mean(guess_arr, axis=0) - CDog)
-    print(np.linalg.norm(np.mean(guess_arr, axis=0) - CDog)*100)
+    print(np.linalg.norm(np.mean(guess_arr, axis=0) - CDog)*100, "cm")
 
     expected_std = np.sqrt(0.00103**2 * position_noise**2 + time_noise**2) * 1515
     print('expected', expected_std)
@@ -60,7 +57,7 @@ def Bayesian_Geiger(iterations, n, time_noise, position_noise):
         ax.add_artist(ell)
 
     #Scatter estimate points and C-DOG
-    ax.scatter(CDog[0], CDog[1], s=100, color="r", marker="x", zorder=2, label = "CDOG Position")
+    ax.scatter(CDog[0], CDog[1], s=100, color="r", marker="o", zorder=2, label = "CDOG Position")
     ax.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Guesses")
     ax.set_xlim([CDog[0]-3.1*expected_std, CDog[0]+3.1*expected_std])
     ax.set_ylim([CDog[1]-3.1*expected_std, CDog[1]+3.1*expected_std])
@@ -97,7 +94,7 @@ def Sampled_Geiger(iterations, n, sample_size, time_noise, position_noise):
     print(np.mean(guess_arr, axis=0))
     print(CDog)
     print(np.mean(guess_arr, axis=0) - CDog)
-    print(np.linalg.norm(np.mean(guess_arr, axis=0) - CDog)*100)
+    print(np.linalg.norm(np.mean(guess_arr, axis=0) - CDog)*100, 'cm')
 
     expected_std = np.sqrt(0.00103**2 * position_noise**2 + time_noise**2) * 1515
     print('expected', expected_std)
@@ -125,7 +122,7 @@ def Sampled_Geiger(iterations, n, sample_size, time_noise, position_noise):
         ax.add_artist(ell)
 
     #Scatter estimate points and C-DOG
-    ax.scatter(CDog[0], CDog[1], s=100, color="r", marker="x", zorder=2, label = "CDOG Position")
+    ax.scatter(CDog[0], CDog[1], s=100, color="r", marker="o", zorder=2, label = "CDOG Position")
     ax.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Guesses")
     ax.set_xlim([CDog[0]-3.1*expected_std, CDog[0]+3.1*expected_std])
     ax.set_ylim([CDog[1]-3.1*expected_std, CDog[1]+3.1*expected_std])
@@ -171,7 +168,7 @@ def Consecutive_Geiger(iterations, n, sample_size, time_noise, position_noise):
     print(np.mean(guess_arr, axis=0))
     print(CDog)
     print(np.mean(guess_arr, axis=0) - CDog)
-    print(np.linalg.norm(np.mean(guess_arr, axis=0) - CDog)*100)
+    print(np.linalg.norm(np.mean(guess_arr, axis=0) - CDog)*100, 'cm')
 
     expected_std = np.sqrt(0.00103**2 * position_noise**2 + time_noise**2) * 1515
     print('expected', expected_std)
@@ -199,7 +196,7 @@ def Consecutive_Geiger(iterations, n, sample_size, time_noise, position_noise):
         ax.add_artist(ell)
 
     #Scatter estimate points and C-DOG
-    ax.scatter(CDog[0], CDog[1], s=100, color="r", marker="x", zorder=2, label = "CDOG Position")
+    ax.scatter(CDog[0], CDog[1], s=100, color="r", marker="o", zorder=2, label = "CDOG Position")
     ax.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Guesses")
     ax.set_xlim([CDog[0]-3.1*expected_std, CDog[0]+3.1*expected_std])
     ax.set_ylim([CDog[1]-3.1*expected_std, CDog[1]+3.1*expected_std])

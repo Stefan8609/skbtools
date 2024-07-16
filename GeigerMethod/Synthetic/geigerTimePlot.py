@@ -4,7 +4,6 @@ import numpy as np
 from advancedGeigerMethod import geigersMethod, calculateTimes, calculateTimesRayTracing
 from scipy.stats import norm
 
-
 def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual, transponder_coordinates_Found,
                    gps1_to_transponder, sound_velocity, depth, time_noise, position_noise, lever=[None,None,None], sim = 0):
     if not lever[0]:
@@ -55,10 +54,10 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     axes[0, 1].legend(loc="upper right")
     axes[0, 1].axis("equal")
 
-    axes[0, 2].scatter(CDog[0], CDog[1], s=50, marker="x", color="k", label="C-DOG")
-    axes[0, 2].scatter(guess[0], guess[1], s=50, marker="o", color="r", label="Final Estimate")
-    axes[0, 2].scatter(initial_guess[0], initial_guess[1], s=50, marker="o", color="g", label="Initial Guess")
-    axes[0, 2].scatter(estimate_arr[:,0], estimate_arr[:,1], s=50, marker="o", color="b", label="Estimate Iterations")
+    axes[0, 2].scatter(CDog[0], CDog[1], s=50, marker="x", color="k", zorder=3, label="C-DOG")
+    axes[0, 2].scatter(guess[0], guess[1], s=50, marker="o", color="r", zorder=4, label="Final Estimate")
+    axes[0, 2].scatter(initial_guess[0], initial_guess[1], s=50, marker="o", color="g", zorder=1, label="Initial Guess")
+    axes[0, 2].scatter(estimate_arr[:,0], estimate_arr[:,1], s=50, marker="o", color="b", zorder=2, label="Estimate Iterations")
     axes[0, 2].set_xlim(CDog[0]-(3.1*position_std), CDog[0]+(3.1*position_std))
     axes[0, 2].set_ylim(CDog[1]-(3.1*position_std), CDog[1]+(3.1*position_std))
     for i in range(1,4):
