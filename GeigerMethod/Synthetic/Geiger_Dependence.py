@@ -138,7 +138,7 @@ def combined_dependence(n):
     plt.title("Combined dependence of GPS position and C-DOG time noise")
     plt.show()
 
-time_dependence(1000)
-spatial_dependence(1000)
+# time_dependence(1000)
+# spatial_dependence(1000)
 # point_dependence(2*10**-5, 2*10**-2)
 combined_dependence(1000)

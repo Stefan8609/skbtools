@@ -9,13 +9,13 @@ def fourPlot(n, time_noise, position_noise):
     initial_guess = [-10000, 5000, -4000]
 
     #Run 1 - No noise:
-    guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Actual, 0)
+    guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Actual, 0)[:2]
     times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Actual)[0]
     diff_data1 = times_calc - times_known
     mu1, std1 = norm.fit(diff_data1 * 1000)
 
     #Run 2 - Time noise only:
-    guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Actual, time_noise)
+    guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Actual, time_noise)[:2]
     times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Actual)[0]
     diff_data2 = times_calc - times_known
     mu2, std2 = norm.fit(diff_data2 * 1000)
@@ -23,13 +23,13 @@ def fourPlot(n, time_noise, position_noise):
     #Run 3 - Position noise only:
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
     transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
-    guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, 0)
+    guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, 0)[:2]
     times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
     diff_data3 = times_calc - times_known
     mu3, std3 = norm.fit(diff_data3 * 1000)
 
     #Run 4 - Position and Time noise
-    guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, time_noise)
+    guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, time_noise)[:2]
     times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
     diff_data4 = times_calc - times_known
     mu4, std4 = norm.fit(diff_data4 * 1000)

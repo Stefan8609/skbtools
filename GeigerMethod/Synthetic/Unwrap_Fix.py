@@ -34,8 +34,8 @@ def index_data(offset, data_DOG, GPS_time, travel_times, transponder_coordinates
 
 #MOST RECENT ATTEMPTS AT SOMETHING NEW - something needs to be fixed here
 
-    # data_DOG = np.delete(data_DOG, np.where(acoustic_DOG < 0.01)[0], axis=0)
-    # acoustic_DOG = np.delete(acoustic_DOG, np.where(acoustic_DOG < 0.01)[0], axis=0)
+    # data_DOG = np.delete(data_DOG, np.where(acoustic_DOG % 1 < 0.01)[0], axis=0)
+    # acoustic_DOG = np.delete(acoustic_DOG, np.where(acoustic_DOG % 1 < 0.01)[0], axis=0)
     # data_DOG = np.delete(data_DOG, np.where(acoustic_DOG % 1 > 0.99), axis=0)
     # acoustic_DOG = np.delete(acoustic_DOG, np.where(acoustic_DOG % 1 > 0.99), axis=0)
     #
@@ -222,6 +222,7 @@ if __name__ == "__main__":
     full_times, dog_data, GPS_data, transponder_data, offset = align(data_DOG, GPS_time, travel_times, transponder_coordinates)
 
     print(np.sqrt(np.nanmean((dog_data - GPS_data) ** 2)) * 100, "cm")
+    print(offset)
 
 
 # sio.savemat("../../GPSData/Aligned_Synthetic.mat", {"full_times": full_times, "dog_data": dog_data, "GPS_data": GPS_data})

@@ -131,7 +131,6 @@ def geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time):
             k+=1
 
         #Update based on new guess
-
         iterations +=1
     return guess
 
@@ -141,11 +140,9 @@ guess = np.array([-1975.9094551, 4484.73551826, -2007.85148619])
 #Not converging when guess too far (prob some errors somewhere)
     #If it is hitting local min that would be sad :(
 
-
 new_guess = geigersMethod(guess, transponder_coordinates, data_DOG, GPS_time)
 
 # new_guess = geigersMethod(new_guess, transponder_coordinates, data_DOG, GPS_time)
-
 
 print(new_guess)
 print(CDOG)

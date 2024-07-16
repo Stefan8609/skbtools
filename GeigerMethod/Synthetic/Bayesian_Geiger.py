@@ -58,19 +58,19 @@ def Bayesian_Geiger(iterations, n, time_noise, position_noise):
 
     #Scatter estimate points and C-DOG
     ax.scatter(CDog[0], CDog[1], s=100, color="r", marker="o", zorder=2, label = "CDOG Position")
-    ax.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Guesses")
+    ax.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Position Estimates")
     ax.set_xlim([CDog[0]-3.1*expected_std, CDog[0]+3.1*expected_std])
     ax.set_ylim([CDog[1]-3.1*expected_std, CDog[1]+3.1*expected_std])
     ax.set_xlabel("Easting (m)")
     ax.set_ylabel("Northing (m)")
-    ax.set_title(f"Distribution of CDOG position Guesses for {iterations} iterations")
+    ax.set_title(f"Distribution of CDOG position estimates for {iterations} iterations")
     ax.legend(loc = "upper right")
     plt.show()
 
     #Plot histogram of how far estimates are from C-DOG location
     dist_arr = np.linalg.norm(guess_arr-CDog, axis=1)*100
     plt.hist(dist_arr, bins=25, density=True)
-    plt.title(f"Histogram of residual distance from {iterations} CDOG guesses")
+    plt.title(f"Histogram of residual distance from {iterations} CDOG position estimates")
     plt.xlabel("Distance from guess to CDOG (cm)")
     plt.ylabel("Distribution")
     plt.show()
@@ -123,19 +123,19 @@ def Sampled_Geiger(iterations, n, sample_size, time_noise, position_noise):
 
     #Scatter estimate points and C-DOG
     ax.scatter(CDog[0], CDog[1], s=100, color="r", marker="o", zorder=2, label = "CDOG Position")
-    ax.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Guesses")
+    ax.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Position Estimates")
     ax.set_xlim([CDog[0]-3.1*expected_std, CDog[0]+3.1*expected_std])
     ax.set_ylim([CDog[1]-3.1*expected_std, CDog[1]+3.1*expected_std])
     ax.set_xlabel("Easting (m)")
     ax.set_ylabel("Northing (m)")
-    ax.set_title(f"Distribution of CDOG position Guesses for {iterations} iterations")
+    ax.set_title(f"Distribution of CDOG position estimates for {iterations} iterations")
     ax.legend(loc = "upper right")
     plt.show()
 
     #Plot histogram of how far estimates are from C-DOG location
     dist_arr = np.linalg.norm(guess_arr-CDog, axis=1)*100
     plt.hist(dist_arr, bins=25, density=True)
-    plt.title(f"Histogram of residual distance from {iterations} CDOG guesses")
+    plt.title(f"Histogram of residual distance from {iterations} CDOG position estimates")
     plt.xlabel("Distance from guess to CDOG (cm)")
     plt.ylabel("Distribution")
     plt.show()
@@ -197,19 +197,19 @@ def Consecutive_Geiger(iterations, n, sample_size, time_noise, position_noise):
 
     #Scatter estimate points and C-DOG
     ax.scatter(CDog[0], CDog[1], s=100, color="r", marker="o", zorder=2, label = "CDOG Position")
-    ax.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Guesses")
+    ax.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Position Estimates")
     ax.set_xlim([CDog[0]-3.1*expected_std, CDog[0]+3.1*expected_std])
     ax.set_ylim([CDog[1]-3.1*expected_std, CDog[1]+3.1*expected_std])
     ax.set_xlabel("Easting (m)")
     ax.set_ylabel("Northing (m)")
-    ax.set_title(f"Distribution of CDOG position Guesses for {iterations} iterations")
+    ax.set_title(f"Distribution of CDOG position estimates for {iterations} iterations")
     ax.legend(loc = "upper right")
     plt.show()
 
     #Plot histogram of how far estimates are from C-DOG location
     dist_arr = np.linalg.norm(guess_arr-CDog, axis=1)*100
     plt.hist(dist_arr, bins=25, density=True)
-    plt.title(f"Histogram of residual distance from {iterations} CDOG guesses")
+    plt.title(f"Histogram of residual distance from {iterations} CDOG position estimates")
     plt.xlabel("Distance from guess to CDOG (cm)")
     plt.ylabel("Distribution")
     plt.show()
