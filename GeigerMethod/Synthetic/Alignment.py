@@ -105,10 +105,31 @@ travel_times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates)
 
 # Obtain offset
 offset = find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates)
+print(offset)
 
 full_times, CDOG_full, GPS_full, transponder_full = index_data(offset, CDOG_data, GPS_data,
                                                                travel_times, transponder_coordinates)
 
-plt.scatter(full_times, CDOG_full, s=1)
+abs_diff = np.abs(CDOG_full - GPS_full)
+indices = np.where(abs_diff >= 0.9)
+CDOG_full[indices] += np.round(GPS_full[indices] - CDOG_full[indices])
+
+plt.scatter(full_times, CDOG_full, s=5, marker='x')
 plt.scatter(full_times, GPS_full, s=1)
 plt.show()
+
+print(np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100, "cm")
+
+full_times, CDOG_full, GPS_full, transponder_full = index_data(1200, CDOG_data, GPS_data,
+                                                               travel_times, transponder_coordinates)
+
+abs_diff = np.abs(CDOG_full - GPS_full)
+indices = np.where(abs_diff >= 0.9)
+CDOG_full[indices] += np.round(GPS_full[indices] - CDOG_full[indices])
+print(np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100, "cm")
+
+"""
+Occationally getting offset wrong by 1 - I believe to be an issue with indexing (removing points
+    might misaline by 1 sometimes because its not able to index or find a better solution cause important points
+    are missing) - RMSE is still the best when the offset is absolutely correct
+"""
