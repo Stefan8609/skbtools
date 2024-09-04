@@ -6,14 +6,7 @@ This is a version of the time alignment script that generates a trajectory that 
 import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
-from RigidBodyMovementProblem import findRotationAndDisplacement
 from advancedGeigerMethod import find_esv, findTransponder, calculateTimesRayTracing, generateRealistic
-
-#Load in the ray-tracing table
-esv_table = sio.loadmat('../../GPSData/global_table_esv.mat')
-dz_array = esv_table['distance'].flatten()
-angle_array = esv_table['angle'].flatten()
-esv_matrix = esv_table['matrice']
 
 CDOG, GPS_Coordinates, transponder_coordinates, gps1_to_others, gps1_to_transponder = generateRealistic(20000)
 
