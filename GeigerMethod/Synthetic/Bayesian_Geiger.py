@@ -31,6 +31,8 @@ def Bayesian_Geiger(iterations, n, time_noise, position_noise):
     print(np.mean(guess_arr, axis=0) - CDog)
     print(np.linalg.norm(np.mean(guess_arr, axis=0) - CDog)*100, "cm")
 
+    print("std", np.std((guess_arr - CDog) * 100), 'cm')
+
     expected_std = np.sqrt(0.00103**2 * position_noise**2 + time_noise**2) * 1515
     print('expected', expected_std)
 
@@ -95,6 +97,8 @@ def Sampled_Geiger(iterations, n, sample_size, time_noise, position_noise):
     print(CDog)
     print(np.mean(guess_arr, axis=0) - CDog)
     print(np.linalg.norm(np.mean(guess_arr, axis=0) - CDog)*100, 'cm')
+    print("std", np.std((guess_arr - CDog) * 100), 'cm')
+
 
     expected_std = np.sqrt(0.00103**2 * position_noise**2 + time_noise**2) * 1515
     print('expected', expected_std)
