@@ -14,7 +14,7 @@ GPS_time = np.arange(len(GPS_Coordinates))
 
 true_travel_times, true_esv = calculateTimesRayTracing(CDOG, transponder_coordinates)
 
-offset = 5605.49
+offset = 5605
 CDOG_time = GPS_time + true_travel_times + np.random.normal(0,2*10**-5, len(GPS_time)) + offset
 CDOG_remain, CDOG_int = np.modf(CDOG_time)
 
@@ -39,8 +39,9 @@ for i in range(10):
 
 mat_unwrap = np.unwrap(CDOG_mat[:,1] * 2 * np.pi) / (2*np.pi)  #Numpy page describes how unwrap works
 
-#Save the synthetic to a matlabfile
+#Save the CDOG to a matlabfile
 sio.savemat("../../GPSData/Realistic_CDOG_noise_subint_new.mat", {"tags":CDOG_mat})
+sio.savemat("../../GPSData/Realistic_CDOG_loc_noise_subint_new.mat", {'xyz':CDOG})
 
 #Save transponder + GPS data
 sio.savemat("../../GPSData/Realistic_transponder_noise_subint_new.mat", {"time":GPS_time, "xyz": transponder_coordinates})
