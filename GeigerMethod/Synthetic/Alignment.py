@@ -18,8 +18,8 @@ def index_data(offset, CDOG_data, GPS_data, travel_times, transponder_coordinate
     CDOG_travel_times = CDOG_unwrap + travel_times[0] - CDOG_unwrap[0]
 
     # Format CDOG and GPS times to the closest integer below
-    CDOG_times = np.floor(CDOG_data[:,0] + CDOG_data[:,1] - offset)
-    GPS_times = np.floor(GPS_data + travel_times)
+    CDOG_times = np.round(CDOG_data[:,0] + CDOG_data[:,1] - offset)
+    GPS_times = np.round(GPS_data + travel_times)
 
     # Get unique times and corresponding acoustic data for DOG
     unique_CDOG_times, CDOG_indices = np.unique(CDOG_times, return_index=True)
@@ -132,4 +132,25 @@ print(np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100, "cm")
 Occationally getting offset wrong by 1 - I believe to be an issue with indexing (removing points
     might misaline by 1 sometimes because its not able to index or find a better solution cause important points
     are missing) - RMSE is still the best when the offset is absolutely correct
+    
+    Maybe round is better than floor?
 """
+
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 9))
+
+"""Make the bottom plot for 3 std around mean (say in paper that we plot 99% of data)"""
+
+ax1.scatter(full_times, CDOG_full, s=10, marker="x", label="Unwrapped/Adjusted Synthetic Dog Travel Time")
+ax1.scatter(full_times, GPS_full, s=1, marker="o", label="Calculated GPS Travel Times")
+ax1.legend(loc="upper right")
+ax1.set_xlabel("Arrivals in Absolute Time (s)")
+ax1.set_ylabel("Travel Times (s)")
+ax1.set_title(f"Synthetic travel times with offset: {offset}")
+
+diff_data = CDOG_full - GPS_full
+ax2.scatter(full_times, diff_data, s=1)
+ax2.set_xlabel("Absolute Time (s)")
+ax2.set_ylabel("Difference between calculated and unwrapped times (s)")
+ax2.set_title("Residual Plot")
+
+plt.show()
