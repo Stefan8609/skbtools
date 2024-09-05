@@ -58,13 +58,14 @@ def index_data(offset, CDOG_data, GPS_data, travel_times, transponder_coordinate
 
     return full_times, CDOG_full, GPS_full, transponder_full
 
-def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates):
+def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, start=0):
     # Set initial parameters
-    offset = 0
+    offset = start
+    err_int = 1000
+
     k = 0
     lag = np.inf
-
-    # Loop through
+        # Loop through
     while lag != 0 and k<10:
         # Get indexed data according to offset
         CDOG_full, GPS_full = index_data(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates)[1:3]
@@ -81,6 +82,27 @@ def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates):
         # Adjust the offset by the optimal lag
         offset+=lag
         k+=1
+
+        # Conditional check to make prevent false positives
+        if offset < 0:
+            offset = err_int
+            err_int += 500
+            lag = np.inf
+
+    # Conditional check to check if resulting value is reasonable (and to make sure no stack overflows)
+    if start > 20000:
+        print("Error - No true offset found")
+        return 0
+
+    CDOG_full, GPS_full = index_data(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates)[1:3]
+    abs_diff = np.abs(CDOG_full - GPS_full)
+    indices = np.where(abs_diff >= 0.9)
+    CDOG_full[indices] += np.round(GPS_full[indices] - CDOG_full[indices])
+    if np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100 > 5000:
+        print(offset, np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100)
+        start += 1000
+        return find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, start)
+
     return offset
 
 if __name__ == "__main__":
@@ -135,6 +157,9 @@ if __name__ == "__main__":
         Maybe round is better than floor? Sometimes one point is really far off raising residuals
             This is probably a situation where the sub-int is a gonna freak out (maybe find a way to remove)
             We can empirically tell this point is wrong so removal is not bad
+            
+    Investigate using cubic spline for interpolation then using the algorithm to find alignment
+        May remove issues with missing data points?
     """
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 9))

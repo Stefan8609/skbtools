@@ -2,7 +2,15 @@
 Module to test alignment with a bunch of randomly generated trajectories to see
     if there are any cases where the alignment function fails for integer offsets
 
-    Generally Seems to fail with large offsets - maybe %25 fail rate
+This is really promising - Next steps
+    1) Do gauss-newton inversion (with best integer offset for each run)
+        See if integer offset is able to isolate towards inversion
+        Kinda like a coarse test to get in the correct region
+    2) Once guess is close, start implementing a sub-integer offset and re-run Gauss-Newton
+        a finer test
+    3) If this process seems to work - start sending in the simulated annealing algorithm
+        (prob just start with best guess of lever for coarse testing as well and then isolate down
+            as the testing continues)
 """
 
 import numpy as np
@@ -15,7 +23,7 @@ def alignment_testing(iter, n, position_noise):
     # Loop the number of desired iterations
     for i in range(iter):
         # Generate a random offset
-        true_offset = np.random.randint(3000, 5000)
+        true_offset = np.random.rand() * 10000
 
         # Generate the arrival time series for the generated offset (aswell as GPS Coordinates)
         CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(n, true_offset)
@@ -49,7 +57,7 @@ def alignment_testing(iter, n, position_noise):
         print("True RMSE:", RMSE_true, "cm", "\nDerived RMSE:", RMSE_derived, "cm\n")
 
         # If derived offset is different from true offset plot both
-        if RMSE_true != RMSE_derived:
+        if abs(offset - true_offset) > 1:
             fig, axes = plt.subplots(2, 2, figsize=(15, 8))
 
             axes[0, 0].scatter(full_times_true, CDOG_full_true, s=10, marker="x", label="Unwrapped/Adjusted Synthetic Dog Travel Time")
