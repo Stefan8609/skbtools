@@ -81,76 +81,77 @@ def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates):
         # Adjust the offset by the optimal lag
         offset+=lag
         k+=1
-        print(offset)
     return offset
 
+if __name__ == "__main__":
+    CDOG = sio.loadmat('../../GPSData/Realistic_CDOG_loc_noise_subint_new.mat')['xyz'][0].astype(float)
+    CDOG_data = sio.loadmat('../../GPSData/Realistic_CDOG_noise_subint_new.mat')['tags'].astype(float)
+    # transponder_coordinates = sio.loadmat('../../GPSData/Realistic_transponder_noise_subint_new.mat')['xyz'].astype(float)
+    GPS_data = sio.loadmat('../../GPSData/Realistic_GPS_noise_subint_new.mat')['time'][0].astype(float)
+    GPS_Coordinates = sio.loadmat('../../GPSData/Realistic_GPS_noise_subint_new.mat')['xyz'].astype(float)
 
-CDOG = sio.loadmat('../../GPSData/Realistic_CDOG_loc_noise_subint_new.mat')['xyz'][0].astype(float)
-CDOG_data = sio.loadmat('../../GPSData/Realistic_CDOG_noise_subint_new.mat')['tags'].astype(float)
-# transponder_coordinates = sio.loadmat('../../GPSData/Realistic_transponder_noise_subint_new.mat')['xyz'].astype(float)
-GPS_data = sio.loadmat('../../GPSData/Realistic_GPS_noise_subint_new.mat')['time'][0].astype(float)
-GPS_Coordinates = sio.loadmat('../../GPSData/Realistic_GPS_noise_subint_new.mat')['xyz'].astype(float)
+    # Add noise to GPS Coordinates
+    position_noise = 2*10**-2
+    GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 
-# Add noise to GPS Coordinates
-position_noise = 2*10**-2
-GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
+    # Find transponder coordinates from noisy GPS
+    gps1_to_others = np.array([[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64)
+    gps1_to_transponder = np.array([-10, 3, -15], dtype=np.float64)
+    transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
 
-# Find transponder coordinates from noisy GPS
-gps1_to_others = np.array([[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64)
-gps1_to_transponder = np.array([-10, 3, -15], dtype=np.float64)
-transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
+    # Calculate travel times given noise in GPS position
+    travel_times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates)
 
-# Calculate travel times given noise in GPS position
-travel_times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates)
+    # Obtain offset
+    offset = find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates)
+    print(offset)
 
-# Obtain offset
-offset = find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates)
-print(offset)
+    full_times, CDOG_full, GPS_full, transponder_full = index_data(offset, CDOG_data, GPS_data,
+                                                                   travel_times, transponder_coordinates)
 
-full_times, CDOG_full, GPS_full, transponder_full = index_data(offset, CDOG_data, GPS_data,
-                                                               travel_times, transponder_coordinates)
+    abs_diff = np.abs(CDOG_full - GPS_full)
+    indices = np.where(abs_diff >= 0.9)
+    CDOG_full[indices] += np.round(GPS_full[indices] - CDOG_full[indices])
 
-abs_diff = np.abs(CDOG_full - GPS_full)
-indices = np.where(abs_diff >= 0.9)
-CDOG_full[indices] += np.round(GPS_full[indices] - CDOG_full[indices])
+    plt.scatter(full_times, CDOG_full, s=5, marker='x')
+    plt.scatter(full_times, GPS_full, s=1)
+    plt.show()
 
-plt.scatter(full_times, CDOG_full, s=5, marker='x')
-plt.scatter(full_times, GPS_full, s=1)
-plt.show()
+    print(np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100, "cm")
 
-print(np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100, "cm")
+    full_times, CDOG_full, GPS_full, transponder_full = index_data(1200, CDOG_data, GPS_data,
+                                                                   travel_times, transponder_coordinates)
 
-full_times, CDOG_full, GPS_full, transponder_full = index_data(1200, CDOG_data, GPS_data,
-                                                               travel_times, transponder_coordinates)
+    abs_diff = np.abs(CDOG_full - GPS_full)
+    indices = np.where(abs_diff >= 0.9)
+    CDOG_full[indices] += np.round(GPS_full[indices] - CDOG_full[indices])
+    print(np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100, "cm")
 
-abs_diff = np.abs(CDOG_full - GPS_full)
-indices = np.where(abs_diff >= 0.9)
-CDOG_full[indices] += np.round(GPS_full[indices] - CDOG_full[indices])
-print(np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100, "cm")
+    """
+    Occationally getting offset wrong by 1 - I believe to be an issue with indexing (removing points
+        might misaline by 1 sometimes because its not able to index or find a better solution cause important points
+        are missing) - RMSE is still the best when the offset is absolutely correct
+        
+        Maybe round is better than floor? Sometimes one point is really far off raising residuals
+            This is probably a situation where the sub-int is a gonna freak out (maybe find a way to remove)
+            We can empirically tell this point is wrong so removal is not bad
+    """
 
-"""
-Occationally getting offset wrong by 1 - I believe to be an issue with indexing (removing points
-    might misaline by 1 sometimes because its not able to index or find a better solution cause important points
-    are missing) - RMSE is still the best when the offset is absolutely correct
-    
-    Maybe round is better than floor?
-"""
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 9))
 
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 9))
+    """Make the bottom plot for 3 std around mean (say in paper that we plot 99% of data)"""
 
-"""Make the bottom plot for 3 std around mean (say in paper that we plot 99% of data)"""
+    ax1.scatter(full_times, CDOG_full, s=10, marker="x", label="Unwrapped/Adjusted Synthetic Dog Travel Time")
+    ax1.scatter(full_times, GPS_full, s=1, marker="o", label="Calculated GPS Travel Times")
+    ax1.legend(loc="upper right")
+    ax1.set_xlabel("Arrivals in Absolute Time (s)")
+    ax1.set_ylabel("Travel Times (s)")
+    ax1.set_title(f"Synthetic travel times with offset: {offset}")
 
-ax1.scatter(full_times, CDOG_full, s=10, marker="x", label="Unwrapped/Adjusted Synthetic Dog Travel Time")
-ax1.scatter(full_times, GPS_full, s=1, marker="o", label="Calculated GPS Travel Times")
-ax1.legend(loc="upper right")
-ax1.set_xlabel("Arrivals in Absolute Time (s)")
-ax1.set_ylabel("Travel Times (s)")
-ax1.set_title(f"Synthetic travel times with offset: {offset}")
+    diff_data = CDOG_full - GPS_full
+    ax2.scatter(full_times, diff_data, s=1)
+    ax2.set_xlabel("Absolute Time (s)")
+    ax2.set_ylabel("Difference between calculated and unwrapped times (s)")
+    ax2.set_title("Residual Plot")
 
-diff_data = CDOG_full - GPS_full
-ax2.scatter(full_times, diff_data, s=1)
-ax2.set_xlabel("Absolute Time (s)")
-ax2.set_ylabel("Difference between calculated and unwrapped times (s)")
-ax2.set_title("Residual Plot")
-
-plt.show()
+    plt.show()
