@@ -11,13 +11,22 @@ This is really promising - Next steps
     3) If this process seems to work - start sending in the simulated annealing algorithm
         (prob just start with best guess of lever for coarse testing as well and then isolate down
             as the testing continues)
+
+Maybe if <10000 rms is not found - just return the best found...
+
+Could have a combined RMSE from local point distance alongside local derivative distance
+
+See if you can align time series of diff lengths (use longest continous section of CDOG series and test against GPS)
+    Could avoid using fractional part (just align first point in continous to integer of GPS)
+
+Hidden Markov Models are sometimes used in alignment - prob too complicated for my usage
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 from advancedGeigerMethod import calculateTimesRayTracing, findTransponder
 from Generate_Unaligned_Realistic import generateUnalignedRealistic
-from Alignment import index_data, find_int_offset
+from xAline import index_data, find_int_offset
 
 def alignment_testing(iter, n, position_noise):
     # Loop the number of desired iterations
