@@ -62,38 +62,31 @@ def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, 
     # Set initial parameters
     offset = start
     err_int = 1000
-
     k = 0
     lag = np.inf
-        # Loop through
     while lag != 0 and k<10:
         # Get indexed data according to offset
         CDOG_full, GPS_full = index_data(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates)[1:3]
-
         # Get fractional parts of the data
         GPS_fp = np.modf(GPS_full)[0]
         CDOG_fp = np.modf(CDOG_full)[0]
-
         # Find the cross-correlation between the fractional parts of the time series
         correlation = signal.correlate(CDOG_fp - np.mean(CDOG_fp), GPS_fp - np.mean(GPS_fp), mode="full", method="fft")
         lags = signal.correlation_lags(len(CDOG_fp), len(GPS_fp), mode="full")
         lag = lags[np.argmax(abs(correlation))]
-
         # Adjust the offset by the optimal lag
         offset+=lag
         k+=1
-
         # Conditional check to make prevent false positives
         if offset < 0:
             offset = err_int
             err_int += 500
             lag = np.inf
-
     # Conditional check to check if resulting value is reasonable (and to make sure no stack overflows)
     if start > 20000:
         print("Error - No true offset found")
         return 0
-
+    #If RMSE too high - rerun algorithm to see if you can get it better
     CDOG_full, GPS_full = index_data(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates)[1:3]
     abs_diff = np.abs(CDOG_full - GPS_full)
     indices = np.where(abs_diff >= 0.9)
@@ -102,8 +95,36 @@ def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, 
         print(offset, np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100)
         start += 1000
         return find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, start)
-
     return offset
+
+def find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates):
+    #Initalize values for loop
+    l, u = offset-0.5, offset+0.5
+    intervals = np.array([0.1, 0.01, 0.001, 0.0001])
+    best_offset = offset
+    best_RMSE = np.inf
+
+    #Iterate through each decimal offset (check this function to make sure it works properly)
+    for interval in intervals:
+        for lag in np.arange(l, u+interval, interval):
+            #Round to prevent numpy float errors
+            lag = np.round(lag, 4)
+            CDOG_full, GPS_full = index_data(lag, CDOG_data, GPS_data, travel_times, transponder_coordinates)[1:3]
+
+            #If off by around an int then add that int in
+            abs_diff = np.abs(CDOG_full - GPS_full)
+            indices = np.where(abs_diff >= 0.9)
+            CDOG_full[indices] += np.round(GPS_full[indices] - CDOG_full[indices])
+
+            #Find minimum RMSE and set that as best offset
+            diff_data = GPS_full - CDOG_full
+            RMSE = np.sqrt(np.nanmean(diff_data**2))
+            if RMSE < best_RMSE:
+                best_offset = lag
+                best_RMSE = RMSE
+        l, u = best_offset - interval, best_offset + interval
+    return best_offset
+
 
 if __name__ == "__main__":
     CDOG = sio.loadmat('../../GPSData/Realistic_CDOG_loc_noise_subint_new.mat')['xyz'][0].astype(float)
