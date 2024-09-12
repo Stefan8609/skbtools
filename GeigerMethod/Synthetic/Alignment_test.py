@@ -77,7 +77,7 @@ def alignment_testing(iter, n, position_noise):
             axes[0, 0].legend(loc="upper right")
             axes[0, 0].set_xlabel("Arrivals in Absolute Time (s)")
             axes[0, 0].set_ylabel("Travel Times (s)")
-            axes[0, 0].set_title(f"Synthetic travel times with offset: {true_offset}")
+            axes[0, 0].set_title(f"Synthetic travel times with offset: {true_offset} and RMSE: {np.round(RMSE_derived,3)}")
 
             diff_data_true = CDOG_full_true - GPS_full_true
             axes[1, 0].scatter(full_times_true, diff_data_true, s=1)
@@ -90,7 +90,7 @@ def alignment_testing(iter, n, position_noise):
             axes[0, 1].legend(loc="upper right")
             axes[0, 1].set_xlabel("Arrivals in Absolute Time (s)")
             axes[0, 1].set_ylabel("Travel Times (s)")
-            axes[0, 1].set_title(f"Synthetic travel times with offset: {offset}")
+            axes[0, 1].set_title(f"Synthetic travel times with offset: {offset} and RMSE: {np.round(RMSE_derived,)}")
 
             diff_data_derived = CDOG_full_derived - GPS_full_derived
             axes[1, 1].scatter(full_times_derived, diff_data_derived, s=1)
