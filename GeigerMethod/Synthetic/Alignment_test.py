@@ -46,19 +46,19 @@ def alignment_testing(iter, n, position_noise):
         travel_times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates)
 
         # Find the derived offset
-        offset = find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates)
-        offset = find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates)
+        offset = find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)
+        offset = find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)
 
         print("True offset:", true_offset, "\nDerived offset:", offset)
 
 
         # Get the RMSE of the travel time inversion for the true offset and compare with the derived offset
-        full_times_true, CDOG_full_true, GPS_full_true= index_data(true_offset, CDOG_data, GPS_data, travel_times, transponder_coordinates)[:3]
+        full_times_true, CDOG_full_true, GPS_full_true= index_data(true_offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)[:3]
         abs_diff = np.abs(CDOG_full_true - GPS_full_true)
         indices = np.where(abs_diff >= 0.9)
         CDOG_full_true[indices] += np.round(GPS_full_true[indices] - CDOG_full_true[indices])
 
-        full_times_derived, CDOG_full_derived, GPS_full_derived = index_data(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates)[:3]
+        full_times_derived, CDOG_full_derived, GPS_full_derived = index_data(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)[:3]
         abs_diff = np.abs(CDOG_full_derived - GPS_full_derived)
         indices = np.where(abs_diff >= 0.9)
         CDOG_full_derived[indices] += np.round(GPS_full_derived[indices] - CDOG_full_derived[indices])
