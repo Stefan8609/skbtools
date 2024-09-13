@@ -6,6 +6,8 @@ from xAline import index_data, find_int_offset, find_subint_offset
 
 """Have a far annealing where only integer offset matters - Approximating right offset
 
+Might not be perfect getting to the right point because first point in time series is dictated by first travel time
+
 
 Then after running that have a close offset where sub-integer offset matters too
 """
