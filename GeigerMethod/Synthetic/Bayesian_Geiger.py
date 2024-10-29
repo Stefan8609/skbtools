@@ -108,8 +108,8 @@ def Sampled_Geiger(iterations, n, sample_size, time_noise, position_noise):
 
     #Plot ellipses of expected standard deviation from input noise
     for i in range(1,4):
-        ell = Ellipse(xy=(CDog[0], CDog[1]),
-                      width= expected_std * i * 2, height= expected_std * i * 2,
+        ell = Ellipse(xy=(0, 0),
+                      width= expected_std * i * 2 * 100, height= expected_std * i * 2 * 100,
                       angle=0, color='k', zorder=3)
         ell.set_facecolor('none')
         ax.add_artist(ell)
@@ -120,18 +120,18 @@ def Sampled_Geiger(iterations, n, sample_size, time_noise, position_noise):
     angle = np.degrees(np.arctan2(eigvec[1, 0], eigvec[0, 0]))
     w, h = np.sqrt(eigval) * 2
     for i in range(1,4):
-        ell = Ellipse(xy=(CDog[0], CDog[1]), width = i*w, height = i*h, angle=angle,
+        ell = Ellipse(xy=(0, 0), width = i*w*100, height = i*h*100, angle=angle,
                       color='r', linewidth=2-i/2, zorder=3)
         ell.set_facecolor('none')
         ax.add_artist(ell)
 
     #Scatter estimate points and C-DOG
-    ax.scatter(CDog[0], CDog[1], s=100, color="r", marker="o", zorder=2, label = "CDOG Position")
-    ax.scatter(guess_arr[:,0], guess_arr[:,1], color='b', marker='o', alpha=0.2, zorder=1, label="Position Estimates")
-    ax.set_xlim([CDog[0]-3.1*expected_std, CDog[0]+3.1*expected_std])
-    ax.set_ylim([CDog[1]-3.1*expected_std, CDog[1]+3.1*expected_std])
-    ax.set_xlabel("Easting (m)")
-    ax.set_ylabel("Northing (m)")
+    ax.scatter(0, 0, s=100, color="r", marker="o", zorder=2, label = "CDOG Position")
+    ax.scatter((guess_arr[:,0] - CDog[0])*100, (guess_arr[:,1] - CDog[1])*100, color='b', marker='o', alpha=0.2, zorder=1, label="Position Estimates")
+    ax.set_xlim([-1*expected_std*100, 1*expected_std*100])
+    ax.set_ylim([-1*expected_std*100, 1*expected_std*100])
+    ax.set_xlabel("x distance (cm)", fontsize=12)
+    ax.set_ylabel("y distance (cm)", fontsize=12)
     ax.set_title(f"Distribution of CDOG position estimates for {iterations} iterations")
     ax.legend(loc = "upper right")
     plt.show()
@@ -140,8 +140,8 @@ def Sampled_Geiger(iterations, n, sample_size, time_noise, position_noise):
     dist_arr = np.linalg.norm(guess_arr-CDog, axis=1)*100
     plt.hist(dist_arr, bins=25, density=True)
     plt.title(f"Histogram of residual distance from {iterations} CDOG position estimates")
-    plt.xlabel("Distance from guess to CDOG (cm)")
-    plt.ylabel("Distribution")
+    plt.xlabel("Distance from guess to CDOG (cm)", fontsize=12)
+    plt.ylabel("Distribution", fontsize=12)
     plt.show()
 
 #Using same GPS coordinates with same noise, but randomly choosing a consecutive subset at each time

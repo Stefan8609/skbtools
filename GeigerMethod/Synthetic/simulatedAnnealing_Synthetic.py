@@ -68,7 +68,8 @@ def simulatedAnnealing(n, iter, time_noise, position_noise, geom_noise=0, main=T
         if RMS - old_RMS < 0: #What is acceptance condition?
             old_lever = lever
             old_RMS = RMS
-        # print(k, old_RMS*100*1515, old_lever)
+        if k%10 == 0:
+            print(k, old_RMS*100*1515, old_lever)
         RMS_arr[k]=RMS*100*1515
         k+=1
 

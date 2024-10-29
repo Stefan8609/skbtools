@@ -8,6 +8,8 @@ from xAline import index_data, find_int_offset, find_subint_offset
 
 Might not be perfect getting to the right point because first point in time series is dictated by first travel time
 
+Change up the geiger part -- When at right offset (presumably) run it with true-offset mode on (need to implement)
+    Rewrite (or have some condition when close)
 
 Then after running that have a close offset where sub-integer offset matters too
 """

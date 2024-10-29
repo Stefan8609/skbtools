@@ -9,6 +9,7 @@ from scipy import signal
 from advancedGeigerMethod import calculateTimesRayTracing, findTransponder
 
 # Function to extend the time series so that they can be aligned (given an offset)
+# Need a true offset version
 def index_data(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv):
 
     # Get unwrapped CDOG data
