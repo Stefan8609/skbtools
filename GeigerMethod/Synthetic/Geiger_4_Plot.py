@@ -41,12 +41,10 @@ def fourPlot(n, time_noise, position_noise):
     height = norm.pdf(0, 0, min_std) + 1
 
     #Plot 1
-    x = np.linspace(mu1-3*std1, mu1+3*std1, 100)
-    p = norm.pdf(x, mu1, std1)
-    axes[0, 0].hist(diff_data1 * 1000, orientation='vertical', bins=30, alpha=0.5, density=True)
-    axes[0, 0].set_xlim([-3*input_noise, 3*input_noise])
+    axes[0, 0].text(0.5, 0.5, 'No Resulting Noise in Estimation', horizontalalignment='center', verticalalignment='center',
+                    transform=axes[0, 0].transAxes, fontsize=12)
+    axes[0, 0].set_xlim([-3 * input_noise, 3 * input_noise])
     axes[0, 0].set_ylim([0, height])
-    axes[0, 0].plot(x, p, 'k', linewidth=2, label="Normal Distribution of Differences")
     axes[0, 0].set_xlabel("Noise (ms)")
     axes[0, 0].set_ylabel("Probability Density")
     axes[0, 0].set_title("No Time or Position Noise")

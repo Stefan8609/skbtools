@@ -2,17 +2,44 @@ import numpy as np
 import matplotlib.pyplot as plt
 from advancedGeigerMethod import calculateTimesRayTracing, computeJacobianRayTracing, findTransponder
 from Generate_Unaligned_Realistic import generateUnalignedRealistic
-from xAline import index_data, find_int_offset, find_subint_offset
+from xAline import index_data, find_int_offset, find_subint_offset, two_pointer_index
 
 """Have a far annealing where only integer offset matters - Approximating right offset
 
 Might not be perfect getting to the right point because first point in time series is dictated by first travel time
 
 Change up the geiger part -- When at right offset (presumably) run it with true-offset mode on (need to implement)
-    Rewrite (or have some condition when close)
+    Rewrite (or have some condition when close) -- still do this but with new alignment method!!
 
 Then after running that have a close offset where sub-integer offset matters too
 """
+
+def xAline_Geiger2(guess, CDOG_data, GPS_data, transponder_coordinates, offset):
+    #Threshold
+    epsilon = 10**-5
+
+    k=0
+    delta = 1
+    inversion_guess = guess
+
+    times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
+    CDOG_full_derived, CDOG_travel_full_derived, GPS_full_derived, GPS_travel_full_derived, transponder_coordinates_derived = two_pointer_index(offset, CDOG_data, GPS_data, times_guess ,transponder_coordinates)
+
+    abs_diff = np.abs(CDOG_travel_full_derived - GPS_travel_full_derived)
+    indices = np.where(abs_diff >= 0.9)
+    CDOG_travel_full_derived[indices] += np.round(GPS_travel_full_derived[indices] - CDOG_travel_full_derived[indices])
+    estimate_arr = np.array([])
+
+    while np.linalg.norm(delta) > epsilon and k<50:
+        times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates_derived)
+        jacobian = computeJacobianRayTracing(inversion_guess, transponder_coordinates_derived, GPS_travel_full_derived, esv)
+        delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (GPS_travel_full_derived-CDOG_travel_full_derived)
+        inversion_guess = inversion_guess + delta
+        estimate_arr = np.append(estimate_arr, inversion_guess, axis=0)
+        k+=1
+
+    times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates_derived)
+    return inversion_guess, estimate_arr, times_guess, GPS_travel_full_derived
 
 def xAline_Geiger(guess, CDOG_data, GPS_data, transponder_coordinates):
     #Threshold
@@ -69,7 +96,7 @@ if __name__ == "__main__":
     result, estimate_arr, offset = xAline_Geiger(guess, CDOG_data, GPS_data, transponder_coordinates)
     print("CDOG:", CDOG)
     print("Inversion:", result)
-    print("Distance:", np.linalg.norm(result-CDOG) * 100)
+    print("Distance:", np.linalg.norm(result-CDOG) * 100, 'cm')
 
     plt.scatter(guess[0], guess[1], s=50, marker="o", color="g", zorder=1, label="Initial Guess")
     plt.scatter(CDOG[0], CDOG[1], s=50, marker="x", color="k", zorder=3, label="C-DOG")
@@ -80,11 +107,13 @@ if __name__ == "__main__":
 
     #Get derived and true travel times for this synthetic and compare
     times_guess, esv = calculateTimesRayTracing(result, transponder_coordinates)
-    full_times_derived, CDOG_full_derived, GPS_full_derived, transponder_full, esv_full = index_data(offset, CDOG_data, GPS_data, times_guess,
-                                                                             transponder_coordinates, esv)
-    abs_diff = np.abs(CDOG_full_derived - GPS_full_derived)
+    # CDOG_full_derived, CDOG_travel_full_derived, GPS_full_derived, GPS_travel_full_derived, transponder_coordinates = two_pointer_index(offset, CDOG_data, GPS_data, times_guess)
+    inversion_guess, estimate_arr, CDOG_travel_full_derived, GPS_travel_full_derived = xAline_Geiger2(result, CDOG_data, GPS_data, transponder_coordinates, offset)
+    # full_times_derived, CDOG_full_derived, GPS_full_derived, transponder_full, esv_full = index_data(offset, CDOG_data, GPS_data, times_guess,
+    #                                                                          transponder_coordinates, esv)
+    abs_diff = np.abs(CDOG_travel_full_derived - GPS_travel_full_derived)
     indices = np.where(abs_diff >= 0.9)
-    CDOG_full_derived[indices] += np.round(GPS_full_derived[indices] - CDOG_full_derived[indices])
+    CDOG_travel_full_derived[indices] += np.round(GPS_travel_full_derived[indices] - CDOG_travel_full_derived[indices])
 
     travel_times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates)
     full_times_true, CDOG_full_true, GPS_full_true = index_data(true_offset, CDOG_data, GPS_data, travel_times,
@@ -94,7 +123,7 @@ if __name__ == "__main__":
     CDOG_full_true[indices] += np.round(GPS_full_true[indices] - CDOG_full_true[indices])
 
     #print RMSE for true and derived data
-    RMSE_derived = np.sqrt(np.nanmean((CDOG_full_derived - GPS_full_derived) ** 2)) * 1515 * 100
+    RMSE_derived = np.sqrt(np.nanmean((CDOG_travel_full_derived - GPS_travel_full_derived) ** 2)) * 1515 * 100
     RMSE_true = np.sqrt(np.nanmean((CDOG_full_true - GPS_full_true) ** 2)) * 1515 * 100
 
     print("True RMSE:", RMSE_true, "cm", "\nDerived RMSE:", RMSE_derived, "cm\n")
@@ -118,21 +147,54 @@ if __name__ == "__main__":
     axes[1, 0].set_ylabel("Difference between calculated and unwrapped times (s)")
     axes[1, 0].set_title("Residual Plot")
 
-    axes[0, 1].scatter(full_times_derived, CDOG_full_derived, s=10, marker="x",
+    axes[0, 1].scatter(CDOG_full_derived, CDOG_travel_full_derived, s=10, marker="x",
                        label="Unwrapped/Adjusted Synthetic Dog Travel Time")
-    axes[0, 1].scatter(full_times_derived, GPS_full_derived, s=1, marker="o", label="Calculated GPS Travel Times")
+    axes[0, 1].scatter(GPS_full_derived, GPS_travel_full_derived, s=1, marker="o", label="Calculated GPS Travel Times")
     axes[0, 1].legend(loc="upper right")
     axes[0, 1].set_xlabel("Arrivals in Absolute Time (s)")
     axes[0, 1].set_ylabel("Travel Times (s)")
     axes[0, 1].set_title(f"Synthetic travel times with offset: {offset} and RMSE: {np.round(RMSE_derived, 3)}")
 
-    diff_data_derived = CDOG_full_derived - GPS_full_derived
+    diff_data_derived = CDOG_travel_full_derived - GPS_travel_full_derived
     std_derived = np.std(diff_data_derived)
     mean_derived = np.mean(diff_data_derived)
-    axes[1, 1].scatter(full_times_derived, diff_data_derived, s=1)
+    axes[1, 1].scatter(CDOG_full_derived, diff_data_derived, s=1)
     axes[1, 1].set_ylim(mean_derived-3*std_derived, mean_derived+3*std_derived)
     axes[1, 1].set_xlabel("Absolute Time (s)")
     axes[1, 1].set_ylabel("Difference between calculated and unwrapped times (s)")
     axes[1, 1].set_title("Residual Plot")
 
     plt.show()
+
+
+"""
+State the problem: Given a time, (another time) ... (times corresponding to the same event measured on different clocks)
+(Why the alignment fails --> doing this in a geiger update)
+(Testing when the location is exactly right)
+Show where it happens
+show what happens when it doesnt work
+Show the solution
+Show with testing data
+"""
+
+"""
+Showing that corrupted and offset data can't be aligned with two-pointer (or can?)
+    Finds the most likely gaps
+    
+    How does it behave when values are noisy and not near
+    
+    If its noiseless - the time series are identical - can it detect the offset? or corrupted portions?
+    
+    Solving the recorder did not record problem
+    
+Step 2:
+    Compare something that is perfect to begin with, with something that has a slightly wrong location,
+    and then is corrupted
+    
+Make a bunch of illustrations of off cases (dropped data only, perfect data, both mispositionign and corrupted data)
+    - Only mispositioned data..
+    
+--> Show why rounding causes slight misputs in the implementation
+
+Show the problem solves - show its occurrence - show solution - and show results
+"""

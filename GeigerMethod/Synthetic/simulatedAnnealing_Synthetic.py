@@ -75,18 +75,18 @@ def simulatedAnnealing(n, iter, time_noise, position_noise, geom_noise=0, main=T
 
     # leverHist(transponder_coordinates_Actual, transponder_coordinates_Final)
 
-    if main==True:
-        plt.plot(list(range(iter - 1)), RMS_arr)
-        plt.xlabel("Simulated Annealing Iteration")
-        plt.ylabel("RMSE from Inversion (cm)")
-        plt.title("Simulated Annealing Inversion for GPS to Transducer Lever Arm")
-        plt.show()
-
-        print(old_lever, gps1_to_transponder)
-        transponder_coordinates_Final = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
-        geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
-                   transponder_coordinates_Final, gps1_to_transponder, cz,
-                   depth, time_noise, position_noise, old_lever, sim=2)
+    # if main==True:
+    #     plt.plot(list(range(iter - 1)), RMS_arr)
+    #     plt.xlabel("Simulated Annealing Iteration")
+    #     plt.ylabel("RMSE from Inversion (cm)")
+    #     plt.title("Simulated Annealing Inversion for GPS to Transducer Lever Arm")
+    #     plt.show()
+    #
+    #     print(old_lever, gps1_to_transponder)
+    #     transponder_coordinates_Final = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
+    #     geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
+    #                transponder_coordinates_Final, gps1_to_transponder, cz,
+    #                depth, time_noise, position_noise, old_lever, sim=2)
 
     transponder_coordinates_Final = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
     guess = geigersMethod(guess, CDog, transponder_coordinates_Actual,

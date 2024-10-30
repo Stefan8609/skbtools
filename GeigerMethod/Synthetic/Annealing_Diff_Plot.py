@@ -11,8 +11,10 @@ def annealing_plot(n, time_noise, position_noise, lever_noise = 5, geom_noise = 
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
     transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, starting_lever)
 
+    initial_guess = np.random.normal(0, 10000, 3)
+
     #Run Geiger's method with wrong lever
-    offset_estimate = geigersMethod(starting_lever, CDog, transponder_coordinates_Actual,
+    offset_estimate = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual,
                                     transponder_coordinates_Found, time_noise)[0]
     offset_times = calculateTimesRayTracing(offset_estimate, transponder_coordinates_Found)[0]
 
@@ -69,4 +71,4 @@ def annealing_plot(n, time_noise, position_noise, lever_noise = 5, geom_noise = 
 
     return
 
-annealing_plot(10000, 0, 0)
+annealing_plot(1000, 0, 0)

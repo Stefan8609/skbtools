@@ -134,6 +134,44 @@ def find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_co
         l, u = best_offset - interval, best_offset + interval
     return best_offset
 
+#This is broken
+def two_pointer_index(offset, CDOG_data, GPS_data, GPS_travel_times, transponder_coordinates):
+    """Module to index closest data points against each other given correct offset"""
+    # Initialize information
+    CDOG_unwrap = np.unwrap(CDOG_data[:, 1] * 2 * np.pi) / (2 * np.pi)
+    CDOG_travel_times = CDOG_unwrap + CDOG_data[0,0] - offset
+
+    CDOG_times = CDOG_data[:, 0] + CDOG_data[:, 1] - offset
+    GPS_times = GPS_data + GPS_travel_times
+
+    # Initialize loop conditions
+    CDOG_pointer = 0
+    GPS_pointer = 0
+
+    # Initialize lists to store results
+    CDOG_full = np.array([])
+    CDOG_travel_full = np.array([])
+    GPS_full = np.array([])
+    GPS_travel_full = np.array([])
+    transponder_coordinates_full = np.empty((0,3))
+
+    while CDOG_pointer < len(CDOG_data) and GPS_pointer < len(GPS_data):
+        if np.abs(GPS_times[GPS_pointer] - CDOG_times[CDOG_pointer]) < 0.4:
+            CDOG_full = np.append(CDOG_full, CDOG_times[CDOG_pointer])
+            CDOG_travel_full = np.append(CDOG_travel_full, CDOG_travel_times[CDOG_pointer])
+            GPS_full = np.append(GPS_full, GPS_times[GPS_pointer])
+            GPS_travel_full = np.append(GPS_travel_full, GPS_travel_times[GPS_pointer])
+            transponder_coordinates_full = np.vstack((transponder_coordinates_full, transponder_coordinates[GPS_pointer]))
+
+            CDOG_pointer += 1
+            GPS_pointer += 1
+        elif GPS_travel_times[GPS_pointer] < CDOG_travel_times[CDOG_pointer]:
+            GPS_pointer += 1
+        else:
+            CDOG_pointer += 1
+
+    return CDOG_full, CDOG_travel_full, GPS_full, GPS_travel_full, transponder_coordinates_full
+
 
 if __name__ == "__main__":
     CDOG = sio.loadmat('../../GPSData/Realistic_CDOG_loc_noise_subint_new.mat')['xyz'][0].astype(float)

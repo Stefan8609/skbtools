@@ -128,8 +128,8 @@ def Sampled_Geiger(iterations, n, sample_size, time_noise, position_noise):
     #Scatter estimate points and C-DOG
     ax.scatter(0, 0, s=100, color="r", marker="o", zorder=2, label = "CDOG Position")
     ax.scatter((guess_arr[:,0] - CDog[0])*100, (guess_arr[:,1] - CDog[1])*100, color='b', marker='o', alpha=0.2, zorder=1, label="Position Estimates")
-    ax.set_xlim([-1*expected_std*100, 1*expected_std*100])
-    ax.set_ylim([-1*expected_std*100, 1*expected_std*100])
+    ax.set_xlim([-3.1*expected_std*100, 3.1*expected_std*100])
+    ax.set_ylim([-3.1*expected_std*100, 3.1*expected_std*100])
     ax.set_xlabel("x distance (cm)", fontsize=12)
     ax.set_ylabel("y distance (cm)", fontsize=12)
     ax.set_title(f"Distribution of CDOG position estimates for {iterations} iterations")

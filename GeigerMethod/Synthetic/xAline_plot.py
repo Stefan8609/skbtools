@@ -1,38 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
-def two_pointer_index(offset, CDOG_data, GPS_data, GPS_travel_times):
-    """Module to index closest data points against each other given correct offset"""
-    #initialize information
-    CDOG_unwrap = np.unwrap(CDOG_data[:, 1] * 2 * np.pi) / (2 * np.pi)
-    CDOG_travel_times = CDOG_unwrap + GPS_travel_times[0] - CDOG_unwrap[0]
-    CDOG_times = CDOG_data[:,0] + CDOG_data[:,1] - offset
-    GPS_times = GPS_data + GPS_travel_times
-
-    #Initialize loop conditions
-    CDOG_pointer = 0
-    GPS_pointer = 0
-    curr_idx = 0
-
-    #Need to use append or have these have blank space to overwrite (currently accessing non-indexed values)
-    CDOG_full = np.array([])
-    CDOG_travel_full = np.array([])
-    GPS_full = np.array([])
-    GPS_travel_full = np.array([])
-
-    while CDOG_pointer < len(CDOG_data) and GPS_pointer < len(GPS_data):
-        if np.abs(GPS_travel_times[GPS_pointer] - CDOG_travel_times[CDOG_pointer]) < 0.4:
-            CDOG_full[curr_idx] = CDOG_times[CDOG_pointer]
-            CDOG_travel_full[curr_idx] = CDOG_travel_times[CDOG_pointer]
-            GPS_full[curr_idx] = GPS_times[GPS_pointer]
-            GPS_travel_full[curr_idx] = GPS_travel_times[GPS_pointer]
-
-            CDOG_pointer += 1
-            GPS_pointer += 1
-            curr_idx += 1
-        #Now iterate up CDOG_pointer when GPS time is currently greater and vice versa
-
-
+from Generate_Unaligned_Realistic import generateUnalignedRealistic
+from advancedGeigerMethod import findTransponder
+from xAline import *
 
 def xAline_plot(offset, CDOG_data, GPS_data, travel_times):
 
@@ -42,6 +12,8 @@ def xAline_plot(offset, CDOG_data, GPS_data, travel_times):
     CDOG_times = CDOG_data[:,0] + CDOG_data[:,1] - offset
     GPS_times = GPS_data + travel_times
 
+    two_pointer_index(offset, CDOG_data, GPS_data, travel_times)
+
     plt.scatter(CDOG_times, CDOG_travel_times, s=10, marker='x', label="CDOG Derived Travel Times")
     plt.scatter(GPS_times, travel_times, s=1, label="Inversion Travel Times")
     plt.legend()
@@ -50,3 +22,25 @@ def xAline_plot(offset, CDOG_data, GPS_data, travel_times):
     plt.title(f"Comparison of time series with offset: {offset}")
 
     plt.show()
+
+
+if __name__ == "__main__":
+    position_noise = 2*10**-2
+    true_offset = 1325
+    n = 10000
+    offset = 0
+    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(n, true_offset)
+
+    GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
+
+    gps1_to_others = np.array([[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64)
+    gps1_to_transponder = np.array([-10, 3, -15], dtype=np.float64)
+    transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
+    travel_times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates)
+
+    offset = find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)
+    offset = find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)
+
+
+
+

@@ -138,7 +138,49 @@ def combined_dependence(n):
     plt.title("Combined dependence of GPS position and C-DOG time noise")
     plt.show()
 
+def random_dependence(points, n):
+    time_noise = np.random.normal(5*10**-5, 1*10**-5, points)
+    position_noise = np.random.normal(5*10**-2, 1*10**-2, points)
+
+    std_expected = np.sqrt(time_noise**2 + (position_noise/1515)**2)
+    std_observed = np.zeros(points)
+    for i in range(points):
+        if i%10 == 0:
+            print(i)
+        CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(n)
+        initial_guess = np.array(
+            [random.uniform(-10000, 10000), random.uniform(-10000, 10000), random.uniform(-4000, -6000)])
+
+        GPS_Coordinates += np.random.normal(0, position_noise[i], (len(GPS_Coordinates), 4, 3))
+        transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
+
+        try:
+            guess, times_known = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual,
+                                           transponder_coordinates_Found, time_noise[i])[:2]
+        except:
+            print(initial_guess, time_noise[i], position_noise[i])
+            std_observed[i] = 0
+            continue
+
+        times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]
+        diff_data = times_calc - times_known
+        std_diff = np.std(diff_data)
+        std_observed[i] = std_diff
+
+
+    plt.scatter(time_noise * 1515 * 100, position_noise*100, c=(std_observed/std_expected))
+    cbar = plt.colorbar()
+    cbar.set_label('Ratio of observed to expected noise', fontsize=12)
+    plt.xlabel("Time Noise times sound speed (cm)")
+    plt.ylabel("Position Noise (cm)")
+    plt.show()
+
+
+
+
 # time_dependence(1000)
-# spatial_dependence(1000)
+# spatial_dependence(10000)
 # point_dependence(2*10**-5, 2*10**-2)
-combined_dependence(1000)
+# combined_dependence(1000)
+
+random_dependence(500, 1000)
