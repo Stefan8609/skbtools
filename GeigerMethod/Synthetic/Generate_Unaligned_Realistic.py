@@ -9,14 +9,13 @@ import matplotlib.pyplot as plt
 from advancedGeigerMethod import find_esv, findTransponder, calculateTimesRayTracing, generateRealistic
 
 #Function to generate the unaligned time series for a realistic trajectory
-def generateUnalignedRealistic(n, offset, main=False):
+def generateUnalignedRealistic(n, time_noise, offset, main=False):
     CDOG, GPS_Coordinates, transponder_coordinates, gps1_to_others, gps1_to_transponder = generateRealistic(n)
 
     GPS_time = np.arange(len(GPS_Coordinates))
 
     true_travel_times, true_esv = calculateTimesRayTracing(CDOG, transponder_coordinates)
 
-    time_noise = 2*10**-5
     CDOG_time = GPS_time + true_travel_times + np.random.normal(0, time_noise, len(GPS_time)) + offset
     CDOG_remain, CDOG_int = np.modf(CDOG_time)
 

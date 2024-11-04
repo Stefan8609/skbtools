@@ -135,11 +135,11 @@ def find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_co
     return best_offset
 
 #This is broken
-def two_pointer_index(offset, CDOG_data, GPS_data, GPS_travel_times, transponder_coordinates):
+def two_pointer_index(offset, threshhold, CDOG_data, GPS_data, GPS_travel_times, transponder_coordinates):
     """Module to index closest data points against each other given correct offset"""
     # Initialize information
     CDOG_unwrap = np.unwrap(CDOG_data[:, 1] * 2 * np.pi) / (2 * np.pi)
-    CDOG_travel_times = CDOG_unwrap + CDOG_data[0,0] - offset
+    CDOG_travel_times = CDOG_unwrap + GPS_travel_times[0] - CDOG_unwrap[0]
 
     CDOG_times = CDOG_data[:, 0] + CDOG_data[:, 1] - offset
     GPS_times = GPS_data + GPS_travel_times
@@ -156,7 +156,7 @@ def two_pointer_index(offset, CDOG_data, GPS_data, GPS_travel_times, transponder
     transponder_coordinates_full = np.empty((0,3))
 
     while CDOG_pointer < len(CDOG_data) and GPS_pointer < len(GPS_data):
-        if np.abs(GPS_times[GPS_pointer] - CDOG_times[CDOG_pointer]) < 0.4:
+        if np.abs(GPS_times[GPS_pointer] - CDOG_times[CDOG_pointer]) < threshhold:
             CDOG_full = np.append(CDOG_full, CDOG_times[CDOG_pointer])
             CDOG_travel_full = np.append(CDOG_travel_full, CDOG_travel_times[CDOG_pointer])
             GPS_full = np.append(GPS_full, GPS_times[GPS_pointer])
@@ -165,7 +165,7 @@ def two_pointer_index(offset, CDOG_data, GPS_data, GPS_travel_times, transponder
 
             CDOG_pointer += 1
             GPS_pointer += 1
-        elif GPS_travel_times[GPS_pointer] < CDOG_travel_times[CDOG_pointer]:
+        elif GPS_times[GPS_pointer] < CDOG_times[CDOG_pointer]:
             GPS_pointer += 1
         else:
             CDOG_pointer += 1

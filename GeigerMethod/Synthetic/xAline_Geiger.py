@@ -23,23 +23,23 @@ def xAline_Geiger2(guess, CDOG_data, GPS_data, transponder_coordinates, offset):
     inversion_guess = guess
 
     times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
-    CDOG_full_derived, CDOG_travel_full_derived, GPS_full_derived, GPS_travel_full_derived, transponder_coordinates_derived = two_pointer_index(offset, CDOG_data, GPS_data, times_guess ,transponder_coordinates)
+    CDOG_full, CDOG_travel_full, GPS_full, GPS_travel_full, transponder_coordinates = two_pointer_index(offset, 0.6, CDOG_data, GPS_data, times_guess ,transponder_coordinates)
 
-    abs_diff = np.abs(CDOG_travel_full_derived - GPS_travel_full_derived)
+    abs_diff = np.abs(CDOG_travel_full - GPS_travel_full)
     indices = np.where(abs_diff >= 0.9)
-    CDOG_travel_full_derived[indices] += np.round(GPS_travel_full_derived[indices] - CDOG_travel_full_derived[indices])
+    CDOG_travel_full[indices] += np.round(GPS_travel_full[indices] - CDOG_travel_full[indices])
     estimate_arr = np.array([])
 
     while np.linalg.norm(delta) > epsilon and k<50:
-        times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates_derived)
-        jacobian = computeJacobianRayTracing(inversion_guess, transponder_coordinates_derived, GPS_travel_full_derived, esv)
-        delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (GPS_travel_full_derived-CDOG_travel_full_derived)
+        times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
+        jacobian = computeJacobianRayTracing(inversion_guess, transponder_coordinates, GPS_travel_full, esv)
+        delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (GPS_travel_full-CDOG_travel_full)
         inversion_guess = inversion_guess + delta
         estimate_arr = np.append(estimate_arr, inversion_guess, axis=0)
         k+=1
 
-    times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates_derived)
-    return inversion_guess, estimate_arr, times_guess, GPS_travel_full_derived
+    times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
+    return inversion_guess, estimate_arr, times_guess, GPS_travel_full, CDOG_full, GPS_full
 
 def xAline_Geiger(guess, CDOG_data, GPS_data, transponder_coordinates):
     #Threshold
@@ -82,8 +82,9 @@ if __name__ == "__main__":
     print(true_offset)
 
     position_noise = 2*10**-2
+    time_noise = 2*10**-5
     # Generate the arrival time series for the generated offset (aswell as GPS Coordinates)
-    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(20000,
+    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(20000, time_noise,
                                                                                                           true_offset)
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 
@@ -108,7 +109,8 @@ if __name__ == "__main__":
     #Get derived and true travel times for this synthetic and compare
     times_guess, esv = calculateTimesRayTracing(result, transponder_coordinates)
     # CDOG_full_derived, CDOG_travel_full_derived, GPS_full_derived, GPS_travel_full_derived, transponder_coordinates = two_pointer_index(offset, CDOG_data, GPS_data, times_guess)
-    inversion_guess, estimate_arr, CDOG_travel_full_derived, GPS_travel_full_derived = xAline_Geiger2(result, CDOG_data, GPS_data, transponder_coordinates, offset)
+    [inversion_guess, estimate_arr, CDOG_travel_full_derived,
+        GPS_travel_full_derived, CDOG_full_derived, GPS_full_derived] = xAline_Geiger2(result, CDOG_data, GPS_data, transponder_coordinates, offset)
     # full_times_derived, CDOG_full_derived, GPS_full_derived, transponder_full, esv_full = index_data(offset, CDOG_data, GPS_data, times_guess,
     #                                                                          transponder_coordinates, esv)
     abs_diff = np.abs(CDOG_travel_full_derived - GPS_travel_full_derived)
@@ -196,5 +198,5 @@ Make a bunch of illustrations of off cases (dropped data only, perfect data, bot
     
 --> Show why rounding causes slight misputs in the implementation
 
-Show the problem solves - show its occurrence - show solution - and show results
+Show the problem what the solves - show its occurrence - show solution - and show results
 """
