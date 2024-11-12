@@ -5,7 +5,7 @@ from advancedGeigerMethod import *
 from Generate_Unaligned_Realistic import generateUnalignedRealistic
 
 n=10000
-true_offset = np.random.rand() * 20000
+true_offset = np.random.rand() * 10000
 position_noise = 2*10**-2
 time_noise = 2*10**-5
 
@@ -23,8 +23,8 @@ offset = find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transpond
 
 print("True offset:", true_offset, "\nDerived offset:", offset)
 
-[CDOG_times, CDOG_full, GPS_times, GPS_full, transponder_coordinates_full] = (
-    two_pointer_index(offset, 0.9, CDOG_data, GPS_data, travel_times, transponder_coordinates)
+[CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full] = (
+    two_pointer_index(offset, 0.9, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)
 )
 
 abs_diff = np.abs(CDOG_full - GPS_full)
@@ -58,16 +58,16 @@ axes[1, 0].set_xlabel("Absolute Time (s)")
 axes[1, 0].set_ylabel("Difference between calculated and unwrapped times (s)")
 axes[1, 0].set_title("Residual Plot")
 
-axes[0, 1].scatter(CDOG_times, CDOG_full, s=10, marker="x",
+axes[0, 1].scatter(CDOG_clock, CDOG_full, s=10, marker="x",
                    label="Unwrapped/Adjusted Synthetic Dog Travel Time")
-axes[0, 1].scatter(GPS_times, GPS_full, s=1, marker="o", label="Calculated GPS Travel Times")
+axes[0, 1].scatter(GPS_clock, GPS_full, s=1, marker="o", label="Calculated GPS Travel Times")
 axes[0, 1].legend(loc="upper right")
 axes[0, 1].set_xlabel("Arrivals in Absolute Time (s)")
 axes[0, 1].set_ylabel("Travel Times (s)")
 axes[0, 1].set_title(f"Synthetic travel times with offset: {offset} and RMSE: {np.round(RMSE, 3)}")
 
 diff_data = CDOG_full - GPS_full
-axes[1, 1].scatter(CDOG_times, diff_data, s=1)
+axes[1, 1].scatter(CDOG_clock, diff_data, s=1)
 axes[1, 1].set_xlabel("Absolute Time (s)")
 axes[1, 1].set_ylabel("Difference between calculated and unwrapped times (s)")
 axes[1, 1].set_title("Residual Plot")

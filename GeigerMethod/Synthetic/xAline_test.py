@@ -29,14 +29,14 @@ from Generate_Unaligned_Realistic import generateUnalignedRealistic
 from xAline import index_data, find_int_offset, find_subint_offset
 from xAline_plot import xAline_plot
 
-def alignment_testing(iter, n, position_noise):
+def alignment_testing(iter, n, position_noise, time_noise):
     # Loop the number of desired iterations
     for i in range(iter):
         # Generate a random offset
         true_offset = np.random.rand() * 10000
 
         # Generate the arrival time series for the generated offset (aswell as GPS Coordinates)
-        CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(n, true_offset)
+        CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(n, time_noise, true_offset)
         GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 
         """ Need to make the relative GPS and transducer positions modular at some point """
@@ -104,5 +104,5 @@ def alignment_testing(iter, n, position_noise):
     return
 
 if __name__ == "__main__":
-    alignment_testing(10, 20000, 2*10**-2)
+    alignment_testing(10, 20000, 2*10**-2, 2*10**-5)
 
