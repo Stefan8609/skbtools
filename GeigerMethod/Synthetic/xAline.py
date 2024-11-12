@@ -69,7 +69,8 @@ def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, 
     err_int = 1000
     k = 0
     lag = np.inf
-    while lag != 0 and k<10:
+
+    while lag != 0 and k < 10:
         # Get indexed data according to offset
         CDOG_full, GPS_full = index_data(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)[1:3]
         # Get fractional parts of the data
@@ -80,25 +81,26 @@ def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, 
         lags = signal.correlation_lags(len(CDOG_fp), len(GPS_fp), mode="full")
         lag = lags[np.argmax(abs(correlation))]
         # Adjust the offset by the optimal lag
-        offset+=lag
-        k+=1
-        # Conditional check to make prevent false positives
+        offset += lag
+        k += 1
+        # Conditional check to prevent false positives
         if offset < 0:
             offset = err_int
             err_int += 500
             lag = np.inf
-    # Conditional check to check if resulting value is reasonable (and to make sure no stack overflows)
+
+    # Conditional check to ensure the resulting value is reasonable (and to prevent stack overflows)
     if start > 20000:
         print("Error - No true offset found")
         return best
-    #If RMSE too high - rerun algorithm to see if you can get it better
+
+    # If RMSE is too high, rerun the algorithm to see if it can be improved
     CDOG_full, GPS_full = index_data(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)[1:3]
     abs_diff = np.abs(CDOG_full - GPS_full)
     indices = np.where(abs_diff >= 0.9)
     CDOG_full[indices] += np.round(GPS_full[indices] - CDOG_full[indices])
     RMSE = np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100
     if RMSE > 5000:
-        # print(offset, RMSE)
         if RMSE < best_RMSE:
             best = offset
             best_RMSE = RMSE

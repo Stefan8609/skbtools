@@ -45,7 +45,6 @@ def generateUnalignedRealistic(n, time_noise, offset, main=False):
     return CDOG_mat, CDOG, GPS_Coordinates, GPS_time, transponder_coordinates
 
 
-
 if __name__=="__main__":
     (CDOG_mat, CDOG, CDOG_time, CDOG_unwrap, CDOG_remain, true_travel_times, temp_travel_times, GPS_Coordinates,
      GPS_time, transponder_coordinates, removed_CDOG, removed_travel_times) = generateUnalignedRealistic(20000, 1200, True)

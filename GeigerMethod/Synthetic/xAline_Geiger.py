@@ -12,6 +12,8 @@ Change up the geiger part -- When at right offset (presumably) run it with true-
     Rewrite (or have some condition when close) -- still do this but with new alignment method!!
 
 Then after running that have a close offset where sub-integer offset matters too
+
+Write a Geiger to check alignment post verification (should be converging better and faster with everything correct?)
 """
 
 def xAline_Geiger2(guess, CDOG_data, GPS_data, transponder_coordinates, offset):
@@ -23,15 +25,15 @@ def xAline_Geiger2(guess, CDOG_data, GPS_data, transponder_coordinates, offset):
 
     while np.linalg.norm(delta) > epsilon and k < 50:
         times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
-        CDOG_full, CDOG_travel_full, GPS_full, GPS_travel_full, transponder_coordinates_full, esv_full = (
+        CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
             two_pointer_index(offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv)
         )
-        abs_diff = np.abs(CDOG_travel_full - GPS_travel_full)
+        abs_diff = np.abs(CDOG_full - GPS_full)
         indices = np.where(abs_diff >= 0.9)
-        CDOG_travel_full[indices] += np.round(GPS_travel_full[indices] - CDOG_travel_full[indices])
+        CDOG_full[indices] += np.round(GPS_full[indices] - CDOG_full[indices])
 
-        jacobian = computeJacobianRayTracing(inversion_guess, transponder_coordinates_full, GPS_travel_full, esv_full)
-        delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (GPS_travel_full - CDOG_travel_full)
+        jacobian = computeJacobianRayTracing(inversion_guess, transponder_coordinates_full, GPS_full, esv_full)
+        delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (GPS_full - CDOG_full)
         inversion_guess += delta
 
         estimate_arr = np.append(estimate_arr, inversion_guess, axis=0)
@@ -39,14 +41,14 @@ def xAline_Geiger2(guess, CDOG_data, GPS_data, transponder_coordinates, offset):
         print(inversion_guess, offset, k)
 
     times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
-    CDOG_full, CDOG_travel_full, GPS_full, GPS_travel_full, transponder_coordinates_full, esv_full = (
+    CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
         two_pointer_index(offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv)
     )
-    abs_diff = np.abs(CDOG_travel_full - GPS_travel_full)
+    abs_diff = np.abs(CDOG_full - GPS_full)
     indices = np.where(abs_diff >= 0.9)
-    CDOG_travel_full[indices] += np.round(GPS_travel_full[indices] - CDOG_travel_full[indices])
+    CDOG_full[indices] += np.round(GPS_full[indices] - CDOG_full[indices])
 
-    return inversion_guess, estimate_arr, CDOG_travel_full, GPS_travel_full, CDOG_full, GPS_full
+    return inversion_guess, estimate_arr, CDOG_full, GPS_full, CDOG_clock, GPS_clock
 
 
 def xAline_Geiger(guess, CDOG_data, GPS_data, transponder_coordinates):
@@ -56,7 +58,7 @@ def xAline_Geiger(guess, CDOG_data, GPS_data, transponder_coordinates):
     inversion_guess = guess
     estimate_arr = np.array([])
 
-    while np.linalg.norm(delta) > epsilon and k < 50:
+    while np.linalg.norm(delta) > epsilon and k < 100:
         times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
         offset = find_int_offset(CDOG_data, GPS_data, times_guess, transponder_coordinates, esv)
         full_times, CDOG_full, GPS_full, transponder_full, esv_full = index_data(
@@ -82,6 +84,26 @@ def xAline_Geiger(guess, CDOG_data, GPS_data, transponder_coordinates):
 
     estimate_arr = np.reshape(estimate_arr, (-1, 3))
     return inversion_guess, estimate_arr, offset
+
+def verify(inversion_guess, true_offset, CDOG_data, CDOG, GPS_data, transponder_coordinates):
+    travel_times_true, esv_true = calculateTimesRayTracing(CDOG, transponder_coordinates)
+    travel_times_estimate, esv_estimate = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
+
+    CDOG_clock_true, CDOG_full_true, GPS_clock_true, GPS_full_true, transponder_coordinates_full_true, esv_full_true = (
+        two_pointer_index(true_offset, 0.6, CDOG_data, GPS_data, travel_times_true, transponder_coordinates, esv_true)
+    )
+
+    CDOG_clock_estimate, CDOG_full_estimate, GPS_clock_estimate, GPS_full_estimate, transponder_coordinates_full_estimate, esv_full_estimate = (
+        two_pointer_index(true_offset, 0.6, CDOG_data, GPS_data, travel_times_estimate, transponder_coordinates, esv_estimate)
+    )
+
+    try:
+        print("Length of GPS clock lists:", len(GPS_clock_true), len(GPS_clock_estimate))
+        print("Diff in GPS clock lists:", np.linalg.norm(GPS_clock_true - GPS_clock_estimate))
+        print("diff in transponder coordinates", np.linalg.norm(transponder_coordinates_full_true - transponder_coordinates_full_estimate))
+    except:
+        print("Lists are different lengths: Improper alignment")
+    return
 
 
 if __name__ == "__main__":
@@ -114,12 +136,14 @@ if __name__ == "__main__":
     plt.show()
 
     times_guess, esv = calculateTimesRayTracing(result, transponder_coordinates)
-    inversion_guess, estimate_arr, CDOG_travel_full_derived, GPS_travel_full_derived, CDOG_full_derived, GPS_full_derived = xAline_Geiger2(
+    inversion_guess, estimate_arr, CDOG_full_derived, GPS_full_derived, CDOG_clock_derived, GPS_clock_derived = xAline_Geiger2(
         result, CDOG_data, GPS_data, transponder_coordinates, offset
     )
-    abs_diff = np.abs(CDOG_travel_full_derived - GPS_travel_full_derived)
+    abs_diff = np.abs(CDOG_full_derived - GPS_full_derived)
     indices = np.where(abs_diff >= 0.9)
-    CDOG_travel_full_derived[indices] += np.round(GPS_travel_full_derived[indices] - CDOG_travel_full_derived[indices])
+    CDOG_full_derived[indices] += np.round(GPS_full_derived[indices] - CDOG_full_derived[indices])
+
+    verify(inversion_guess, true_offset, CDOG_data, CDOG, GPS_data, transponder_coordinates)
 
     travel_times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates)
     full_times_true, CDOG_full_true, GPS_full_true = index_data(
@@ -128,7 +152,7 @@ if __name__ == "__main__":
     indices = np.where(abs_diff >= 0.9)
     CDOG_full_true[indices] += np.round(GPS_full_true[indices] - CDOG_full_true[indices])
 
-    RMSE_derived = np.sqrt(np.nanmean((CDOG_travel_full_derived - GPS_travel_full_derived) ** 2)) * 1515 * 100
+    RMSE_derived = np.sqrt(np.nanmean((CDOG_full_derived - GPS_full_derived) ** 2)) * 1515 * 100
     RMSE_true = np.sqrt(np.nanmean((CDOG_full_true - GPS_full_true) ** 2)) * 1515 * 100
 
     print("True RMSE:", RMSE_true, "cm", "\nDerived RMSE:", RMSE_derived, "cm\n")
@@ -154,24 +178,23 @@ if __name__ == "__main__":
     axes[1, 0].set_ylabel("Difference between calculated and unwrapped times (s)")
     axes[1, 0].set_title("Residual Plot")
 
-    axes[0, 1].scatter(CDOG_full_derived, CDOG_travel_full_derived, s=10, marker="x", label="Unwrapped/Adjusted Synthetic Dog Travel Time")
-    axes[0, 1].scatter(GPS_full_derived, GPS_travel_full_derived, s=1, marker="o", label="Calculated GPS Travel Times")
+    axes[0, 1].scatter(CDOG_clock_derived, CDOG_full_derived, s=10, marker="x", label="Unwrapped/Adjusted Synthetic Dog Travel Time")
+    axes[0, 1].scatter(GPS_clock_derived, GPS_full_derived, s=1, marker="o", label="Calculated GPS Travel Times")
     axes[0, 1].legend(loc="upper right")
     axes[0, 1].set_xlabel("Arrivals in Absolute Time (s)")
     axes[0, 1].set_ylabel("Travel Times (s)")
     axes[0, 1].set_title(f"Synthetic travel times with offset: {offset} and RMSE: {np.round(RMSE_derived, 3)}")
 
-    diff_data_derived = CDOG_travel_full_derived - GPS_travel_full_derived
+    diff_data_derived = CDOG_full_derived - GPS_full_derived
     std_derived = np.std(diff_data_derived)
     mean_derived = np.mean(diff_data_derived)
-    axes[1, 1].scatter(CDOG_full_derived, diff_data_derived, s=1)
+    axes[1, 1].scatter(CDOG_clock_derived, diff_data_derived, s=1)
     axes[1, 1].set_ylim(mean_derived - 3 * std_derived, mean_derived + 3 * std_derived)
     axes[1, 1].set_xlabel("Absolute Time (s)")
     axes[1, 1].set_ylabel("Difference between calculated and unwrapped times (s)")
     axes[1, 1].set_title("Residual Plot")
 
     plt.show()
-
 
 
 """
