@@ -23,7 +23,7 @@ def xAline_Geiger2(guess, CDOG_data, GPS_data, transponder_coordinates, offset):
     inversion_guess = guess
     estimate_arr = np.array([])
 
-    while np.linalg.norm(delta) > epsilon and k < 50:
+    while np.linalg.norm(delta) > epsilon and k < 10:
         times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
         CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
             two_pointer_index(offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv)
@@ -58,7 +58,7 @@ def xAline_Geiger(guess, CDOG_data, GPS_data, transponder_coordinates):
     inversion_guess = guess
     estimate_arr = np.array([])
 
-    while np.linalg.norm(delta) > epsilon and k < 100:
+    while np.linalg.norm(delta) > epsilon and k < 25:
         times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
         offset = find_int_offset(CDOG_data, GPS_data, times_guess, transponder_coordinates, esv)
         full_times, CDOG_full, GPS_full, transponder_full, esv_full = index_data(
@@ -97,13 +97,48 @@ def verify(inversion_guess, true_offset, CDOG_data, CDOG, GPS_data, transponder_
         two_pointer_index(true_offset, 0.6, CDOG_data, GPS_data, travel_times_estimate, transponder_coordinates, esv_estimate)
     )
 
+    abs_diff = np.abs(CDOG_full_estimate - GPS_full_estimate)
+    indices = np.where(abs_diff >= 0.9)
+    CDOG_full_estimate[indices] += np.round(GPS_full_estimate[indices] - CDOG_full_estimate[indices])
+
     try:
-        print("Length of GPS clock lists:", len(GPS_clock_true), len(GPS_clock_estimate))
-        print("Diff in GPS clock lists:", np.linalg.norm(GPS_clock_true - GPS_clock_estimate))
-        print("diff in transponder coordinates", np.linalg.norm(transponder_coordinates_full_true - transponder_coordinates_full_estimate))
-    except:
+        print("\ndiff in transponder coordinates", np.linalg.norm(transponder_coordinates_full_true - transponder_coordinates_full_estimate))
+        norm_GPS_clock_true = GPS_clock_true - GPS_full_true
+        norm_GPS_clock_estimate = GPS_clock_estimate - GPS_full_estimate
+        print("diff in CDOG clock", np.linalg.norm(norm_GPS_clock_true - norm_GPS_clock_estimate))
+        estimate = geiger_test(inversion_guess, CDOG_full_estimate, transponder_coordinates_full_estimate)[0]
+        print(estimate, CDOG, '\n', np.linalg.norm(estimate - CDOG) * 100, 'cm')
+
+
+    except Exception as e:
+        print(e)
         print("Lists are different lengths: Improper alignment")
     return
+
+def geiger_test(guess, times_known, transponder_coordinates):
+    #Define threshold
+    epsilon = 10**-5
+
+    k=0
+    delta = 1
+    estimate_arr = np.array([])
+    #Loop until change in guess is less than the threshold
+    while np.linalg.norm(delta) > epsilon and k<100:
+        times_guess, esv = calculateTimesRayTracing(guess, transponder_coordinates)
+        if k==0:
+            plt.scatter(range(len(times_guess)), times_guess, s=5, label="Guess")
+            plt.scatter(range(len(times_known)), times_known, s=1, label="Known")
+            plt.legend()
+            plt.show()
+        jacobian = computeJacobianRayTracing(guess, transponder_coordinates, times_guess, esv)
+        delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (times_guess-times_known)
+        guess = guess + delta
+
+        print(guess)
+        estimate_arr = np.append(estimate_arr, guess, axis=0)
+        k+=1
+    estimate_arr = np.reshape(estimate_arr, (-1, 3))
+    return guess, times_known, estimate_arr
 
 
 if __name__ == "__main__":
@@ -143,8 +178,6 @@ if __name__ == "__main__":
     indices = np.where(abs_diff >= 0.9)
     CDOG_full_derived[indices] += np.round(GPS_full_derived[indices] - CDOG_full_derived[indices])
 
-    verify(inversion_guess, true_offset, CDOG_data, CDOG, GPS_data, transponder_coordinates)
-
     travel_times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates)
     full_times_true, CDOG_full_true, GPS_full_true = index_data(
         true_offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)[:3]
@@ -159,6 +192,8 @@ if __name__ == "__main__":
     print("CDOG:", CDOG)
     print("Inversion:", inversion_guess)
     print("Distance:", np.linalg.norm(inversion_guess - CDOG) * 100, 'cm')
+
+    verify(inversion_guess, true_offset, CDOG_data, CDOG, GPS_data, transponder_coordinates)
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 8))
 
@@ -228,3 +263,5 @@ Make a bunch of illustrations of off cases (dropped data only, perfect data, bot
 
 Show the problem what the solves - show its occurrence - show solution - and show results
 """
+
+"""Some weird error"""

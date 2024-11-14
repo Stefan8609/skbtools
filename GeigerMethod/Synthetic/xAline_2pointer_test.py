@@ -17,6 +17,7 @@ gps1_to_transponder = np.array([-10, 3, -15], dtype=np.float64)
 transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
 travel_times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates)
 
+
 # Find the derived offset
 offset = find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)
 offset = find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)
@@ -71,5 +72,8 @@ axes[1, 1].scatter(CDOG_clock, diff_data, s=1)
 axes[1, 1].set_xlabel("Absolute Time (s)")
 axes[1, 1].set_ylabel("Difference between calculated and unwrapped times (s)")
 axes[1, 1].set_title("Residual Plot")
+
+print('Mean of residuals: ', np.mean(diff_data)*1000, "ms")
+print("Diff between found and true offset: ", (offset - true_offset) * 1000, "ms")
 
 plt.show()

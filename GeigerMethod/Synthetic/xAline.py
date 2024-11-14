@@ -151,7 +151,6 @@ def two_pointer_index(offset, threshhold, CDOG_data, GPS_data, GPS_travel_times,
 
     # Initialize lists to store results
     CDOG_clock = np.array([])
-    CDOG_full = np.array([])
     GPS_clock = np.array([])
     GPS_full = np.array([])
     transponder_coordinates_full = np.empty((0,3))
@@ -160,7 +159,6 @@ def two_pointer_index(offset, threshhold, CDOG_data, GPS_data, GPS_travel_times,
     while CDOG_pointer < len(CDOG_data) and GPS_pointer < len(GPS_data):
         if np.abs(GPS_times[GPS_pointer] - CDOG_times[CDOG_pointer]) < threshhold:
             CDOG_clock = np.append(CDOG_clock, CDOG_times[CDOG_pointer])
-            CDOG_full = np.append(CDOG_full, CDOG_travel_times[CDOG_pointer])
             GPS_clock = np.append(GPS_clock, GPS_times[GPS_pointer])
             GPS_full = np.append(GPS_full, GPS_travel_times[GPS_pointer])
             transponder_coordinates_full = np.vstack((transponder_coordinates_full, transponder_coordinates[GPS_pointer]))
@@ -172,6 +170,9 @@ def two_pointer_index(offset, threshhold, CDOG_data, GPS_data, GPS_travel_times,
             GPS_pointer += 1
         else:
             CDOG_pointer += 1
+
+    #Best travel times for known offset
+    CDOG_full = CDOG_clock - (GPS_clock - GPS_full)
 
     return CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full
 

@@ -29,7 +29,7 @@ if __name__ == "__main__":
     true_offset = 1325
     n = 10000
     offset = 0
-    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(n, true_offset)
+    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(n, 2*10**-5, true_offset)
 
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 
