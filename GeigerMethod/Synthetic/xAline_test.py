@@ -26,8 +26,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from advancedGeigerMethod import calculateTimesRayTracing, findTransponder
 from Generate_Unaligned_Realistic import generateUnalignedRealistic
-from xAline import index_data, find_int_offset, find_subint_offset
+from xAline import index_data, find_int_offset#, find_subint_offset
 from xAline_plot import xAline_plot
+
+from xAline_numba import find_subint_offset
+
+import timeit
 
 def alignment_testing(iter, n, position_noise, time_noise):
     # Loop the number of desired iterations
@@ -48,7 +52,12 @@ def alignment_testing(iter, n, position_noise, time_noise):
 
         # Find the derived offset
         offset = find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)
+
+        #time this next line
+        start = timeit.default_timer()
         offset = find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)
+        stop = timeit.default_timer()
+        print('Time: ', stop - start)
 
         print("True offset:", true_offset, "\nDerived offset:", offset)
 

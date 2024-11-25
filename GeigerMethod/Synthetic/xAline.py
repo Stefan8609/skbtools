@@ -111,7 +111,7 @@ def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, 
 def find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv):
     #Initalize values for loop
     l, u = offset-0.5, offset+0.5
-    intervals = np.array([0.1, 0.01, 0.001, 0.0001])
+    intervals = np.array([0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001])
     best_offset = offset
     best_RMSE = np.inf
 
@@ -119,7 +119,7 @@ def find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_co
     for interval in intervals:
         for lag in np.arange(l, u+interval, interval):
             #Round to prevent numpy float errors
-            lag = np.round(lag, 4)
+            lag = np.round(lag, 10)
             CDOG_full, GPS_full = index_data(lag, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)[1:3]
 
             #If off by around an int then add that int in
