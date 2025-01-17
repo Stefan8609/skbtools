@@ -27,9 +27,8 @@ import matplotlib.pyplot as plt
 from advancedGeigerMethod import calculateTimesRayTracing, findTransponder
 from Generate_Unaligned_Realistic import generateUnalignedRealistic
 from xAline import index_data, find_int_offset#, find_subint_offset
-from xAline_plot import xAline_plot
 
-from xAline_numba import find_subint_offset
+from GeigerMethod.Synthetic.NumbaFunctions.Numba_xAline import find_subint_offset
 
 import timeit
 

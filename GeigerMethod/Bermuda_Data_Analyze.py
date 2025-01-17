@@ -62,12 +62,14 @@ CDOG = np.array(geodetic2ecef(CDOG[0], CDOG[1], CDOG[2]))
 #Initialize Dog Acoustic Data
 #offset:RMSE, 68116:222.186, 68126:165.453, 68136:219.04, 68130:184.884, 68128: 170.04, 68124: 168.05, 68125:167
 offset = 68126#66828#68126 This is approximately overlaying them now
-data_DOG = sio.loadmat('../GPSData/DOG1-camp.mat')['tags'].astype(float)
+
+DOG = 4
+data_DOG = sio.loadmat(f'../GPSData/DOG{DOG}-camp.mat')['tags'].astype(float)
 acoustic_DOG = np.unwrap(data_DOG[:,1] / 1e9*2*np.pi) / (2*np.pi)  #Numpy page describes how unwrap works
     #I don't think the periodicity for unwrap function is 2*pi as what is set now
 time_DOG = (data_DOG[:, 0] + offset) / 3600
-# condition_DOG = (time_DOG >=25) & (time_DOG <= 40.9)
-# time_DOG, acoustic_DOG = time_DOG[condition_DOG], acoustic_DOG[condition_DOG]
+condition_DOG = (time_DOG >=25) & (time_DOG <= 40.9)
+time_DOG, acoustic_DOG, data_DOG = time_DOG[condition_DOG], acoustic_DOG[condition_DOG], data_DOG[condition_DOG]
 
 #Find travel times from GPS to CDOG guess
 gps1_to_others = np.array([[0,0,0],[-2.4054, -4.20905, 0.060621], [-12.1105,-0.956145,0.00877],[-8.70446831,5.165195, 0.04880436]])
@@ -78,12 +80,15 @@ travel_times = calculateTimesRayTracing(CDOG, transponder_coordinates)[0]
 print(acoustic_DOG + data_DOG[:,0])
 print(time_GNSS + travel_times)
 
-plt.scatter(acoustic_DOG + data_DOG[:,0], acoustic_DOG, s=1, color='b', label="CDOG Data")
-plt.scatter(time_GNSS + travel_times, travel_times, s=1, color='r', label="GPS Data + travel times")
+plt.rcParams.update({'font.size': 14})  # Set the default font size to 14
+plt.figure(figsize=(8,4.8))
+plt.scatter(time_DOG, acoustic_DOG, s=1, color='r', label=f"DOG {DOG} Data")
+# plt.scatter(time_GNSS + travel_times, travel_times, s=1, color='r', label="GPS Data + travel times")
 plt.legend()
-plt.xlabel("Absolute Time (s)")
-plt.ylabel("Travel Time (s)")
-plt.title("Travel times from Bermuda CDOG/GPS data")
+plt.xlabel("Absolute Time (hours)")
+plt.ylabel(f"Travel Time for DOG {DOG} (s)")
+plt.xlim(25, 40.9)
+plt.ylim(1, 9)
 # plt.scatter(list(range(len(acoustic_DOG))),acoustic_DOG + data_DOG[:,0], s=1)
 # plt.scatter(list(range(len(acoustic_DOG))),acoustic_DOG, s=1)
 plt.show()

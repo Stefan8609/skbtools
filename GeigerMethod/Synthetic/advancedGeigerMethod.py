@@ -9,6 +9,7 @@ import random
 from findPointByPlane import initializeFunction, findXyzt
 from RigidBodyMovementProblem import findRotationAndDisplacement
 import scipy.io as sio
+from Generate_Realistic_Transducer import generateRealistic_Transducer
 
 esv_table = sio.loadmat('../../GPSData/global_table_esv.mat')
 cz = np.genfromtxt('../../GPSData/cz_cast2_smoothed.txt')[::100]
@@ -256,7 +257,7 @@ if __name__ == "__main__":
     from geigerTimePlot import geigerTimePlot
     from leverHist import leverHist
 
-    CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(10000)
+    CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic_Transducer(20000)
 
     #Plot histograms of coordinate differences between found transponder and actual transponder
     # leverHist(transponder_coordinates_Actual,transponder_coordinates_Found)
@@ -269,8 +270,17 @@ if __name__ == "__main__":
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
     transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
 
+    print(transponder_coordinates_Found)
+
     #Make plot
     initial_guess = [-10000, 5000, -4000]
+
+    import timeit
+    start = timeit.default_timer()
+    for i in range(1000):
+        guess, times_known, bleh = geigersMethod(initial_guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, time_noise)
+    stop = timeit.default_timer()
+    print('Time: ', (stop - start)/1000)
     geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual, transponder_coordinates_Found,
                    gps1_to_transponder, cz, depth, time_noise, position_noise)
 

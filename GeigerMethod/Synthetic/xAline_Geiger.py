@@ -47,6 +47,7 @@ def xAline_Geiger2(guess, CDOG_data, GPS_data, transponder_coordinates, offset):
     indices = np.where(abs_diff >= 0.9)
     CDOG_full[indices] += np.round(GPS_full[indices] - CDOG_full[indices])
 
+    estimate_arr = np.reshape(estimate_arr, (-1, 3))
     return inversion_guess, estimate_arr, CDOG_full, GPS_full, CDOG_clock, GPS_clock
 
 
@@ -114,12 +115,29 @@ if __name__ == "__main__":
     plt.show()
 
     times_guess, esv = calculateTimesRayTracing(result, transponder_coordinates)
-    inversion_guess, estimate_arr, CDOG_full_derived, GPS_full_derived, CDOG_clock_derived, GPS_clock_derived = xAline_Geiger2(
+    inversion_guess, estimate_arr2, CDOG_full_derived, GPS_full_derived, CDOG_clock_derived, GPS_clock_derived = xAline_Geiger2(
         result, CDOG_data, GPS_data, transponder_coordinates, offset
     )
     abs_diff = np.abs(CDOG_full_derived - GPS_full_derived)
     indices = np.where(abs_diff >= 0.9)
     CDOG_full_derived[indices] += np.round(GPS_full_derived[indices] - CDOG_full_derived[indices])
+
+    estimate_arr = np.append(estimate_arr, estimate_arr2, axis=0)
+    dist = np.linalg.norm(guess - CDOG)
+    # plt.scatter(guess[0], guess[1], s=50, marker="o", color="g", zorder=1, label="Initial Guess")
+    plt.scatter(CDOG[0], CDOG[1], s=100, marker="x", color="k", zorder=3, label="C-DOG")
+    plt.scatter(inversion_guess[0], inversion_guess[1], marker="o", color="r", zorder=4, label="Final Estimate")
+    plt.scatter(estimate_arr[:, 0], estimate_arr[:, 1], s=50, marker="o", color="b", zorder=2, label="Estimate Iterations")
+    plt.xlabel("Easting (m)")
+    plt.ylabel("Northing (m)")
+    # plt.xlim(CDOG[0] - dist * 1.2, CDOG[0] + dist * 1.2)
+    # plt.ylim(CDOG[1] - dist * 1.2, CDOG[1] + dist * 1.2)
+
+    plt.xlim(CDOG[0] - 50, CDOG[0] + 50)
+    plt.ylim(CDOG[1] - 50, CDOG[1] + 50)
+    plt.legend()
+    plt.show()
+
 
     travel_times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates)
     full_times_true, CDOG_full_true, GPS_full_true = index_data(
@@ -145,30 +163,32 @@ if __name__ == "__main__":
     axes[0, 0].set_ylabel("Travel Times (s)")
     axes[0, 0].set_title(f"Synthetic travel times with offset: {true_offset} and RMSE: {np.round(RMSE_true, 3)}")
 
-    diff_data_true = CDOG_full_true - GPS_full_true
+    diff_data_true = (CDOG_full_true - GPS_full_true)*1000
     std_true = np.std(diff_data_true)
     mean_true = np.mean(diff_data_true)
     axes[1, 0].scatter(full_times_true, diff_data_true, s=1)
     axes[1, 0].set_ylim(-3 * std_true, 3 * std_true)
     axes[1, 0].set_xlabel("Absolute Time (s)")
-    axes[1, 0].set_ylabel("Difference between calculated and unwrapped times (s)")
+    axes[1, 0].set_ylabel("Difference between calculated and unwrapped times (ms)")
     axes[1, 0].set_title("Residual Plot")
 
-    axes[0, 1].scatter(CDOG_clock_derived, CDOG_full_derived, s=10, marker="x", label="Unwrapped/Adjusted Synthetic Dog Travel Time")
-    axes[0, 1].scatter(GPS_clock_derived, GPS_full_derived, s=1, marker="o", label="Calculated GPS Travel Times")
+    axes[0, 1].scatter(CDOG_clock_derived/3600, CDOG_full_derived, s=10, marker="x", label="Unwrapped/Adjusted Synthetic Dog Travel Time")
+    axes[0, 1].scatter(GPS_clock_derived/3600, GPS_full_derived, s=1, marker="o", label="Calculated GPS Travel Times")
     axes[0, 1].legend(loc="upper right")
-    axes[0, 1].set_xlabel("Arrivals in Absolute Time (s)")
+    axes[0, 1].set_xlabel("Absolute Time (hours)")
     axes[0, 1].set_ylabel("Travel Times (s)")
-    axes[0, 1].set_title(f"Synthetic travel times with offset: {offset} and RMSE: {np.round(RMSE_derived, 3)}")
+    # axes[0, 1].set_title(f"Synthetic travel times with offset: {offset} and RMSE: {np.round(RMSE_derived, 3)}")
 
-    diff_data_derived = CDOG_full_derived - GPS_full_derived
+    diff_data_derived = (CDOG_full_derived - GPS_full_derived)*1000
     std_derived = np.std(diff_data_derived)
     mean_derived = np.mean(diff_data_derived)
-    axes[1, 1].scatter(CDOG_clock_derived, diff_data_derived, s=1)
-    axes[1, 1].set_ylim(-3 * std_true, 3 * std_true)
-    axes[1, 1].set_xlabel("Absolute Time (s)")
-    axes[1, 1].set_ylabel("Difference between calculated and unwrapped times (s)")
-    axes[1, 1].set_title("Residual Plot")
+    axes[1, 1].scatter(CDOG_clock_derived/3600, diff_data_derived, s=1)
+    axes[1, 1].axhline(std_derived, color='k', linestyle='--')
+    axes[1, 1].axhline(-std_derived, color='k', linestyle='--')
+    axes[1, 1].set_ylim(-3 * std_derived, 3 * std_derived)
+    axes[1, 1].set_xlabel("Absolute Time (hours)")
+    axes[1, 1].set_ylabel("Model Misfit(ms)")
+    # axes[1, 1].set_title("Residual Plot")
 
     plt.show()
 

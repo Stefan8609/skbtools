@@ -126,11 +126,11 @@ def geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates
     axes[2, 1].scatter(GPS_Coord_Num, difference_data * 1000, s=1)
     axes[2, 1].axvline(zoom_idx, color='k', linestyle="--")
     axes[2, 1].axvline(zoom_idx+100, color='k', linestyle="--")
-    axes[2, 1].set_xlabel('Time(s)')
+    axes[2, 1].set_xlabel('Time(ms)')
     axes[2, 1].set_ylim([mu-3*std, mu+3*std])
 
     axes[2, 2].scatter(GPS_Coord_Num[zoom_idx:zoom_idx+zoom_length], difference_data[zoom_idx:zoom_idx+zoom_length] * 1000, s=1)
-    axes[2, 2].set_xlabel('Time(s)')
+    axes[2, 2].set_xlabel('Time(ms)')
     axes[2, 2].set_ylim([mu-3*std, mu+3*std])
 
 

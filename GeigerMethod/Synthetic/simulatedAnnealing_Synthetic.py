@@ -4,6 +4,7 @@ from advancedGeigerMethod import *
 from geigerTimePlot import geigerTimePlot
 from experimentPathPlot import experimentPathPlot
 from leverHist import leverHist
+from Generate_Realistic_Transducer import generateRealistic_Transducer
 
 cz = np.genfromtxt('../../GPSData/cz_cast2_smoothed.txt')[::100]
 depth = np.genfromtxt('../../GPSData/depth_cast2_smoothed.txt')[::100]
@@ -22,7 +23,12 @@ def simulatedAnnealing(n, iter, time_noise, position_noise, geom_noise=0, main=T
 
     #Get initial values
     times_known = calculateTimesRayTracing(CDog, transponder_coordinates_Actual)[0]
-    old_lever = np.array([random.uniform(-15, -5), random.uniform(0, 10), random.uniform(-10, -20)])
+    # old_lever = np.array([random.uniform(-15, -5), random.uniform(-10, 0), random.uniform(-15, -5)])
+
+    # old_lever = np.array([-11, 2, -13])
+
+    old_lever = np.array([-10, 1.5, -15])
+
     transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
     initial_guess = np.array(
         [random.uniform(-10000, 10000), random.uniform(-10000, 10000), random.uniform(-4000, -6000)])
@@ -46,6 +52,16 @@ def simulatedAnnealing(n, iter, time_noise, position_noise, geom_noise=0, main=T
     if main == True:
         geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
                    transponder_coordinates_Found, gps1_to_transponder, cz, depth, time_noise, position_noise, old_lever, sim=1)
+
+        plt.figure(figsize=(10, 4))
+        difference_data = difference_data * 1000
+        std = np.std(difference_data)
+        plt.scatter(range(len(difference_data)), difference_data, s=1)
+        plt.xlabel("Time Step (s)")
+        plt.ylabel("Misfit (ms)")
+        plt.ylim(-3*std, 3*std)
+        plt.show()
+
 
     #Run simulated annealing
     k=0
@@ -75,18 +91,28 @@ def simulatedAnnealing(n, iter, time_noise, position_noise, geom_noise=0, main=T
 
     # leverHist(transponder_coordinates_Actual, transponder_coordinates_Final)
 
-    # if main==True:
-    #     plt.plot(list(range(iter - 1)), RMS_arr)
-    #     plt.xlabel("Simulated Annealing Iteration")
-    #     plt.ylabel("RMSE from Inversion (cm)")
-    #     plt.title("Simulated Annealing Inversion for GPS to Transducer Lever Arm")
-    #     plt.show()
-    #
-    #     print(old_lever, gps1_to_transponder)
-    #     transponder_coordinates_Final = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
-    #     geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
-    #                transponder_coordinates_Final, gps1_to_transponder, cz,
-    #                depth, time_noise, position_noise, old_lever, sim=2)
+    if main==True:
+        plt.plot(list(range(iter - 1)), RMS_arr)
+        plt.xlabel("Simulated Annealing Iteration")
+        plt.ylabel("RMSE from Inversion (cm)")
+        plt.title("Simulated Annealing Inversion for GPS to Transducer Lever Arm")
+        plt.show()
+
+        print(old_lever, gps1_to_transponder)
+        transponder_coordinates_Final = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
+        geigerTimePlot(initial_guess, GPS_Coordinates, CDog, transponder_coordinates_Actual,
+                   transponder_coordinates_Final, gps1_to_transponder, cz,
+                   depth, time_noise, position_noise, old_lever, sim=2)
+
+        plt.figure(figsize=(10, 4))
+        difference_data = difference_data * 1000
+        std = np.std(difference_data)
+        plt.scatter(range(len(difference_data)), difference_data, s=1)
+        plt.xlabel("Time Step (s)")
+        plt.ylabel("Misfit (ms)")
+        plt.ylim(-3*std, 3*std)
+        plt.show()
+
 
     transponder_coordinates_Final = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
     guess = geigersMethod(guess, CDog, transponder_coordinates_Actual,
@@ -95,7 +121,7 @@ def simulatedAnnealing(n, iter, time_noise, position_noise, geom_noise=0, main=T
     return guess, old_lever
 
 if __name__ == "__main__":
-    simulatedAnnealing(1000, 300, 2*10**-5, 2*10**-2)
+    simulatedAnnealing(5000, 300, 2*10**-5, 2*10**-2)
 
 #at each time step keep the cdog location and then calculate a bunch of deviations
 #   and keep the best one at each time step --Could speed up
