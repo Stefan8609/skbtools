@@ -70,8 +70,4 @@ def demo():
     print(xyzt_final - (np.matmul(R_mtrx, xyzt_init) + d))
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    from plotPlane import plotPlane
-    from printTable import printTable
-
     demo()

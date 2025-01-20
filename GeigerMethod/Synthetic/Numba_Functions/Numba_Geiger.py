@@ -1,7 +1,7 @@
-import numpy as np
 import random
-from numba import njit
+import numpy as np
 import scipy.io as sio
+from numba import njit
 from Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 
 esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
@@ -151,10 +151,10 @@ if __name__ == "__main__":
 
     import timeit
     start = timeit.default_timer()
-    for i in range(1000):
+    for i in range(100):
         guess, times_known = geigersMethod(guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, time_noise)
     stop = timeit.default_timer()
-    print('Time: ', (stop - start)/1000)
+    print('Time: ', (stop - start)/100)
     print(times_known)
     print(guess - CDog)
 

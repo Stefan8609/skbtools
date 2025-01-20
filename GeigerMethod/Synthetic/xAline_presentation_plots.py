@@ -4,7 +4,7 @@ from advancedGeigerMethod import calculateTimesRayTracing, findTransponder
 from Generate_Unaligned_Realistic import generateUnalignedRealistic
 from scipy import signal
 from xAline import index_data
-from GeigerMethod.Synthetic.NumbaFunctions.Numba_xAline import find_subint_offset, two_pointer_index
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import find_subint_offset, two_pointer_index
 
 true_offset = 1456.241
 offset = 0

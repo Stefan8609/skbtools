@@ -1,6 +1,5 @@
 import numpy as np
 from numba import njit
-from xAline import index_data
 
 """
 Need to try to fix this function to work with the numba library

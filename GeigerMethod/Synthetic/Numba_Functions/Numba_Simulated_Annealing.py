@@ -1,6 +1,6 @@
-import numpy as np
 from Numba_Geiger import *
 from numba import njit
+
 
 @njit
 def simulatedAnnealing(n, iter, time_noise, position_noise):
@@ -58,6 +58,6 @@ def simulatedAnnealing(n, iter, time_noise, position_noise):
 
 
 if __name__ == "__main__":
-    simulatedAnnealing(10000, 300, 2*10**-5, 2*10**-2)
+    simulatedAnnealing(1000, 300, 2*10**-5, 2*10**-2)
 
 
