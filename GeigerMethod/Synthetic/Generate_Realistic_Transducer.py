@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 Generates a realistic transducer that follows behind the trajectory of the boat
 (turns are sharp and should be made gradual)
 
-Currently there is an error with this and simulated annealing and prevailing theory is it is due to num-skipped component
+Sensitivity in y-axis is extremely low for some reason (leads to hard to resolve transponder in y-axis)
+    x and z are surpisingly fine (although z has low variation?)
 
 Will need to fix in the future
 '''
@@ -20,11 +21,12 @@ def generateRealistic_Transducer(n):
     x_coords4 = -1*np.sort(-1*((np.random.rand(n//4) * 15000) - 7500))
     y_coords1 = x_coords1 + (np.random.rand(n//4) * 50) - 25
     y_coords2 = 7500 + (np.random.rand(n//4) * 50) - 25
-    y_coords3 = - x_coords1 + (np.random.rand(n//4) * 50) - 25
+    y_coords3 = - x_coords3 + (np.random.rand(n//4) * 50) - 25
     y_coords4 = -7500 + (np.random.rand(n//4) * 50) - 25
+
     x_coords = np.concatenate((x_coords1, x_coords2, x_coords3, x_coords4))
     y_coords = np.concatenate((y_coords1, y_coords2, y_coords3, y_coords4))
-    z_coords = (np.random.rand(n//4 * 4) * 5) - 10
+    z_coords = 5 * np.sin(np.linspace(0, n//32 * np.pi, n // 4 * 4))
     GPS1_Coordinates = np.column_stack((x_coords, y_coords, z_coords))
 
     GPS_Coordinates = np.zeros((n//4 * 4, 4, 3))
@@ -32,7 +34,7 @@ def generateRealistic_Transducer(n):
     GPS_Coordinates[:, 0] = GPS1_Coordinates
 
     gps1_to_others = np.array([[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64)
-    gps1_to_transponder = np.array([-10, 3, -15], dtype=np.float64)
+    gps1_to_transponder = np.array([-10, 10, -15], dtype=np.float64)
 
     num_skipped = 50
 
@@ -40,10 +42,10 @@ def generateRealistic_Transducer(n):
         direction = GPS1_Coordinates[i] - GPS1_Coordinates[i-num_skipped]
         direction /= np.linalg.norm(direction)  # Normalize the direction vector
 
-        z_axis = direction
-        x_axis = np.cross([0, 0, 1], z_axis)
+        x_axis = direction
+        y_axis = np.cross([0, 0, 1], x_axis)
         x_axis /= np.linalg.norm(x_axis)
-        y_axis = np.cross(z_axis, x_axis)
+        z_axis = np.cross(x_axis, y_axis)
 
         totalRot = np.array([x_axis, y_axis, z_axis]).T
 

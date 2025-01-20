@@ -15,7 +15,7 @@ def simulatedAnnealing(n, iter, time_noise, position_noise, geom_noise=0, main=T
                        CDog=None, GPS_Coordinates_in=None, transponder_coordinates_Actual=None,
                        gps1_to_others_in=None, gps1_to_transponder=None):
     if main==True:
-        CDog, GPS_Coordinates_in, transponder_coordinates_Actual, gps1_to_others_in, gps1_to_transponder = generateRealistic(n)
+        CDog, GPS_Coordinates_in, transponder_coordinates_Actual, gps1_to_others_in, gps1_to_transponder = generateRealistic_Transducer(n)
 
     #Apply position noise
     gps1_to_others = gps1_to_others_in + np.random.normal(0, geom_noise, (4,3))
@@ -25,9 +25,7 @@ def simulatedAnnealing(n, iter, time_noise, position_noise, geom_noise=0, main=T
     times_known = calculateTimesRayTracing(CDog, transponder_coordinates_Actual)[0]
     # old_lever = np.array([random.uniform(-15, -5), random.uniform(-10, 0), random.uniform(-15, -5)])
 
-    # old_lever = np.array([-11, 2, -13])
-
-    old_lever = np.array([-10, 1.5, -15])
+    old_lever = np.array([-11, 2, -13])
 
     transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, old_lever)
     initial_guess = np.array(

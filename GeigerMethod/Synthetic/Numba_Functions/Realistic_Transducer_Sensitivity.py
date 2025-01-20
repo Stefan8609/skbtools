@@ -20,7 +20,9 @@ def sensitivity_kernel(CDOG, GPS_Coordinates, transponder_coordinates, gps1_to_o
         print(i)
         for j in range(len(Y[:,0])):
             initial_guess = np.array([random.uniform(-10000, 10000), random.uniform(-10000, 10000), random.uniform(-4000, -6000)])
-            lever = gps1_to_transponder + np.array([X[0, i], Y[j, 0], 0])
+            # lever = gps1_to_transponder + np.array([X[0, i], Y[j, 0], 0])
+            lever = gps1_to_transponder + np.array([X[0, i], 0, Y[j, 0]])
+
 
             transponder_coordinates_Found = findTransponder(GPS_Coordinates, gps1_to_others, lever)
             guess, times_known = geigersMethod(initial_guess, CDOG, transponder_coordinates, transponder_coordinates_Found, time_noise)[:2]
@@ -56,3 +58,14 @@ if __name__ == "__main__":
     n = 1000
     CDOG, GPS_Coordinates, transponder_coordinates, gps1_to_others, gps1_to_transponder = generateRealistic_Transducer(n)
     sensitivity_kernel(CDOG, GPS_Coordinates, transponder_coordinates, gps1_to_others, gps1_to_transponder, 0, 0)
+
+    lever = gps1_to_others + np.array([0, 0, 10])
+    transponder_coordinates_Found = findTransponder(GPS_Coordinates, lever, gps1_to_transponder)
+    initial_guess = np.array([random.uniform(-5000, 5000), random.uniform(-5000, 5000), random.uniform(-5225, -5235)])
+    guess, times_known = geigersMethod(initial_guess, CDOG, transponder_coordinates, transponder_coordinates_Found, 0)
+    times_found, esv = calculateTimesRayTracing(guess, transponder_coordinates_Found)
+
+    diff_data = (times_known - times_found)*1000
+    print(np.sqrt(np.nanmean(diff_data ** 2)))
+    plt.scatter(range(len(times_known)), diff_data)
+    plt.show()

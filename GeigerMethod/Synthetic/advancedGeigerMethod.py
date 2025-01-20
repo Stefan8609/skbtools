@@ -133,7 +133,7 @@ def generateRealistic(n):
     x_coords4 = -1*np.sort(-1*((np.random.rand(n//4) * 15000) - 7500))
     y_coords1 = x_coords1 + (np.random.rand(n//4) * 50) - 25
     y_coords2 = 7500 + (np.random.rand(n//4) * 50) - 25
-    y_coords3 = - x_coords1 + (np.random.rand(n//4) * 50) - 25
+    y_coords3 = - x_coords3 + (np.random.rand(n//4) * 50) - 25
     y_coords4 = -7500 + (np.random.rand(n//4) * 50) - 25
     x_coords = np.concatenate((x_coords1, x_coords2, x_coords3, x_coords4))
     y_coords = np.concatenate((y_coords1, y_coords2, y_coords3, y_coords4))
