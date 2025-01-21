@@ -38,11 +38,12 @@ def initial_geiger(guess, CDOG_data, GPS_data, transponder_coordinates):
             return inversion_guess, offset
     return inversion_guess, offset
 
+@njit
 def transition_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offset):
     """ For when looking for sub-int offset"""
     epsilon = 10 ** -5
     k = 0
-    delta = 1
+    delta = np.array([1.0, 1.0, 1.0])
     inversion_guess = guess
 
     while np.linalg.norm(delta) > epsilon and k < 100:
@@ -64,12 +65,12 @@ def transition_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offse
 
     return inversion_guess, offset
 
-
+@njit
 def final_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offset):
     """ For use when offset is known to a high degree"""
     epsilon = 10 ** -5
     k = 0
-    delta = 1
+    delta = np.array([1.0, 1.0, 1.0])
     inversion_guess = guess
 
     times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)

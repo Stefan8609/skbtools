@@ -5,20 +5,10 @@ from Numba_xAline import *
 from Numba_xAline_Geiger import *
 
 """
-Annealing Schematic
-
-    Find Alignment? (How often do I do this?) (Every iteration?)
-    
-    Find Seafloor Receiver and RMSE
-    
-    Perturb Lever Arm
-    
-    [When do we transition to the next geiger?]
-    
-What part of the algorithm do we use Numba for?
+Maybe try to implement the more complicated schematic
 """
 
-def simulated_annealing(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, initial_guess):
+def simulated_annealing(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, initial_guess, initial_lever):
     """Algorithm to determine the best lever arm, offset, and seafloor receiver position"""
 
     #Initialize variables
@@ -26,7 +16,7 @@ def simulated_annealing(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_othe
     old_offset = 0
     inversion_guess = initial_guess
     best_rmse = np.inf
-    best_lever = np.array([-11.0, 2.0, -13.0], dtype=np.float64)
+    best_lever = initial_lever
     k=0
     while k<300:
         temp = np.exp(-np.float64(k) * 7.0 * (1.0 / (iter)))
@@ -73,7 +63,7 @@ if __name__ == "__main__":
     time_noise = 2 * 10**-5
 
     CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(
-        50000, time_noise, true_offset
+        20000, time_noise, true_offset
     )
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 
@@ -81,8 +71,11 @@ if __name__ == "__main__":
     gps1_to_transponder = np.array([-10, 3, -15], dtype=np.float64)
 
     intitial_guess = CDOG + np.array([100, -100, -50], dtype=np.float64)
+    initial_lever = np.array([-5.0, 7.0, -10.0], dtype=np.float64)
 
-    lever, offset, inversion_guess = simulated_annealing(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, intitial_guess)
+    lever, offset, inversion_guess = simulated_annealing(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, intitial_guess, initial_lever)
+
+    lever, offset, inversion_guess = simulated_annealing(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, inversion_guess, lever)
 
     transponder_coordinates_found = findTransponder(GPS_Coordinates, gps1_to_others, lever)
     times_found, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates_found)
