@@ -11,6 +11,7 @@ from Generate_Unaligned_Realistic import generateUnalignedRealistic
 3) Exact offset known (to high degree) and pinpointing the location of the receiver
     Exact offset should be bc it shifts the RMSE away from 0
 
+Seems like initial guess has to be within a couple 100 meters of CDOG for it to converge
 """
 
 def initial_geiger(guess, CDOG_data, GPS_data, transponder_coordinates):
@@ -98,6 +99,7 @@ if __name__ == "__main__":
 
     position_noise = 2 * 10**-2
     time_noise = 2 * 10**-5
+
     CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(
         20000, time_noise, true_offset
     )
@@ -107,7 +109,7 @@ if __name__ == "__main__":
     gps1_to_transponder = np.array([-10, 3, -15], dtype=np.float64)
     transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
 
-    guess = CDOG + [200, 100, 400]
+    guess = CDOG + [200, 200, 400]
 
     inversion_result, offset = initial_geiger(guess, CDOG_data, GPS_data, transponder_coordinates)
     print("INT Offset: ", offset, "DIFF:", offset - true_offset)
