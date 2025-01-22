@@ -34,6 +34,7 @@ def simulated_annealing(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_othe
             status = "constant"
         else:
             if k == 100 or k == 200:
+                transponder_coordinates_found = findTransponder(GPS_Coordinates, gps1_to_others, best_lever)
                 inversion_guess, offset = transition_geiger(inversion_guess, CDOG_data, GPS_data,
                                                             transponder_coordinates_found, offset)
             inversion_guess, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_geiger(inversion_guess, CDOG_data, GPS_data,
