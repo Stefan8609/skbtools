@@ -14,7 +14,9 @@ def generateUnalignedRealistic(n, time_noise, offset, main=False):
 
     GPS_time = np.arange(len(GPS_Coordinates))
 
+    """Can change these options to have a incorrect soundspeed to investigate outcome"""
     true_travel_times, true_esv = calculateTimesRayTracing(CDOG, transponder_coordinates)
+    # true_travel_times = np.array([np.linalg.norm(transponder_coordinates[i] - CDOG)/1515 for i in range(len(transponder_coordinates))])
 
     CDOG_time = GPS_time + true_travel_times + np.random.normal(0, time_noise, len(GPS_time)) + offset
     CDOG_remain, CDOG_int = np.modf(CDOG_time)

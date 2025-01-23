@@ -8,12 +8,12 @@ from Numba_xAline_Geiger import *
 Maybe try to implement the more complicated schematic
 """
 
-def simulated_annealing(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, initial_guess, initial_lever):
+def simulated_annealing(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, initial_guess, initial_lever, initial_offset=0, real_data = False):
     """Algorithm to determine the best lever arm, offset, and seafloor receiver position"""
 
     #Initialize variables
     status = "int"
-    old_offset = 0
+    old_offset = initial_offset
     inversion_guess = initial_guess
     best_rmse = np.inf
     best_lever = initial_lever
@@ -26,21 +26,25 @@ def simulated_annealing(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_othe
         transponder_coordinates_found = findTransponder(GPS_Coordinates, gps1_to_others, lever)
 
         if status == "int":
-            inversion_guess, offset = initial_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates_found)
+            inversion_guess, offset = initial_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates_found, real_data)
             if offset == old_offset:
                 status = "subint"
         elif status == "subint":
-            inversion_guess, offset = transition_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates_found, offset)
+            inversion_guess, offset = transition_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates_found, offset, real_data)
             status = "constant"
         else:
             if k == 100 or k == 200:
                 transponder_coordinates_found = findTransponder(GPS_Coordinates, gps1_to_others, best_lever)
                 inversion_guess, offset = transition_geiger(inversion_guess, CDOG_data, GPS_data,
-                                                            transponder_coordinates_found, offset)
-            inversion_guess, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_geiger(inversion_guess, CDOG_data, GPS_data,
-                                                                                       transponder_coordinates_found, offset)
+                                                            transponder_coordinates_found, offset, real_data)
+            else:
+                inversion_guess, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_geiger(inversion_guess, CDOG_data, GPS_data,
+                                                                                       transponder_coordinates_found, offset, real_data)
 
-        times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates_found)
+        if real_data == False:
+            times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates_found)
+        else:
+            times_guess, esv = calculateTimesRayTracingReal(inversion_guess, transponder_coordinates_found)
         CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
             two_pointer_index(offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates_found, esv)
         )
@@ -76,7 +80,7 @@ if __name__ == "__main__":
 
     lever, offset, inversion_guess = simulated_annealing(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, intitial_guess, initial_lever)
 
-    lever, offset, inversion_guess = simulated_annealing(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, inversion_guess, lever)
+    lever, offset, inversion_guess = simulated_annealing(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, inversion_guess, lever, offset)
 
     transponder_coordinates_found = findTransponder(GPS_Coordinates, gps1_to_others, lever)
     times_found, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates_found)

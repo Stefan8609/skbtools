@@ -2,6 +2,7 @@ import random
 import numpy as np
 import scipy.io as sio
 from numba import njit
+from pymap3d import ecef2geodetic
 from Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 
 esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
@@ -51,6 +52,17 @@ def find_esv(beta, dz):
         closest_esv[i] = esv_matrix[idx_closest_dz[i], idx_closest_beta[i]]
 
     return closest_esv
+
+def calculateTimesRayTracingReal(guess, transponder_coordinates):
+    abs_dist = np.sqrt(np.sum((transponder_coordinates - guess)**2, axis=1))
+
+    depth_arr = np.array([ecef2geodetic(transponder_coordinates[i,0], transponder_coordinates[i,1],
+                                        transponder_coordinates[i,2])[2] for i in range(len(transponder_coordinates))])
+    dz = depth_arr - np.array(ecef2geodetic(guess[0], guess[1], guess[2])[2])
+    beta = np.arcsin(dz / abs_dist) * 180 / np.pi
+    esv = find_esv(beta, dz)
+    times = abs_dist/esv
+    return times, esv
 
 @njit
 def calculateTimesRayTracing(guess, transponder_coordinates):

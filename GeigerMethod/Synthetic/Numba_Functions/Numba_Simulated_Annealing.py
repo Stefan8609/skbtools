@@ -3,7 +3,7 @@ from numba import njit
 
 
 @njit
-def simulatedAnnealing(n, iter, time_noise, position_noise):
+def simulated_annealing(n, iter, time_noise, position_noise):
     CDog, GPS_Coordinates_in, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(n)
 
     #Apply position noise
@@ -58,6 +58,6 @@ def simulatedAnnealing(n, iter, time_noise, position_noise):
 
 
 if __name__ == "__main__":
-    simulatedAnnealing(1000, 300, 2*10**-5, 2*10**-2)
+    simulated_annealing(1000, 300, 2*10**-5, 2*10**-2)
 
 

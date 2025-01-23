@@ -1,6 +1,6 @@
 import numpy as np
 from numba import njit
-from Numba_Geiger import computeJacobianRayTracing, findTransponder, calculateTimesRayTracing
+from Numba_Geiger import computeJacobianRayTracing, findTransponder, calculateTimesRayTracing, calculateTimesRayTracingReal
 from Numba_xAline import two_pointer_index, find_subint_offset, find_int_offset
 from Generate_Unaligned_Realistic import generateUnalignedRealistic
 
@@ -14,7 +14,7 @@ from Generate_Unaligned_Realistic import generateUnalignedRealistic
 Seems like initial guess has to be within a couple 100 meters of CDOG for it to converge
 """
 
-def initial_geiger(guess, CDOG_data, GPS_data, transponder_coordinates):
+def initial_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, real_data=False):
     """For use when looking for int offset"""
     epsilon = 10**-5
     k = 0
@@ -22,7 +22,10 @@ def initial_geiger(guess, CDOG_data, GPS_data, transponder_coordinates):
     inversion_guess = guess
     while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
-        times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
+        if real_data == False:
+            times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
+        else:
+            times_guess, esv = calculateTimesRayTracingReal(inversion_guess, transponder_coordinates)
         offset = find_int_offset(CDOG_data, GPS_data, times_guess, transponder_coordinates, esv)
 
         CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
@@ -38,8 +41,8 @@ def initial_geiger(guess, CDOG_data, GPS_data, transponder_coordinates):
             return inversion_guess, offset
     return inversion_guess, offset
 
-@njit
-def transition_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offset):
+# @njit
+def transition_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offset, real_data=False):
     """ For when looking for sub-int offset"""
     epsilon = 10 ** -5
     k = 0
@@ -48,7 +51,10 @@ def transition_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offse
 
     while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
-        times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
+        if real_data == False:
+            times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
+        else:
+            times_guess, esv = calculateTimesRayTracingReal(inversion_guess, transponder_coordinates)
         offset = find_subint_offset(offset, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv)
 
         CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
@@ -65,28 +71,37 @@ def transition_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offse
 
     return inversion_guess, offset
 
-@njit
-def final_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offset):
+# @njit
+def final_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offset, real_data=False):
     """ For use when offset is known to a high degree"""
     epsilon = 10 ** -5
     k = 0
     delta = np.array([1.0, 1.0, 1.0])
     inversion_guess = guess
 
-    times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
+    if real_data == False:
+        times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
+    else:
+        times_guess, esv = calculateTimesRayTracingReal(inversion_guess, transponder_coordinates)
     CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
         two_pointer_index(offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv, True)
     )
 
     while np.linalg.norm(delta) > epsilon and k < 10:
-        GPS_full, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates_full)
+        if real_data == False:
+            GPS_full, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates_full)
+        else:
+            GPS_full, esv = calculateTimesRayTracingReal(inversion_guess, transponder_coordinates_full)
 
         jacobian = computeJacobianRayTracing(inversion_guess, transponder_coordinates_full, GPS_full, esv_full)
         delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (GPS_full - CDOG_full)
         inversion_guess += delta
         k += 1
 
-    times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
+    if real_data == False:
+        times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
+    else:
+        times_guess, esv = calculateTimesRayTracingReal(inversion_guess, transponder_coordinates)
     CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
         two_pointer_index(offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv, True)
     )

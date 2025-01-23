@@ -98,6 +98,7 @@ def find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_co
     return best_offset
 
 def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, esv, start=0, best=0, best_RMSE=np.inf):
+    """Function to find the best integer offset between two time series."""
     # Set initial parameters
     offset = start
     err_int = 1000
@@ -124,7 +125,7 @@ def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, 
             lag = np.inf
 
     # Conditional check to ensure the resulting value is reasonable (and to prevent stack overflows)
-    if start > 10000:
+    if start > 10000 or start < -10000:
         print("Error - No true offset found")
         return best
 
