@@ -30,8 +30,6 @@ def load_and_process_data(path):
     times = data['times'].flatten()
     datetimes = (days * 24 * 3600) + times
     # condition_GNSS = (datetimes/3600 >= 25) & (datetimes / 3600 <= 40.9)
-    # time_GNSS = datetimes[condition_GNSS]/3600
-    # x,y,z = data['x'].flatten()[condition_GNSS], data['y'].flatten()[condition_GNSS], data['z'].flatten()[condition_GNSS]
 
     time_GNSS = datetimes
     x,y,z = data['x'].flatten(), data['y'].flatten(), data['z'].flatten()
@@ -68,8 +66,6 @@ for i in range(len(filtered_data[0,0])):
 #Initialize time-tagged data for GPS and CDOG
 GPS_data = filtered_data[0, 0, :]
 CDOG_data = sio.loadmat('../../../GPSData/DOG3-camp.mat')['tags'].astype(float)
-# CDOG_guess_geodetic = np.array([31.46356091, 291.29859266, -5271.47395559])
-# CDOG_guess= np.array(geodetic2ecef(CDOG_guess_geodetic[0], CDOG_guess_geodetic[1], CDOG_guess_geodetic[2]))
 
 lat = sio.loadmat('../../../GPSData/Unit1-camp_bis.mat')['lat'].flatten()
 lon = sio.loadmat('../../../GPSData/Unit1-camp_bis.mat')['lon'].flatten()
@@ -81,13 +77,12 @@ CDOG_guess = np.array(geodetic2ecef(CDOG_guess_geodetic[0], CDOG_guess_geodetic[
 print("ECEF", CDOG_guess, "GEODETIC", CDOG_guess_geodetic)
 
 gps1_to_others = np.array([[0.0,0.0,0.0],[-2.4054, -4.20905, 0.060621], [-12.1105,-0.956145,0.00877],[-8.70446831,5.165195, 0.04880436]])
-#Design a program to find the optimal gps1_to_others
 
 #Scale GPS Clock slightly
 GPS_data = GPS_data - 68826
 
 initial_lever_guess = np.array([-12.4, 15.46, -15.24])
-offset = 0
+offset = 2000
 
 print("GPS DATA:", GPS_data)
 print("CDOG DATA:", CDOG_data[:,0])
@@ -100,46 +95,47 @@ print("MODELLED TRAVEL TIMES:", GPS_travel_times)
 CDOG_data[:, 1] = CDOG_data[:, 1]/1e9
 
 GPS_travel_times, esv = calculateTimesRayTracingReal(CDOG_guess, transponder_coordinates)
-# offset = find_int_offset(CDOG_data, GPS_data, GPS_travel_times, transponder_coordinates, esv)
-# print("INT OFFSET:", offset)
-# offset = find_subint_offset(offset, CDOG_data, GPS_data, GPS_travel_times, transponder_coordinates, esv)
-# print("SUBINT OFFSET:", offset)
-# CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = two_pointer_index(offset, 0.7,
-#                                                                                                        CDOG_data, GPS_data, GPS_travel_times,
-#                                                                                                        transponder_coordinates, esv, exact=True)
 
-# inversion_guess, offset = initial_geiger(CDOG_guess, CDOG_data, GPS_data, transponder_coordinates, real_data=True)
-#
-# print(inversion_guess, offset)
-#
-#
-# GPS_travel_times, esv = calculateTimesRayTracingReal(inversion_guess, transponder_coordinates)
-# offset = find_int_offset(CDOG_data, GPS_data, GPS_travel_times, transponder_coordinates, esv)
-# offset = find_subint_offset(offset, CDOG_data, GPS_data, GPS_travel_times, transponder_coordinates, esv)
-# print("SUBINT OFFSET:", offset)
-#
-# CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = two_pointer_index(offset, 0.7,
-#                                                                                                        CDOG_data, GPS_data, GPS_travel_times,
-#                                                                                                        transponder_coordinates, esv, exact=True)
+CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = two_pointer_index(offset, 0.4,
+                                                                                                       CDOG_data, GPS_data, GPS_travel_times,
+                                                                                                       transponder_coordinates, esv, exact=True)
+offset = find_int_offset(CDOG_data, GPS_data, GPS_travel_times, transponder_coordinates, esv)
+print("INT OFFSET", offset)
+offset = find_subint_offset(offset, CDOG_data, GPS_data, GPS_travel_times, transponder_coordinates, esv)
+print("SUBINT OFFSET", offset)
 
-diff = CDOG_full - GPS_full
+CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = two_pointer_index(offset, 0.4,
+                                                                                                       CDOG_data, GPS_data, GPS_travel_times,
+                                                                                                       transponder_coordinates, esv, exact=True)
+
+RMSE = np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100
+print(f"RMSE: {RMSE} cm for offset {offset} and initial CDOG")
+
+inversion_guess, offset = initial_geiger(CDOG_guess, CDOG_data, GPS_data, transponder_coordinates)
+
+print(offset)
+GPS_travel_times, esv = calculateTimesRayTracingReal(inversion_guess, transponder_coordinates)
+
+CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = two_pointer_index(offset, 0.4,
+                                                                                                       CDOG_data, GPS_data, GPS_travel_times,
+                                                                                                       transponder_coordinates, esv, exact=True)
+
+RMSE = np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100
+print(f"RMSE: {RMSE} cm for offset {offset} and inversion CDOG")
+
 #Figure with 2 plots arranged vertically
 fig, axes = plt.subplots(2, 1, figsize=(8, 8))
-axes[0].scatter(CDOG_clock, CDOG_full, s=10, marker="x", label="CDOG")
+# axes[0].scatter(CDOG_clock, CDOG_full, s=10, marker="x", label="CDOG")
+axes[0].scatter(CDOG_clock, CDOG_clock - (GPS_clock - GPS_full), s=10, marker="x", label="CDOG")
 axes[0].scatter(GPS_clock, GPS_full, s=10, marker="x", label="GPS")
 axes[0].set_title("Travel Times")
 axes[0].set_xlabel("Time (s)")
 axes[0].set_ylabel("Travel Time (s)")
 axes[0].legend()
 
-# axes[1].scatter(CDOG_clock, diff, s=10, marker="x")
-# axes[1].set_title("Absolute Difference")
-# axes[1].set_xlabel("Time (s)")
-# axes[1].set_ylabel("Absolute Difference (s)")
-
 unwrap = np.unwrap(CDOG_data[:,1]*2*np.pi) / (2*np.pi)
-axes[1].scatter(GPS_data, GPS_travel_times, s=10, label="GPS")
 axes[1].scatter(CDOG_data[:,0], unwrap, s=10, label="CDOG")
+axes[1].scatter(GPS_data + offset, GPS_travel_times, s=10, label="GPS")
 axes[1].set_title("Travel Times")
 axes[1].set_xlabel("Time (s)")
 axes[1].set_ylabel("Travel Time (s)")
@@ -151,13 +147,5 @@ plt.show()
 """Real Data
 CalculateTimesRayTracing
 Add Real Data flag to the Numba functions
-
 """
-
-
-# best_lever, offset, inversion_guess = simulated_annealing(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others,
-#                                                           CDOG_guess, initial_lever_guess, initial_offset)
-#
-# print(GPS_data)
-# print(CDOG_data)
 

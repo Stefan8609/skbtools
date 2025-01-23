@@ -46,7 +46,7 @@ def simulated_annealing(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_othe
         else:
             times_guess, esv = calculateTimesRayTracingReal(inversion_guess, transponder_coordinates_found)
         CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
-            two_pointer_index(offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates_found, esv)
+            two_pointer_index(offset, 0.5, CDOG_data, GPS_data, times_guess, transponder_coordinates_found, esv)
         )
 
         RMSE = np.sqrt(np.nanmean((GPS_full - CDOG_full) ** 2))

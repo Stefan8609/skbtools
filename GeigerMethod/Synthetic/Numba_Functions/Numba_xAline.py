@@ -77,7 +77,7 @@ def find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_co
             lag = np.round(lag, 8)  # Adjust precision based on your interval
 
             # Index data using lag
-            CDOG_full, GPS_clock, GPS_full = two_pointer_index(lag, 0.6, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv, True)[1:4]
+            CDOG_full, GPS_clock, GPS_full = two_pointer_index(lag, 0.5, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv, True)[1:4]
 
             # Adjust CDOG_full to match GPS_full
             for i in range(len(CDOG_full)):
@@ -107,7 +107,7 @@ def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, 
 
     while lag != 0 and k < 10:
         # Get indexed data according to offset
-        CDOG_full, GPS_clock, GPS_full = two_pointer_index(offset, .6, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)[1:4]
+        CDOG_full, GPS_clock, GPS_full = two_pointer_index(offset, .5, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)[1:4]
         # Get fractional parts of the data
         GPS_fp = np.modf(GPS_full)[0]
         CDOG_fp = np.modf(CDOG_full)[0]
@@ -130,7 +130,7 @@ def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, 
         return best
 
     # If RMSE is too high, rerun the algorithm to see if it can be improved
-    CDOG_full, GPS_clock, GPS_full = two_pointer_index(offset, .9, CDOG_data, GPS_data, travel_times,
+    CDOG_full, GPS_clock, GPS_full = two_pointer_index(offset, .5, CDOG_data, GPS_data, travel_times,
                                                        transponder_coordinates, esv)[1:4]
     RMSE = np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100
     if RMSE < best_RMSE:

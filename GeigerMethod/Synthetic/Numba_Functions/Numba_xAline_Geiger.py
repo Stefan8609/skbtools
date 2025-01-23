@@ -29,16 +29,16 @@ def initial_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, real_dat
         offset = find_int_offset(CDOG_data, GPS_data, times_guess, transponder_coordinates, esv)
 
         CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
-            two_pointer_index(offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv)
+            two_pointer_index(offset, 0.5, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv)
         )
         jacobian = computeJacobianRayTracing(inversion_guess, transponder_coordinates_full, GPS_full, esv_full)
         delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (GPS_full - CDOG_full)
         inversion_guess += delta
         k += 1
-
         if np.linalg.norm(inversion_guess - guess) > 1000:
             print("ERROR: Inversion too far from starting value")
             return inversion_guess, offset
+
     return inversion_guess, offset
 
 # @njit
@@ -58,7 +58,7 @@ def transition_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offse
         offset = find_subint_offset(offset, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv)
 
         CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
-            two_pointer_index(offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv, True)
+            two_pointer_index(offset, 0.5, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv, True)
         )
         jacobian = computeJacobianRayTracing(inversion_guess, transponder_coordinates_full, GPS_full, esv_full)
         delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (GPS_full - CDOG_full)
@@ -84,7 +84,7 @@ def final_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offset, re
     else:
         times_guess, esv = calculateTimesRayTracingReal(inversion_guess, transponder_coordinates)
     CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
-        two_pointer_index(offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv, True)
+        two_pointer_index(offset, 0.5, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv, True)
     )
 
     while np.linalg.norm(delta) > epsilon and k < 10:
@@ -103,7 +103,7 @@ def final_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offset, re
     else:
         times_guess, esv = calculateTimesRayTracingReal(inversion_guess, transponder_coordinates)
     CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
-        two_pointer_index(offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv, True)
+        two_pointer_index(offset, 0.5, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv, True)
     )
 
     return inversion_guess, CDOG_full, GPS_full, CDOG_clock, GPS_clock

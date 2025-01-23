@@ -65,13 +65,16 @@ def calculateTimesRayTracingReal(guess, transponder_coordinates):
     return times, esv
 
 @njit
-def calculateTimesRayTracing(guess, transponder_coordinates):
+def calculateTimesRayTracing(guess, transponder_coordinates, ray=True):
     hori_dist = np.sqrt((transponder_coordinates[:, 0] - guess[0])**2 + (transponder_coordinates[:, 1] - guess[1])**2)
     abs_dist = np.sqrt(np.sum((transponder_coordinates - guess)**2, axis=1))
     beta = np.arccos(hori_dist / abs_dist) * 180 / np.pi
     dz = np.abs(guess[2] - transponder_coordinates[:, 2])
     esv = find_esv(beta, dz)
     times = abs_dist / esv
+    if ray == False:
+        times = abs_dist / 1515.0
+        esv = np.full(len(transponder_coordinates), 1515.0)
     return times, esv
 
 @njit
