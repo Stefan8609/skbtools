@@ -126,7 +126,7 @@ def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, 
 
     # Conditional check to ensure the resulting value is reasonable (and to prevent stack overflows)
     if start > 10000 or start < -10000:
-        print("Error - No true offset found")
+        print(f"Error - No true offset found: {offset}")
         return best
 
     # If RMSE is too high, rerun the algorithm to see if it can be improved

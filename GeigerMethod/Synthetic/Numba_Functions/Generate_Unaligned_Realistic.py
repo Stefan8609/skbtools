@@ -9,13 +9,13 @@ import matplotlib.pyplot as plt
 from Numba_Geiger import find_esv, findTransponder, calculateTimesRayTracing, generateRealistic
 
 #Function to generate the unaligned time series for a realistic trajectory
-def generateUnalignedRealistic(n, time_noise, offset, main=False):
+def generateUnalignedRealistic(n, time_noise, offset, ray=True, main=False):
     CDOG, GPS_Coordinates, transponder_coordinates, gps1_to_others, gps1_to_transponder = generateRealistic(n)
 
     GPS_time = np.arange(len(GPS_Coordinates))
 
     """Can change ray option to have a incorrect soundspeed to investigate outcome"""
-    true_travel_times, true_esv = calculateTimesRayTracing(CDOG, transponder_coordinates, ray=True)
+    true_travel_times, true_esv = calculateTimesRayTracing(CDOG, transponder_coordinates, ray)
 
     CDOG_time = GPS_time + true_travel_times + np.random.normal(0, time_noise, len(GPS_time)) + offset
     CDOG_remain, CDOG_int = np.modf(CDOG_time)

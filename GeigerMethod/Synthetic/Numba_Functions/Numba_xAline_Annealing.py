@@ -27,6 +27,7 @@ def simulated_annealing(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_othe
 
         if status == "int":
             inversion_guess, offset = initial_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates_found, real_data)
+            print(offset)
             if offset == old_offset:
                 status = "subint"
         elif status == "subint":
@@ -62,6 +63,8 @@ def simulated_annealing(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_othe
     return best_lever, offset, inversion_guess
 
 if __name__ == "__main__":
+    from Time_Plot import time_plot
+
     true_offset = np.random.rand() * 9000 + 1000
     print(true_offset)
     position_noise = 2 * 10**-2
@@ -75,10 +78,10 @@ if __name__ == "__main__":
     gps1_to_others = np.array([[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64)
     gps1_to_transponder = np.array([-10, 3, -15], dtype=np.float64)
 
-    intitial_guess = CDOG + np.array([100, -100, -50], dtype=np.float64)
+    initial_guess = CDOG + np.array([100, -100, -50], dtype=np.float64)
     initial_lever = np.array([-5.0, 7.0, -10.0], dtype=np.float64)
 
-    lever, offset, inversion_guess = simulated_annealing(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, intitial_guess, initial_lever)
+    lever, offset, inversion_guess = simulated_annealing(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, initial_guess, initial_lever)
 
     lever, offset, inversion_guess = simulated_annealing(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, inversion_guess, lever, offset)
 
@@ -93,3 +96,6 @@ if __name__ == "__main__":
     print(np.linalg.norm(inversion_guess - CDOG) * 100, 'cm')
     print("Found Lever", lever, "Found Offset", offset)
     print("Actual Lever", gps1_to_transponder, "Actual Offset", true_offset)
+
+    time_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, CDOG, true_transponder_coordinates, position_noise, time_noise,
+              initial_guess, inversion_guess, lever, gps1_to_transponder)
