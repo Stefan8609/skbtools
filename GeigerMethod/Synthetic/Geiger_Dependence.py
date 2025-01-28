@@ -181,6 +181,6 @@ def random_dependence(points, n):
 # time_dependence(1000)
 # spatial_dependence(10000)
 # point_dependence(2*10**-5, 2*10**-2)
-# combined_dependence(1000)
+combined_dependence(1000)
 
-random_dependence(500, 1000)
+# random_dependence(500, 1000)

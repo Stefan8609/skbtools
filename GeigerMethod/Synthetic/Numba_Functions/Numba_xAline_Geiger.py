@@ -29,7 +29,7 @@ def initial_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, real_dat
         offset = find_int_offset(CDOG_data, GPS_data, times_guess, transponder_coordinates, esv)
 
         CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
-            two_pointer_index(offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv, True)
+            two_pointer_index(offset, .6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv, True)
         )
         jacobian = computeJacobianRayTracing(inversion_guess, transponder_coordinates_full, GPS_full, esv_full)
         delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (GPS_full - CDOG_full)
@@ -41,7 +41,7 @@ def initial_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, real_dat
 
     return inversion_guess, offset
 
-# @njit
+@njit
 def transition_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offset, real_data=False):
     """ For when looking for sub-int offset"""
     epsilon = 10 ** -5
@@ -71,7 +71,7 @@ def transition_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offse
 
     return inversion_guess, offset
 
-# @njit
+@njit
 def final_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offset, real_data=False):
     """ For use when offset is known to a high degree"""
     epsilon = 10 ** -5
