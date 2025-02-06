@@ -66,7 +66,7 @@ def two_pointer_index(offset, threshhold, CDOG_data, GPS_data, GPS_travel_times,
 def find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv):
     """Optimized function to find the best sub-integer offset."""
     # Initialize values for loop
-    l, u = offset - .5, offset + .5
+    l, u = offset - 0.5, offset + 0.5
     intervals = np.array([0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001])
     best_offset = offset
     best_RMSE = np.inf
@@ -107,7 +107,7 @@ def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, 
 
     while lag != 0 and k < 10:
         # Get indexed data according to offset
-        CDOG_full, GPS_clock, GPS_full = two_pointer_index(offset, .5, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)[1:4]
+        CDOG_full, GPS_clock, GPS_full = two_pointer_index(offset, 0.5, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)[1:4]
         # Get fractional parts of the data
         GPS_fp = np.modf(GPS_full)[0]
         CDOG_fp = np.modf(CDOG_full)[0]
@@ -125,7 +125,7 @@ def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, 
             lag = np.inf
 
     # Conditional check to ensure the resulting value is reasonable (and to prevent stack overflows)
-    if start > 10000 or start < -10000:
+    if start > 10000:
         print(f"Error - No true offset found: {offset}")
         return best
 

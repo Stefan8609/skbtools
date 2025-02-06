@@ -7,8 +7,6 @@ from Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 from ECEF_Geodetic import ECEF_Geodetic
 
 esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
-cz = np.genfromtxt('../../../GPSData/cz_cast2_smoothed.txt')[::100]
-depth = np.genfromtxt('../../../GPSData/depth_cast2_smoothed.txt')[::100]
 dz_array = esv_table['distance'].flatten()
 angle_array = esv_table['angle'].flatten()
 esv_matrix = esv_table['matrice']
@@ -58,6 +56,7 @@ def find_esv(beta, dz):
 def calculateTimesRayTracingReal(guess, transponder_coordinates):
     abs_dist = np.sqrt(np.sum((transponder_coordinates - guess)**2, axis=1))
     depth_arr = ECEF_Geodetic(transponder_coordinates)[2]
+
     guess = guess[np.newaxis, :]
     lat, lon, depth = ECEF_Geodetic(guess)
     dz = depth_arr - depth

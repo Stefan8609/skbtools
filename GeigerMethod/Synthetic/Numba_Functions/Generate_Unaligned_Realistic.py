@@ -6,16 +6,59 @@ This is a version of the time alignment script that generates a trajectory that 
 import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
-from Numba_Geiger import find_esv, findTransponder, calculateTimesRayTracing, generateRealistic
+from Numba_Geiger import find_esv, findTransponder, generateRealistic
+
+def find_esv_generate(beta, dz, perturbation=False):
+    if perturbation == True:
+        esv_table = sio.loadmat('../../../GPSData/global_table_esv_perturbed.mat')
+        dz_array = esv_table['distance'].flatten()
+        angle_array = esv_table['angle'].flatten()
+        esv_matrix = esv_table['matrice']
+    else:
+        esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
+        dz_array = esv_table['distance'].flatten()
+        angle_array = esv_table['angle'].flatten()
+        esv_matrix = esv_table['matrice']
+
+    idx_closest_dz = np.empty_like(dz, dtype=np.int64)
+    idx_closest_beta = np.empty_like(beta, dtype=np.int64)
+
+    for i in range(len(dz)):
+        idx_closest_dz[i] = np.searchsorted(dz_array, dz[i], side="left")
+        if idx_closest_dz[i] < 0:
+            idx_closest_dz[i] = 0
+        elif idx_closest_dz[i] >= len(dz_array):
+            idx_closest_dz[i] = len(dz_array) - 1
+
+        idx_closest_beta[i] = np.searchsorted(angle_array, beta[i], side="left")
+        if idx_closest_beta[i] < 0:
+            idx_closest_beta[i] = 0
+        elif idx_closest_beta[i] >= len(angle_array):
+            idx_closest_beta[i] = len(angle_array) - 1
+
+    closest_esv = np.empty_like(dz, dtype=np.float64)
+    for i in range(len(dz)):
+        closest_esv[i] = esv_matrix[idx_closest_dz[i], idx_closest_beta[i]]
+
+    return closest_esv
+
+def calculateTimesRayTracingGenerate(guess, transponder_coordinates, perturbation=False):
+    hori_dist = np.sqrt((transponder_coordinates[:, 0] - guess[0])**2 + (transponder_coordinates[:, 1] - guess[1])**2)
+    abs_dist = np.sqrt(np.sum((transponder_coordinates - guess)**2, axis=1))
+    beta = np.arccos(hori_dist / abs_dist) * 180 / np.pi
+    dz = np.abs(guess[2] - transponder_coordinates[:, 2])
+    esv = find_esv_generate(beta, dz, perturbation)
+    times = abs_dist / esv
+    return times, esv
 
 #Function to generate the unaligned time series for a realistic trajectory
-def generateUnalignedRealistic(n, time_noise, offset, ray=True, main=False):
+def generateUnalignedRealistic(n, time_noise, offset, ray=False, main=False):
     CDOG, GPS_Coordinates, transponder_coordinates, gps1_to_others, gps1_to_transponder = generateRealistic(n)
 
     GPS_time = np.arange(len(GPS_Coordinates))
 
     """Can change ray option to have a incorrect soundspeed to investigate outcome"""
-    true_travel_times, true_esv = calculateTimesRayTracing(CDOG, transponder_coordinates, ray)
+    true_travel_times, true_esv = calculateTimesRayTracingGenerate(CDOG, transponder_coordinates, perturbation=False)
 
     CDOG_time = GPS_time + true_travel_times + np.random.normal(0, time_noise, len(GPS_time)) + offset
     CDOG_remain, CDOG_int = np.modf(CDOG_time)

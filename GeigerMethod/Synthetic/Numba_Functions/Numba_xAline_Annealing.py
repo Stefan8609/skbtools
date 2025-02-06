@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 
 from Numba_xAline import *
 from Numba_xAline_Geiger import *
+from Generate_Unaligned_Realistic import generateUnalignedRealistic
 
 """
 Maybe try to implement the more complicated schematic
@@ -15,7 +16,17 @@ def simulated_annealing(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_othe
     status = "int"
     old_offset = initial_offset
     inversion_guess = initial_guess
-    best_rmse = np.inf
+
+    transponder_coordinates_found = findTransponder(GPS_Coordinates, gps1_to_others, initial_lever)
+    if real_data == False:
+        times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates_found)
+    else:
+        times_guess, esv = calculateTimesRayTracingReal(inversion_guess, transponder_coordinates_found)
+    CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
+        two_pointer_index(initial_offset, 0.5, CDOG_data, GPS_data, times_guess, transponder_coordinates_found, esv)
+    )
+
+    best_rmse = np.sqrt(np.nanmean((GPS_full - CDOG_full) ** 2))
     best_lever = initial_lever
     k=0
     while k<300:
@@ -27,7 +38,6 @@ def simulated_annealing(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_othe
 
         if status == "int":
             inversion_guess, offset = initial_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates_found, real_data)
-            print(offset)
             if offset == old_offset:
                 status = "subint"
         elif status == "subint":
@@ -71,7 +81,7 @@ if __name__ == "__main__":
     time_noise = 2 * 10**-5
 
     CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(
-        20000, time_noise, true_offset
+        10000, time_noise, true_offset
     )
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 

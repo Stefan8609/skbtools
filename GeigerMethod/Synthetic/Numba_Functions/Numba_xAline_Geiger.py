@@ -20,7 +20,7 @@ def initial_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, real_dat
     k = 0
     delta = 1
     inversion_guess = guess
-    while np.linalg.norm(delta) > epsilon and k < 10:
+    while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
         if real_data == False:
             times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
@@ -29,7 +29,7 @@ def initial_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, real_dat
         offset = find_int_offset(CDOG_data, GPS_data, times_guess, transponder_coordinates, esv)
 
         CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
-            two_pointer_index(offset, .6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv, True)
+            two_pointer_index(offset, .6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv)
         )
         jacobian = computeJacobianRayTracing(inversion_guess, transponder_coordinates_full, GPS_full, esv_full)
         delta = -1 * np.linalg.inv(jacobian.T @ jacobian) @ jacobian.T @ (GPS_full - CDOG_full)
@@ -49,7 +49,7 @@ def transition_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offse
     delta = np.array([1.0, 1.0, 1.0])
     inversion_guess = guess
 
-    while np.linalg.norm(delta) > epsilon and k < 10:
+    while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
         if real_data == False:
             times_guess, esv = calculateTimesRayTracing(inversion_guess, transponder_coordinates)
