@@ -12,19 +12,19 @@ The SVP limits us to 5250 meters
     The SVP appears linear at such depths (velocity changes approximately with pressure)
 """
 
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
-# plt.plot(cz, depth, label="Normal SVP")
-# cz_perturbation = -0.001 * depth
-# cz = cz + cz_perturbation
-#
-# plt.plot(cz, depth, label="Perturbed SVP")
-# plt.gca().invert_yaxis()
-# plt.xlabel("Sound Speed (m/s)")
-# plt.ylabel("Depth (m)")
-# plt.title("Sound Speed Profile with Perturbation (-0.001 * depth)")
-# plt.legend()
-# plt.show()
+plt.plot(cz, depth, label="Normal SVP")
+cz_perturbation = -0.001 * (5250-depth)
+cz = cz + cz_perturbation
+
+plt.plot(cz, depth, label="Perturbed SVP")
+plt.gca().invert_yaxis()
+plt.xlabel("Sound Speed (m/s)")
+plt.ylabel("Depth (m)")
+plt.title("Sound Speed Profile with Perturbation (-0.001 * depth)")
+plt.legend()
+plt.show()
 
 @njit
 def construct_esv(depth, cz):
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     dist_array = z_array - z_a
 
     data_to_save = {"angle": beta_array, "distance": dist_array, "matrice": esv_matrix}
-    sio.savemat('GPSData/global_table_esv_mine.mat', data_to_save)
+    sio.savemat('GPSData/global_table_esv_perturbed.mat', data_to_save)
 
 
 

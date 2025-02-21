@@ -3,13 +3,21 @@ from numba import njit
 import matplotlib.pyplot as plt
 import scipy.io as sio
 import random
+from scipy.stats import norm
 from Numba_Geiger import find_esv, calculateTimesRayTracing, generateRealistic, findTransponder
+from matplotlib.patches import Ellipse
 
+"""Figure out why I am not centered at 0 for residuals with an incorrect SVP"""
 
-esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
-dz_array = esv_table['distance'].flatten()
-angle_array = esv_table['angle'].flatten()
-esv_matrix = esv_table['matrice']
+esv_table1 = sio.loadmat('../../../GPSData/global_table_esv.mat')
+dz_array1 = esv_table1['distance'].flatten()
+angle_array1 = esv_table1['angle'].flatten()
+esv_matrix1 = esv_table1['matrice']
+
+esv_table2 = sio.loadmat('../../../GPSData/global_table_esv_perturbed.mat')
+dz_array2 = esv_table2['distance'].flatten()
+angle_array2 = esv_table2['angle'].flatten()
+esv_matrix2 = esv_table2['matrice']
 
 """
 Need an short algorithm to estimate the derivative of the ESV in x,y, and z
@@ -20,8 +28,41 @@ Need an short algorithm to estimate the derivative of the ESV in x,y, and z
 This algorithm finds a fixed bias (that is a constant in time and depth)
 """
 
-@njit
-def calculateTimesRayTracing_Bias(guess, transponder_coordinates, esv_bias, ray=True):
+# @njit
+def find_esv(beta, dz, perturbed=False):
+    idx_closest_dz = np.empty_like(dz, dtype=np.int64)
+    idx_closest_beta = np.empty_like(beta, dtype=np.int64)
+
+    if perturbed==True:
+        dz_array = np.array(dz_array2)
+        angle_array = np.array(angle_array2)
+        esv_matrix = np.array(esv_matrix2)
+    else:
+        dz_array = np.array(dz_array1)
+        angle_array = np.array(angle_array1)
+        esv_matrix = np.array(esv_matrix1)
+
+    for i in range(len(dz)):
+        idx_closest_dz[i] = np.searchsorted(dz_array, dz[i], side="left")
+        if idx_closest_dz[i] < 0:
+            idx_closest_dz[i] = 0
+        elif idx_closest_dz[i] >= len(dz_array):
+            idx_closest_dz[i] = len(dz_array) - 1
+
+        idx_closest_beta[i] = np.searchsorted(angle_array, beta[i], side="left")
+        if idx_closest_beta[i] < 0:
+            idx_closest_beta[i] = 0
+        elif idx_closest_beta[i] >= len(angle_array):
+            idx_closest_beta[i] = len(angle_array) - 1
+
+    closest_esv = np.empty_like(dz, dtype=np.float64)
+    for i in range(len(dz)):
+        closest_esv[i] = esv_matrix[idx_closest_dz[i], idx_closest_beta[i]]
+
+    return closest_esv
+
+# @njit
+def calculateTimesRayTracing_Bias(guess, transponder_coordinates, esv_bias, perturbed=False):
     """
     Ray Tracing calculation of times using ESV
         Capable of handling an ESV bias input term
@@ -31,40 +72,37 @@ def calculateTimesRayTracing_Bias(guess, transponder_coordinates, esv_bias, ray=
     abs_dist = np.sqrt(np.sum((transponder_coordinates - guess)**2, axis=1))
     beta = np.arccos(hori_dist / abs_dist) * 180 / np.pi
     dz = np.abs(guess[2] - transponder_coordinates[:, 2])
-    esv = find_esv(beta, dz) + esv_bias
+    esv = find_esv(beta, dz, perturbed) + esv_bias
     times = abs_dist / esv
-    if ray == False:
-        times = abs_dist / 1515.0
-        esv = np.full(len(transponder_coordinates), 1515.0)
     return times, esv
 
-@njit(cache=True)
-def compute_H_biased(transponder_coordinates, diffs, dist, esv, esv_bias):
+# @njit(cache=True)
+def compute_Jacobian_biased(guess, transponder_coordinates, times, esv, esv_bias):
     """Compute the Jacobian of the system with respect to the ESV bias term
     According to Bud's algorithm for Gauss-Newton Inversion"""
+    diffs = transponder_coordinates - guess
 
-    H = np.zeros((len(transponder_coordinates), 5))
+    J = np.zeros((len(transponder_coordinates), 5))
 
-    #Scale factors
-    scale = np.array([1e-3, 1e-3, 1e-3, 1e3, 1.0])  # position(m), time(s), esv(m/s)
+    #Compute different partial derivatives
+    J[:, 0] = -diffs[:, 0] / (times[:] * (esv[:] + esv_bias)**2)
+    J[:, 1] = -diffs[:, 1] / (times[:] * (esv[:] + esv_bias)**2)
+    J[:, 2] = -diffs[:, 2] / (times[:] * (esv[:] + esv_bias)**2)
+    J[:, 3] = -1.0
+    J[:, 4] = -times[:] / (esv[:] + esv_bias)
 
-    H[:, 0] = (diffs[:, 0] / dist) / scale[0]
-    H[:, 1] = (diffs[:, 1] / dist) / scale[1]
-    H[:, 2] = (diffs[:, 2] / dist) / scale[2]
-    H[:, 3] = (esv_bias + esv[:]) / scale[3]
-    H[:, 4] = (dist / (esv_bias + esv[:])) / scale[4]
-
-    return H, scale
+    return J
 
 # @njit
-def numba_bias_geiger(guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found, esv_bias_input, time_noise=0):
+def numba_bias_geiger(guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found,
+                      esv_bias_input, time_bias_input, time_noise=0):
     """Geiger method with estimation of ESV bias term"""
     epsilon = 10**-5
-    lambda_damping = 1.0  # Levenberg-Marquardt damping factor
 
-    #Calculate and apply noise for known times
-    times_known, esv = calculateTimesRayTracing_Bias(CDog, transponder_coordinates_Actual, esv_bias_input)
+    #Calculate and apply noise for known times. Also apply time bias term
+    times_known, esv = calculateTimesRayTracing_Bias(CDog, transponder_coordinates_Actual, esv_bias_input, perturbed=True)
     times_known+=np.random.normal(0, time_noise, len(transponder_coordinates_Actual))
+    times_known+=time_bias_input
 
     time_bias = 0.0
     esv_bias = 0.0
@@ -72,53 +110,31 @@ def numba_bias_geiger(guess, CDog, transponder_coordinates_Actual, transponder_c
     estimate = np.array([guess[0], guess[1], guess[2], time_bias, esv_bias])
     k = 0
     delta = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
-    prev_residual = np.inf
 
     while np.linalg.norm(delta) > epsilon and k < 100:
         times_guess, esv = calculateTimesRayTracing_Bias(guess, transponder_coordinates_Found, esv_bias)
-        diffs = transponder_coordinates_Found - guess
-        dist = np.sqrt(np.sum(diffs ** 2, axis=1))
+        J = compute_Jacobian_biased(guess, transponder_coordinates_Found, times_guess, esv, esv_bias)
+        delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ ((times_guess - time_bias)-times_known)
 
-        # Compute the residual
-        z = np.zeros(len(transponder_coordinates_Found))
-        z[:] = dist[:] - (esv[:] + esv_bias) * (times_known[:] + time_bias)
-
-        # Compute H Matrix and Weighting Matrix
-        H, scale = compute_H_biased(transponder_coordinates_Found, diffs, dist, esv, esv_bias)
-        damping  = np.eye(5) * lambda_damping
-
-        delta = np.linalg.inv((H.T @ H) + damping) @ H.T @ z
-        delta = delta * scale
-
-        # Update the estimate
-        new_residual = np.sum(z**2)
-        if new_residual < prev_residual:
-            estimate = estimate + delta
-            lambda_damping = max(lambda_damping/10, 1e-7)
-        else:
-            lambda_damping = min(lambda_damping*10, 1e7)
-            k+=1
-            continue
-
-        prev_residual = new_residual
+        estimate = estimate + delta
         guess = estimate[:3]
         time_bias = estimate[3]
         esv_bias = estimate[4]
         k += 1
-
-        if k % 10 == 0:
-            print(k, ": residual= ", new_residual, "lambda= ", lambda_damping)
-
     return estimate, times_known
 
 if __name__ == "__main__":
     # Generate synthetic data
-    CDOG, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(100)
+    CDOG, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(20000)
     times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates_Actual)
 
     esv_bias = 0.0
-    time_noise = 0.0
-    position_noise = 0.0
+    time_bias = 0.3
+
+    # time_noise = 0
+    # position_noise = 0
+    time_noise = 2.0 * 10 ** -5
+    position_noise = 2.0 * 10 ** -2
 
     #Apply noise to position
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
@@ -128,7 +144,130 @@ if __name__ == "__main__":
 
     # Run the Geiger method with ESV bias estimation
     estimate, times_known = numba_bias_geiger(CDOG_guess, CDOG, transponder_coordinates_Actual,
-                                              transponder_coordinates_Found, esv_bias, time_noise)
+                                              transponder_coordinates_Found, esv_bias, time_bias, time_noise)
 
-    print(estimate)
-    print(estimate - np.array([CDOG[0], CDOG[1], CDOG[2], 0.0, esv_bias]))
+    print(f"Input: {[CDOG[0], CDOG[1], CDOG[2], time_bias, esv_bias]}")
+    print(f"Output: {estimate}")
+    print(f"Diff: {estimate - np.array([CDOG[0], CDOG[1], CDOG[2], - time_bias, esv_bias])}")
+
+    # Plot the results
+    CDOG_found = estimate[:3]
+    time_bias_found = -1 * estimate[3]
+    esv_bias_found = estimate[4]
+
+    print(f"CDOG Distance: {np.linalg.norm(CDOG_found - CDOG)}")
+    times_calc, esv = calculateTimesRayTracing_Bias(CDOG_found, transponder_coordinates_Found, esv_bias_found)
+
+    times_calc += time_bias_found
+    difference_data = times_calc - times_known
+
+    #Fit the residuals to a normal distribution
+    mu, std = norm.fit(difference_data * 1000)
+    position_std = std*1515/1000
+
+    #Get range of times for zoom in
+    zoom_idx = np.random.randint(0, len(GPS_Coordinates)-100)
+    zoom_length = 100
+
+    fig, axes = plt.subplots(3, 3, figsize=(17, 10), gridspec_kw={'width_ratios': [1, 4, 2], 'height_ratios': [2, 2, 1]})
+    axes[0, 0].axis('off')
+
+    axes[0, 1].scatter(transponder_coordinates_Actual[:, 0], transponder_coordinates_Actual[:, 1], s=3, marker="o",
+                       label="Transponder")
+    axes[0, 1].scatter(CDOG[0], CDOG[1], s=50, marker="x", color="k", label="C-DOG")
+    axes[0, 1].set_xlabel('Easting (m)')
+    axes[0, 1].set_ylabel('Northing (m)')
+    axes[0, 1].legend(loc="upper right")
+    axes[0, 1].axis("equal")
+
+    axes[0, 2].scatter(CDOG[0], CDOG[1], s=50, marker="x", color="k", zorder=3, label="C-DOG")
+    axes[0, 2].scatter(CDOG_found[0], CDOG_found[1], s=50, marker="o", color="r", zorder=4, label="Final Estimate")
+    axes[0, 2].scatter(CDOG_guess[0], CDOG_guess[1], s=50, marker="o", color="g", zorder=1, label="Initial Guess")
+    axes[0, 2].set_xlim(CDOG[0]-(3.1*position_std), CDOG[0]+(3.1*position_std))
+    axes[0, 2].set_ylim(CDOG[1]-(3.1*position_std), CDOG[1]+(3.1*position_std))
+
+    for i in range(1,4):
+        ell = Ellipse(xy=(CDOG[0], CDOG[1]),
+                      width= position_std * i * 2, height= position_std * i * 2,
+                      angle=0, color='k')
+        ell.set_facecolor('none')
+        axes[0, 2].add_artist(ell)
+    axes[0, 2].legend(loc="upper right")
+
+    sound_velocity = np.genfromtxt('../../../GPSData/cz_cast2_smoothed.txt')[::100]
+    depth = np.genfromtxt('../../../GPSData/depth_cast2_smoothed.txt')[::100]
+
+    axes[1, 0].plot(sound_velocity, depth, color='b', label="Known SVP")
+    axes[1, 0].plot(sound_velocity - 0.001 * (5250-depth), depth, color='r', label="Actual SVP")
+
+    axes[1, 0].invert_yaxis()
+    axes[1, 0].set_xlim(min(sound_velocity)-5, max(sound_velocity)+5)
+    axes[1, 0].set_ylabel('Depth')
+    axes[1, 0].set_xlabel('Sound Velocity (m/s)')
+    axes[1, 0].legend(loc="upper right")
+
+    # Acoustic vs GNSS plot
+    GPS_Coord_Num = list(range(len(GPS_Coordinates)))
+
+    axes[1, 1].scatter(GPS_Coord_Num, times_known, s=5, label='Observed Travel Times', alpha=0.6, marker='o', color='b',
+                       zorder=2)
+    axes[1, 1].scatter(GPS_Coord_Num, times_calc, s=10, label='Modelled Travel Times', alpha=1, marker='x', color='r',
+                       zorder=1)
+    axes[1, 1].axvline(zoom_idx, color='k', linestyle="--")
+    axes[1, 1].axvline(zoom_idx + 100, color='k', linestyle="--")
+    axes[1, 1].set_ylabel('Travel Time (s)')
+    axes[1, 1].legend(loc="upper right")
+
+    axes[1, 2].scatter(GPS_Coord_Num[zoom_idx:zoom_idx + zoom_length], times_known[zoom_idx:zoom_idx + zoom_length],
+                       s=5, label='Observed Travel Times', alpha=0.6, marker='o', color='b',
+                       zorder=2)
+    axes[1, 2].scatter(GPS_Coord_Num[zoom_idx:zoom_idx + zoom_length], times_calc[zoom_idx:zoom_idx + zoom_length],
+                       s=10, label='Modelled Travel Times', alpha=1, marker='x', color='r', zorder=1)
+
+    axes[1, 2].legend(loc="upper right")
+
+    # Histogram and normal distributions
+    n, bins, patches = axes[2, 0].hist(difference_data * 1000, orientation='horizontal', bins=30, alpha=0.5,
+                                       density=True)
+    x = np.linspace(mu - 3 * std, mu + 3 * std, 100)
+    axes[2, 0].set_xlim([n.min(), n.max()])
+    axes[2, 0].set_ylim([mu - 3 * std, mu + 3 * std])
+    p = norm.pdf(x, mu, std)
+    point1, point2 = norm.pdf(np.array([-std, std]), mu, std)
+    axes[2, 0].plot(p, x, 'k', linewidth=2, label="Normal Distribution of Differences")
+    axes[2, 0].scatter([point1, point2], [-std, std], s=10, color='r', zorder=1)
+
+    # add horizontal lines for the noise and uncertainty
+    axes[2, 0].axhline(mu-std, color='r', label="Observed Noise")
+    axes[2, 0].axhline(mu+std, color='r')
+    axes[2, 0].text(-0.2, std * 1.2, "$\\sigma_p$", va="center", color='r')
+
+    if position_noise != 0:
+        axes[2, 0].axhline(-position_noise / 1515 * 1000, color='g', label="Input Position Noise")
+        axes[2, 0].axhline(position_noise / 1515 * 1000, color='g')
+        axes[2, 0].text(-0.2, position_noise / 1515 * 1000 * .5, "$\\sigma_x$", va="center", color='g')
+
+    if time_noise != 0:
+        axes[2, 0].axhline(-time_noise * 1000, color='y', label="Input Time Noise")
+        axes[2, 0].axhline(time_noise * 1000, color='y')
+        axes[2, 0].text(-0.2, time_noise * 1000, "$\\sigma_t$", va="center", color='y')
+
+    # invert axis and plot
+    axes[2, 0].set_ylabel(f'Difference (ms) \n Std: {np.round(std, 3)} ms')
+    axes[2, 0].set_xlabel('Normalized Frequency')
+    axes[2, 0].invert_xaxis()
+    # axes[2, 0].axis('off')
+
+    # Difference plot
+    axes[2, 1].scatter(GPS_Coord_Num, difference_data * 1000, s=1)
+    axes[2, 1].axvline(zoom_idx, color='k', linestyle="--")
+    axes[2, 1].axvline(zoom_idx+100, color='k', linestyle="--")
+    axes[2, 1].set_xlabel('Time(ms)')
+    axes[2, 1].set_ylim([mu-3*std, mu+3*std])
+
+    axes[2, 2].scatter(GPS_Coord_Num[zoom_idx:zoom_idx+zoom_length], difference_data[zoom_idx:zoom_idx+zoom_length] * 1000, s=1)
+    axes[2, 2].set_xlabel('Time(ms)')
+    axes[2, 2].set_ylim([mu-3*std, mu+3*std])
+
+    plt.show()
+
