@@ -92,6 +92,9 @@ CDOG_guess_base = np.array(geodetic2ecef(CDOG_guess_geodetic[0], CDOG_guess_geod
 CDOG_guess = CDOG_guess_base + CDOG_guess_augment
 print("ECEF", CDOG_guess, "GEODETIC", CDOG_guess_geodetic)
 
+print(CDOG_guess)
+print(ecef2geodetic(CDOG_guess[0], CDOG_guess[1], CDOG_guess[2]))
+
 gps1_to_others = np.array([[0.0,0.0,0.0],[-2.4054, -4.20905, 0.060621], [-12.1105,-0.956145,0.00877],[-8.70446831,5.165195, 0.04880436]])
 
 #Scale GPS Clock slightly and scale CDOG clock to nanoseconds
