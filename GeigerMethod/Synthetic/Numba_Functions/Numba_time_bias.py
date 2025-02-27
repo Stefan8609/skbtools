@@ -7,8 +7,6 @@ from scipy.stats import norm
 from Numba_Geiger import find_esv, calculateTimesRayTracing, generateRealistic, findTransponder
 from matplotlib.patches import Ellipse
 
-"""Figure out why I am not centered at 0 for residuals with an incorrect SVP"""
-
 esv_table1 = sio.loadmat('../../../GPSData/global_table_esv.mat')
 dz_array1 = esv_table1['distance'].flatten()
 angle_array1 = esv_table1['angle'].flatten()
@@ -26,6 +24,25 @@ Need an short algorithm to estimate the derivative of the ESV in x,y, and z
     Implement Bud's algorithm for finding ESV bias
     
 This algorithm finds a fixed bias (that is a constant in time and depth)
+
+To Do:
+ - Fix the typing issue with esv arrays
+    - Likely just pass in an esv array through the whole system
+ - Stop the program from diverging
+ 
+ Next Steps:
+  - Implement this alongside alignment (How can the sound bias term be used to improve alignment precision??)
+  - Implement the combination with simulated annealing for transducer offset
+  
+Tau vs P plot for the rays in the ocean
+
+Get esv tables for every month (GDEM models) see how they change seasonally
+
+Warm the ocean by half a degree and get chagne in sound speed profile and see how it affects the residuals
+
+What are the sound speed variations in Bermuda within a few days
+
+Inspire the next perturbation of the sound speed profile by Thalia's GDEM variation figure
 """
 
 # @njit
@@ -121,6 +138,7 @@ def numba_bias_geiger(guess, CDog, transponder_coordinates_Actual, transponder_c
         time_bias = estimate[3]
         esv_bias = estimate[4]
         k += 1
+        print(k, estimate)
     return estimate, times_known
 
 if __name__ == "__main__":
@@ -128,8 +146,8 @@ if __name__ == "__main__":
     CDOG, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(20000)
     times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates_Actual)
 
-    esv_bias = 0.0
-    time_bias = 0.3
+    esv_bias = 2.0
+    time_bias = 2.5
 
     # time_noise = 0
     # position_noise = 0
