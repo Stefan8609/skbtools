@@ -23,19 +23,48 @@ Frederik's program gives back Decibars
 Del Grosso uses kg/(cm^2)
 """
 
+def depth_to_pressure_Leroy(z, lat):
+    """
+    Algorithm to convert depth to pressure taken from Leroy
+        Inputs are meters and degrees
+        Calculates pressure in MPa (relative to atmospheric pressure)
+        Algorithm Converts and returns in bars
+    """
+    g_lat = 9.7803*(1+5.3e-3 * np.sin(lat)**2)
+    h_z45 = 1.00818e-2 * z - 2.456e-8 * z ** 2 - 1.25e-13 * z ** 3 + 2.8e-19 * z ** 4
+    k_zlat = (g_lat - 2e-5 * z)/ (9.80612 - 2e-5 * z)
+
+    h_zlat = h_z45 * k_zlat
+    h_0 = 1.0e-2 * z / (z+100) + 6.2e-6*z
+
+    pressure = h_zlat - h_0
+
+    #Convert to MPa (not relative to atm) and then bars
+    pressure_conversion = (pressure) * 10
+
+    return pressure_conversion
+
 def depth_to_pressure(z, lat):
+    """
+    Algorithm to convert depth to pressure taken from Thalia and Frederik
+        Inputs are meters and degrees, returns bars
+    """
     c1 = (5.92 + 5.25*np.sin(np.abs(lat)*np.pi/180)**2)*1e-3
     c2 = 2.21*1e-6
     pressure = ((1 - c1) - np.sqrt((1 - c1) ** 2 - 4 * c2 * z)) / (2 * c2)
 
-    #convert to kg/cm^2
-    return (pressure / 10) * 1.019716213
+    return pressure / 10
 
 
 def DelGrosso_SV(S, T, P):
-    """Algorithm to calculate sound velocity given Salinity, Temperature, and Pressure
-    Found in Makar 2022
     """
+    Algorithm to calculate sound velocity given Salinity, Temperature, and Pressure
+        Input are in terms of Celsius, Practical Salinity Units, and kg/cm^2
+        Returns sound speed in m/s
+    """
+    #Convert pressure from bars to kg/cm^2
+    P = P * 1.019716213
+
     # Define Constants
     const = {
         'C_T1': 5.012285, 'C_T2': -0.551184 * 10 ** -1, 'C_T3': 0.221649 * 10 ** -3,
@@ -61,16 +90,70 @@ def DelGrosso_SV(S, T, P):
     c = 1402.392 + Delta_CT + Delta_CS + Delta_CP + Delta_CSTP
     return c
 
+def UNESCO_SV(S, T, P):
+    """
+    Algorithm to calculate sound velocity given Salinity, Temperature, and Pressure
+        Inputs are in terms of Celsius, Practical Salinity Units, and bars
+        returns sound speed in m/s
+    """
+    # Define Constants
+    C = {
+        '00': 1402.388, '01': 5.03830, '02': -5.81090 * 10 ** -2, '03': 3.3432 * 10 ** -4,
+        '04': -1.47797 * 10 ** -6, '05': 3.1419 * 10 ** -9,
+        '10': 0.153563, '11': 6.8999 * 10 ** -4, '12': -8.1829 * 10 ** -6,
+        '13': 1.3632 * 10 ** -7, '14': -6.1260 * 10 ** -10,
+        '20': 3.1260 * 10 ** -5, '21': -1.7111 * 10 ** -6, '22': 2.5986 * 10 ** -8,
+        '23': -2.5353 * 10 ** -10, '24': 10.415 * 10 ** -12, 'C30': -9.7729 * 10 ** -9, 'C31': 3.8513 * 10 ** -10,
+        'C32': -2.3654 * 10 ** -12
+    }
+
+    A = {'00': 1.389, '01': -1.262 * 10 ** -2, '02': 7.166 * 10 ** -5, '03': 2.008 * 10 ** -6,
+         '04': -3.21 * 10 ** -8, '10': 9.4742 * 10 ** -5, '11': -1.2583 * 10 ** -5, '12': -6.4928 * 10 ** -8,
+         '13': 1.0515 * 10 ** -8, '14': -2.0142 * 10 ** -10, '20': -3.9064 * 10 ** -7, '21': 9.1061 * 10 ** -9,
+         '22': -1.6009 * 10 ** -10, '23': 7.994 * 10 ** -12, '30': 1.100 * 10 ** -10, '31': 6.651 * 10 ** -12,
+         '32': -3.391 * 10 ** -13
+    }
+
+    B = {
+        '00': -1.922 * 10 ** -2, '01': -4.42 * 10 ** -5, '10': 7.3637 * 10 ** -5, '11': 1.7950 * 10 ** -7,
+    }
+
+    D = {
+        '00': 1.727 * 10 ** -3, '10': -7.9836 * 10 ** -6
+    }
+
+    # Calculate Terms
+
+    Cw_TP = (C['00'] + C['01']*T + C['02']*T**2 + C['03']*T**3 + C['04']*T**4 + C['05']*T**5
+          + (C['10'] + C['11']*T + C['12']*T**2 + C['13']*T**3 + C['14']*T**4)*P
+          + (C['20'] + C['21']*T + C['22']*T**2 + C['23']*T**3 + C['24']*T**4)*P**2
+          + (C['C30'] + C['C31']*T + C['C32']*T**2)*P**3)
+
+    A_TP = (A['00'] + A['01']*T + A['02']*T**2 + A['03']*T**3 + A['04']*T**4
+          + (A['10'] + A['11']*T + A['12']*T**2 + A['13']*T**3 + A['14']*T**4)*P
+          + (A['20'] + A['21']*T + A['22']*T**2 + A['23']*T**3)*P**2
+          + (A['30'] + A['31']*T + A['32']*T**2)*P**3)
+
+    B_TP = B['00'] + B['01']*T + (B['10'] + B['11']*T)*P
+
+    D_TP = D['00'] + D['10']*P
+
+    # Compute Sound Velocity
+    c = Cw_TP + A_TP*S + B_TP*S**1.5 + D_TP*S**2
+    return c
+
 pressure = depth_to_pressure(depth, 31.5)
 
 print(np.max(pressure))
 
-sound_speed = DelGrosso_SV(salinity, temperature, pressure)
-print(sound_speed)
-print(np.max(sound_speed))
-print(np.min(sound_speed))
+sound_speed1 = DelGrosso_SV(salinity, temperature, pressure)
+sound_speed2 = UNESCO_SV(salinity, temperature, pressure)
+print(sound_speed1)
+print(np.max(sound_speed1))
+print(np.min(sound_speed1))
 
-plt.plot(sound_speed, depth, label='DelGrosso')
+plt.plot(sound_speed1, depth, label='DelGrosso')
+plt.plot(sound_speed2, depth, label='UNESCO')
 plt.plot(cz_t, depth_t, label='DelGrosso Thalia')
 plt.gca().invert_yaxis()
 plt.title('Sound Speed Profile')
