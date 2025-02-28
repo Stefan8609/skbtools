@@ -11,6 +11,15 @@ depth = CTD[:,0]
 temperature = CTD[:,1]
 salinity = CTD[:,4]
 
+#Find index of max depth
+max_depth = np.max(depth)
+max_depth_index = np.where(depth == max_depth)[0][0]
+
+#Restrict data to max depth
+depth = depth[:max_depth_index]
+temperature = temperature[:max_depth_index]
+salinity = salinity[:max_depth_index]
+
 """This probably isn't working great
 
 
@@ -90,11 +99,13 @@ def DelGrosso_SV(S, T, P):
     c = 1402.392 + Delta_CT + Delta_CS + Delta_CP + Delta_CSTP
     return c
 
+import numpy as np
+
 def UNESCO_SV(S, T, P):
     """
-    Algorithm to calculate sound velocity given Salinity, Temperature, and Pressure
-        Inputs are in terms of Celsius, Practical Salinity Units, and bars
-        returns sound speed in m/s
+    Algorithm to calculate sound velocity given Salinity, Temperature, and Pressure using UNESCO Equations
+    Inputs are in terms of Celsius, Practical Salinity Units, and bars
+    Returns sound speed in m/s
     """
     # Define Constants
     C = {
@@ -103,15 +114,16 @@ def UNESCO_SV(S, T, P):
         '10': 0.153563, '11': 6.8999 * 10 ** -4, '12': -8.1829 * 10 ** -6,
         '13': 1.3632 * 10 ** -7, '14': -6.1260 * 10 ** -10,
         '20': 3.1260 * 10 ** -5, '21': -1.7111 * 10 ** -6, '22': 2.5986 * 10 ** -8,
-        '23': -2.5353 * 10 ** -10, '24': 10.415 * 10 ** -12, 'C30': -9.7729 * 10 ** -9, 'C31': 3.8513 * 10 ** -10,
-        'C32': -2.3654 * 10 ** -12
+        '23': -2.5353 * 10 ** -10, '24': 1.0415 * 10 ** -12, '30': -9.7729 * 10 ** -9, '31': 3.8513 * 10 ** -10,
+        '32': -2.3654 * 10 ** -12
     }
 
-    A = {'00': 1.389, '01': -1.262 * 10 ** -2, '02': 7.166 * 10 ** -5, '03': 2.008 * 10 ** -6,
-         '04': -3.21 * 10 ** -8, '10': 9.4742 * 10 ** -5, '11': -1.2583 * 10 ** -5, '12': -6.4928 * 10 ** -8,
-         '13': 1.0515 * 10 ** -8, '14': -2.0142 * 10 ** -10, '20': -3.9064 * 10 ** -7, '21': 9.1061 * 10 ** -9,
-         '22': -1.6009 * 10 ** -10, '23': 7.994 * 10 ** -12, '30': 1.100 * 10 ** -10, '31': 6.651 * 10 ** -12,
-         '32': -3.391 * 10 ** -13
+    A = {
+        '00': 1.389, '01': -1.262 * 10 ** -2, '02': 7.166 * 10 ** -5, '03': 2.008 * 10 ** -6,
+        '04': -3.21 * 10 ** -8, '10': 9.4742 * 10 ** -5, '11': -1.2583 * 10 ** -5, '12': -6.4928 * 10 ** -8,
+        '13': 1.0515 * 10 ** -8, '14': -2.0142 * 10 ** -10, '20': -3.9064 * 10 ** -7, '21': 9.1061 * 10 ** -9,
+        '22': -1.6009 * 10 ** -10, '23': 7.994 * 10 ** -12, '30': 1.100 * 10 ** -10, '31': 6.651 * 10 ** -12,
+        '32': -3.391 * 10 ** -13
     }
 
     B = {
@@ -123,11 +135,10 @@ def UNESCO_SV(S, T, P):
     }
 
     # Calculate Terms
-
     Cw_TP = (C['00'] + C['01']*T + C['02']*T**2 + C['03']*T**3 + C['04']*T**4 + C['05']*T**5
           + (C['10'] + C['11']*T + C['12']*T**2 + C['13']*T**3 + C['14']*T**4)*P
           + (C['20'] + C['21']*T + C['22']*T**2 + C['23']*T**3 + C['24']*T**4)*P**2
-          + (C['C30'] + C['C31']*T + C['C32']*T**2)*P**3)
+          + (C['30'] + C['31']*T + C['32']*T**2)*P**3)
 
     A_TP = (A['00'] + A['01']*T + A['02']*T**2 + A['03']*T**3 + A['04']*T**4
           + (A['10'] + A['11']*T + A['12']*T**2 + A['13']*T**3 + A['14']*T**4)*P
@@ -142,18 +153,61 @@ def UNESCO_SV(S, T, P):
     c = Cw_TP + A_TP*S + B_TP*S**1.5 + D_TP*S**2
     return c
 
+def NPL_ESV(S, T, Z, lat):
+    """
+    Algorithm to calculate sound velocity given Salinity, Temperature, and Depth given NPL Equations
+        Inputs appear to be in terms of Celsius, Practical Salinity Units, meters, and degrees
+        returns sound speed in m/s
+    """
+    c = (1402.5 + 5*T - 5.44e-2*T**2 + 2.1e-4*T** 3
+         + 1.33*S -1.23e-2*S*T + 8.7e-5*S*T**2
+         + 1.56e-2*Z + 2.55e-7*Z**2 - 7.3e-12*Z**3
+         + 1.2e-6*Z*(lat - 45) - 9.5e-13*T*Z**3
+         + 3e-7*T**2*Z + 1.43e-5*S*Z)
+    return c
+
+def Mackenzie_ESV(S, T, Z):
+    """
+    Algorithm to calculate sound velocity given Salinity, Temperature, and Depth given Mackenzie Equations
+        Inputs are in terms of Celsius, Practical Salinity Units, and meters
+        Returns sound speed in m/s
+    """
+    c = (1448.96 + 4.591*T - 5.304e-2*T**2 + 2.374e-4*T**3 + 1.340*(S - 35) + 1.630e-2*Z
+    + 1.675e-7*Z**2 - 1.025e-2*T*(S - 35) - 7.139e-13*T*Z**3)
+    return c
+
+def Coppens_ESV(S, T, Z):
+    """
+    Algorithm to calculate sound velocity given Salinity, Temperature, and Depth given Coppens Equations
+        Inputs are in terms of Celsius, Practical Salinity Units, and meters
+        Returns sound speed in m/s
+    """
+    T = T/10
+    Z = Z/1000
+    c_0 = 1449.05 + 45.7*T - 5.21*T**2 + 0.23*T**3 + (1.333 - 0.126*T + 0.009*T**2)*(S-35)
+    c = c_0 + (16.23 + 0.253*T)*Z + (0.213-0.1*T)*Z**2 + (0.016 + 0.0002*(S-35))*(S-35)*T*Z
+    return c
+
 pressure = depth_to_pressure(depth, 31.5)
 
 print(np.max(pressure))
 
 sound_speed1 = DelGrosso_SV(salinity, temperature, pressure)
 sound_speed2 = UNESCO_SV(salinity, temperature, pressure)
+sound_speed3 = NPL_ESV(salinity, temperature, depth, 31.5)
+sound_speed4 = Mackenzie_ESV(salinity, temperature, depth)
+sound_speed5 = Mackenzie_ESV(salinity, temperature, depth)
+
+
 print(sound_speed1)
 print(np.max(sound_speed1))
 print(np.min(sound_speed1))
 
 plt.plot(sound_speed1, depth, label='DelGrosso')
 plt.plot(sound_speed2, depth, label='UNESCO')
+plt.plot(sound_speed3, depth, label='NPL')
+plt.plot(sound_speed4, depth, label='Mackenzie')
+plt.plot(sound_speed5, depth, label='Coppens')
 plt.plot(cz_t, depth_t, label='DelGrosso Thalia')
 plt.gca().invert_yaxis()
 plt.title('Sound Speed Profile')
