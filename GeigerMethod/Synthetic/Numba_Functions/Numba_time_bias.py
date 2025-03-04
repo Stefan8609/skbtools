@@ -138,7 +138,6 @@ def numba_bias_geiger(guess, CDog, transponder_coordinates_Actual, transponder_c
         time_bias = estimate[3]
         esv_bias = estimate[4]
         k += 1
-        print(k, estimate)
     return estimate, times_known
 
 if __name__ == "__main__":
@@ -146,8 +145,8 @@ if __name__ == "__main__":
     CDOG, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(20000)
     times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates_Actual)
 
-    esv_bias = 2.0
-    time_bias = 2.5
+    esv_bias = 0.0
+    time_bias = 0.0
 
     # time_noise = 0
     # position_noise = 0
@@ -215,8 +214,8 @@ if __name__ == "__main__":
     sound_velocity = np.genfromtxt('../../../GPSData/cz_cast2_smoothed.txt')[::100]
     depth = np.genfromtxt('../../../GPSData/depth_cast2_smoothed.txt')[::100]
 
-    axes[1, 0].plot(sound_velocity, depth, color='b', label="Known SVP")
-    axes[1, 0].plot(sound_velocity - 0.001 * (5250-depth), depth, color='r', label="Actual SVP")
+    axes[1, 0].plot(sound_velocity, depth, color='b', label="Initial SVP")
+    axes[1, 0].plot(sound_velocity - 0.001 * (5250-depth), depth, color='r', label="True SVP")
 
     axes[1, 0].invert_yaxis()
     axes[1, 0].set_xlim(min(sound_velocity)-5, max(sound_velocity)+5)

@@ -14,19 +14,19 @@ The SVP limits us to 5250 meters
 
 import matplotlib.pyplot as plt
 
-plt.plot(cz, depth, label="Normal SVP")
-cz_perturbation = -0.001 * (5250-depth)
-cz = cz + cz_perturbation
+# plt.plot(cz, depth, label="Normal SVP")
+# cz_perturbation = -0.001 * (5250-depth)
+# cz = cz + cz_perturbation
+#
+# plt.plot(cz, depth, label="Perturbed SVP")
+# plt.gca().invert_yaxis()
+# plt.xlabel("Sound Speed (m/s)")
+# plt.ylabel("Depth (m)")
+# plt.title("Sound Speed Profile with Perturbation (-0.001 * depth)")
+# plt.legend()
+# plt.show()
 
-plt.plot(cz, depth, label="Perturbed SVP")
-plt.gca().invert_yaxis()
-plt.xlabel("Sound Speed (m/s)")
-plt.ylabel("Depth (m)")
-plt.title("Sound Speed Profile with Perturbation (-0.001 * depth)")
-plt.legend()
-plt.show()
-
-@njit
+@njit()
 def construct_esv(depth, cz):
     """Builds a table of effective sound velocities for a range of beta angles and dz values for given SVP"""
     beta_array = np.linspace(20, 90, 152)
@@ -35,47 +35,52 @@ def construct_esv(depth, cz):
     esv_matrix = np.zeros((len(z_array), len(beta_array)))
     z_a = 52
 
-    i=0
-    for z in z_array:
-        print(i, "/", len(z_array))
-        j=0
-        for beta in beta_array:
-            x = (z-z_a) / np.tan(beta * np.pi / 180)
+    # Pre-calculate constants
+    beta_rad = beta_array * np.pi / 180
+    tan_beta = np.tan(beta_rad)
+
+    for i in range(len(z_array)):
+        print(i)
+        z = z_array[i]
+        x_values = (z - z_a) / tan_beta
+
+        for j in range(len(beta_array)):
+            x = x_values[j]
             alpha = ray_trace_locate(z_a, z, x, depth, cz)
             x_found, z_dist, time = ray_tracing(alpha, z_a, z, depth, cz)
-            dist = np.sqrt(x**2 + (z - z_a)**2)
+            dist = np.sqrt(x ** 2 + (z - z_a) ** 2)
             esv_matrix[i, j] = dist / time
-            j+=1
-        i+=1
+
     return beta_array, z_array, esv_matrix
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    import scipy.io as sio
+    if __name__ == "__main__":
+        import matplotlib.pyplot as plt
+        import scipy.io as sio
+        from time import time
 
-    z_a = 52
-    beta_array, z_array, esv_matrix = construct_esv(depth, cz)
-    print(beta_array)
-    print(z_array)
-    print(esv_matrix)
+        z_a = 52
 
-    plt.figure(figsize=(10, 6))
-    plt.contourf(beta_array, z_array, esv_matrix, levels=10)
-    plt.colorbar()
-    plt.gca().invert_yaxis()
-    plt.xlabel("Elevation Angle (degrees)")
-    plt.ylabel("Depth (m)")
-    plt.title("Effective Sound Velocity (m/s)")
-    plt.show()
+        # Time the execution
+        start_time = time()
+        beta_array, z_array, esv_matrix = construct_esv(depth, cz)
+        end_time = time()
+        print(f"Execution time: {end_time - start_time:.2f} seconds")
 
-    dist_array = z_array - z_a
+        plt.figure(figsize=(10, 6))
+        plt.contourf(beta_array, z_array, esv_matrix, levels=10, cmap='viridis')
+        plt.colorbar(label='ESV (m/s)')
+        plt.gca().invert_yaxis()
+        plt.xlabel("Elevation Angle (degrees)")
+        plt.ylabel("Depth (m)")
+        plt.title("Effective Sound Velocity (m/s)")
+        plt.show()
 
-    data_to_save = {"angle": beta_array, "distance": dist_array, "matrice": esv_matrix}
-    sio.savemat('GPSData/global_table_esv_perturbed.mat', data_to_save)
+        dist_array = z_array - z_a
 
-
-
-
-
-
-
+        data_to_save = {
+            "angle": beta_array,
+            "distance": dist_array,
+            "matrice": esv_matrix
+        }
+        sio.savemat('GPSData/global_table_esv_normal.mat', data_to_save)

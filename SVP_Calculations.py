@@ -1,35 +1,6 @@
 import numpy as np
-import scipy.io as sio
-import matplotlib.pyplot as plt
-
-CTD = sio.loadmat('GPSData/CTD_Data/AE2008_Cast2.mat')['AE2008_Cast2']
-
-depth_t = np.ascontiguousarray(np.genfromtxt('GPSData/depth_cast2_smoothed.txt'))
-cz_t = np.ascontiguousarray(np.genfromtxt('GPSData/cz_cast2_smoothed.txt'))
-
-depth = CTD[:,0]
-temperature = CTD[:,1]
-salinity = CTD[:,4]
-
-#Find index of max depth
-max_depth = np.max(depth)
-max_depth_index = np.where(depth == max_depth)[0][0]
-
-#Restrict data to max depth
-depth = depth[:max_depth_index]
-temperature = temperature[:max_depth_index]
-salinity = salinity[:max_depth_index]
-
-"""This probably isn't working great
-
-
-from 19. Chen, C.T.; Millero, F.J. Speed of sound in seawater at high pressures. J. Acoust. Soc. Am. 1977, 62, 1129–1135. [CrossRef]
-
-Use this http://resource.npl.co.uk/acoustics/techguides/soundseawater/underlying-phys.html
-
-Frederik's program gives back Decibars
-
-Del Grosso uses kg/(cm^2)
+"""
+Equations of State found here: http://resource.npl.co.uk/acoustics/techguides/soundseawater/underlying-phys.html
 """
 
 def depth_to_pressure_Leroy(z, lat):
@@ -98,8 +69,6 @@ def DelGrosso_SV(S, T, P):
     # Compute Sound Velocity
     c = 1402.392 + Delta_CT + Delta_CS + Delta_CP + Delta_CSTP
     return c
-
-import numpy as np
 
 def UNESCO_SV(S, T, P):
     """
@@ -188,31 +157,91 @@ def Coppens_ESV(S, T, Z):
     c = c_0 + (16.23 + 0.253*T)*Z + (0.213-0.1*T)*Z**2 + (0.016 + 0.0002*(S-35))*(S-35)*T*Z
     return c
 
-pressure = depth_to_pressure(depth, 31.5)
+if __name__ == '__main__':
+    import numpy as np
+    import scipy.io as sio
+    import matplotlib.pyplot as plt
 
-print(np.max(pressure))
+    CTD = sio.loadmat('GPSData/CTD_Data/AE2008_Cast2.mat')['AE2008_Cast2']
 
-sound_speed1 = DelGrosso_SV(salinity, temperature, pressure)
-sound_speed2 = UNESCO_SV(salinity, temperature, pressure)
-sound_speed3 = NPL_ESV(salinity, temperature, depth, 31.5)
-sound_speed4 = Mackenzie_ESV(salinity, temperature, depth)
-sound_speed5 = Mackenzie_ESV(salinity, temperature, depth)
+    depth_t = np.ascontiguousarray(np.genfromtxt('GPSData/depth_cast2_smoothed.txt'))[::100]
+    cz_t = np.ascontiguousarray(np.genfromtxt('GPSData/cz_cast2_smoothed.txt'))[::100]
+
+    depth = CTD[:, 0][::100]
+    temperature = CTD[:, 1][::100]
+    salinity = CTD[:, 4][::100]
+
+    # Find index of max depth
+    max_depth = np.max(depth)
+    max_depth_index = np.where(depth == max_depth)[0][0]
+
+    # Restrict data to max depth
+    depth = depth[:max_depth_index]
+    temperature = temperature[:max_depth_index]
+    salinity = salinity[:max_depth_index]
+
+    pressure = depth_to_pressure(depth, 31.5)
+
+    print(np.max(pressure))
+
+    sound_speed1 = DelGrosso_SV(salinity, temperature, pressure)
+    sound_speed2 = UNESCO_SV(salinity, temperature, pressure)
+    sound_speed3 = NPL_ESV(salinity, temperature, depth, 31.5)
+    sound_speed4 = Mackenzie_ESV(salinity, temperature, depth)
+    sound_speed5 = Coppens_ESV(salinity, temperature, depth)
 
 
-print(sound_speed1)
-print(np.max(sound_speed1))
-print(np.min(sound_speed1))
+    print(sound_speed1)
+    print(np.max(sound_speed1))
+    print(np.min(sound_speed1))
 
-plt.plot(sound_speed1, depth, label='DelGrosso')
-plt.plot(sound_speed2, depth, label='UNESCO')
-plt.plot(sound_speed3, depth, label='NPL')
-plt.plot(sound_speed4, depth, label='Mackenzie')
-plt.plot(sound_speed5, depth, label='Coppens')
-plt.plot(cz_t, depth_t, label='DelGrosso Thalia')
-plt.gca().invert_yaxis()
-plt.title('Sound Speed Profile')
-plt.xlabel('Sound Speed (m/s)')
-plt.ylabel('Depth (m)')
-plt.legend()
-plt.show()
+    plt.figure(figsize=(6, 8))
+    plt.plot(sound_speed1, depth, label='DelGrosso')
+    plt.plot(sound_speed2, depth, label='UNESCO')
+    plt.plot(sound_speed3, depth, label='NPL')
+    plt.plot(sound_speed4, depth, label='Mackenzie')
+    plt.plot(sound_speed5, depth, label='Coppens')
+    plt.plot(cz_t, depth_t, label='DelGrosso Thalia')
 
+    plt.gca().invert_yaxis()
+    plt.title('Sound Speed Profile')
+    plt.xlabel('Sound Speed (m/s)')
+    plt.ylabel('Depth (m)')
+    plt.legend()
+    plt.show()
+
+
+    # Calculate the difference between each value in the sound speed profile and the closest cz_t
+    sound_speed_diff1 = np.zeros_like(sound_speed1)
+    sound_speed_diff2 = np.zeros_like(sound_speed2)
+    sound_speed_diff3 = np.zeros_like(sound_speed3)
+    sound_speed_diff4 = np.zeros_like(sound_speed4)
+    sound_speed_diff5 = np.zeros_like(sound_speed5)
+
+
+    # Create depth difference matrix and find closest indices all at once
+    depth_diff = np.abs(depth_t[:, np.newaxis] - depth)
+    closest_indices = np.argmin(depth_diff, axis=0)
+
+    # Use the indices to compute all differences at once
+    sound_speed_diff1 = sound_speed1 - cz_t[closest_indices]
+    sound_speed_diff2 = sound_speed2 - cz_t[closest_indices]
+    sound_speed_diff3 = sound_speed3 - cz_t[closest_indices]
+    sound_speed_diff4 = sound_speed4 - cz_t[closest_indices]
+    sound_speed_diff5 = sound_speed5 - cz_t[closest_indices]
+
+    # Plot the difference
+    plt.figure(figsize=(6, 8))
+    plt.plot(sound_speed_diff1, depth, label='Difference (DelGrosso - cz_t)')
+    plt.plot(sound_speed_diff2, depth, label='Difference (UNESCO - cz_t)')
+    plt.plot(sound_speed_diff3, depth, label='Difference (NPL - cz_t)')
+    plt.plot(sound_speed_diff4, depth, label='Difference (Mackenzie - cz_t)')
+    plt.plot(sound_speed_diff5, depth, label='Difference (Coppens - cz_t)')
+    plt.axvline(0, color='black', linestyle='--')
+    plt.xlim(-2, 2)
+    plt.gca().invert_yaxis()
+    plt.title('Difference in Sound Speed Profile')
+    plt.xlabel('Difference in Sound Speed (m/s)')
+    plt.ylabel('Depth (m)')
+    plt.legend()
+    plt.show()
