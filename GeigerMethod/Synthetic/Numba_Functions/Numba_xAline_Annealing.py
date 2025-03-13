@@ -9,7 +9,7 @@ from Generate_Unaligned_Realistic import generateUnalignedRealistic
 Maybe try to implement the more complicated schematic
 """
 
-def simulated_annealing(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, initial_guess, initial_lever, initial_offset=0, real_data = False):
+def simulated_annealing(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, initial_guess, initial_lever, initial_offset=0, real_data  = False):
     """Algorithm to determine the best lever arm, offset, and seafloor receiver position"""
 
     #Initialize variables

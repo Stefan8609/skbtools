@@ -4,18 +4,9 @@ import matplotlib.pyplot as plt
 import scipy.io as sio
 import random
 from scipy.stats import norm
-from Numba_Geiger import find_esv, calculateTimesRayTracing, generateRealistic, findTransponder
+from Numba_Geiger import generateRealistic, findTransponder
 from matplotlib.patches import Ellipse
 
-esv_table1 = sio.loadmat('../../../GPSData/global_table_esv.mat')
-dz_array1 = esv_table1['distance'].flatten()
-angle_array1 = esv_table1['angle'].flatten()
-esv_matrix1 = esv_table1['matrice']
-
-esv_table2 = sio.loadmat('../../../GPSData/global_table_esv_perturbed.mat')
-dz_array2 = esv_table2['distance'].flatten()
-angle_array2 = esv_table2['angle'].flatten()
-esv_matrix2 = esv_table2['matrice']
 
 """
 Need an short algorithm to estimate the derivative of the ESV in x,y, and z
@@ -25,9 +16,6 @@ Need an short algorithm to estimate the derivative of the ESV in x,y, and z
     
 This algorithm finds a fixed bias (that is a constant in time and depth)
 
-To Do:
- - Fix the typing issue with esv arrays
-    - Likely just pass in an esv array through the whole system
  - Stop the program from diverging
  
  Next Steps:
@@ -35,29 +23,12 @@ To Do:
   - Implement the combination with simulated annealing for transducer offset
   
 Tau vs P plot for the rays in the ocean
-
-Get esv tables for every month (GDEM models) see how they change seasonally
-
-Warm the ocean by half a degree and get chagne in sound speed profile and see how it affects the residuals
-
-What are the sound speed variations in Bermuda within a few days
-
-Inspire the next perturbation of the sound speed profile by Thalia's GDEM variation figure
 """
 
-# @njit
-def find_esv(beta, dz, perturbed=False):
+@njit
+def find_esv(beta, dz, dz_array, angle_array, esv_matrix):
     idx_closest_dz = np.empty_like(dz, dtype=np.int64)
     idx_closest_beta = np.empty_like(beta, dtype=np.int64)
-
-    if perturbed==True:
-        dz_array = np.array(dz_array2)
-        angle_array = np.array(angle_array2)
-        esv_matrix = np.array(esv_matrix2)
-    else:
-        dz_array = np.array(dz_array1)
-        angle_array = np.array(angle_array1)
-        esv_matrix = np.array(esv_matrix1)
 
     for i in range(len(dz)):
         idx_closest_dz[i] = np.searchsorted(dz_array, dz[i], side="left")
@@ -78,8 +49,8 @@ def find_esv(beta, dz, perturbed=False):
 
     return closest_esv
 
-# @njit
-def calculateTimesRayTracing_Bias(guess, transponder_coordinates, esv_bias, perturbed=False):
+@njit
+def calculateTimesRayTracing_Bias(guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix):
     """
     Ray Tracing calculation of times using ESV
         Capable of handling an ESV bias input term
@@ -89,11 +60,11 @@ def calculateTimesRayTracing_Bias(guess, transponder_coordinates, esv_bias, pert
     abs_dist = np.sqrt(np.sum((transponder_coordinates - guess)**2, axis=1))
     beta = np.arccos(hori_dist / abs_dist) * 180 / np.pi
     dz = np.abs(guess[2] - transponder_coordinates[:, 2])
-    esv = find_esv(beta, dz, perturbed) + esv_bias
+    esv = find_esv(beta, dz, dz_array, angle_array, esv_matrix) + esv_bias
     times = abs_dist / esv
     return times, esv
 
-# @njit(cache=True)
+@njit(cache=True)
 def compute_Jacobian_biased(guess, transponder_coordinates, times, esv, esv_bias):
     """Compute the Jacobian of the system with respect to the ESV bias term
     According to Bud's algorithm for Gauss-Newton Inversion"""
@@ -110,14 +81,18 @@ def compute_Jacobian_biased(guess, transponder_coordinates, times, esv, esv_bias
 
     return J
 
-# @njit
+@njit
 def numba_bias_geiger(guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found,
-                      esv_bias_input, time_bias_input, time_noise=0):
+                      esv_bias_input, time_bias_input, dz_array, angle_array, esv_matrix,
+                      dz_array_gen = np.array([]), angle_array_gen = np.array([]), esv_matrix_gen = np.array([]),  time_noise=0):
     """Geiger method with estimation of ESV bias term"""
     epsilon = 10**-5
 
     #Calculate and apply noise for known times. Also apply time bias term
-    times_known, esv = calculateTimesRayTracing_Bias(CDog, transponder_coordinates_Actual, esv_bias_input, perturbed=True)
+    if dz_array_gen.size > 0:
+        times_known, esv = calculateTimesRayTracing_Bias(CDog, transponder_coordinates_Actual, esv_bias_input, dz_array_gen, angle_array_gen, esv_matrix_gen)
+    else:
+        times_known, esv = calculateTimesRayTracing_Bias(CDog, transponder_coordinates_Actual, esv_bias_input, dz_array, angle_array, esv_matrix)
     times_known+=np.random.normal(0, time_noise, len(transponder_coordinates_Actual))
     times_known+=time_bias_input
 
@@ -129,7 +104,7 @@ def numba_bias_geiger(guess, CDog, transponder_coordinates_Actual, transponder_c
     delta = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
 
     while np.linalg.norm(delta) > epsilon and k < 100:
-        times_guess, esv = calculateTimesRayTracing_Bias(guess, transponder_coordinates_Found, esv_bias)
+        times_guess, esv = calculateTimesRayTracing_Bias(guess, transponder_coordinates_Found, esv_bias, dz_array, angle_array, esv_matrix)
         J = compute_Jacobian_biased(guess, transponder_coordinates_Found, times_guess, esv, esv_bias)
         delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ ((times_guess - time_bias)-times_known)
 
@@ -141,12 +116,38 @@ def numba_bias_geiger(guess, CDog, transponder_coordinates_Actual, transponder_c
     return estimate, times_known
 
 if __name__ == "__main__":
-    # Generate synthetic data
-    CDOG, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(20000)
-    times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates_Actual)
+    perturbed = True
 
-    esv_bias = 0.0
-    time_bias = 0.0
+    #Load in the ESV table
+    if perturbed == True:
+        #Table to generate synthetic times
+        esv_table_generate = sio.loadmat('../../../GPSData/global_table_esv.mat')
+        dz_array_generate = esv_table_generate['distance'].flatten()
+        angle_array_generate = esv_table_generate['angle'].flatten()
+        esv_matrix_generate = esv_table_generate['matrice']
+
+        #Perturbed table to use in simulation
+        esv_table_sim = sio.loadmat('../../../GPSData/global_table_esv_perturbed.mat')
+        dz_array_sim = esv_table_sim['distance'].flatten()
+        angle_array_sim = esv_table_sim['angle'].flatten()
+        esv_matrix_sim = esv_table_sim['matrice']
+
+        # Generate synthetic data
+        CDOG, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(20000)
+
+        esv_bias = 0.0
+        time_bias = 0.0
+    else:
+        esv_table_sim = sio.loadmat('../../../GPSData/global_table_esv.mat')
+        dz_array_sim = esv_table_sim['distance'].flatten()
+        angle_array_sim = esv_table_sim['angle'].flatten()
+        esv_matrix_sim = esv_table_sim['matrice']
+
+        # Generate synthetic data
+        CDOG, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(20000)
+
+        esv_bias = 0.0
+        time_bias = 0.0
 
     # time_noise = 0
     # position_noise = 0
@@ -160,20 +161,28 @@ if __name__ == "__main__":
     CDOG_guess = np.array([random.uniform(-5000, 5000), random.uniform(-5000, 5000), random.uniform(-5225, -5235)])
 
     # Run the Geiger method with ESV bias estimation
-    estimate, times_known = numba_bias_geiger(CDOG_guess, CDOG, transponder_coordinates_Actual,
-                                              transponder_coordinates_Found, esv_bias, time_bias, time_noise)
+    if perturbed == True:
+        estimate, times_known = numba_bias_geiger(CDOG_guess, CDOG, transponder_coordinates_Actual,
+                                                  transponder_coordinates_Found, esv_bias, time_bias, dz_array_sim,
+                                                  angle_array_sim, esv_matrix_sim, dz_array_generate,
+                                                  angle_array_generate, esv_matrix_generate, time_noise)
+    else:
+        estimate, times_known = numba_bias_geiger(CDOG_guess, CDOG, transponder_coordinates_Actual,
+                                                  transponder_coordinates_Found, esv_bias, time_bias, dz_array_sim,
+                                                  angle_array_sim, esv_matrix_sim, time_noise)
 
-    print(f"Input: {[CDOG[0], CDOG[1], CDOG[2], time_bias, esv_bias]}")
-    print(f"Output: {estimate}")
-    print(f"Diff: {estimate - np.array([CDOG[0], CDOG[1], CDOG[2], - time_bias, esv_bias])}")
+    print(f"Input: [{CDOG[0]:.2f}, {CDOG[1]:.2f}, {CDOG[2]:.2f}, {time_bias:.2f}, {esv_bias:.2f}]")
+    print(f"Output: [{estimate[0]:.2f}, {estimate[1]:.2f}, {estimate[2]:.2f}, {estimate[3]:.2f}, {estimate[4]:.2f}]")
+    print(f"Diff: [{(estimate[0]-CDOG[0]):.2f}, {(estimate[1]-CDOG[1]):.2f}, {(estimate[2]-CDOG[2]):.2f}, {(estimate[3]+time_bias):.2f}, {(estimate[4]-esv_bias):.2f}]")
 
     # Plot the results
     CDOG_found = estimate[:3]
     time_bias_found = -1 * estimate[3]
     esv_bias_found = estimate[4]
 
-    print(f"CDOG Distance: {np.linalg.norm(CDOG_found - CDOG)}")
-    times_calc, esv = calculateTimesRayTracing_Bias(CDOG_found, transponder_coordinates_Found, esv_bias_found)
+    print(f"CDOG Distance: {np.linalg.norm(CDOG_found - CDOG):.2f}")
+    times_calc, esv = calculateTimesRayTracing_Bias(CDOG_found, transponder_coordinates_Found, esv_bias_found,
+                                                    dz_array_sim, angle_array_sim, esv_matrix_sim)
 
     times_calc += time_bias_found
     difference_data = times_calc - times_known

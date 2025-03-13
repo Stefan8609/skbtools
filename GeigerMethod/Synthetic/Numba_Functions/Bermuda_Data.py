@@ -105,17 +105,17 @@ print("GPS DATA:", GPS_data)
 print("CDOG DATA:", CDOG_data[:,0])
 
 """Running Geiger"""
-# transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, initial_lever_guess)
-# inversion_guess, best_offset = initial_geiger(CDOG_guess, CDOG_data, GPS_data, transponder_coordinates, real_data=True)
-# print("Initial Complete:", best_offset)
-# inversion_guess, best_offset = transition_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates, best_offset, real_data=True)
-# print("Transition Complete:", best_offset)
-#
-# inversion_guess = CDOG_guess
-# best_offset = offset
-# inversion_guess, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates, best_offset, real_data=True)
-# print("Final Complete")
-# best_lever = initial_lever_guess
+transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, initial_lever_guess)
+inversion_guess, best_offset = initial_geiger(CDOG_guess, CDOG_data, GPS_data, transponder_coordinates, real_data=True)
+print("Initial Complete:", best_offset)
+inversion_guess, best_offset = transition_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates, best_offset, real_data=True)
+print("Transition Complete:", best_offset)
+
+inversion_guess = CDOG_guess
+best_offset = offset
+inversion_guess, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates, best_offset, real_data=True)
+print("Final Complete")
+best_lever = initial_lever_guess
 
 """Running Simulated Annealing
 1st run results: Best Lever: [ -6.68026498   9.21708333 -12.45692575], 
@@ -146,10 +146,10 @@ Best sub_set (early) results: Best Lever: [-11.07118568   3.45761614 -13.7301007
                               Offset: 1991.01700163, 
                               Inversion Guess: [ 824.07645653 -127.75081484 -752.17779813]
 """
-best_lever, best_offset, inversion_guess = simulated_annealing(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, CDOG_guess, initial_lever_guess, initial_offset=offset, real_data = True)
-transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, best_lever)
-GPS_travel_times, esv = calculateTimesRayTracingReal(inversion_guess, transponder_coordinates)
-CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = two_pointer_index(best_offset, 0.6, CDOG_data, GPS_data, GPS_travel_times, transponder_coordinates, esv, exact=True)
+# best_lever, best_offset, inversion_guess = simulated_annealing(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, CDOG_guess, initial_lever_guess, initial_offset=offset, real_data = True)
+# transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, best_lever)
+# GPS_travel_times, esv = calculateTimesRayTracingReal(inversion_guess, transponder_coordinates)
+# CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = two_pointer_index(best_offset, 0.6, CDOG_data, GPS_data, GPS_travel_times, transponder_coordinates, esv, exact=True)
 
 print(f"Best Lever: {best_lever}, Offset: {best_offset}, Inversion Guess: {inversion_guess-CDOG_guess_base}")
 diff_data = (CDOG_full - GPS_full) * 1000

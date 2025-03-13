@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 # plt.plot(cz, depth, label="Normal SVP")
 # cz_perturbation = -0.001 * (5250-depth)
 # cz = cz + cz_perturbation
-#
+
 # plt.plot(cz, depth, label="Perturbed SVP")
 # plt.gca().invert_yaxis()
 # plt.xlabel("Sound Speed (m/s)")
@@ -28,8 +28,16 @@ import matplotlib.pyplot as plt
 
 @njit()
 def construct_esv(depth, cz):
-    """Builds a table of effective sound velocities for a range of beta angles and dz values for given SVP"""
-    beta_array = np.linspace(20, 90, 152)
+    """Builds a table of effective sound velocities for a range of beta angles and dz values for given SVP
+    Inputs
+    depth: Depth array (m)
+    cz: Sound speed array (m/s) corresponding to depth array
+    Outputs
+    beta_array: Array of beta angles (degrees)
+    z_array: Array of dz values (m)
+    esv_matrix: Matrix of effective sound velocities (m/s) corresponding to beta angles and dz values
+    """
+    beta_array = np.linspace(20, 90, 400)
     z_array = np.linspace(5200, 5250, 51)
 
     esv_matrix = np.zeros((len(z_array), len(beta_array)))
@@ -39,8 +47,9 @@ def construct_esv(depth, cz):
     beta_rad = beta_array * np.pi / 180
     tan_beta = np.tan(beta_rad)
 
+
     for i in range(len(z_array)):
-        print(i)
+        print("Progress: ", i, "/", len(z_array))
         z = z_array[i]
         x_values = (z - z_a) / tan_beta
 
@@ -76,11 +85,11 @@ if __name__ == "__main__":
         plt.title("Effective Sound Velocity (m/s)")
         plt.show()
 
-        dist_array = z_array - z_a
+        dz_array = z_array - z_a
 
         data_to_save = {
             "angle": beta_array,
-            "distance": dist_array,
+            "distance": dz_array,
             "matrice": esv_matrix
         }
         sio.savemat('GPSData/global_table_esv_normal.mat', data_to_save)

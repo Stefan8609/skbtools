@@ -2,13 +2,21 @@ import numpy as np
 from numba import njit
 import numpy.typing as npt
 
-depth = np.ascontiguousarray(np.genfromtxt('GPSData/depth_cast2_smoothed.txt'))
-cz = np.ascontiguousarray(np.genfromtxt('GPSData/cz_cast2_smoothed.txt'))
-
 @njit
 def ray_tracing(iga: float, z_a: float, z_b: float,
                 depth: npt.NDArray, cz: npt.NDArray) -> tuple:
-    """Optimized Ray Tracing Algorithm using vectorized operations."""
+    """Optimized Ray Tracing Algorithm using vectorized operations.
+    Inputs:
+    iga: Initial grazing angle in degrees
+    z_a: Source depth in meters
+    z_b: Receiver depth in meters
+    depth: Depth array in meters
+    cz: Sound speed array in m/s
+    Outputs:
+    x: Source-Receiver distance in meters
+    z: Receiver depth in meters
+    time: Travel time in seconds
+    """
     z_b_closest = np.abs(depth - z_b).argmin()
     z_a_closest = np.abs(depth - z_a).argmin()
 
@@ -47,10 +55,19 @@ def ray_tracing(iga: float, z_a: float, z_b: float,
 @njit
 def ray_trace_locate(z_a: float, z_b: float, target_x: float,
                      depth: npt.NDArray, cz: npt.NDArray) -> float:
-    """Binary search implementation for finding the correct angle."""
+    """Binary search implementation for finding the correct angle.
+    Inputs:
+    z_a: Source depth in meters
+    z_b: Receiver depth in meters
+    target_x: Target source-receiver distance in meters
+    depth: Depth array in meters
+    cz: Sound speed array in m/s
+    Outputs:
+    alpha: Angle in degrees
+    """
     left = 1.0
-    right = 89.0
-    tolerance = 0.01
+    right = 90.0
+    tolerance = 0.0001
     max_iterations = 50
     iteration = 0
 
@@ -77,6 +94,8 @@ def ray_trace_locate(z_a: float, z_b: float, target_x: float,
 
 if __name__ == "__main__":
     from time import time
+    depth = np.ascontiguousarray(np.genfromtxt('GPSData/depth_cast2_smoothed.txt'))
+    cz = np.ascontiguousarray(np.genfromtxt('GPSData/cz_cast2_smoothed.txt'))
 
     start_time = time()
     for i in range(1):
