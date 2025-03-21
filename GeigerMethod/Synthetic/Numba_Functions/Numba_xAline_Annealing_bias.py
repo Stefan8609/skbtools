@@ -2,13 +2,13 @@ import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
 
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import calculateTimesRayTracing_Bias_Real
 from Generate_Unaligned_Realistic import generateUnalignedRealistic
-from Numba_xAline import two_pointer_index, find_int_offset
-from Numba_time_bias import calculateTimesRayTracing_Bias, find_esv, compute_Jacobian_biased
+from Bermuda_Trajectory import bermuda_trajectory
+from Numba_xAline import two_pointer_index
+from Numba_time_bias import calculateTimesRayTracing_Bias
 from Numba_Geiger import findTransponder
-from Numba_xAline_bias import initial_bias_geiger, transition_bias_geiger, final_bias_geiger
-from numba import njit
+from Numba_xAline_bias import initial_bias_geiger, transition_bias_geiger, final_bias_geiger, calculateTimesRayTracing_Bias_Real
+from Plot_Modular import time_series_plot
 
 """
 Incorporate simulated annealing to find the transducer location in addition to the bias terms.
@@ -78,7 +78,7 @@ def simulated_annealing_bias(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to
             best_lever = lever
 
         if k % 10 == 0:
-            print(k, RMSE * 100 * 1515, offset, lever)
+            print(k, np.round(RMSE * 100 * 1515, 2), np.round(offset,5), np.round(lever,3))
         old_offset = offset
         k += 1
 
@@ -92,21 +92,30 @@ if __name__ == "__main__":
     angle_array = esv_table['angle'].flatten()
     esv_matrix = esv_table['matrice']
 
-    true_offset = np.random.rand() * 9000 + 1000
-    print(true_offset)
     position_noise = 2 * 10**-2
     time_noise = 2 * 10**-5
 
-    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(
-        10000, time_noise, true_offset
-    )
-    GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
+    """Either generate a realistic or use bermuda trajectory"""
 
-    gps1_to_others = np.array([[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64)
-    gps1_to_transponder = np.array([-10, 3, -15], dtype=np.float64)
+    # true_offset = np.random.rand() * 9000 + 1000
+    # print(true_offset)
+    # CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(
+    #     20000, time_noise, true_offset, dz_array, angle_array, esv_matrix
+    # )
+    # GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
+    # gps1_to_others = np.array([[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64)
 
-    initial_guess = CDOG + np.array([100, -100, -50], dtype=np.float64)
-    initial_lever = np.array([-5.0, 7.0, -10.0], dtype=np.float64)
+    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = bermuda_trajectory(time_noise, position_noise,
+                                                                                                    dz_array, angle_array, esv_matrix)
+    true_offset = 1991.01236648
+    gps1_to_others = np.array([[0.0, 0.0, 0.0], [-2.4054, -4.20905, 0.060621], [-12.1105, -0.956145, 0.00877],
+                               [-8.70446831, 5.165195, 0.04880436]])
+
+    """After Generating run through the analysis"""
+
+    # initial_lever = np.array([-10.62639549,  -0.47739287, -11.5380207 ])
+    initial_lever = np.array([-13.0, 0.0, -14.0])
+    initial_guess = CDOG + [100, 100, 200]
 
     lever, offset, inversion_result = simulated_annealing_bias(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others,
                                                               initial_guess, initial_lever, dz_array, angle_array, esv_matrix)
@@ -116,5 +125,14 @@ if __name__ == "__main__":
     time_bias = inversion_result[3]
     esv_bias = inversion_result[4]
     print("CDOG:", np.around(CDOG, 2))
-    print("Inversion:", np.around(inversion_result, 2))
+    print("Inversion:", np.round(inversion_result, 2))
     print("Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100))
+
+    transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, lever)
+    inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(inversion_guess, CDOG_data, GPS_data,
+                                                                                     transponder_coordinates, offset, esv_bias, time_bias,
+                                                                                     dz_array, angle_array, esv_matrix)
+
+    time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise, time_noise)
+
+

@@ -3,11 +3,13 @@ import scipy.io as sio
 import matplotlib.pyplot as plt
 
 from Generate_Unaligned_Realistic import generateUnalignedRealistic
-from Numba_xAline import two_pointer_index, find_subint_offset, find_int_offset
+from Bermuda_Trajectory import bermuda_trajectory
+from Numba_xAline import two_pointer_index, find_int_offset
 from Numba_time_bias import calculateTimesRayTracing_Bias, find_esv, compute_Jacobian_biased
 from Numba_Geiger import findTransponder
 from numba import njit
 from ECEF_Geodetic import ECEF_Geodetic
+from Plot_Modular import time_series_plot
 
 """
 Improve Geiger's method such that the time-bias become included in the offset for transition geiger... 
@@ -134,21 +136,29 @@ if __name__ == '__main__':
     angle_array = esv_table['angle'].flatten()
     esv_matrix = esv_table['matrice']
 
-    true_offset = np.random.rand() * 9000 + 1000
-    print(true_offset)
-
     position_noise = 2 * 10 ** -2
     time_noise = 2 * 10 ** -5
 
-    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(
-        20000, time_noise, true_offset
-    )
-    GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
+    """Either generate a realistic or use bermuda trajectory"""
 
-    GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
+    # true_offset = np.random.rand() * 9000 + 1000
+    # print(true_offset)
+    # CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(
+    #     20000, time_noise, true_offset, dz_array, angle_array, esv_matrix
+    # )
+    # GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
+    # gps1_to_others = np.array([[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64)
+    # gps1_to_transponder = np.array([-10, 3, -15], dtype=np.float64)
 
-    gps1_to_others = np.array([[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64)
-    gps1_to_transponder = np.array([-10, 3, -15], dtype=np.float64)
+    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = bermuda_trajectory(time_noise, position_noise,
+                                                                                                    dz_array, angle_array, esv_matrix)
+    true_offset = 1991.01236648
+    gps1_to_others = np.array([[0.0, 0.0, 0.0], [-2.4054, -4.20905, 0.060621], [-12.1105, -0.956145, 0.00877],
+                               [-8.70446831, 5.165195, 0.04880436]])
+    gps1_to_transponder = np.array([-12.48862757, 0.22622633, -15.89601934])
+
+    """After Generating run through the analysis"""
+
     transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
 
     guess = CDOG + [100, 100, 200]
@@ -184,3 +194,7 @@ if __name__ == '__main__':
     print("CDOG:", np.around(CDOG, 2))
     print("Inversion:", np.around(inversion_result, 2))
     print("Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100))
+
+    # Plot the results
+    time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise, time_noise)
+

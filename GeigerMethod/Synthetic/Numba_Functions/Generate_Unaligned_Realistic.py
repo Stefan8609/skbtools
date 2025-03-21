@@ -8,18 +8,7 @@ import scipy.io as sio
 import matplotlib.pyplot as plt
 from Numba_Geiger import find_esv, findTransponder, generateRealistic
 
-def find_esv_generate(beta, dz, perturbation=False):
-    if perturbation == True:
-        esv_table = sio.loadmat('../../../GPSData/global_table_esv_perturbed.mat')
-        dz_array = esv_table['distance'].flatten()
-        angle_array = esv_table['angle'].flatten()
-        esv_matrix = esv_table['matrice']
-    else:
-        esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
-        dz_array = esv_table['distance'].flatten()
-        angle_array = esv_table['angle'].flatten()
-        esv_matrix = esv_table['matrice']
-
+def find_esv_generate(beta, dz, dz_array, angle_array, esv_matrix):
     idx_closest_dz = np.empty_like(dz, dtype=np.int64)
     idx_closest_beta = np.empty_like(beta, dtype=np.int64)
 
@@ -42,23 +31,23 @@ def find_esv_generate(beta, dz, perturbation=False):
 
     return closest_esv
 
-def calculateTimesRayTracingGenerate(guess, transponder_coordinates, perturbation=False):
+def calculateTimesRayTracingGenerate(guess, transponder_coordinates, dz_array, angle_array, esv_matrix):
     hori_dist = np.sqrt((transponder_coordinates[:, 0] - guess[0])**2 + (transponder_coordinates[:, 1] - guess[1])**2)
     abs_dist = np.sqrt(np.sum((transponder_coordinates - guess)**2, axis=1))
     beta = np.arccos(hori_dist / abs_dist) * 180 / np.pi
     dz = np.abs(guess[2] - transponder_coordinates[:, 2])
-    esv = find_esv_generate(beta, dz, perturbation)
+    esv = find_esv_generate(beta, dz, dz_array, angle_array, esv_matrix)
     times = abs_dist / esv
     return times, esv
 
 #Function to generate the unaligned time series for a realistic trajectory
-def generateUnalignedRealistic(n, time_noise, offset, ray=False, main=False):
+def generateUnalignedRealistic(n, time_noise, offset, dz_array, angle_array, esv_matrix, main=False):
     CDOG, GPS_Coordinates, transponder_coordinates, gps1_to_others, gps1_to_transponder = generateRealistic(n)
 
     GPS_time = np.arange(len(GPS_Coordinates))
 
     """Can change ray option to have a incorrect soundspeed to investigate outcome"""
-    true_travel_times, true_esv = calculateTimesRayTracingGenerate(CDOG, transponder_coordinates, perturbation=False)
+    true_travel_times, true_esv = calculateTimesRayTracingGenerate(CDOG, transponder_coordinates, dz_array, angle_array, esv_matrix)
 
     CDOG_time = GPS_time + true_travel_times + np.random.normal(0, time_noise, len(GPS_time)) + offset
     CDOG_remain, CDOG_int = np.modf(CDOG_time)

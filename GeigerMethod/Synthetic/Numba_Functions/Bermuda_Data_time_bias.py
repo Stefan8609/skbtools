@@ -5,8 +5,11 @@ import scipy.io as sio
 import matplotlib.pyplot as plt
 from ECEF_Geodetic import ECEF_Geodetic
 from pymap3d import geodetic2ecef, ecef2geodetic
+
 from Numba_Geiger import findTransponder
 from Numba_xAline_bias import initial_bias_geiger, transition_bias_geiger, final_bias_geiger
+from Plot_Modular import time_series_plot
+from Numba_xAline_Annealing_bias import simulated_annealing_bias
 
 """
 Bud's Algorithm gives another drastic drop in RMSE and definitely has room for improvement
@@ -92,8 +95,8 @@ elev = sio.loadmat('../../../GPSData/Unit1-camp_bis.mat')['elev'].flatten()
 CDOG_guess_augment = np.array([ 974.12667502,  -80.98121315, -805.07870249])
 # initial_lever_guess = np.array([-30.22391079,  -0.22850613, -21.97254162])
 initial_lever_guess = np.array([-12.48862757, 0.22622633, -15.89601934])
-# offset = 1991.01236648
-offset = 2003
+offset = 1991.01236648
+# offset = 2003
 
 CDOG_guess_geodetic = np.array([np.mean(lat), np.mean(lon), np.mean(elev)]) + np.array([0, 0, -5200])
 CDOG_guess_base = np.array(geodetic2ecef(CDOG_guess_geodetic[0], CDOG_guess_geodetic[1], CDOG_guess_geodetic[2]))
@@ -107,66 +110,61 @@ CDOG_data[:, 1] = CDOG_data[:, 1]/1e9
 
 transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, initial_lever_guess)
 
-inversion_result, best_offset = initial_bias_geiger(CDOG_guess, CDOG_data, GPS_data, transponder_coordinates, dz_array,
-                        angle_array, esv_matrix, real_data=True)
+"""No Simulated Annealing"""
+
+
+# inversion_result, best_offset = initial_bias_geiger(CDOG_guess, CDOG_data, GPS_data, transponder_coordinates, dz_array,
+#                         angle_array, esv_matrix, real_data=True)
+# inversion_guess = inversion_result[:3]
+# time_bias = inversion_result[3]
+# esv_bias = inversion_result[4]
+# print("Initial Complete:", best_offset)
+#
+# inversion_result, best_offset = transition_bias_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates, best_offset,
+#                                                       esv_bias, time_bias, dz_array, angle_array, esv_matrix, real_data=True)
+# inversion_guess = inversion_result[:3]
+# time_bias = inversion_result[3]
+# esv_bias = inversion_result[4]
+# print("Transition Complete:", best_offset)
+#
+# # inversion_result = CDOG_guess
+# inversion_guess = inversion_result[:3]
+# time_bias = inversion_result[3]
+# esv_bias = inversion_result[4]
+#
+# print("offsets: ", best_offset, offset)
+#
+# """If we don't want offset found by our method"""
+# best_offset = offset
+# inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(inversion_guess, CDOG_data, GPS_data,
+#                                                                                      transponder_coordinates, best_offset, esv_bias, time_bias,
+#                                                                                      dz_array, angle_array, esv_matrix, real_data=True)
+# print("Final Complete")
+# best_lever = initial_lever_guess
+"""End No simulated annealing"""
+best_lever, best_offset, inversion_result = simulated_annealing_bias(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others,
+                                                                CDOG_guess, initial_lever_guess,dz_array, angle_array, esv_matrix, offset, True)
+
 inversion_guess = inversion_result[:3]
 time_bias = inversion_result[3]
 esv_bias = inversion_result[4]
-print("Initial Complete:", best_offset)
 
-inversion_result, best_offset = transition_bias_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates, best_offset,
-                                                      esv_bias, time_bias, dz_array, angle_array, esv_matrix, real_data=True)
-inversion_guess = inversion_result[:3]
-time_bias = inversion_result[3]
-esv_bias = inversion_result[4]
-print("Transition Complete:", best_offset)
-
-# inversion_result = CDOG_guess
-inversion_guess = inversion_result[:3]
-time_bias = inversion_result[3]
-esv_bias = inversion_result[4]
-
-print("offsets: ", best_offset, offset)
-
-
-"""If we don't want offset found by our method"""
-best_offset = offset
-
-
+transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, best_lever)
 inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(inversion_guess, CDOG_data, GPS_data,
                                                                                      transponder_coordinates, best_offset, esv_bias, time_bias,
                                                                                      dz_array, angle_array, esv_matrix, real_data=True)
-print("Final Complete")
-best_lever = initial_lever_guess
-
 inversion_guess = inversion_result[:3]
 time_bias = inversion_result[3]
 esv_bias = inversion_result[4]
 GPS_full = GPS_full - time_bias
 
-print(f"Estimate: {inversion_result}")
-print(f"Best Lever: {best_lever}, Offset: {best_offset}, Inversion Guess: {inversion_guess-CDOG_guess_base}")
+print(f"Estimate: {np.round(inversion_result, 2)}")
+print(f"Best Lever: {np.round(best_lever,3)}, Offset: {np.round(best_offset,4)}, Inversion Guess: {np.round(inversion_guess-CDOG_guess_base, 5)}")
 diff_data = (CDOG_full - GPS_full) * 1000
 RMSE = np.sqrt(np.nanmean(diff_data**2))/1000 * 1515 * 100
-print("RMSE:", RMSE, "cm")
+print("RMSE:", np.round(RMSE,3), "cm")
 
-#Figure with 2 plots arranged vertically
-fig, axes = plt.subplots(2, 1, figsize=(8, 8))
-# axes[0].scatter(CDOG_clock, CDOG_full, s=10, marker="x", label="CDOG")
-axes[0].scatter(CDOG_clock, CDOG_full, s=10, marker="x", label="Observed Data")
-axes[0].scatter(GPS_clock, GPS_full, s=1, marker="x", label="Model Data")
-axes[0].set_title("Travel Times")
-axes[0].set_xlabel("Time (s)")
-axes[0].set_ylabel("Travel Time (s)")
-axes[0].legend()
-
-axes[1].scatter(GPS_clock, diff_data, s=1)
-axes[1].set_title("Difference between CDOG and GPS")
-axes[1].set_xlabel("Time (s)")
-axes[1].set_ylabel("Residual (ms)")
-plt.tight_layout()
-plt.show()
-
+time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full)
 
 """
 Later Stretch with offset 1991.01236648:

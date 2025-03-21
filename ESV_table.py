@@ -14,17 +14,28 @@ The SVP limits us to 5250 meters
 
 import matplotlib.pyplot as plt
 
-# plt.plot(cz, depth, label="Normal SVP")
-# cz_perturbation = -0.001 * (5250-depth)
-# cz = cz + cz_perturbation
+plt.plot(cz, depth, label="CTD Bermuda SVP")
+# Create a perturbation that starts at ~5 m/s at surface and diminishes below 100m
+surface_effect = 5.0 * np.exp(-depth/40)  # Exponential decay with depth
+deep_variation = 0.3 * np.sin(depth/200)  # Small sinusoidal variation for deep water
+cz_perturbation = surface_effect + deep_variation
+cz = cz + cz_perturbation
 
-# plt.plot(cz, depth, label="Perturbed SVP")
-# plt.gca().invert_yaxis()
-# plt.xlabel("Sound Speed (m/s)")
-# plt.ylabel("Depth (m)")
-# plt.title("Sound Speed Profile with Perturbation (-0.001 * depth)")
-# plt.legend()
-# plt.show()
+plt.plot(cz, depth, label="Realistically Perturbed SVP")
+plt.gca().invert_yaxis()
+plt.xlabel("Sound Speed (m/s)")
+plt.ylabel("Depth (m)")
+plt.title("Sound Speed Profile with Perturbation (-0.001 * depth)")
+plt.legend()
+plt.show()
+
+plt.plot(cz_perturbation, depth, label="Realistic SVP Perturbation")
+plt.gca().invert_yaxis()
+plt.xlabel("Sound Speed (m/s)")
+plt.ylabel("Depth (m)")
+plt.title("Sound Speed Profile Perturbation")
+plt.legend()
+plt.show()
 
 @njit()
 def construct_esv(depth, cz):
@@ -92,4 +103,4 @@ if __name__ == "__main__":
             "distance": dz_array,
             "matrice": esv_matrix
         }
-        sio.savemat('GPSData/global_table_esv_normal.mat', data_to_save)
+        sio.savemat('GPSData/global_table_esv_realistic_perturbed.mat', data_to_save)
