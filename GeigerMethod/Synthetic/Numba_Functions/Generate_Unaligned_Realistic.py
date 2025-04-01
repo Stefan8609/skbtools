@@ -31,23 +31,25 @@ def find_esv_generate(beta, dz, dz_array, angle_array, esv_matrix):
 
     return closest_esv
 
-def calculateTimesRayTracingGenerate(guess, transponder_coordinates, dz_array, angle_array, esv_matrix):
+def calculateTimesRayTracingGenerate(guess, transponder_coordinates, esv_bias, time_bias, dz_array, angle_array, esv_matrix):
     hori_dist = np.sqrt((transponder_coordinates[:, 0] - guess[0])**2 + (transponder_coordinates[:, 1] - guess[1])**2)
     abs_dist = np.sqrt(np.sum((transponder_coordinates - guess)**2, axis=1))
     beta = np.arccos(hori_dist / abs_dist) * 180 / np.pi
     dz = np.abs(guess[2] - transponder_coordinates[:, 2])
     esv = find_esv_generate(beta, dz, dz_array, angle_array, esv_matrix)
+    esv += esv_bias
     times = abs_dist / esv
+    times += time_bias
     return times, esv
 
 #Function to generate the unaligned time series for a realistic trajectory
-def generateUnalignedRealistic(n, time_noise, offset, dz_array, angle_array, esv_matrix, main=False):
+def generateUnalignedRealistic(n, time_noise, offset, esv_bias, time_bias, dz_array, angle_array, esv_matrix, main=False):
     CDOG, GPS_Coordinates, transponder_coordinates, gps1_to_others, gps1_to_transponder = generateRealistic(n)
 
     GPS_time = np.arange(len(GPS_Coordinates))
 
     """Can change ray option to have a incorrect soundspeed to investigate outcome"""
-    true_travel_times, true_esv = calculateTimesRayTracingGenerate(CDOG, transponder_coordinates, dz_array, angle_array, esv_matrix)
+    true_travel_times, true_esv = calculateTimesRayTracingGenerate(CDOG, transponder_coordinates, esv_bias, time_bias, dz_array, angle_array, esv_matrix)
 
     CDOG_time = GPS_time + true_travel_times + np.random.normal(0, time_noise, len(GPS_time)) + offset
     CDOG_remain, CDOG_int = np.modf(CDOG_time)

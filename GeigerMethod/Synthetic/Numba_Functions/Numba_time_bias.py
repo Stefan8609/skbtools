@@ -6,6 +6,7 @@ import random
 from scipy.stats import norm
 from Numba_Geiger import generateRealistic, findTransponder
 from matplotlib.patches import Ellipse
+from ECEF_Geodetic import ECEF_Geodetic
 
 
 """
@@ -64,6 +65,19 @@ def calculateTimesRayTracing_Bias(guess, transponder_coordinates, esv_bias, dz_a
     times = abs_dist / esv
     return times, esv
 
+@njit
+def calculateTimesRayTracing_Bias_Real(guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix):
+    abs_dist = np.sqrt(np.sum((transponder_coordinates - guess) ** 2, axis=1))
+    depth_arr = ECEF_Geodetic(transponder_coordinates)[2]
+
+    guess = guess[np.newaxis, :]
+    lat, lon, depth = ECEF_Geodetic(guess)
+    dz = depth_arr - depth
+    beta = np.arcsin(dz / abs_dist) * 180 / np.pi
+    esv = find_esv(beta, dz, dz_array, angle_array, esv_matrix) + esv_bias
+    times = abs_dist/esv
+    return times, esv
+
 @njit(cache=True)
 def compute_Jacobian_biased(guess, transponder_coordinates, times, esv, esv_bias):
     """Compute the Jacobian of the system with respect to the ESV bias term
@@ -107,7 +121,6 @@ def numba_bias_geiger(guess, CDog, transponder_coordinates_Actual, transponder_c
         times_guess, esv = calculateTimesRayTracing_Bias(guess, transponder_coordinates_Found, esv_bias, dz_array, angle_array, esv_matrix)
         J = compute_Jacobian_biased(guess, transponder_coordinates_Found, times_guess, esv, esv_bias)
         delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ ((times_guess - time_bias)-times_known)
-
         estimate = estimate + delta
         guess = estimate[:3]
         time_bias = estimate[3]
@@ -180,7 +193,7 @@ if __name__ == "__main__":
     time_bias_found = -1 * estimate[3]
     esv_bias_found = estimate[4]
 
-    print(f"CDOG Distance: {np.linalg.norm(CDOG_found - CDOG):.2f}")
+    print(f"CDOG Distance: {np.linalg.norm(CDOG_found - CDOG)*100:.2f} cm")
     times_calc, esv = calculateTimesRayTracing_Bias(CDOG_found, transponder_coordinates_Found, esv_bias_found,
                                                     dz_array_sim, angle_array_sim, esv_matrix_sim)
 

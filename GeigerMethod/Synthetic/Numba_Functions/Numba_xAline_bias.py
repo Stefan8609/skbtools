@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from Generate_Unaligned_Realistic import generateUnalignedRealistic
 from Bermuda_Trajectory import bermuda_trajectory
 from Numba_xAline import two_pointer_index, find_int_offset
-from Numba_time_bias import calculateTimesRayTracing_Bias, find_esv, compute_Jacobian_biased
+from Numba_time_bias import calculateTimesRayTracing_Bias, calculateTimesRayTracing_Bias_Real, find_esv, compute_Jacobian_biased
 from Numba_Geiger import findTransponder
 from numba import njit
 from ECEF_Geodetic import ECEF_Geodetic
@@ -18,19 +18,6 @@ Improve Geiger's method such that the time-bias become included in the offset fo
 Prediction ability not changing between the methods because the int-offset is giving the correct alignment between
     each data set
 """
-
-@njit
-def calculateTimesRayTracing_Bias_Real(guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix):
-    abs_dist = np.sqrt(np.sum((transponder_coordinates - guess) ** 2, axis=1))
-    depth_arr = ECEF_Geodetic(transponder_coordinates)[2]
-
-    guess = guess[np.newaxis, :]
-    lat, lon, depth = ECEF_Geodetic(guess)
-    dz = depth_arr - depth
-    beta = np.arcsin(dz / abs_dist) * 180 / np.pi
-    esv = find_esv(beta, dz, dz_array, angle_array, esv_matrix) + esv_bias
-    times = abs_dist/esv
-    return times, esv
 
 def initial_bias_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, dz_array,
                         angle_array, esv_matrix, real_data=False):
@@ -139,12 +126,14 @@ if __name__ == '__main__':
     position_noise = 2 * 10 ** -2
     time_noise = 2 * 10 ** -5
 
+    esv_bias = 0
+    time_bias = 0
     """Either generate a realistic or use bermuda trajectory"""
 
     # true_offset = np.random.rand() * 9000 + 1000
     # print(true_offset)
     # CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(
-    #     20000, time_noise, true_offset, dz_array, angle_array, esv_matrix
+    #     20000, time_noise, true_offset, esv_bias, time_bias, dz_array, angle_array, esv_matrix
     # )
     # GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
     # gps1_to_others = np.array([[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64)
