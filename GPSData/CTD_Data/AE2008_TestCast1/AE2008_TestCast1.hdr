@@ -1,0 +1,24 @@
+* Sea-Bird SBE 9 Data File:
+* FileName = C:\CTD\CTD_Data\2020\June\AE2008\AE2008_TestCast1.hdr
+* Software Version Seasave V 7.26.7.121
+* Temperature SN = 6114
+* Conductivity SN = 4567
+* Number of Bytes Per Scan = 40
+* Number of Voltage Words = 5
+* Number of Scans Averaged by the Deck Unit = 1
+* System UpLoad Time = Jun 13 2020 14:28:27
+* NMEA Latitude = 30 38.93 N
+* NMEA Longitude = 077 36.38 W
+* NMEA UTC (Time) = Jun 13 2020 14:28:25
+* Store Lat/Lon Data = Append to Every Scan
+* SBE 11plus V 5.2
+* number of scans to average = 1
+* pressure baud rate = 9600
+* NMEA baud rate = 4800
+* surface PAR voltage added to scan
+* A/D offset = 5
+* GPIB address = 1
+* autorun on power up is disabled
+* S>
+* System UTC = Jun 13 2020 14:28:27
+*END*
