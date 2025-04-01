@@ -6,11 +6,6 @@ from pymap3d import ecef2geodetic
 from Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 from ECEF_Geodetic import ECEF_Geodetic
 
-esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
-dz_array = esv_table['distance'].flatten()
-angle_array = esv_table['angle'].flatten()
-esv_matrix = esv_table['matrice']
-
 @njit(cache=True)
 def findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder):
     # Given initial information relative GPS locations and transponder and GPS Coords at each timestep
@@ -152,6 +147,11 @@ def generateRealistic(n):
     return CDog, GPS_Coordinates, transponder_coordinates, gps1_to_others, gps1_to_transponder
 
 if __name__ == "__main__":
+    esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
+    dz_array = esv_table['distance'].flatten()
+    angle_array = esv_table['angle'].flatten()
+    esv_matrix = esv_table['matrice']
+
     CDog, GPS_Coordinates, transponder_coordinates_Actual, gps1_to_others, gps1_to_transponder = generateRealistic(10000)
 
     time_noise = 2*10**-5

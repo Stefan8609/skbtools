@@ -77,8 +77,8 @@ def simulated_annealing_bias(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to
             best_rmse = RMSE
             best_lever = lever
 
-        # if k % 10 == 0:
-        #     print(k, np.round(RMSE * 100 * 1515, 2), np.round(offset,5), np.round(lever,3))
+        if k % 10 == 0:
+            print(k, np.round(RMSE * 100 * 1515, 2), np.round(offset,5), np.round(lever,3))
         old_offset = offset
         k += 1
 
