@@ -15,10 +15,13 @@ Incorporate simulated annealing to find the transducer location in addition to t
 """
 
 def simulated_annealing_bias(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, initial_guess, initial_lever,
-                             dz_array, angle_array, esv_matrix, initial_offset=0, real_data = False):
+                             dz_array, angle_array, esv_matrix, initial_offset=0, real_data = False, enforce_offset=False):
     """Algorithm to determine the best lever arm, offset, and seafloor receiver position"""
     # Initialize variables
     status = "int"
+    if enforce_offset:
+        status= "subint"
+        offset = initial_offset
     old_offset = initial_offset
 
     inversion_guess = initial_guess
@@ -45,7 +48,6 @@ def simulated_annealing_bias(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to
         lever = best_lever + displacement
 
         transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, lever)
-
         if status == "int":
             inversion_estimate, offset = initial_bias_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates, dz_array, angle_array, esv_matrix, real_data)
             if offset == old_offset:
@@ -110,6 +112,9 @@ if __name__ == "__main__":
 
     CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = bermuda_trajectory(time_noise, position_noise,
                                                                                                     dz_array, angle_array, esv_matrix)
+    GPS_Coordinates = GPS_Coordinates[::20]
+    GPS_data = GPS_data[::20]
+
     true_offset = 1991.01236648
     gps1_to_others = np.array([[0.0, 0.0, 0.0], [-2.4054, -4.20905, 0.060621], [-12.1105, -0.956145, 0.00877],
                                [-8.70446831, 5.165195, 0.04880436]])
@@ -121,7 +126,7 @@ if __name__ == "__main__":
     initial_guess = CDOG + [100, 100, 200]
 
     lever, offset, inversion_result = simulated_annealing_bias(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others,
-                                                              initial_guess, initial_lever, dz_array, angle_array, esv_matrix)
+                                                              initial_guess, initial_lever, dz_array, angle_array, esv_matrix, real_data = True)
 
 
     inversion_guess = inversion_result[:3]

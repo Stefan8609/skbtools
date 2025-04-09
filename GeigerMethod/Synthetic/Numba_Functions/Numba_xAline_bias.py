@@ -111,8 +111,10 @@ def final_bias_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offse
         times_guess, esv = calculateTimesRayTracing_Bias(guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix)
     else:
         times_guess, esv = calculateTimesRayTracing_Bias_Real(guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix)
+
+    """Note doing GPS_data - time_bias to include time_bias in offset when calculating travel times"""
     CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
-        two_pointer_index(offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv, True)
+        two_pointer_index(offset, 0.6, CDOG_data, GPS_data-time_bias, times_guess, transponder_coordinates, esv, True)
     )
     return estimate, CDOG_full, GPS_full, CDOG_clock, GPS_clock
 

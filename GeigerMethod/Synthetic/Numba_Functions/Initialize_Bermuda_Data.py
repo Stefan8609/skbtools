@@ -15,8 +15,6 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment):
         time_GNSS = datetimes
         x, y, z = data['x'].flatten()[condition_GNSS], data['y'].flatten()[condition_GNSS], data['z'].flatten()[
             condition_GNSS]
-        # x,y,z = data['x'].flatten(), data['y'].flatten(), data['z'].flatten()
-
         return time_GNSS, x, y, z
 
     paths = [
@@ -63,6 +61,7 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment):
 
     # Scale GPS Clock slightly and scale CDOG clock to nanoseconds
     GPS_data = GPS_data - 68826
+
     CDOG_data[:, 1] = CDOG_data[:, 1] / 1e9
 
     return GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others

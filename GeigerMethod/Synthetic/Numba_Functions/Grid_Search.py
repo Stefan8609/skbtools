@@ -34,6 +34,9 @@ def grid_search(xl, xh, yl, yh, zl, zh, iter):
     # GNSS_start, GNSS_end = 35.3, 37.6
     GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = initialize_bermuda(GNSS_start, GNSS_end,
                                                                                           CDOG_guess_augment)
+
+    GPS_Coordinates = GPS_Coordinates[::25]
+    GPS_data = GPS_data[::25]
     x_grid = np.linspace(xl, xh, iter)
     y_grid = np.linspace(yl, yh, iter)
     z_grid = np.linspace(zl, zh, iter)
@@ -87,7 +90,7 @@ if __name__ == "__main__":
     yl, yh = -2, 2
     zl, zh = -2, 2
 
-    iter = 10
+    iter = 2
 
     # Call the grid search function
     grid_search(xl, xh, yl, yh, zl, zh, iter)

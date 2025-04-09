@@ -96,7 +96,7 @@ def modular_synthetic(time_noise, position_noise, in_esv_bias, in_time_bias, esv
 
     else:
         real_lever = np.array([-10.0, 3.0, -15.0]) if generate_type == 0 else np.array([-12.48862757, 0.22622633, -15.89601934])
-        initial_lever = np.array([-12.0, 0.0, -16.0])
+        initial_lever = np.array([-12.478, 0.267, -10.292])
 
         """True levers: Realistic Generate [-10, 3, -15], Bermuda Generate: [-12.48862757, 0.22622633, -15.89601934]"""
 

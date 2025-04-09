@@ -41,9 +41,11 @@ angle_array = esv_table['angle'].flatten()
 esv_matrix = esv_table['matrice']
 
 CDOG_guess_augment = np.array([ 974.12667502,  -80.98121315, -805.07870249])
-# initial_lever_guess = np.array([-30.22391079,  -0.22850613, -21.97254162])
-initial_lever_guess = np.array([-12.48862757, 0.22622633, -15.89601934])
-offset = 1991.01236648
+# initial_lever_guess = np.array([-12.48862757, 0.22622633, -15.89601934])
+initial_lever_guess = np.array([ -8.1379,   2.6067, -17.7846 ])
+
+offset = 0
+# offset = 1991.01236648
 # offset = 2076.0242
 
 GNSS_start, GNSS_end = 25, 40.9
@@ -56,53 +58,57 @@ transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, initi
 """No Simulated Annealing"""
 
 
-# inversion_result, best_offset = initial_bias_geiger(CDOG_guess, CDOG_data, GPS_data, transponder_coordinates, dz_array,
-#                         angle_array, esv_matrix, real_data=True)
-# inversion_guess = inversion_result[:3]
-# time_bias = inversion_result[3]
-# esv_bias = inversion_result[4]
-# print("Initial Complete:", best_offset)
-#
-# inversion_result, best_offset = transition_bias_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates, best_offset,
-#                                                       esv_bias, time_bias, dz_array, angle_array, esv_matrix, real_data=True)
-# inversion_guess = inversion_result[:3]
-# time_bias = inversion_result[3]
-# esv_bias = inversion_result[4]
-# print("Transition Complete:", best_offset)
-#
-# # inversion_result = CDOG_guess
-# inversion_guess = inversion_result[:3]
-# time_bias = inversion_result[3]
-# esv_bias = inversion_result[4]
-#
-# print("offsets: ", best_offset, offset)
-#
-# """If we don't want offset found by our method"""
-# best_offset = offset
-# inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(inversion_guess, CDOG_data, GPS_data,
-#                                                                                      transponder_coordinates, best_offset, esv_bias, time_bias,
-#                                                                                      dz_array, angle_array, esv_matrix, real_data=True)
-# print("Final Complete")
-# best_lever = initial_lever_guess
-"""End No simulated annealing"""
-best_lever, best_offset, inversion_result = simulated_annealing_bias(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others,
-                                                                CDOG_guess, initial_lever_guess,dz_array, angle_array, esv_matrix, offset, True)
+inversion_result, best_offset = initial_bias_geiger(CDOG_guess, CDOG_data, GPS_data, transponder_coordinates, dz_array,
+                        angle_array, esv_matrix, real_data=True)
+inversion_guess = inversion_result[:3]
+time_bias = inversion_result[3]
+esv_bias = inversion_result[4]
+print("Initial Complete:", best_offset)
 
+inversion_result, best_offset = transition_bias_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates, best_offset,
+                                                      esv_bias, time_bias, dz_array, angle_array, esv_matrix, real_data=True)
+inversion_guess = inversion_result[:3]
+time_bias = inversion_result[3]
+esv_bias = inversion_result[4]
+print("Transition Complete:", best_offset)
+
+# inversion_result = CDOG_guess
 inversion_guess = inversion_result[:3]
 time_bias = inversion_result[3]
 esv_bias = inversion_result[4]
 
-transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, best_lever)
+print("offsets: ", best_offset, offset)
+
+"""If we don't want offset found by our method"""
+best_offset = 2004.0106
+
 inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(inversion_guess, CDOG_data, GPS_data,
                                                                                      transponder_coordinates, best_offset, esv_bias, time_bias,
                                                                                      dz_array, angle_array, esv_matrix, real_data=True)
-inversion_guess = inversion_result[:3]
-time_bias = inversion_result[3]
-esv_bias = inversion_result[4]
-GPS_full = GPS_full - time_bias
+print("Final Complete")
+best_lever = initial_lever_guess
+"""End No simulated annealing"""
+
+"""Simulated Annealing"""
+# best_lever, best_offset, inversion_result = simulated_annealing_bias(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others,
+#                                                                 CDOG_guess, initial_lever_guess,dz_array, angle_array, esv_matrix, offset, True)
+#
+# inversion_guess = inversion_result[:3]
+# time_bias = inversion_result[3]
+# esv_bias = inversion_result[4]
+#
+# transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, best_lever)
+# inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(inversion_guess, CDOG_data, GPS_data,
+#                                                                                      transponder_coordinates, best_offset, esv_bias, time_bias,
+#                                                                                      dz_array, angle_array, esv_matrix, real_data=True)
+# inversion_guess = inversion_result[:3]
+# time_bias = inversion_result[3]
+# esv_bias = inversion_result[4]
+# GPS_full = GPS_full - time_bias
+"""End Simulated Annealing"""
 
 CDOG_guess_base = np.array([1976671.618715,  -5069622.53769779,  3306330.69611698])
-print(f"Estimate: {np.round(inversion_result, 2)}")
+print(f"Estimate: {np.round(inversion_result, 4)}")
 print(f"Best Lever: {np.round(best_lever,3)}, Offset: {np.round(best_offset,4)}, Inversion Guess: {np.round(inversion_guess-CDOG_guess_base, 5)}")
 diff_data = (CDOG_full - GPS_full) * 1000
 RMSE = np.sqrt(np.nanmean(diff_data**2))/1000 * 1515 * 100
