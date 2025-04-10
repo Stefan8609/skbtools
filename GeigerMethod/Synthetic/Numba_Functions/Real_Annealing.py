@@ -76,10 +76,12 @@ if __name__ == "__main__":
     CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = bermuda_trajectory(time_noise, position_noise,
                                                                                                     dz_array, angle_array, esv_matrix)
 
-    true_offset = 1991.01236648
+    # true_offset = 1991.01236648
+    true_offset = 2003.0
     gps1_to_others = np.array([[0.0, 0.0, 0.0], [-2.4054, -4.20905, 0.060621], [-12.1105, -0.956145, 0.00877],
                                [-8.70446831, 5.165195, 0.04880436]])
-    initial_lever = np.array([-13.0, 0.0, -13])
+    # initial_lever = np.array([-13.0, 0.0, -13])
+    initial_lever = np.array([-8.74068827, 7.78977386, -7.27690523])
     #    lever = np.array([-12.48862757, 0.22622633, -15.89601934])
     initial_guess = CDOG + np.array([100.0, 100.0, 200.0])
 
@@ -88,8 +90,8 @@ if __name__ == "__main__":
     estimate, offset = initial_bias_geiger(initial_guess, CDOG_data, GPS_data, initial_transponder_coordinates, dz_array,
                         angle_array, esv_matrix)
 
-    GPS_Coordinates = GPS_Coordinates[::100]
-    GPS_data = GPS_data[::100]
+    # GPS_Coordinates = GPS_Coordinates[::100]
+    # GPS_data = GPS_data[::100]
 
     for off_adj in np.linspace(-3, 3, 7):
         inversion_result, best_lever, RMSE = simulated_annealing_real(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, initial_guess, initial_lever,

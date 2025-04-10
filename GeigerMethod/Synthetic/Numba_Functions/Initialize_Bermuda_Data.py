@@ -13,9 +13,9 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment):
 
         datetimes = datetimes[condition_GNSS]
         time_GNSS = datetimes
-        x, y, z = data['x'].flatten()[condition_GNSS], data['y'].flatten()[condition_GNSS], data['z'].flatten()[
-            condition_GNSS]
-        return time_GNSS, x, y, z
+        x, y, z, elev = data['x'].flatten()[condition_GNSS], data['y'].flatten()[condition_GNSS], data['z'].flatten()[
+            condition_GNSS], data['elev'].flatten()[condition_GNSS]
+        return time_GNSS, x, y, z, elev
 
     paths = [
         '../../../GPSData/Unit1-camp_bis.mat',
@@ -31,10 +31,21 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment):
     common_datetimes = sorted(common_datetimes)
 
     filtered_data = []
-    for datetimes, x, y, z in all_data:
+    for datetimes, x, y, z, elev in all_data:
         mask = np.isin(datetimes, common_datetimes)
-        filtered_data.append([np.array(datetimes)[mask], np.array(x)[mask], np.array(y)[mask], np.array(z)[mask]])
+        filtered_data.append([np.array(datetimes)[mask], np.array(x)[mask], np.array(y)[mask], np.array(z)[mask], np.array(elev)[mask]])
     filtered_data = np.array(filtered_data)
+
+
+    # Filter data based on elevation
+    elev_upper = -35
+    elev_lower = -38
+    mask = np.array([(filtered_data[0, 4, :] < elev_upper) & (filtered_data[0, 4, :] > elev_lower) &
+                     (filtered_data[1, 4, :] < elev_upper) & (filtered_data[1, 4, :] > elev_lower) &
+                     (filtered_data[2, 4, :] < elev_upper) & (filtered_data[2, 4, :] > elev_lower) &
+                     (filtered_data[3, 4, :] < elev_upper) & (filtered_data[3, 4, :] > elev_lower)])
+    indices = np.where(mask[0])[0]
+    filtered_data = filtered_data[:, :, indices]
 
     # Initialize Coordinates in form of Geiger's Method
     GPS_Coordinates = np.zeros((len(filtered_data[0, 0]), 4, 3))
@@ -50,7 +61,22 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment):
 
     lat = sio.loadmat('../../../GPSData/Unit1-camp_bis.mat')['lat'].flatten()
     lon = sio.loadmat('../../../GPSData/Unit1-camp_bis.mat')['lon'].flatten()
-    elev = sio.loadmat('../../../GPSData/Unit1-camp_bis.mat')['elev'].flatten()
+
+    """If elevation plotting is desired"""
+    # import matplotlib.pyplot as plt
+    # fig, axs = plt.subplots(2, 2, figsize=(10, 8))
+    # for i in range(4):
+    #     row, col = divmod(i, 2)
+    #     axs[row, col].scatter(GPS_data, filtered_data[i, 4, :], s=1)
+    #     axs[row, col].set_title(f'GPS Unit {i + 1} Elevation')
+    #     axs[row, col].set_xlabel('Time')
+    #     axs[row, col].set_ylabel('Elevation')
+    #     axs[row, col].set_ylim(-39, -34)
+    # plt.tight_layout()
+    # plt.show()
+    """end plotting"""
+
+    print(max(np.sqrt((filtered_data[0, 1, :] - filtered_data[3,1,:])**2 + (filtered_data[0, 2, :]-filtered_data[3,2,:])**2 + (filtered_data[0, 3, :]-filtered_data[3,3,:])**2)))
 
     CDOG_guess_geodetic = np.array([np.mean(lat), np.mean(lon), np.mean(elev)]) + np.array([0, 0, -5200])
     CDOG_guess_base = np.array(geodetic2ecef(CDOG_guess_geodetic[0], CDOG_guess_geodetic[1], CDOG_guess_geodetic[2]))
