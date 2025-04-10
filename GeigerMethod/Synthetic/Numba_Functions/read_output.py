@@ -2,68 +2,88 @@ import numpy as np
 import re
 
 
-def parse_iteration_line(line):
-    # Extract the iteration number
-    iter_match = re.search(r'Iteration (\d+)', line)
-    if not iter_match:
+def parse_grid_search_line(line):
+    """Parse a line from the grid search output file."""
+    # Skip header lines
+    if line.startswith('Grid Search Results') or line.startswith('[Lever]'):
         return None
 
-    iteration = int(iter_match.group(1))
-
-    # Extract the Lever vector
-    lever_match = re.search(r'Lever: \[(.*?)\]', line)
+    # Extract lever array
+    lever_match = re.search(r'\[(.*?)\]', line)
     if not lever_match:
         return None
-
     lever_str = lever_match.group(1)
-    lever = np.array([float(x) for x in lever_str.split()])
+    lever = np.array([float(x) for x in lever_str.split(',')])
 
-    # Extract the Offset
-    offset_match = re.search(r'Offset: (\d+\.\d+)', line)
-    if not offset_match:
+    # Extract CDOG estimate
+    cdog_match = re.search(r'\[(.*?)\]', line[lever_match.end():])
+    if not cdog_match:
         return None
+    cdog_str = cdog_match.group(1)
+    cdog = np.array([float(x) for x in cdog_str.split(',')])
 
-    offset = float(offset_match.group(1))
+    # Extract other values: offset, time_bias, esv_bias, rmse
+    remaining = line[lever_match.end() + cdog_match.end():]
+    values = [float(x) for x in re.findall(r'[-+]?\d*\.\d+(?:[eE][-+]?\d+)?', remaining)]
 
-    # Extract the RMSE
-    rmse_match = re.search(r'RMSE: (\d+\.\d+)', line)
-    if not rmse_match:
+    if len(values) < 4:
         return None
-
-    rmse = float(rmse_match.group(1))
 
     return {
-        'iteration': iteration,
         'lever': lever,
-        'offset': offset,
-        'rmse': rmse
+        'cdog': cdog,
+        'offset': values[0],
+        'time_bias': values[1],
+        'esv_bias': values[2],
+        'rmse': values[3]
     }
 
 
-def read_iteration_file(filename):
+def read_grid_search_file(filename):
+    """Read a grid search output file and return the data as a list of dictionaries."""
     results = []
     with open(filename, 'r') as f:
         for line in f:
-            parsed = parse_iteration_line(line)
+            parsed = parse_grid_search_line(line)
             if parsed:
                 results.append(parsed)
     return results
 
 
-# Usage
-file_path = "slurm-2395955.out"
-iteration_data = read_iteration_file(file_path)
+def find_best_iterations(results, z_threshold=-7):
+    """Find the best iteration with lowest RMSE where lever z-index > threshold."""
+    # Filter iterations where z-index of lever is greater than threshold
+    filtered_results = [result for result in results if result['lever'][2] > z_threshold]
 
-# Filter iterations where z-index of lever is greater than -7
-filtered_iterations = [iter_data for iter_data in iteration_data
-                      if len(iter_data['lever']) >= 3 and iter_data['lever'][2] < -5]
+    # Find the iteration with the lowest RMSE among the filtered iterations
+    if filtered_results:
+        min_rmse_iter = min(filtered_results, key=lambda x: x['rmse'])
+        return min_rmse_iter
+    else:
+        return None
 
-# Find the iteration with the lowest RMSE among the filtered iterations
-if filtered_iterations:
-    min_rmse_iter = min(filtered_iterations, key=lambda x: x['rmse'])
-    print(f"Best iteration with z-index > -7: {min_rmse_iter['iteration']}")
-    print(f"Lever: {min_rmse_iter['lever']}")
-    print(f"Offset: {min_rmse_iter['offset']}")
-    print(f"RMSE: {min_rmse_iter['rmse']}")
-else:
-    print("No iterations found where the z-index of the lever is greater than -7.")
+
+# Usage example
+if __name__ == "__main__":
+    file_path = "output.txt"  # Replace with your actual file path
+    results = read_grid_search_file(file_path)
+
+    # Find the best iteration with lever z-index greater than -7
+    best_iter = find_best_iterations(results, z_threshold=-7)
+
+    if best_iter:
+        print(f"Best iteration with z-index > -7:")
+        print(f"Lever: {best_iter['lever']}")
+        print(f"CDOG Estimate: {best_iter['cdog']}")
+        print(f"Offset: {best_iter['offset']}")
+        print(f"Time Bias: {best_iter['time_bias']}")
+        print(f"ESV Bias: {best_iter['esv_bias']}")
+        print(f"RMSE: {best_iter['rmse']}")
+    else:
+        print("No iterations found where the z-index of the lever is greater than -7.")
+
+    # Additional statistics
+    print(f"\nTotal iterations analyzed: {len(results)}")
+    print(f"Average RMSE: {np.mean([r['rmse'] for r in results]):.6f}")
+    print(f"Min RMSE: {np.min([r['rmse'] for r in results]):.6f}")
+    print(f"Max RMSE: {np.max([r['rmse'] for r in results]):.6f}")

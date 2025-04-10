@@ -17,7 +17,7 @@ Function to search the grid of levers finding simulated annealing local minimums
 Writes the local minimums to a txt file
 Looking to find a global minimum
 """
-def grid_search(xl, xh, yl, yh, zl, zh, iter):
+def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):
     esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
     dz_array = esv_table['distance'].flatten()
     angle_array = esv_table['angle'].flatten()
@@ -84,6 +84,8 @@ def grid_search(xl, xh, yl, yh, zl, zh, iter):
                     iteration += 1
                     print(f"Iteration {iteration}/{iter**3}: Lever: {best_lever}, Offset: {best_offset}, RMSE: {RMSE}")
     print("Grid Search Completed. Results saved to output.txt")
+
+
 if __name__ == "__main__":
     # Define the grid limits
     xl, xh = -2, 2
@@ -93,6 +95,6 @@ if __name__ == "__main__":
     iter = 2
 
     # Call the grid search function
-    grid_search(xl, xh, yl, yh, zl, zh, iter)
+    grid_search_annealing(xl, xh, yl, yh, zl, zh, iter)
 
 

@@ -76,8 +76,6 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment):
     # plt.show()
     """end plotting"""
 
-    print(max(np.sqrt((filtered_data[0, 1, :] - filtered_data[3,1,:])**2 + (filtered_data[0, 2, :]-filtered_data[3,2,:])**2 + (filtered_data[0, 3, :]-filtered_data[3,3,:])**2)))
-
     CDOG_guess_geodetic = np.array([np.mean(lat), np.mean(lon), np.mean(elev)]) + np.array([0, 0, -5200])
     CDOG_guess_base = np.array(geodetic2ecef(CDOG_guess_geodetic[0], CDOG_guess_geodetic[1], CDOG_guess_geodetic[2]))
     CDOG_guess = CDOG_guess_base + CDOG_augment
