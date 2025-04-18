@@ -36,6 +36,17 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment):
         filtered_data.append([np.array(datetimes)[mask], np.array(x)[mask], np.array(y)[mask], np.array(z)[mask], np.array(elev)[mask]])
     filtered_data = np.array(filtered_data)
 
+    #Filtering Functions
+    def running_median(data, window=50):
+        pad_width = window // 2
+        padded = np.pad(data, (pad_width, window - 1 - pad_width), mode='edge')
+        return np.array([np.median(padded[i:i + window]) for i in range(len(data))])
+
+    def running_abs_dev(data, window=50):
+        pad_width = window // 2
+        padded = np.pad(data, (pad_width, window - 1 - pad_width), mode='edge')
+        return np.array(
+            [np.median(np.abs(padded[i:i + window] - np.median(padded[i:i + window]))) for i in range(len(data))])
 
     # Filter data based on elevation
     elev_upper = -35
@@ -45,6 +56,16 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment):
                      (filtered_data[2, 4, :] < elev_upper) & (filtered_data[2, 4, :] > elev_lower) &
                      (filtered_data[3, 4, :] < elev_upper) & (filtered_data[3, 4, :] > elev_lower)])
     indices = np.where(mask[0])[0]
+    filtered_data = filtered_data[:, :, indices]
+
+    window = 5000
+    mask = np.ones(filtered_data.shape[2], dtype=bool)
+    for i in range(4):
+        elev = filtered_data[i, 4, :]
+        median_elev = running_median(elev, window)
+        abs_dev = running_abs_dev(elev, window)
+        mask &= (elev >= median_elev - 2 * abs_dev) & (elev <= median_elev + 2 * abs_dev)
+    indices = np.where(mask)[0]
     filtered_data = filtered_data[:, :, indices]
 
     # Initialize Coordinates in form of Geiger's Method
@@ -67,11 +88,21 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment):
     # fig, axs = plt.subplots(2, 2, figsize=(10, 8))
     # for i in range(4):
     #     row, col = divmod(i, 2)
-    #     axs[row, col].scatter(GPS_data, filtered_data[i, 4, :], s=1)
+    #     elevation = filtered_data[i, 4, :]
+    #     axs[row, col].scatter(GPS_data, elevation, s=1, color="blue", label=r'Elevation Data')
+    #     median_elev = running_median(elevation, window=5000)
+    #     abs_dev = running_abs_dev(elevation, window=5000)
+    #     upper_band = median_elev + 2 * abs_dev
+    #     lower_band = median_elev - 2 * abs_dev
+    #     axs[row, col].plot(GPS_data, median_elev, color='red', linewidth=2, label=r'Running Median')
+    #     axs[row,col].plot(GPS_data, upper_band, color='orange', label=r'2 Absolute Deviations')
+    #     axs[row, col].plot(GPS_data, lower_band, color='orange')
+    #
     #     axs[row, col].set_title(f'GPS Unit {i + 1} Elevation')
-    #     axs[row, col].set_xlabel('Time')
-    #     axs[row, col].set_ylabel('Elevation')
+    #     axs[row, col].set_xlabel(r'Time')
+    #     axs[row, col].set_ylabel(r'Elevation')
     #     axs[row, col].set_ylim(-39, -34)
+    #     axs[row, col].legend()
     # plt.tight_layout()
     # plt.show()
     """end plotting"""
@@ -89,3 +120,9 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment):
     CDOG_data[:, 1] = CDOG_data[:, 1] / 1e9
 
     return GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others
+
+if __name__ == "__main__":
+    GNSS_start = 25
+    GNSS_end = 40.9
+    CDOG_augment = np.array([0, 0, 0])
+    GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment)

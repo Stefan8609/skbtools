@@ -53,8 +53,7 @@ def read_grid_search_file(filename):
 def find_best_iterations(results, z_threshold=-7):
     """Find the best iteration with lowest RMSE where lever z-index > threshold."""
     # Filter iterations where z-index of lever is greater than threshold
-    filtered_results = [result for result in results if result['lever'][2] > z_threshold]
-
+    filtered_results = [result for result in results if result['lever'][2] < z_threshold]
     # Find the iteration with the lowest RMSE among the filtered iterations
     if filtered_results:
         min_rmse_iter = min(filtered_results, key=lambda x: x['rmse'])
@@ -65,16 +64,19 @@ def find_best_iterations(results, z_threshold=-7):
 
 # Usage example
 if __name__ == "__main__":
+    CDOG_guess_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
+    z_threshold = 0
+
     file_path = "output.txt"  # Replace with your actual file path
     results = read_grid_search_file(file_path)
 
     # Find the best iteration with lever z-index greater than -7
-    best_iter = find_best_iterations(results, z_threshold=-7)
+    best_iter = find_best_iterations(results, z_threshold=z_threshold)
 
     if best_iter:
-        print(f"Best iteration with z-index > -7:")
+        print(f"Best iteration with z-index < {z_threshold}:")
         print(f"Lever: {best_iter['lever']}")
-        print(f"CDOG Estimate: {best_iter['cdog']}")
+        print(f"CDOG Estimate: {best_iter['cdog'] - CDOG_guess_base}")
         print(f"Offset: {best_iter['offset']}")
         print(f"Time Bias: {best_iter['time_bias']}")
         print(f"ESV Bias: {best_iter['esv_bias']}")

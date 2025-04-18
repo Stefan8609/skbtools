@@ -7,11 +7,13 @@ from Numba_Geiger import findTransponder
 from Real_Annealing import simulated_annealing_real
 from Initialize_Bermuda_Data import initialize_bermuda
 
+"""Plot all of the Seafloor guesses from the grid search and find the correlation"""
+
 def grid_search_annealing(
     xl, xh, yl, yh, zl, zh, num_points,
     output_file='output.txt',
     CDOG_guess_augment=np.array([974.12667502, -80.98121315, -805.07870249]),
-    initial_lever_base=np.array([-12.5, 0.5, -16]),
+    initial_lever_base=np.array([-16, 0.5, -15]),
     GNSS_start=25,
     GNSS_end=40.9,
     downsample=50,
@@ -151,7 +153,7 @@ def grid_search_discrete(
     xl, xh, yl, yh, zl, zh, num_points,
     output_file='output.txt',
     CDOG_guess_augment=np.array([974.12667502, -80.98121315, -805.07870249]),
-    initial_lever_base=np.array([-12.5, 0.5, -16]),
+    initial_lever_base=np.array([-16.0, 0.0, -15.0]),
     GNSS_start=25,
     GNSS_end=40.9,
     downsample=50,
@@ -283,11 +285,12 @@ if __name__ == "__main__":
     # )
 
     grid_search_discrete(
-        xl=-10, xh=10,
-        yl=-10, yh=10,
-        zl=-10, zh=10,
+        xl=-2, xh=2,
+        yl=-2, yh=2,
+        zl=-2, zh=2,
         num_points=20,
         output_file='output.txt',
         downsample=100,
         offset_range = 4,
+        initial_lever_base=np.array([-14.04488267, 10.33889427, -15.29929855])
     )

@@ -15,8 +15,9 @@ def time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise=
     zoom_length = 400
 
     # Plot axes to return
-    fig, axes = plt.subplots(2, 3, figsize=(17, 8), gridspec_kw={'width_ratios': [1, 4, 2], 'height_ratios': [2, 1]})
+    fig, axes = plt.subplots(2, 4, figsize=(17, 8), gridspec_kw={'width_ratios': [1, 4, 2, 1], 'height_ratios': [2, 1]})
     axes[0, 0].axis('off')
+    axes[0, 3].axis('off')
 
     # Acoustic vs GNSS plot
     axes[0, 1].scatter(CDOG_clock, CDOG_full, s=5, label='Observed Travel Times', alpha=0.6, marker='o', color='b',
@@ -66,7 +67,6 @@ def time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise=
     axes[1, 0].set_ylabel(f'Difference (ms) \n Std: {np.round(std, 3)} ms or {np.round(std * 1515 / 10,2)} cm')
     axes[1, 0].set_xlabel('Normalized Frequency')
     axes[1, 0].invert_xaxis()
-    # axes[2, 0].axis('off')
 
     # Difference plot
     axes[1, 1].scatter(CDOG_clock, difference_data * 1000, s=1)
@@ -74,11 +74,52 @@ def time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise=
     axes[1, 1].axvline(zoom_region + zoom_length, color='k', linestyle="--")
     axes[1, 1].set_xlabel('Time(ms)')
     axes[1, 1].set_ylim([mu - 3 * std, mu + 3 * std])
+    axes[1, 1].axhline(-std, color='r', label="Observed Noise")
+    axes[1, 1].axhline(std, color='r')
 
+    # Zoom difference plot
+    mu_zoom, std_zoom = norm.fit(difference_data[zoom_idx:zoom_idx + zoom_length] * 1000)
     axes[1, 2].scatter(CDOG_clock[zoom_idx:zoom_idx + zoom_length],
                        difference_data[zoom_idx:zoom_idx + zoom_length] * 1000, s=1)
     axes[1, 2].set_xlabel('Time(ms)')
-    axes[1, 2].set_ylim([mu - 3 * std, mu + 3 * std])
+    axes[1, 2].set_ylim([mu_zoom - 3 * std_zoom, mu_zoom + 3 * std_zoom])
+    axes[1, 2].axhline(mu_zoom-std_zoom, color='r', label="Observed Noise")
+    axes[1, 2].axhline(mu_zoom+std_zoom, color='r')
+    axes[1, 2].yaxis.tick_right()
+
+    # Histogram and normal distributions
+
+    n_zoom, bins_zoom, patches_zoom = axes[1, 3].hist(difference_data[zoom_idx:zoom_idx + zoom_length] * 1000, orientation='horizontal',
+                                       bins=40, alpha=0.5, density=True)
+    x_zoom = np.linspace(mu_zoom - 3 * std_zoom, mu_zoom + 3 * std_zoom, 100)
+    axes[1, 3].set_xlim([n_zoom.min() * 1.4, n_zoom.max() * 1.4])
+    axes[1, 3].set_ylim([mu_zoom - 3 * std_zoom, mu_zoom + 3 * std_zoom])
+    p_zoom = norm.pdf(x_zoom, mu_zoom, std_zoom)
+    point1, point2 = norm.pdf(np.array([-std_zoom, std_zoom]), mu_zoom, std_zoom)
+    axes[1, 3].plot(p_zoom, x_zoom, 'k', linewidth=2, label="Normal Distribution of Differences")
+    axes[1, 3].scatter([point1, point2], [-std_zoom, std_zoom], s=10, color='r', zorder=1)
+
+    # add horizontal lines for the noise and uncertainty
+    axes[1, 3].axhline(mu_zoom-std_zoom, color='r', label="Observed Noise")
+    axes[1, 3].axhline(mu_zoom+std_zoom, color='r')
+    axes[1, 3].text(-0.1, mu+std_zoom * 1.2, "$\\sigma_p$", va="center", color='r')
+
+    if position_noise != 0:
+        axes[1, 3].axhline(-position_noise / 1515 * 1000, color='g', label="Input Position Noise")
+        axes[1, 3].axhline(position_noise / 1515 * 1000, color='g')
+        axes[1, 3].text(-0.2, position_noise / 1515 * 1000 * .5, "$\\sigma_x$", va="center", color='g')
+
+    if time_noise != 0:
+        axes[1, 3].axhline(-time_noise * 1000, color='y', label="Input Time Noise")
+        axes[1, 3].axhline(time_noise * 1000, color='y')
+        axes[1, 3].text(-0.2, time_noise * 1000, "$\\sigma_t$", va="center", color='y')
+
+    # invert axis and plot
+    axes[1, 3].set_ylabel(f'Difference (ms) \n Std: {np.round(std_zoom, 3)} ms or {np.round(std_zoom * 1515 / 10, 2)} cm')
+    axes[1, 3].yaxis.set_label_position("right")
+    axes[1, 3].yaxis.tick_right()
+    axes[1, 3].set_xlabel('Normalized Frequency')
+    axes[1, 3].invert_xaxis()
 
     plt.show(block = block)
 
