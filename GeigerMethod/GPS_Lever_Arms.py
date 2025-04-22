@@ -54,3 +54,8 @@ def GPS_Lever_arms(GPS_Coordinates):
         arm = np.mean(all_arms[i], axis=0, keepdims=True)[0]
         print(arm)
         print(np.linalg.norm(arm))
+
+if __name__ == "__main__":
+    data = np.load("../GPSData/Processed_GPS_Receivers_DOG_1.npz")
+    GPS_Coordinates = data['GPS_Coordinates']
+    GPS_Lever_arms(GPS_Coordinates)

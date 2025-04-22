@@ -67,7 +67,7 @@ if __name__ == "__main__":
     CDOG_guess_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
     z_threshold = 0
 
-    file_path = "output.txt"  # Replace with your actual file path
+    file_path = f"output.txt"  # Replace with your actual file path
     results = read_grid_search_file(file_path)
 
     # Find the best iteration with lever z-index greater than -7
@@ -83,7 +83,6 @@ if __name__ == "__main__":
         print(f"RMSE: {best_iter['rmse']}")
     else:
         print("No iterations found where the z-index of the lever is greater than -7.")
-
     # Additional statistics
     print(f"\nTotal iterations analyzed: {len(results)}")
     print(f"Average RMSE: {np.mean([r['rmse'] for r in results]):.6f}")

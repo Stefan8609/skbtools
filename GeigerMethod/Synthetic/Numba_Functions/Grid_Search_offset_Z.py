@@ -7,19 +7,22 @@ from Numba_Geiger import findTransponder
 from Real_Annealing import simulated_annealing_real
 from Initialize_Bermuda_Data import initialize_bermuda
 
-"""Plot all of the Seafloor guesses from the grid search and find the correlation"""
+"""Plot all of the Seafloor guesses from the grid search and find the correlation
+
+Add GPS grid search to the plot (that'll add a lot of complexity)
+"""
 
 def grid_search_annealing(
     xl, xh, yl, yh, zl, zh, num_points,
     output_file='output.txt',
-    CDOG_guess_augment=np.array([974.12667502, -80.98121315, -805.07870249]),
+    CDOG_guess_augment=np.array([0.0, 0.0, 0.0]),
     initial_lever_base=np.array([-16, 0.5, -15]),
-    GNSS_start=25,
-    GNSS_end=40.9,
     downsample=50,
     sa_iterations=300,
     offset_range = 4,
+    current_offset = 0,
     z_range = 4,
+    DOG_num = 3
 ):
     """
     Performs a grid search over lever-arm values (x, y, z) and small offset adjustments,
@@ -38,8 +41,6 @@ def grid_search_annealing(
         Number of points to sample along each axis (x, y, z).
     output_file : str, optional
         Path to the output text file where results are appended.
-    real_data : bool, optional
-        Whether this is real data or simulated (passed to geiger functions).
     CDOG_guess_augment : np.ndarray, optional
         Base vector for initial CDOG guess augmentation.
     initial_lever_base : np.ndarray, optional
@@ -62,10 +63,12 @@ def grid_search_annealing(
     angle_array = esv_table['angle'].flatten()
     esv_matrix = esv_table['matrice']
 
-    # Load GNSS and CDOG data
-    GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, GPS1_to_others = initialize_bermuda(
-        GNSS_start, GNSS_end, CDOG_guess_augment
-    )
+    data = np.load(f'../../../GPSData/Processed_GPS_Receivers_DOG_{DOG_num}.npz')
+    GPS_Coordinates = data['GPS_Coordinates']
+    GPS_data = data['GPS_data']
+    CDOG_data = data['CDOG_data']
+    CDOG_guess = data['CDOG_guess']
+    GPS1_to_others = data['gps1_to_others']
 
     # For a quick initial offset guess (if needed)
     # you could call initial_bias_geiger once per (x, y, z) if relevant:
@@ -152,12 +155,12 @@ def grid_search_annealing(
 def grid_search_discrete(
     xl, xh, yl, yh, zl, zh, num_points,
     output_file='output.txt',
-    CDOG_guess_augment=np.array([974.12667502, -80.98121315, -805.07870249]),
+    CDOG_guess_augment=np.array([0.0, 0.0, 0.0]),
     initial_lever_base=np.array([-16.0, 0.0, -15.0]),
-    GNSS_start=25,
-    GNSS_end=40.9,
     downsample=50,
     offset_range = 4,
+    current_offset = 0,
+    DOG_num = 3
 ):
     """
     Performs a grid search over lever-arm values (x, y, z) and small offset adjustments,
@@ -176,22 +179,19 @@ def grid_search_discrete(
         Number of points to sample along each axis (x, y, z).
     output_file : str, optional
         Path to the output text file where results are appended.
-    real_data : bool, optional
-        Whether this is real data or simulated (passed to geiger functions).
     CDOG_guess_augment : np.ndarray, optional
         Base vector for initial CDOG guess augmentation.
     initial_lever_base : np.ndarray, optional
         Base vector for the lever-arm guess.
-    offset_initial : float, optional
-        Initial offset used as a starting point for finer searches.
-    gnss_start, gnss_end : float
         Start and end times for GNSS data slicing.
     downsample : int
         Downsampling step used for the GPS data.
-    sa_iterations : int
-        Number of simulated annealing iterations to run per sample.
-    offset_search_range : tuple (start, stop, num)
+    offset_range : tuple (start, stop, num)
         Defines the np.linspace() range for searching offset around offset_initial.
+    current_offset : float
+        Initial offset used as a starting point for finer searches.
+    DOG_num : int
+        Number of the DOG that is analyzed
     """
     # Load the external ESV data
     esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
@@ -199,18 +199,27 @@ def grid_search_discrete(
     angle_array = esv_table['angle'].flatten()
     esv_matrix = esv_table['matrice']
 
-    # Load GNSS and CDOG data
-    GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, GPS1_to_others = initialize_bermuda(
-        GNSS_start, GNSS_end, CDOG_guess_augment
-    )
+    # # Load GNSS and CDOG data
+    # GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, GPS1_to_others = initialize_bermuda(
+    #     GNSS_start, GNSS_end, CDOG_guess_augment, DOG_num
+    # )
+
+    data = np.load(f'../../../GPSData/Processed_GPS_Receivers_DOG_{DOG_num}.npz')
+    GPS_Coordinates = data['GPS_Coordinates']
+    GPS_data = data['GPS_data']
+    CDOG_data = data['CDOG_data']
+    CDOG_guess = data['CDOG_guess']
+    GPS1_to_others = data['gps1_to_others']
+    CDOG_guess += CDOG_guess_augment
 
     # For a quick initial offset guess (if needed)
     # you could call initial_bias_geiger once per (x, y, z) if relevant:
-    _, current_offset = initial_bias_geiger(
-        CDOG_guess, CDOG_data, GPS_data,
-        findTransponder(GPS_Coordinates, GPS1_to_others, initial_lever_base),
-        dz_array, angle_array, esv_matrix, real_data = True
-    )
+    if current_offset == 0:
+        _, current_offset = initial_bias_geiger(
+            CDOG_guess, CDOG_data, GPS_data,
+            findTransponder(GPS_Coordinates, GPS1_to_others, initial_lever_base),
+            dz_array, angle_array, esv_matrix, real_data = True
+        )
 
     # Downsample data
     GPS_Coordinates = GPS_Coordinates[::downsample]
@@ -243,16 +252,22 @@ def grid_search_discrete(
             for off_adjust in offset_adjusts:
                 iteration_count += 1
                 # Run final_geiger
-                inversion_result, CDOG_full, GPS_full, _, _ = final_bias_geiger(inversion_guess, CDOG_data,
-                                                                                     GPS_data,
-                                                                                     transponder_coordinates,
-                                                                                     current_offset + off_adjust,
-                                                                                     esv_bias, time_bias, dz_array,
-                                                                                     angle_array, esv_matrix,
-                                                                                     real_data=True)
-                inversion_guess = inversion_result[:3]
-                time_bias = inversion_result[3]
-                esv_bias = inversion_result[4]
+                try:
+                    """Reset inversion_guess each time"""
+                    # inversion_guess = CDOG_guess
+                    inversion_result, CDOG_full, GPS_full, _, _ = final_bias_geiger(inversion_guess, CDOG_data,
+                                                                                         GPS_data,
+                                                                                         transponder_coordinates,
+                                                                                         current_offset + off_adjust,
+                                                                                         esv_bias, time_bias, dz_array,
+                                                                                         angle_array, esv_matrix,
+                                                                                         real_data=True)
+                    inversion_guess = inversion_result[:3]
+                    time_bias = inversion_result[3]
+                    esv_bias = inversion_result[4]
+                except:
+                    print(f"Error in final_bias_geiger, skipping this iteration. offset = {current_offset + off_adjust}")
+                    continue
 
                 RMSE = np.sqrt(np.mean((CDOG_full - GPS_full) ** 2))
                 # Write line to file
@@ -266,7 +281,7 @@ def grid_search_discrete(
                 print(
                     f"Iteration {iteration_count}/{total_iterations}: "
                     f"Lever: {lever_guess}, Offset: {current_offset + off_adjust:.4f}, RMSE: {RMSE * 100 * 1515:.4f}"
-                )
+                    )
 
     print("Grid Search Completed. Results saved to", output_file)
 
@@ -285,12 +300,15 @@ if __name__ == "__main__":
     # )
 
     grid_search_discrete(
-        xl=-2, xh=2,
-        yl=-2, yh=2,
-        zl=-2, zh=2,
-        num_points=20,
+        xl=--.01, xh=.01,
+        yl=-.01, yh=.01,
+        zl=-.01, zh=.01,
+        num_points=1,
         output_file='output.txt',
-        downsample=100,
-        offset_range = 4,
-        initial_lever_base=np.array([-14.04488267, 10.33889427, -15.29929855])
+        CDOG_guess_augment=np.array([-398.16, 371.90, 773.02]),
+        downsample=50,
+        offset_range = 40,
+        current_offset = 1886,
+        initial_lever_base=np.array([-12.4659, 9.6021, -13.2993]),
+        DOG_num = 1
     )

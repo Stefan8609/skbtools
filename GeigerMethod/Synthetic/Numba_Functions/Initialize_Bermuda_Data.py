@@ -2,7 +2,8 @@ import numpy as np
 import scipy.io as sio
 from pymap3d import geodetic2ecef
 
-def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment):
+def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num = 3, save=False):
+    print("Initializing Bermuda Data")
     # Load GNSS Data during the time of expedition (25 through 40.9) hours
     def load_and_process_data(path, GNSS_start, GNSS_end):
         data = sio.loadmat(path)
@@ -49,6 +50,7 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment):
             [np.median(np.abs(padded[i:i + window] - np.median(padded[i:i + window]))) for i in range(len(data))])
 
     # Filter data based on elevation
+    print("Filtering Data")
     elev_upper = -35
     elev_lower = -38
     mask = np.array([(filtered_data[0, 4, :] < elev_upper) & (filtered_data[0, 4, :] > elev_lower) &
@@ -68,6 +70,7 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment):
     indices = np.where(mask)[0]
     filtered_data = filtered_data[:, :, indices]
 
+    print("End of Filtering Data")
     # Initialize Coordinates in form of Geiger's Method
     GPS_Coordinates = np.zeros((len(filtered_data[0, 0]), 4, 3))
     for i in range(len(filtered_data[0, 0])):
@@ -78,33 +81,34 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment):
 
     # Initialize time-tagged data for GPS and CDOG
     GPS_data = filtered_data[0, 0, :]
-    CDOG_data = sio.loadmat('../../../GPSData/DOG3-camp.mat')['tags'].astype(float)
+    CDOG_data = sio.loadmat(f'../../../GPSData/DOG{DOG_num}-camp.mat')['tags'].astype(float)
 
     lat = sio.loadmat('../../../GPSData/Unit1-camp_bis.mat')['lat'].flatten()
     lon = sio.loadmat('../../../GPSData/Unit1-camp_bis.mat')['lon'].flatten()
 
     """If elevation plotting is desired"""
-    # import matplotlib.pyplot as plt
-    # fig, axs = plt.subplots(2, 2, figsize=(10, 8))
-    # for i in range(4):
-    #     row, col = divmod(i, 2)
-    #     elevation = filtered_data[i, 4, :]
-    #     axs[row, col].scatter(GPS_data, elevation, s=1, color="blue", label=r'Elevation Data')
-    #     median_elev = running_median(elevation, window=5000)
-    #     abs_dev = running_abs_dev(elevation, window=5000)
-    #     upper_band = median_elev + 2 * abs_dev
-    #     lower_band = median_elev - 2 * abs_dev
-    #     axs[row, col].plot(GPS_data, median_elev, color='red', linewidth=2, label=r'Running Median')
-    #     axs[row,col].plot(GPS_data, upper_band, color='orange', label=r'2 Absolute Deviations')
-    #     axs[row, col].plot(GPS_data, lower_band, color='orange')
-    #
-    #     axs[row, col].set_title(f'GPS Unit {i + 1} Elevation')
-    #     axs[row, col].set_xlabel(r'Time')
-    #     axs[row, col].set_ylabel(r'Elevation')
-    #     axs[row, col].set_ylim(-39, -34)
-    #     axs[row, col].legend()
-    # plt.tight_layout()
-    # plt.show()
+    if save:
+        import matplotlib.pyplot as plt
+        fig, axs = plt.subplots(2, 2, figsize=(10, 8))
+        for i in range(4):
+            row, col = divmod(i, 2)
+            elevation = filtered_data[i, 4, :]
+            axs[row, col].scatter(GPS_data, elevation, s=1, color="blue", label=r'Elevation Data')
+            median_elev = running_median(elevation, window=5000)
+            abs_dev = running_abs_dev(elevation, window=5000)
+            upper_band = median_elev + 2 * abs_dev
+            lower_band = median_elev - 2 * abs_dev
+            axs[row, col].plot(GPS_data, median_elev, color='red', linewidth=2, label=r'Running Median')
+            axs[row,col].plot(GPS_data, upper_band, color='orange', label=r'2 Absolute Deviations')
+            axs[row, col].plot(GPS_data, lower_band, color='orange')
+
+            axs[row, col].set_title(f'GPS Unit {i + 1} Elevation')
+            axs[row, col].set_xlabel(r'Time (s)')
+            axs[row, col].set_ylabel(r'Elevation (m)')
+            axs[row, col].set_ylim(-39, -34)
+            axs[row, col].legend()
+        plt.tight_layout()
+        plt.show()
     """end plotting"""
 
     CDOG_guess_geodetic = np.array([np.mean(lat), np.mean(lon), np.mean(elev)]) + np.array([0, 0, -5200])
@@ -115,14 +119,23 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment):
                                [-8.70446831, 5.165195, 0.04880436]])
 
     # Scale GPS Clock slightly and scale CDOG clock to nanoseconds
-    GPS_data = GPS_data - 68826
+    clock_adjustment = {1: 70000.0, 2: 70000.0, 3: 70000.0, 4: 70000.0}
+
+    GPS_data = GPS_data - clock_adjustment[DOG_num]
 
     CDOG_data[:, 1] = CDOG_data[:, 1] / 1e9
 
+    # Save the data if required
+    if save:
+        np.savez(f'../../../GPSData/Processed_GPS_Receivers_DOG_{DOG_num}', GPS_Coordinates=GPS_Coordinates, GPS_data=GPS_data,
+                 CDOG_data=CDOG_data, CDOG_guess=CDOG_guess, gps1_to_others=gps1_to_others)
+
+    print("Bermuda Data Initialized")
     return GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others
 
 if __name__ == "__main__":
     GNSS_start = 25
-    GNSS_end = 40.9
-    CDOG_augment = np.array([0, 0, 0])
-    GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment)
+    # GNSS_end = 40.9
+    GNSS_end = 39
+    CDOG_augment = (np.array([0, 0, 0]))
+    GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=3, save=True)

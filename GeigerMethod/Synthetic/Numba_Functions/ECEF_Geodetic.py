@@ -9,6 +9,16 @@ from numba import njit
 
 @njit(cache = True)
 def ECEF_Geodetic(coords):
+    """ Convert ECEF coordinates to Geodetic coordinates
+    Args:
+        coords (numpy.ndarray): ECEF coordinates in the form of a 2D array with shape (n, 3)
+            where n is the number of points and 3 corresponds to x, y, z coordinates.
+    Returns:
+        tuple: A tuple containing:
+            - theta (float): Latitude in degrees
+            - clambda (float): Longitude in degrees
+            - h (float): Height in meters
+    """
     x, y, z = coords[:, 0], coords[:, 1], coords[:, 2]
     # --- WGS84 constants
     a = 6378137.0

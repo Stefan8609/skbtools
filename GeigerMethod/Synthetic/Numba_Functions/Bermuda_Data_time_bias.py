@@ -1,5 +1,3 @@
-from idlelib.pyparse import trans
-
 import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
@@ -25,24 +23,43 @@ dz_array = esv_table['distance'].flatten()
 angle_array = esv_table['angle'].flatten()
 esv_matrix = esv_table['matrice']
 
-# CDOG_guess_augment = np.array([ 974.12667502,  -80.98121315, -805.07870249])
-CDOG_guess_augment = np.array([825.182985, -111.05670221, -734.10011698])
-# initial_lever_guess = np.array([-12.48862757, 0.22622633, -15.89601934])
-# initial_lever_guess = np.array([ -8.1379,   2.6067, -17.7846 ])
-# initial_lever_guess = np.array([-8.74068827,  7.78977386, -7.27690523])
-# initial_lever_guess = np.array([-12.7632,   9.4474, -12.0])
-# initial_lever_guess = np.array([-10.9211, 8.3947, -6.0])
-# initial_lever_guess = np.array([-10.7368,  8.9474, -16.5789])
-initial_lever_guess = np.array([-12.4659, 9.6021, -13.2993])
-"""[ 826.74003 -113.4907  -732.66118]"""
-offset = 2001.0
-# offset = 1991.01236648
-# offset = 2076.0242
-
 GNSS_start, GNSS_end = 25, 40.9
 # GNSS_start, GNSS_end = 31.9, 34.75
 # GNSS_start, GNSS_end = 35.3, 37.6
-GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = initialize_bermuda(GNSS_start, GNSS_end, CDOG_guess_augment)
+# GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = initialize_bermuda(GNSS_start, GNSS_end, CDOG_guess_augment, DOG_num=1)
+
+DOG_num = 3
+
+data = np.load(f'../../../GPSData/Processed_GPS_Receivers_DOG_{DOG_num}.npz')
+GPS_Coordinates = data['GPS_Coordinates']
+GPS_data = data['GPS_data']
+CDOG_data = data['CDOG_data']
+CDOG_guess = data['CDOG_guess']
+gps1_to_others = data['gps1_to_others']
+
+# gps1_to_others = np.array([[0.0, 0.0, 0.0],
+#                            [-2.39341409, -4.22350344, 0.02941493],
+#                            [-12.09568416, -0.94568462, 0.0043972],
+#                            [-8.68674054, 5.16918806, 0.02499322]])
+
+gps1_to_others = np.array([[0.0, 0.0, 0.0],
+                           [-2.39341409, -4.22350344, 0.02941493],
+                           [-12.09568416, -0.94568462, 0.0043972],
+                           [-8.68674054, 5.16918806, -0.02499322]])
+
+"""Set up the initial estimations"""
+initial_lever_guess=np.array([-12.4659, 9.6021, -13.2993])
+if DOG_num == 1:
+    CDOG_guess_augment =  np.array([-398.16, 371.90, 773.02])
+    offset = 1866.0
+if DOG_num == 3:
+    CDOG_guess_augment = np.array([825.182985, -111.05670221, -734.10011698])
+    offset = 3175.0
+if DOG_num == 4:
+    CDOG_guess_augment = np.array([236.428385, -1307.98390221, -2189.21991698])
+    offset = 1939.0
+
+CDOG_guess = CDOG_guess + CDOG_guess_augment
 
 transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, initial_lever_guess)
 """No Simulated Annealing"""
@@ -68,7 +85,7 @@ esv_bias = inversion_result[4]
 print("offsets: ", best_offset, offset)
 
 """If we don't want offset found by our method"""
-best_offset = 2001.0
+best_offset = offset
 
 inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(inversion_guess, CDOG_data, GPS_data,
                                                                                      transponder_coordinates, best_offset, esv_bias, time_bias,

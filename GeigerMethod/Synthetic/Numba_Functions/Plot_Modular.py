@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
 from scipy.stats import norm
+from ECEF_Geodetic import ECEF_Geodetic
 
 def time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise=0, time_noise=0, block=True):
     difference_data = CDOG_full - GPS_full
@@ -15,7 +16,7 @@ def time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise=
     zoom_length = 400
 
     # Plot axes to return
-    fig, axes = plt.subplots(2, 4, figsize=(17, 8), gridspec_kw={'width_ratios': [1, 4, 2, 1], 'height_ratios': [2, 1]})
+    fig, axes = plt.subplots(2, 4, figsize=(16, 8), gridspec_kw={'width_ratios': [1, 4, 2, 1], 'height_ratios': [2, 1]})
     axes[0, 0].axis('off')
     axes[0, 3].axis('off')
 
@@ -121,21 +122,42 @@ def time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise=
     axes[1, 3].set_xlabel('Normalized Frequency')
     axes[1, 3].invert_xaxis()
 
+    # Adjust spacing between subplots
+    plt.tight_layout()
+
     plt.show(block = block)
 
-def trajectory_plot(coordinates, GPS_clock, CDOG, block=True):
+def trajectory_plot(coordinates, GPS_clock, CDOGs, block=True):
     # Calculate time values in hours for proper colorbar range
     times_hours = GPS_clock / 3600  # Convert seconds to hours
     min_time = np.min(times_hours)
     max_time = np.max(times_hours)
 
     scatter = plt.scatter(coordinates[:,0], coordinates[:,1], s=1, c=times_hours, cmap='viridis', label='Surface Vessel')
-    plt.scatter(CDOG[0], CDOG[1], marker='x', s=5, label='CDOG')
+    for i in range(len(CDOGs)):
+        plt.scatter(CDOGs[i,0], CDOGs[i,1], marker='x', s=20, label=f'CDOG {i}', color='k')
     plt.colorbar(scatter, label='Elapsed Time (hours)')
     plt.clim(min_time, max_time)  # Set the colorbar to actual time range
     plt.title('Plot of Trajectory and CDOG location')
-    plt.xlabel('ECEF (x)')
-    plt.ylabel('ECEF (y)')
+    plt.xlabel('Longitude')
+    plt.ylabel('Latitude')
     plt.legend()
 
     plt.show(block = block)
+
+if __name__ == "__main__":
+    CDOG_guess_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
+    CDOGs = np.array([[-398.16, 371.90, 773.02],
+                      [825.182985, -111.05670221, -734.10011698],
+                      [236.428385, -1307.98390221, -2189.21991698]])
+    CDOGs += CDOG_guess_base
+
+    CDOGs_lat, CDOGs_lon, CDOGs_height = ECEF_Geodetic(CDOGs)
+
+    data = np.load(f'../../../GPSData/Processed_GPS_Receivers_DOG_1.npz')
+    GPS_Coordinates = data['GPS_Coordinates']
+    GPS_data = data['GPS_data']
+
+    GPS_lat, GPS_lon, GPS_height = ECEF_Geodetic(GPS_Coordinates[:,0,:])
+    trajectory_plot(np.array([GPS_lon, GPS_lat, GPS_height]).T, GPS_data, np.array([CDOGs_lon, CDOGs_lat, CDOGs_height]).T)
+
