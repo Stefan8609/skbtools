@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.io as sio
 from scipy.stats import norm
 from ECEF_Geodetic import ECEF_Geodetic
 
@@ -13,7 +12,7 @@ def time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise=
     # Get range of times for zoom in
     zoom_region = np.random.randint(min(CDOG_clock), max(CDOG_clock) - 100)
     zoom_idx = (np.abs(CDOG_clock - zoom_region)).argmin()
-    zoom_length = 400
+    zoom_length = 3600
 
     # Plot axes to return
     fig, axes = plt.subplots(2, 4, figsize=(16, 8), gridspec_kw={'width_ratios': [1, 4, 2, 1], 'height_ratios': [2, 1]})
@@ -25,10 +24,12 @@ def time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise=
                        zorder=2)
     axes[0, 1].scatter(GPS_clock, GPS_full, s=10, label='Modelled Travel Times', alpha=1, marker='x', color='r',
                        zorder=1)
-    axes[0, 1].axvline(zoom_region, color='k', linestyle="--")
-    axes[0, 1].axvline(zoom_region + zoom_length, color='k', linestyle="--")
+    axes[0, 1].axvline(zoom_region, color='k')
+    axes[0, 1].axvline(zoom_region + zoom_length, color='k')
     axes[0, 1].set_ylabel('Travel Time (s)')
     axes[0, 1].legend(loc="upper right")
+    axes[0, 1].set_xlim(min(CDOG_clock), max(CDOG_clock))
+
 
     axes[0, 2].scatter(CDOG_clock[zoom_idx:zoom_idx + zoom_length], CDOG_full[zoom_idx:zoom_idx + zoom_length],
                        s=5, label='Observed Travel Times', alpha=0.6, marker='o', color='b',
@@ -71,10 +72,11 @@ def time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise=
 
     # Difference plot
     axes[1, 1].scatter(CDOG_clock, difference_data * 1000, s=1)
-    axes[1, 1].axvline(zoom_region, color='k', linestyle="--")
-    axes[1, 1].axvline(zoom_region + zoom_length, color='k', linestyle="--")
-    axes[1, 1].set_xlabel('Time(ms)')
+    axes[1, 1].axvline(zoom_region, color='k')
+    axes[1, 1].axvline(zoom_region + zoom_length, color='k')
+    axes[1, 1].set_xlabel('Time (ms)')
     axes[1, 1].set_ylim([mu - 3 * std, mu + 3 * std])
+    axes[1, 1].set_xlim(min(CDOG_clock), max(CDOG_clock))
     axes[1, 1].axhline(-std, color='r', label="Observed Noise")
     axes[1, 1].axhline(std, color='r')
 
@@ -82,8 +84,9 @@ def time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise=
     mu_zoom, std_zoom = norm.fit(difference_data[zoom_idx:zoom_idx + zoom_length] * 1000)
     axes[1, 2].scatter(CDOG_clock[zoom_idx:zoom_idx + zoom_length],
                        difference_data[zoom_idx:zoom_idx + zoom_length] * 1000, s=1)
-    axes[1, 2].set_xlabel('Time(ms)')
-    axes[1, 2].set_ylim([mu_zoom - 3 * std_zoom, mu_zoom + 3 * std_zoom])
+    axes[1, 2].set_xlabel('Time (ms)')
+    axes[1, 2].set_ylim([mu - 3 * std, mu + 3 * std])
+    axes[1, 2].set_xlim(min(CDOG_clock[zoom_idx:zoom_idx + zoom_length]), max(CDOG_clock[zoom_idx:zoom_idx + zoom_length]))
     axes[1, 2].axhline(mu_zoom-std_zoom, color='r', label="Observed Noise")
     axes[1, 2].axhline(mu_zoom+std_zoom, color='r')
     axes[1, 2].yaxis.tick_right()
@@ -103,7 +106,7 @@ def time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise=
     # add horizontal lines for the noise and uncertainty
     axes[1, 3].axhline(mu_zoom-std_zoom, color='r', label="Observed Noise")
     axes[1, 3].axhline(mu_zoom+std_zoom, color='r')
-    axes[1, 3].text(-0.1, mu+std_zoom * 1.2, "$\\sigma_p$", va="center", color='r')
+    axes[1, 3].text(-0.1, mu_zoom+std_zoom * 1.2, "$\\sigma_p$", va="center", color='r')
 
     if position_noise != 0:
         axes[1, 3].axhline(-position_noise / 1515 * 1000, color='g', label="Input Position Noise")
@@ -119,6 +122,7 @@ def time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise=
     axes[1, 3].set_ylabel(f'Difference (ms) \n Std: {np.round(std_zoom, 3)} ms or {np.round(std_zoom * 1515 / 10, 2)} cm')
     axes[1, 3].yaxis.set_label_position("right")
     axes[1, 3].yaxis.tick_right()
+    axes[1, 3].set_ylim([mu - 3 * std, mu + 3 * std])
     axes[1, 3].set_xlabel('Normalized Frequency')
     axes[1, 3].invert_xaxis()
 
@@ -145,6 +149,21 @@ def trajectory_plot(coordinates, GPS_clock, CDOGs, block=True):
 
     plt.show(block = block)
 
+def range_residual(transponder_coordinates, ESV, CDOG, CDOG_full, GPS_full, GPS_clock):
+    times_hours = GPS_clock / 3600  # Convert seconds to hours
+    min_time = np.min(times_hours)
+    max_time = np.max(times_hours)
+    range_residuals = (CDOG_full - GPS_full) * ESV
+    calculated_range = np.linalg.norm(transponder_coordinates - CDOG, axis=1)
+
+    scatter = plt.scatter(calculated_range, range_residuals, s=1, c=times_hours, cmap='viridis')
+    plt.colorbar(scatter, label='Elapsed Time (hours)')
+    plt.clim(min_time, max_time)
+    plt.xlabel("Calculated Slant Range (m)")
+    plt.ylabel("Slant Range Residuals (m)")
+    plt.show()
+
+
 if __name__ == "__main__":
     CDOG_guess_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
     CDOGs = np.array([[-398.16, 371.90, 773.02],
@@ -160,4 +179,3 @@ if __name__ == "__main__":
 
     GPS_lat, GPS_lon, GPS_height = ECEF_Geodetic(GPS_Coordinates[:,0,:])
     trajectory_plot(np.array([GPS_lon, GPS_lat, GPS_height]).T, GPS_data, np.array([CDOGs_lon, CDOGs_lat, CDOGs_height]).T)
-

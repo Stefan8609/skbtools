@@ -16,7 +16,7 @@ File to allow for easy changing of parameters when running synthetic
 Write a code to check the indexing of the Bermuda data vs exact indexing
 """
 
-def modular_synthetic(time_noise, position_noise, in_esv_bias, in_time_bias, esv1 = "global_table_esv", esv2="global_table_esv_perturbed", generate_type = 0, inversion_type = 0, plot=True):
+def modular_synthetic(time_noise, position_noise, in_esv_bias, in_time_bias, esv1 = "global_table_esv", esv2="global_table_esv_perturbed", generate_type = 0, inversion_type = 0, plot=True, DOG_num=3):
     np.set_printoptions(suppress=True)
     # Choose ESV table for generation and to run synthetic
     #   Perhaps make the file link a parameter of the function
@@ -44,10 +44,15 @@ def modular_synthetic(time_noise, position_noise, in_esv_bias, in_time_bias, esv
     else:
         # Use Bermuda Dataset
         CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = bermuda_trajectory(time_noise, position_noise,
-            dz_array_generate, angle_array_generate, esv_matrix_generate)
+            dz_array_generate, angle_array_generate, esv_matrix_generate, DOG_num)
         true_offset = 1991.01236648
         gps1_to_others = np.array([[0.0, 0.0, 0.0], [-2.4054, -4.20905, 0.060621], [-12.1105, -0.956145, 0.00877],
                                    [-8.70446831, 5.165195, 0.04880436]])
+
+        downsample = 40
+        GPS_Coordinates = GPS_Coordinates[::downsample]
+        GPS_data = GPS_data[::downsample]
+        true_transponder_coordinates = true_transponder_coordinates[::downsample]
 
     # Choose Inversion Type
     #   0: Just xAline Geiger
@@ -63,6 +68,7 @@ def modular_synthetic(time_noise, position_noise, in_esv_bias, in_time_bias, esv
         transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, lever)
         inversion_result, offset = initial_bias_geiger(initial_guess, CDOG_data, GPS_data, transponder_coordinates,
                                                                    dz_array_inversion, angle_array_inversion, esv_matrix_inversion, real_data = real_data)
+
         inversion_guess = inversion_result[:3]
         time_bias = inversion_result[3]
         esv_bias = inversion_result[4]
@@ -72,7 +78,6 @@ def modular_synthetic(time_noise, position_noise, in_esv_bias, in_time_bias, esv
         print("Inversion:", np.round(inversion_result, 3))
         print("Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100))
         print("\n")
-
         inversion_result, offset = transition_bias_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates,
                                                           offset, esv_bias, time_bias, dz_array_inversion, angle_array_inversion, esv_matrix_inversion, real_data = real_data)
         inversion_guess = inversion_result[:3]
@@ -96,13 +101,13 @@ def modular_synthetic(time_noise, position_noise, in_esv_bias, in_time_bias, esv
 
     else:
         real_lever = np.array([-10.0, 3.0, -15.0]) if generate_type == 0 else np.array([-12.48862757, 0.22622633, -15.89601934])
-        initial_lever = np.array([-12.478, 0.267, -10.292])
+        initial_lever = np.array([-12.478, 0.667, -14.292])
 
         """True levers: Realistic Generate [-10, 3, -15], Bermuda Generate: [-12.48862757, 0.22622633, -15.89601934]"""
 
         lever, offset, inversion_result = simulated_annealing_bias(300, CDOG_data, GPS_data, GPS_Coordinates,gps1_to_others,
                                                                    initial_guess, initial_lever, dz_array_inversion, angle_array_inversion,
-                                                                   esv_matrix_inversion, real_data = real_data)
+                                                                   esv_matrix_inversion, real_data = real_data, enforce_offset=True, initial_offset=1991)
         inversion_guess = inversion_result[:3]
         time_bias = inversion_result[3]
         esv_bias = inversion_result[4]
@@ -117,15 +122,15 @@ def modular_synthetic(time_noise, position_noise, in_esv_bias, in_time_bias, esv
 
     if plot:
         time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise, time_noise)
-        trajectory_plot(transponder_coordinates, GPS_data, CDOG)
+        # trajectory_plot(transponder_coordinates, GPS_data, CDOG)
 
-    return inversion_result, CDOG_data, CDOG_full, GPS_data, GPS_full, CDOG_clock, GPS_clock, transponder_coordinates, GPS_Coordinates, offset
+    return inversion_result, CDOG_data, CDOG_full, GPS_data, GPS_full, CDOG_clock, GPS_clock, CDOG, transponder_coordinates, GPS_Coordinates, offset
 
 
 if __name__ == "__main__":
     esv_bias = 0
     time_bias = 0
 
-    modular_synthetic(2 * 10**-5, 2 * 10**-2, 0, 0, "global_table_esv","global_table_esv_realistic_perturbed", generate_type = 1, inversion_type=1)
-    # modular_synthetic(2 * 10**-5, 2 * 10**-2, esv_bias, time_bias, "global_table_esv","global_table_esv", generate_type = 1, inversion_type=0)
+    modular_synthetic(2 * 10**-5, 2 * 10**-2, 0, 0, "global_table_esv","global_table_esv_realistic_perturbed", generate_type = 0, inversion_type=0, DOG_num=3)
+    # modular_synthetic(2 * 10**-5, 2 * 10**-2, esv_bias, time_bias, "global_table_esv","global_table_esv", generate_type = 1, inversion_type=1)
 

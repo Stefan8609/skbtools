@@ -6,7 +6,7 @@ from pymap3d import geodetic2ecef, ecef2geodetic
 
 from Numba_Geiger import findTransponder
 from Numba_xAline_bias import initial_bias_geiger, transition_bias_geiger, final_bias_geiger
-from Plot_Modular import time_series_plot
+from Plot_Modular import time_series_plot, range_residual
 from Numba_xAline_Annealing_bias import simulated_annealing_bias
 from Initialize_Bermuda_Data import initialize_bermuda
 
@@ -18,7 +18,9 @@ Add density plot to the GPS elevation distribution
 
 """
 
-esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
+# esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
+esv_table = sio.loadmat('../../../GPSData/global_table_esv_normal.mat')
+
 dz_array = esv_table['distance'].flatten()
 angle_array = esv_table['angle'].flatten()
 esv_matrix = esv_table['matrice']
@@ -37,18 +39,19 @@ CDOG_data = data['CDOG_data']
 CDOG_guess = data['CDOG_guess']
 gps1_to_others = data['gps1_to_others']
 
-# gps1_to_others = np.array([[0.0, 0.0, 0.0],
-#                            [-2.39341409, -4.22350344, 0.02941493],
-#                            [-12.09568416, -0.94568462, 0.0043972],
-#                            [-8.68674054, 5.16918806, 0.02499322]])
-
 gps1_to_others = np.array([[0.0, 0.0, 0.0],
                            [-2.39341409, -4.22350344, 0.02941493],
                            [-12.09568416, -0.94568462, 0.0043972],
-                           [-8.68674054, 5.16918806, -0.02499322]])
+                           [-8.68674054, 5.16918806, 0.02499322]])
 
 """Set up the initial estimations"""
 initial_lever_guess=np.array([-12.4659, 9.6021, -13.2993])
+
+# initial_lever_guess = np.array([-12.5841,  9.6593, -11.9162])
+# gps1_to_others =  np.array([[ -0.2763,   0.2039,  -0.2825],
+#  [ -1.718,   -4.9097,   0.0369],
+#  [-12.464,    0.2169,  -0.0625],
+#  [ -8.523,    4.007,    0.0896]])
 if DOG_num == 1:
     CDOG_guess_augment =  np.array([-398.16, 371.90, 773.02])
     offset = 1866.0
@@ -121,3 +124,18 @@ RMSE = np.sqrt(np.nanmean(diff_data**2))/1000 * 1515 * 100
 print("RMSE:", np.round(RMSE,3), "cm")
 
 time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full)
+
+"""Plot range residuals"""
+from Numba_time_bias import calculateTimesRayTracing_Bias_Real
+from Numba_xAline import two_pointer_index
+
+times_guess, esv = calculateTimesRayTracing_Bias_Real(inversion_guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix)
+
+_, _, GPS_clock, _, transponder_coordinates_full, esv_full = (
+    two_pointer_index(offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv, True)
+)
+
+
+range_residual(transponder_coordinates_full, esv_full, inversion_guess, CDOG_full, GPS_full, GPS_clock)
+
+

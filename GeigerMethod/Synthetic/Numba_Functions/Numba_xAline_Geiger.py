@@ -110,14 +110,23 @@ def final_geiger(guess, CDOG_data, GPS_data, transponder_coordinates, offset, re
 
 
 if __name__ == "__main__":
+    import scipy.io as sio
+
     true_offset = np.random.rand() * 9000 + 1000
     print(true_offset)
 
+    esv_table = sio.loadmat('../../../GPSData/global_table_esv_normal.mat')
+    dz_array = esv_table['distance'].flatten()
+    angle_array = esv_table['angle'].flatten()
+    esv_matrix = esv_table['matrice']
+
     position_noise = 2 * 10**-2
     time_noise = 2 * 10**-5
+    esv_bias = 1.5
+    time_bias = 0.43
 
     CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(
-        20000, time_noise, true_offset
+        20000, time_noise, true_offset, esv_bias, time_bias, dz_array, angle_array, esv_matrix, main=False
     )
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 

@@ -8,7 +8,7 @@ from Numba_Geiger import findTransponder
 from Numba_time_bias import calculateTimesRayTracing_Bias_Real
 from Initialize_Bermuda_Data import initialize_bermuda
 
-def bermuda_trajectory(time_noise, position_noise, dz_array, angle_array, esv_matrix):
+def bermuda_trajectory(time_noise, position_noise, dz_array, angle_array, esv_matrix, DOG_num=3):
     """Calculate trajectory and synthetic arrival times for Bermuda dataset"""
     CDOG_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
     CDOG_augment = np.array([974.12667502, -80.98121315, -805.07870249])
@@ -16,8 +16,14 @@ def bermuda_trajectory(time_noise, position_noise, dz_array, angle_array, esv_ma
     lever = np.array([-12.48862757, 0.22622633, -15.89601934])
     offset = 1991.01236648
 
-    GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = initialize_bermuda(25.0, 40.9,
-                                                                                          CDOG_augment)
+    # GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = initialize_bermuda(25.0, 40.9,
+    #                                                                                       CDOG_augment)
+
+    data = np.load(f'../../../GPSData/Processed_GPS_Receivers_DOG_{DOG_num}.npz')
+    GPS_Coordinates = data['GPS_Coordinates']
+    GPS_data = data['GPS_data']
+    gps1_to_others = data['gps1_to_others']
+
     transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, lever)
     synthetic_travel_times, esv = calculateTimesRayTracing_Bias_Real(CDOG, transponder_coordinates, 0.0, dz_array, angle_array, esv_matrix)
 
