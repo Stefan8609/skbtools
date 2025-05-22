@@ -30,14 +30,14 @@ GNSS_start, GNSS_end = 25, 40.9
 # GNSS_start, GNSS_end = 35.3, 37.6
 # GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = initialize_bermuda(GNSS_start, GNSS_end, CDOG_guess_augment, DOG_num=1)
 
-DOG_num = 3
+DOG_num = 1
 
 data = np.load(f'../../../GPSData/Processed_GPS_Receivers_DOG_{DOG_num}.npz')
 GPS_Coordinates = data['GPS_Coordinates']
 GPS_data = data['GPS_data']
 CDOG_data = data['CDOG_data']
 CDOG_guess = data['CDOG_guess']
-gps1_to_others = data['gps1_to_others']
+# gps1_to_others = data['gps1_to_others']
 
 gps1_to_others = np.array([[0.0, 0.0, 0.0],
                            [-2.39341409, -4.22350344, 0.02941493],
@@ -114,7 +114,7 @@ best_lever = initial_lever_guess
 # esv_bias = inversion_result[4]
 # GPS_full = GPS_full - time_bias
 """End Simulated Annealing"""
-
+print(inversion_result[3])
 CDOG_guess_base = np.array([1976671.618715,  -5069622.53769779,  3306330.69611698])
 best_offset = best_offset - inversion_result[3]
 print(f"Estimate: {np.round(inversion_result, 4)}")
@@ -137,5 +137,7 @@ _, _, GPS_clock, _, transponder_coordinates_full, esv_full = (
 
 
 range_residual(transponder_coordinates_full, esv_full, inversion_guess, CDOG_full, GPS_full, GPS_clock)
+
+print()
 
 

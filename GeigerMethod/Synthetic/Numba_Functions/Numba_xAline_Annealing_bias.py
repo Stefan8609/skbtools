@@ -15,7 +15,8 @@ Incorporate simulated annealing to find the transducer location in addition to t
 """
 
 def simulated_annealing_bias(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others, initial_guess, initial_lever,
-                             dz_array, angle_array, esv_matrix, initial_offset=0, real_data = False, enforce_offset=False):
+                             dz_array, angle_array, esv_matrix, initial_offset=0, real_data = False, enforce_offset=False,
+                             z_sample = False):
     """Algorithm to determine the best lever arm, offset, and seafloor receiver position"""
     # Initialize variables
     status = "int"
@@ -56,11 +57,7 @@ def simulated_annealing_bias(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to
             inversion_estimate, offset = transition_bias_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates, offset, esv_bias, time_bias, dz_array, angle_array, esv_matrix, real_data)
             status = "constant"
         else:
-            if k == 100 or k == 200:
-                transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, best_lever)
-                inversion_estimate, offset = transition_bias_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates, offset, esv_bias, time_bias, dz_array, angle_array, esv_matrix, real_data)
-            else:
-                inversion_estimate, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates, offset, esv_bias, time_bias, dz_array, angle_array, esv_matrix, real_data)
+            inversion_estimate, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(inversion_guess, CDOG_data, GPS_data, transponder_coordinates, offset, esv_bias, time_bias, dz_array, angle_array, esv_matrix, real_data)
 
         inversion_guess = inversion_estimate[:3]
         time_bias = inversion_estimate[3]
@@ -80,11 +77,44 @@ def simulated_annealing_bias(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to
             best_lever = lever
 
         # if k % 10 == 0:
-        #     print(k, np.round(RMSE * 100 * 1515, 2), np.round(offset,5), np.round(lever,3))
+            # print(k, np.round(RMSE * 100 * 1515, 2), np.round(offset,5), np.round(lever,3))
         old_offset = offset
         k += 1
 
-    return lever, offset, inversion_estimate
+    # Sample z values in case where it is poorly constrained
+    if z_sample == True:
+        best_lever_new = best_lever
+        for dz in np.arange(-5, 5, 0.1):
+            lever = best_lever + np.array([0.0, 0.0, dz])
+            transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, lever)
+            inversion_estimate, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(inversion_guess,
+                                                                                               CDOG_data, GPS_data,
+                                                                                               transponder_coordinates,
+                                                                                               offset, esv_bias,
+                                                                                               time_bias, dz_array,
+                                                                                               angle_array, esv_matrix,
+                                                                                               real_data)
+            inversion_guess = inversion_estimate[:3]
+            time_bias = inversion_estimate[3]
+            esv_bias = inversion_estimate[4]
+
+            RMSE = np.sqrt(np.nanmean((GPS_full - CDOG_full) ** 2))
+            if RMSE < best_rmse:
+                best_rmse = RMSE
+                best_lever_new = lever
+        best_lever = best_lever_new
+
+
+    transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, best_lever)
+    inversion_estimate, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(inversion_guess,
+                                                                                       CDOG_data, GPS_data,
+                                                                                       transponder_coordinates,
+                                                                                       offset, esv_bias,
+                                                                                       time_bias, dz_array,
+                                                                                       angle_array, esv_matrix,
+                                                                                       real_data)
+
+    return best_lever, offset, inversion_estimate
 
 
 

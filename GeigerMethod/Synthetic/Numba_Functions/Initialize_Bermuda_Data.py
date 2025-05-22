@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.io as sio
 from pymap3d import geodetic2ecef
+import matplotlib.pyplot as plt
 
 """
 Fix filtering padding so it doesn't pinch at ends
@@ -11,16 +12,21 @@ Add to filtering plot how much data was thrown out, what the window length is, t
 Make 3 inversions - one for each dogs with the realistic inversion parameters...
     make the plots and show them...
     
-Make the x-y x-z, etc pairs for the error ellipse of 1000 or so iterations random synthetic (also do for lever arm)
-
-"Showing some structure of unmodelled data..."
-
-
-Having the plot of slant ranges be defined with respect to boat orientation 
-
 NEED TO FIX OFFSET INT SEARCH (FIND BUG)
 UNENFORCE OFFSET AND DOWNSAMPLING in MODULAR SYNTHETIC
 """
+
+"""Enable this for paper plots"""
+plt.rcParams.update({
+    "text.usetex":      True,
+    "font.family":      "serif",
+    "font.serif":       ["Computer Modern"],
+    "font.size": 14,
+    "mathtext.fontset": "cm",
+    "text.latex.preamble":
+        r"\usepackage[utf8]{inputenc}" "\n"
+        r"\usepackage{textcomp}",
+})
 
 def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num = 3, save=False):
     print("Initializing Bermuda Data")
@@ -57,20 +63,32 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num = 3, save=Fal
         filtered_data.append([np.array(datetimes)[mask], np.array(x)[mask], np.array(y)[mask], np.array(z)[mask], np.array(elev)[mask]])
     filtered_data = np.array(filtered_data)
 
-    #Filtering Functions
+    # Filtering Functions
     def running_median(data, window=50):
-        pad_width = window // 2
-        padded = np.pad(data, (pad_width, window - 1 - pad_width), mode='edge')
-        return np.array([np.median(padded[i:i + window]) for i in range(len(data))])
+        half = window // 2
+        n = len(data)
+        result = np.empty(n)
+        for i in range(n):
+            start = max(0, i - half)
+            end = min(n, i + half + 1)
+            result[i] = np.median(data[start:end])
+        return result
 
     def running_abs_dev(data, window=50):
-        pad_width = window // 2
-        padded = np.pad(data, (pad_width, window - 1 - pad_width), mode='edge')
-        return np.array(
-            [np.median(np.abs(padded[i:i + window] - np.median(padded[i:i + window]))) for i in range(len(data))])
+        half = window // 2
+        n = len(data)
+        result = np.empty(n)
+        for i in range(n):
+            start = max(0, i - half)
+            end = min(n, i + half + 1)
+            window_data = data[start:end]
+            med = np.median(window_data)
+            result[i] = np.median(np.abs(window_data - med))
+        return result
 
     # Filter data based on elevation
     print("Filtering Data")
+    window = 5000
     elev_upper = -35
     elev_lower = -38
     mask = np.array([(filtered_data[0, 4, :] < elev_upper) & (filtered_data[0, 4, :] > elev_lower) &
@@ -80,7 +98,6 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num = 3, save=Fal
     indices = np.where(mask[0])[0]
     filtered_data = filtered_data[:, :, indices]
 
-    window = 5000
     mask = np.ones(filtered_data.shape[2], dtype=bool)
     for i in range(4):
         elev = filtered_data[i, 4, :]
@@ -107,15 +124,18 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num = 3, save=Fal
     lon = sio.loadmat('../../../GPSData/Unit1-camp_bis.mat')['lon'].flatten()
 
     """If elevation plotting is desired"""
+    alpha = {0: 'A', 1: 'B', 2: 'C', 3: 'D'}
     if save:
-        import matplotlib.pyplot as plt
         fig, axs = plt.subplots(2, 2, figsize=(10, 8))
+        # mask = np.ones(filtered_data.shape[2], dtype=bool)
         for i in range(4):
             row, col = divmod(i, 2)
             elevation = filtered_data[i, 4, :]
             axs[row, col].scatter(GPS_data, elevation, s=1, color="blue", label=r'Elevation Data')
-            # median_elev = running_median(elevation, window=5000)
-            # abs_dev = running_abs_dev(elevation, window=5000)
+            # median_elev = running_median(elevation, window=window)
+            # abs_dev = running_abs_dev(elevation, window=window)
+            # mask &= (elevation >= median_elev - 2 * abs_dev) & (elevation <= median_elev + 2 * abs_dev)
+
             # upper_band = median_elev + 2 * abs_dev
             # lower_band = median_elev - 2 * abs_dev
             # axs[row, col].plot(GPS_data, median_elev, color='red', linewidth=2, label=r'Running Median')
@@ -126,7 +146,20 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num = 3, save=Fal
             axs[row, col].set_xlabel(r'Time (s)')
             axs[row, col].set_ylabel(r'Elevation (m)')
             axs[row, col].set_ylim(-39, -34)
-            # axs[row, col].legend()
+            axs[row, col].text(0.02, 0.93, f'{alpha[i]}', transform=axs[row, col].transAxes,)
+            if i == 0:
+                axs[row, col].legend(loc='lower right')
+        # indices = np.where(mask)[0]
+        # axs[0, 1].text(
+        #     0.95, 0.05,
+        #     f'Removed: {len(elevation) - len(indices)} / {len(elevation)} points \n'
+        #     f'Window: {window} samples \n'
+        #     f'Overlap: {window - 1} samples',
+        #     transform=axs[0, 1].transAxes,
+        #     ha='right',
+        #     va='bottom',
+        #     fontsize=14,
+        # )
         plt.tight_layout()
         plt.show()
     """end plotting"""

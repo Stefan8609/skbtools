@@ -3,6 +3,17 @@ import matplotlib.pyplot as plt
 from scipy.stats import norm
 from ECEF_Geodetic import ECEF_Geodetic
 
+"""Enable this for paper plots"""
+plt.rcParams.update({
+    "text.usetex":      True,
+    "font.family":      "serif",
+    "font.serif":       ["Computer Modern"],
+    "mathtext.fontset": "cm",
+    "text.latex.preamble":
+        r"\usepackage[utf8]{inputenc}" "\n"
+        r"\usepackage{textcomp}",
+})
+
 def time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise=0, time_noise=0, block=True):
     difference_data = CDOG_full - GPS_full
 
@@ -12,7 +23,7 @@ def time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise=
     # Get range of times for zoom in
     zoom_region = np.random.randint(min(CDOG_clock), max(CDOG_clock) - 100)
     zoom_idx = (np.abs(CDOG_clock - zoom_region)).argmin()
-    zoom_length = 3600
+    zoom_length = 1200
 
     # Plot axes to return
     fig, axes = plt.subplots(2, 4, figsize=(16, 8), gridspec_kw={'width_ratios': [1, 4, 2, 1], 'height_ratios': [2, 1]})
@@ -36,7 +47,7 @@ def time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise=
                        zorder=2)
     axes[0, 2].scatter(GPS_clock[zoom_idx:zoom_idx + zoom_length], GPS_full[zoom_idx:zoom_idx + zoom_length],
                        s=10, label='Modelled Travel Times', alpha=1, marker='x', color='r', zorder=1)
-
+    axes[0, 2].set_xlim(min(CDOG_clock[zoom_idx:zoom_idx + zoom_length]), max(CDOG_clock[zoom_idx:zoom_idx + zoom_length]))
     axes[0, 2].legend(loc="upper right")
 
     # Histogram and normal distributions
@@ -138,8 +149,9 @@ def trajectory_plot(coordinates, GPS_clock, CDOGs, block=True):
     max_time = np.max(times_hours)
 
     scatter = plt.scatter(coordinates[:,0], coordinates[:,1], s=1, c=times_hours, cmap='viridis', label='Surface Vessel')
+    nums = {0: "1", 1: "3", 2: "4"}
     for i in range(len(CDOGs)):
-        plt.scatter(CDOGs[i,0], CDOGs[i,1], marker='x', s=20, label=f'CDOG {i}', color='k')
+        plt.scatter(CDOGs[i,0], CDOGs[i,1], marker='x', s=20, label=f'CDOG {nums[i]}', color='k')
     plt.colorbar(scatter, label='Elapsed Time (hours)')
     plt.clim(min_time, max_time)  # Set the colorbar to actual time range
     plt.title('Plot of Trajectory and CDOG location')
@@ -153,14 +165,36 @@ def range_residual(transponder_coordinates, ESV, CDOG, CDOG_full, GPS_full, GPS_
     times_hours = GPS_clock / 3600  # Convert seconds to hours
     min_time = np.min(times_hours)
     max_time = np.max(times_hours)
-    range_residuals = (CDOG_full - GPS_full) * ESV
+    range_residuals = (CDOG_full - GPS_full) * ESV * 100  # Convert to cm
     calculated_range = np.linalg.norm(transponder_coordinates - CDOG, axis=1)
+    mu_rr, std_rr = norm.fit(range_residuals)
 
-    scatter = plt.scatter(calculated_range, range_residuals, s=1, c=times_hours, cmap='viridis')
-    plt.colorbar(scatter, label='Elapsed Time (hours)')
-    plt.clim(min_time, max_time)
-    plt.xlabel("Calculated Slant Range (m)")
-    plt.ylabel("Slant Range Residuals (m)")
+    # Create a scatter plot and histogram of the range residuals
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4), gridspec_kw={'width_ratios': [3, 1.2]})
+
+    # Scatter subplot for range residuals
+    scatter = axes[0].scatter(calculated_range/1000, range_residuals, s=1, c=times_hours, cmap='viridis')
+    fig.colorbar(scatter, ax=axes[0], label='Elapsed Time (hours)')
+    axes[0].set_xlabel('Calculated Slant Range (km)')
+    axes[0].set_ylabel('Slant Range Residuals (cm)')
+    axes[0].axhline(-std_rr, color='r')
+    axes[0].axhline(std_rr, color='r')
+    axes[0].set_ylim([mu_rr - 3 * std_rr, mu_rr + 3 * std_rr])
+
+    # Histogram subplot with normal curve
+    n, bins, patches = axes[1].hist(range_residuals, bins=40, density=True, alpha=0.5, color='C0',
+                                    orientation='horizontal')
+    x = np.linspace(mu_rr - 3 * std_rr, mu_rr + 3 * std_rr, 100)
+    p = norm.pdf(x, mu_rr, std_rr)
+    axes[1].plot(p, x, 'k', linewidth=2, label=f'Normal fit: mean={mu_rr:.2f}, std={std_rr:.2f}')
+    axes[1].axhline(-std_rr, color='r')
+    axes[1].axhline(std_rr, color='r')
+    axes[1].set_ylim([mu_rr - 3 * std_rr, mu_rr + 3 * std_rr])
+    axes[1].set_xlabel('Density')
+    axes[1].set_ylabel('Slant Range Residuals (cm)')
+    axes[1].legend()
+
+    plt.tight_layout()
     plt.show()
 
 

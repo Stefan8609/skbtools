@@ -212,6 +212,8 @@ def grid_search_discrete(
     GPS1_to_others = data['gps1_to_others']
     CDOG_guess += CDOG_guess_augment
 
+    print(GPS1_to_others)
+
     # For a quick initial offset guess (if needed)
     # you could call initial_bias_geiger once per (x, y, z) if relevant:
     if current_offset == 0:
@@ -300,14 +302,14 @@ if __name__ == "__main__":
     # )
 
     grid_search_discrete(
-        xl=--.01, xh=.01,
-        yl=-.01, yh=.01,
-        zl=-.01, zh=.01,
-        num_points=1,
+        xl=--.5, xh=.5,
+        yl=-.5, yh=.5,
+        zl=-4, zh=4,
+        num_points=20,
         output_file='output.txt',
         CDOG_guess_augment=np.array([-398.16, 371.90, 773.02]),
         downsample=50,
-        offset_range = 40,
+        offset_range = 1,
         current_offset = 1886,
         initial_lever_base=np.array([-12.4659, 9.6021, -13.2993]),
         DOG_num = 1
