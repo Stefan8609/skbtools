@@ -1,15 +1,17 @@
 import numpy as np
 import scipy.io as sio
-import matplotlib.pyplot as plt
 from numba import njit
 
 from Numba_time_bias import calculateTimesRayTracing_Bias_Real
 from Numba_xAline import two_pointer_index
 from Numba_Geiger import findTransponder
 
-"""Instead of running final bias geiger in the sampler
-    - Just compute the residuals from the travel times found with the given parameters.
-    - Still need to run alignment, but no need to calculate the jacobian.
+"""
+Look into the correlation of the data (have to read into papers on esimating GPS data correlation)
+    Can be done by splitting the data in multiple parts and finding correlation in each part
+    Maybe can decorrelate the entire time series
+
+Split the ESV bias term into multiple parts (based on time, range, location, etc.) and see if it improves the results
 """
 
 @njit
@@ -205,59 +207,6 @@ if __name__ == "__main__":
         time_bias=chain['time_bias'],
         logpost=chain['logpost']
     )
-
-    #Trace Plots
-    fig, axes = plt.subplots(nrows=5, ncols=1, figsize=(8,10), sharex=True)
-    axes[0].plot(chain['lever'][:,0]); axes[0].set_ylabel('lever x')
-    axes[1].plot(chain['lever'][:,1]); axes[1].set_ylabel('lever y')
-    axes[2].plot(chain['lever'][:,2]); axes[2].set_ylabel('lever z')
-    axes[3].plot(chain['esv_bias']);       axes[3].set_ylabel('ESV bias')
-    axes[4].plot(chain['time_bias']);      axes[4].set_ylabel('time bias')
-    plt.xlabel('Iteration')
-    plt.show()
-
-    # Marginal Histograms
-    fig, axes = plt.subplots(2, 3, figsize=(12, 8))
-    axes = axes.flatten()
-    axes[0].hist(chain['lever'][:, 0], bins=30);
-    axes[0].set_title('lever x')
-    axes[1].hist(chain['lever'][:, 1], bins=30);
-    axes[1].set_title('lever y')
-    axes[2].hist(chain['lever'][:, 2], bins=30);
-    axes[2].set_title('lever z')
-    axes[3].hist(chain['esv_bias'], bins=30);
-    axes[3].set_title('ESV bias')
-    axes[4].hist(chain['time_bias'], bins=30);
-    axes[4].set_title('time bias')
-    axes[5].axis('off')
-    plt.show()
-
-    # Corner Plot
-    import itertools
-    pars = {
-        'lx': chain['lever'][:, 0],
-        'ly': chain['lever'][:, 1],
-        'lz': chain['lever'][:, 2],
-        'esv': chain['esv_bias'],
-        'tmb': chain['time_bias']
-    }
-    keys = list(pars)
-    fig, axes = plt.subplots(len(keys), len(keys), figsize=(12, 12))
-    for i, j in itertools.product(range(len(keys)), range(len(keys))):
-        if i == j:
-            axes[i, j].hist(pars[keys[i]], bins=30)
-        else:
-            axes[i, j].plot(pars[keys[j]], pars[keys[i]], '.', ms=1, alpha=0.3)
-        if i == len(keys) - 1: axes[i, j].set_xlabel(keys[j])
-        if j == 0:        axes[i, j].set_ylabel(keys[i])
-    plt.tight_layout()
-    plt.show()
-
-    # # ACF Plots
-    # from statsmodels.graphics.tsaplots import plot_acf
-    # for name, vals in pars.items():
-    #     plot_acf(vals, lags=50, title=f"ACF of {name}")
-    #     plt.show()
 
 
 
