@@ -73,8 +73,6 @@ def simulated_annealing(iter, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_othe
     return best_lever, offset, inversion_guess
 
 if __name__ == "__main__":
-    from Time_Plot import time_plot
-
     true_offset = np.random.rand() * 9000 + 1000
     print(true_offset)
     position_noise = 2 * 10**-2
@@ -106,6 +104,3 @@ if __name__ == "__main__":
     print(np.linalg.norm(inversion_guess - CDOG) * 100, 'cm')
     print("Found Lever", lever, "Found Offset", offset)
     print("Actual Lever", gps1_to_transponder, "Actual Offset", true_offset)
-
-    time_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full, CDOG, true_transponder_coordinates, position_noise, time_noise,
-              initial_guess, inversion_guess, lever, gps1_to_transponder)

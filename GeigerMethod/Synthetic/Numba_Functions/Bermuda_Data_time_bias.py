@@ -8,14 +8,12 @@ from Numba_Geiger import findTransponder
 from Numba_xAline_bias import initial_bias_geiger, transition_bias_geiger, final_bias_geiger
 from Plot_Modular import time_series_plot, range_residual
 from Numba_xAline_Annealing_bias import simulated_annealing_bias
-from Initialize_Bermuda_Data import initialize_bermuda
 
 """    
 Look at the Durbin watson and Q test for determining if the small section is normal
 
 Add density plot to the GPS elevation distribution 
     Find a better way to delete points (median over time with 2 absolute deivations above and below
-
 """
 
 # esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
@@ -25,18 +23,14 @@ dz_array = esv_table['distance'].flatten()
 angle_array = esv_table['angle'].flatten()
 esv_matrix = esv_table['matrice']
 
-GNSS_start, GNSS_end = 25, 40.9
-# GNSS_start, GNSS_end = 31.9, 34.75
-# GNSS_start, GNSS_end = 35.3, 37.6
-# GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = initialize_bermuda(GNSS_start, GNSS_end, CDOG_guess_augment, DOG_num=1)
-
-DOG_num = 1
+DOG_num = 4
 
 data = np.load(f'../../../GPSData/Processed_GPS_Receivers_DOG_{DOG_num}.npz')
 GPS_Coordinates = data['GPS_Coordinates']
 GPS_data = data['GPS_data']
 CDOG_data = data['CDOG_data']
-CDOG_guess = data['CDOG_guess']
+# CDOG_guess = data['CDOG_guess']
+CDOG_guess_base = np.array([1976671.618715,  -5069622.53769779,  3306330.69611698])
 # gps1_to_others = data['gps1_to_others']
 
 gps1_to_others = np.array([[0.0, 0.0, 0.0],
@@ -62,7 +56,7 @@ if DOG_num == 4:
     CDOG_guess_augment = np.array([236.428385, -1307.98390221, -2189.21991698])
     offset = 1939.0
 
-CDOG_guess = CDOG_guess + CDOG_guess_augment
+CDOG_guess = CDOG_guess_base + CDOG_guess_augment
 
 transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, initial_lever_guess)
 """No Simulated Annealing"""
@@ -93,6 +87,10 @@ best_offset = offset
 inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(inversion_guess, CDOG_data, GPS_data,
                                                                                      transponder_coordinates, best_offset, esv_bias, time_bias,
                                                                                      dz_array, angle_array, esv_matrix, real_data=True)
+inversion_guess = inversion_result[:3]
+time_bias = inversion_result[3]
+esv_bias = inversion_result[4]
+
 print("Final Complete")
 best_lever = initial_lever_guess
 """End No simulated annealing"""
@@ -115,7 +113,6 @@ best_lever = initial_lever_guess
 # GPS_full = GPS_full - time_bias
 """End Simulated Annealing"""
 print(inversion_result[3])
-CDOG_guess_base = np.array([1976671.618715,  -5069622.53769779,  3306330.69611698])
 best_offset = best_offset - inversion_result[3]
 print(f"Estimate: {np.round(inversion_result, 4)}")
 print(f"Best Lever: {np.round(best_lever,3)}, Offset: {np.round(best_offset,4)}, Inversion Guess: {np.round(inversion_guess-CDOG_guess_base, 5)}")
@@ -138,6 +135,6 @@ _, _, GPS_clock, _, transponder_coordinates_full, esv_full = (
 
 range_residual(transponder_coordinates_full, esv_full, inversion_guess, CDOG_full, GPS_full, GPS_clock)
 
-print()
+print(best_offset, inversion_result[3])
 
 
