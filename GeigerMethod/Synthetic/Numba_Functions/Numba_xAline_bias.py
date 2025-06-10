@@ -12,14 +12,6 @@ from Numba_Geiger import findTransponder
 from numba import njit
 from Plot_Modular import time_series_plot
 
-"""
-Improve Geiger's method such that the time-bias become included in the offset for transition geiger...
-    (Necessary for properly aligning the data)
-
-Prediction ability not changing between the methods because the int-offset is giving the correct alignment between
-    each data set
-"""
-
 
 def initial_bias_geiger(
     guess,
@@ -40,7 +32,7 @@ def initial_bias_geiger(
     estimate = np.array([guess[0], guess[1], guess[2], time_bias, esv_bias])
     while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
-        if real_data == False:
+        if not real_data:
             times_guess, esv = calculateTimesRayTracing_Bias(
                 guess,
                 transponder_coordinates,
@@ -104,7 +96,7 @@ def transition_bias_geiger(
     k = 0
     while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
-        if real_data == False:
+        if not real_data:
             times_guess, esv = calculateTimesRayTracing_Bias(
                 guess,
                 transponder_coordinates,
@@ -172,7 +164,7 @@ def final_bias_geiger(
     delta = np.array([1.0, 1.0, 1.0])
     estimate = np.array([guess[0], guess[1], guess[2], time_bias, esv_bias])
 
-    if real_data == False:
+    if not real_data:
         times_guess, esv = calculateTimesRayTracing_Bias(
             guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
         )
@@ -201,7 +193,7 @@ def final_bias_geiger(
 
     while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
-        if real_data == False:
+        if not real_data:
             GPS_full, esv = calculateTimesRayTracing_Bias(
                 guess,
                 transponder_coordinates_full,
@@ -230,7 +222,7 @@ def final_bias_geiger(
         esv_bias = estimate[4]
         k += 1
 
-    if real_data == False:
+    if not real_data:
         times_guess, esv = calculateTimesRayTracing_Bias(
             guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
         )
@@ -239,7 +231,8 @@ def final_bias_geiger(
             guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
         )
 
-    """Note doing GPS_data - time_bias to include time_bias in offset when calculating travel times"""
+    """Note doing GPS_data - time_bias to include time_bias
+       in offset when calculating travel times"""
     (
         CDOG_clock,
         CDOG_full,
@@ -274,19 +267,14 @@ if __name__ == "__main__":
     time_bias = 0
     """Either generate a realistic or use bermuda trajectory"""
 
-    # true_offset = np.random.rand() * 9000 + 1000
-    # print(true_offset)
-    # CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(
-    #     20000, time_noise, true_offset, esv_bias, time_bias, dz_array, angle_array, esv_matrix
-    # )
-    # GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
-    # gps1_to_others = np.array([[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64)
-    # gps1_to_transponder = np.array([-10, 3, -15], dtype=np.float64)
-
-    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = (
-        bermuda_trajectory(
-            time_noise, position_noise, dz_array, angle_array, esv_matrix
-        )
+    (
+        CDOG_data,
+        CDOG,
+        GPS_Coordinates,
+        GPS_data,
+        true_transponder_coordinates,
+    ) = bermuda_trajectory(
+        time_noise, position_noise, dz_array, angle_array, esv_matrix
     )
     true_offset = 1991.01236648
     gps1_to_others = np.array(

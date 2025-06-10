@@ -93,8 +93,17 @@ def simulated_annealing_real(
             best_lever = lever.copy()
             offset = offset - inversion_estimate[3]
 
-        # if k % 20 == 0:
-        #     print("Iteration: ", k, "RMSE: ", np.round(RMSE * 100 * 1515, 3), "Offset: ", np.round(offset,4), "Lever: ", np.round(best_lever, 3))
+        if k % 20 == 0:
+            print(
+                "Iteration: ",
+                k,
+                "RMSE: ",
+                np.round(RMSE * 100 * 1515, 3),
+                "Offset: ",
+                np.round(offset, 4),
+                "Lever: ",
+                np.round(best_lever, 3),
+            )
         k += 1
     return inversion_estimate, best_lever, RMSE
 
@@ -115,10 +124,14 @@ if __name__ == "__main__":
     position_noise = 2 * 10**-2
     time_noise = 2 * 10**-5
 
-    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = (
-        bermuda_trajectory(
-            time_noise, position_noise, dz_array, angle_array, esv_matrix
-        )
+    (
+        CDOG_data,
+        CDOG,
+        GPS_Coordinates,
+        GPS_data,
+        true_transponder_coordinates,
+    ) = bermuda_trajectory(
+        time_noise, position_noise, dz_array, angle_array, esv_matrix
     )
 
     # true_offset = 1991.01236648

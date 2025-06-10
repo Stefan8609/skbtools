@@ -128,20 +128,24 @@ def simulated_annealing_bias(
             )
             status = "constant"
         else:
-            inversion_estimate, CDOG_full, GPS_full, CDOG_clock, GPS_clock = (
-                final_bias_geiger(
-                    inversion_guess,
-                    CDOG_data,
-                    GPS_data,
-                    transponder_coordinates,
-                    offset,
-                    esv_bias,
-                    time_bias,
-                    dz_array,
-                    angle_array,
-                    esv_matrix,
-                    real_data,
-                )
+            (
+                inversion_estimate,
+                CDOG_full,
+                GPS_full,
+                CDOG_clock,
+                GPS_clock,
+            ) = final_bias_geiger(
+                inversion_guess,
+                CDOG_data,
+                GPS_data,
+                transponder_coordinates,
+                offset,
+                esv_bias,
+                time_bias,
+                dz_array,
+                angle_array,
+                esv_matrix,
+                real_data,
             )
 
         inversion_guess = inversion_estimate[:3]
@@ -182,33 +186,42 @@ def simulated_annealing_bias(
             best_rmse = RMSE
             best_lever = lever
 
-        # if k % 10 == 0:
-        # print(k, np.round(RMSE * 100 * 1515, 2), np.round(offset,5), np.round(lever,3))
+        if k % 10 == 0:
+            print(
+                k,
+                np.round(RMSE * 100 * 1515, 2),
+                np.round(offset, 5),
+                np.round(lever, 3),
+            )
         old_offset = offset
         k += 1
 
     # Sample z values in case where it is poorly constrained
-    if z_sample == True:
+    if z_sample:
         best_lever_new = best_lever
         for dz in np.arange(-5, 5, 0.1):
             lever = best_lever + np.array([0.0, 0.0, dz])
             transponder_coordinates = findTransponder(
                 GPS_Coordinates, gps1_to_others, lever
             )
-            inversion_estimate, CDOG_full, GPS_full, CDOG_clock, GPS_clock = (
-                final_bias_geiger(
-                    inversion_guess,
-                    CDOG_data,
-                    GPS_data,
-                    transponder_coordinates,
-                    offset,
-                    esv_bias,
-                    time_bias,
-                    dz_array,
-                    angle_array,
-                    esv_matrix,
-                    real_data,
-                )
+            (
+                inversion_estimate,
+                CDOG_full,
+                GPS_full,
+                CDOG_clock,
+                GPS_clock,
+            ) = final_bias_geiger(
+                inversion_guess,
+                CDOG_data,
+                GPS_data,
+                transponder_coordinates,
+                offset,
+                esv_bias,
+                time_bias,
+                dz_array,
+                angle_array,
+                esv_matrix,
+                real_data,
             )
             inversion_guess = inversion_estimate[:3]
             time_bias = inversion_estimate[3]
@@ -252,20 +265,14 @@ if __name__ == "__main__":
     esv_bias = 0
     time_bias = 0
 
-    """Either generate a realistic or use bermuda trajectory"""
-
-    # true_offset = np.random.rand() * 9000 + 1000
-    # print(true_offset)
-    # CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(
-    #     20000, time_noise, true_offset, esv_bias, time_bias, dz_array, angle_array, esv_matrix
-    # )
-    # GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
-    # gps1_to_others = np.array([[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64)
-
-    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = (
-        bermuda_trajectory(
-            time_noise, position_noise, dz_array, angle_array, esv_matrix
-        )
+    (
+        CDOG_data,
+        CDOG,
+        GPS_Coordinates,
+        GPS_data,
+        true_transponder_coordinates,
+    ) = bermuda_trajectory(
+        time_noise, position_noise, dz_array, angle_array, esv_matrix
     )
     GPS_Coordinates = GPS_Coordinates[::20]
     GPS_data = GPS_data[::20]

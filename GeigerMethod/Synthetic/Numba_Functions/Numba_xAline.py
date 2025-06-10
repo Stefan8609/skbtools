@@ -209,9 +209,13 @@ if __name__ == "__main__":
     position_noise = 2 * 10**-2
     time_noise = 2 * 10**-5
 
-    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = (
-        generateUnalignedRealistic(n, time_noise, true_offset)
-    )
+    (
+        CDOG_data,
+        CDOG,
+        GPS_Coordinates,
+        GPS_data,
+        true_transponder_coordinates,
+    ) = generateUnalignedRealistic(n, time_noise, true_offset)
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 
     gps1_to_others = np.array(

@@ -27,14 +27,18 @@ position_noise = 2 * 10**-2
 initial_lever = np.array([-12.58, 0.165, -11.345])
 offset = 1991.01247
 
-CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = (
-    bermuda_trajectory(
-        time_noise,
-        position_noise,
-        dz_array_generate,
-        angle_array_generate,
-        esv_matrix_generate,
-    )
+(
+    CDOG_data,
+    CDOG,
+    GPS_Coordinates,
+    GPS_data,
+    true_transponder_coordinates,
+) = bermuda_trajectory(
+    time_noise,
+    position_noise,
+    dz_array_generate,
+    angle_array_generate,
+    esv_matrix_generate,
 )
 true_offset = 1991.01236648
 gps1_to_others = np.array(

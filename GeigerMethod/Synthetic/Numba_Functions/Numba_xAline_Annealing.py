@@ -101,15 +101,19 @@ def simulated_annealing(
                     real_data,
                 )
             else:
-                inversion_guess, CDOG_full, GPS_full, CDOG_clock, GPS_clock = (
-                    final_geiger(
-                        inversion_guess,
-                        CDOG_data,
-                        GPS_data,
-                        transponder_coordinates_found,
-                        offset,
-                        real_data,
-                    )
+                (
+                    inversion_guess,
+                    CDOG_full,
+                    GPS_full,
+                    CDOG_clock,
+                    GPS_clock,
+                ) = final_geiger(
+                    inversion_guess,
+                    CDOG_data,
+                    GPS_data,
+                    transponder_coordinates_found,
+                    offset,
+                    real_data,
                 )
 
         if real_data == False:
@@ -156,9 +160,13 @@ if __name__ == "__main__":
     position_noise = 2 * 10**-2
     time_noise = 2 * 10**-5
 
-    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = (
-        generateUnalignedRealistic(10000, time_noise, true_offset)
-    )
+    (
+        CDOG_data,
+        CDOG,
+        GPS_Coordinates,
+        GPS_data,
+        true_transponder_coordinates,
+    ) = generateUnalignedRealistic(10000, time_noise, true_offset)
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 
     gps1_to_others = np.array(

@@ -144,20 +144,24 @@ def grid_search_annealing(
                     transponder_perturbed = findTransponder(
                         GPS_Coordinates, GPS1_to_others, best_lever_perturbed
                     )
-                    inversion_result_pert, CDOG_full, GPS_full, _, _ = (
-                        final_bias_geiger(
-                            inversion_guess,
-                            CDOG_data,
-                            GPS_data,
-                            transponder_perturbed,
-                            offset_perturbed,
-                            esv_bias,
-                            time_bias,
-                            dz_array,
-                            angle_array,
-                            esv_matrix,
-                            real_data=True,
-                        )
+                    (
+                        inversion_result_pert,
+                        CDOG_full,
+                        GPS_full,
+                        _,
+                        _,
+                    ) = final_bias_geiger(
+                        inversion_guess,
+                        CDOG_data,
+                        GPS_data,
+                        transponder_perturbed,
+                        offset_perturbed,
+                        esv_bias,
+                        time_bias,
+                        dz_array,
+                        angle_array,
+                        esv_matrix,
+                        real_data=True,
                     )
                     RMSE_pert = np.sqrt(np.mean((CDOG_full - GPS_full) ** 2))
                     if RMSE_pert < RMSE:
@@ -171,8 +175,8 @@ def grid_search_annealing(
 
                 # Write line to file
                 file.write(
-                    f'[{np.array2string(best_lever, precision=4, separator=", ")[1:-1]}], '
-                    f'[{np.array2string(inversion_guess, precision=4, separator=", ")[1:-1]}], '
+                    f"[{np.array2string(best_lever, precision=4, separator=', ')[1:-1]}], "
+                    f"[{np.array2string(inversion_guess, precision=4, separator=', ')[1:-1]}], "
                     f"{current_offset + off_adjust:.4f}, {time_bias:.4e}, {esv_bias:.4f}, {RMSE * 100 * 1515:.4f}\n"
                 )
                 file.flush()  # ensures immediate write
@@ -329,8 +333,8 @@ def grid_search_discrete(
                 RMSE = np.sqrt(np.nanmean(diff_data**2)) / 1000 * 1515 * 100
                 # Write line to file
                 file.write(
-                    f'[{np.array2string(lever_guess, precision=4, separator=", ")[1:-1]}], '
-                    f'[{np.array2string(inversion_guess, precision=4, separator=", ")[1:-1]}], '
+                    f"[{np.array2string(lever_guess, precision=4, separator=', ')[1:-1]}], "
+                    f"[{np.array2string(inversion_guess, precision=4, separator=', ')[1:-1]}], "
                     f"{current_offset + off_adjust:.4f}, {time_bias:.4e}, {esv_bias:.4f}, {RMSE:.4f}\n"
                 )
                 file.flush()  # ensures immediate write

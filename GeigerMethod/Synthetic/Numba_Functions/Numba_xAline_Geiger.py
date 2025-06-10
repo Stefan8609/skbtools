@@ -9,16 +9,6 @@ from Numba_Geiger import (
 from Numba_xAline import two_pointer_index, find_subint_offset, find_int_offset
 from Generate_Unaligned_Realistic import generateUnalignedRealistic
 
-"""Need 3 xaline geigers
-
-1) Finding the integer offset with a coarse guess
-2) Finding the sub-int offset with a medium grain guess
-3) Exact offset known (to high degree) and pinpointing the location of the receiver
-    Exact offset should be bc it shifts the RMSE away from 0
-
-Seems like initial guess has to be within a couple 100 meters of CDOG for it to converge
-"""
-
 
 def initial_geiger(
     guess, CDOG_data, GPS_data, transponder_coordinates, real_data=False
@@ -30,7 +20,7 @@ def initial_geiger(
     inversion_guess = guess
     while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
-        if real_data == False:
+        if not real_data:
             times_guess, esv = calculateTimesRayTracing(
                 inversion_guess, transponder_coordinates
             )
@@ -82,7 +72,7 @@ def transition_geiger(
 
     while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
-        if real_data == False:
+        if not real_data:
             times_guess, esv = calculateTimesRayTracing(
                 inversion_guess, transponder_coordinates
             )
@@ -140,7 +130,7 @@ def final_geiger(
     delta = np.array([1.0, 1.0, 1.0])
     inversion_guess = guess
 
-    if real_data == False:
+    if not real_data:
         times_guess, esv = calculateTimesRayTracing(
             inversion_guess, transponder_coordinates
         )
@@ -167,7 +157,7 @@ def final_geiger(
     )
 
     while np.linalg.norm(delta) > epsilon and k < 10:
-        if real_data == False:
+        if not real_data:
             GPS_full, esv = calculateTimesRayTracing(
                 inversion_guess, transponder_coordinates_full
             )
@@ -188,7 +178,7 @@ def final_geiger(
         inversion_guess += delta
         k += 1
 
-    if real_data == False:
+    if not real_data:
         times_guess, esv = calculateTimesRayTracing(
             inversion_guess, transponder_coordinates
         )
@@ -233,18 +223,22 @@ if __name__ == "__main__":
     esv_bias = 1.5
     time_bias = 0.43
 
-    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = (
-        generateUnalignedRealistic(
-            20000,
-            time_noise,
-            true_offset,
-            esv_bias,
-            time_bias,
-            dz_array,
-            angle_array,
-            esv_matrix,
-            main=False,
-        )
+    (
+        CDOG_data,
+        CDOG,
+        GPS_Coordinates,
+        GPS_data,
+        true_transponder_coordinates,
+    ) = generateUnalignedRealistic(
+        20000,
+        time_noise,
+        true_offset,
+        esv_bias,
+        time_bias,
+        dz_array,
+        angle_array,
+        esv_matrix,
+        main=False,
     )
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 

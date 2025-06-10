@@ -151,40 +151,54 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=3, save=False
     lon = sio.loadmat("../../../GPSData/Unit1-camp_bis.mat")["lon"].flatten()
 
     """If elevation plotting is desired"""
-    # alpha = {0: 'A', 1: 'B', 2: 'C', 3: 'D'}
+    # alpha = {0: "A", 1: "B", 2: "C", 3: "D"}
     # if save:
     #     fig, axs = plt.subplots(2, 2, figsize=(10, 8))
     #     mask = np.ones(filtered_data.shape[2], dtype=bool)
     #     for i in range(4):
     #         row, col = divmod(i, 2)
     #         elevation = filtered_data[i, 4, :]
-    #         axs[row, col].scatter(GPS_data, elevation, s=1, color="blue", label=r'Elevation Data')
+    #         axs[row, col].scatter(
+    #             GPS_data, elevation, s=1, color="blue", label=r"Elevation Data"
+    #         )
     #         median_elev = running_median(elevation, window=window)
     #         abs_dev = running_abs_dev(elevation, window=window)
-    #         mask &= (elevation >= median_elev - 2 * abs_dev) & (elevation <= median_elev + 2 * abs_dev)
+    #         mask &= (elevation >= median_elev - 2 * abs_dev) & (
+    #             elevation <= median_elev + 2 * abs_dev
+    #         )
     #
     #         upper_band = median_elev + 2 * abs_dev
     #         lower_band = median_elev - 2 * abs_dev
-    #         axs[row, col].plot(GPS_data, median_elev, color='red', linewidth=2, label=r'Running Median')
-    #         axs[row,col].plot(GPS_data, upper_band, color='orange', label=r'2 Absolute Deviations')
-    #         axs[row, col].plot(GPS_data, lower_band, color='orange')
+    #         axs[row, col].plot(
+    #             GPS_data, median_elev, color="red", linewidth=2, label=r"Running Median"
+    #         )
+    #         axs[row, col].plot(
+    #             GPS_data, upper_band, color="orange", label=r"2 Absolute Deviations"
+    #         )
+    #         axs[row, col].plot(GPS_data, lower_band, color="orange")
     #
-    #         axs[row, col].set_title(f'GPS Unit {i + 1} Elevation')
-    #         axs[row, col].set_xlabel(r'Time (s)')
-    #         axs[row, col].set_ylabel(r'Elevation (m)')
+    #         axs[row, col].set_title(f"GPS Unit {i + 1} Elevation")
+    #         axs[row, col].set_xlabel(r"Time (s)")
+    #         axs[row, col].set_ylabel(r"Elevation (m)")
     #         axs[row, col].set_ylim(-39, -34)
-    #         axs[row, col].text(0.02, 0.93, f'{alpha[i]}', transform=axs[row, col].transAxes,)
+    #         axs[row, col].text(
+    #             0.02,
+    #             0.93,
+    #             f"{alpha[i]}",
+    #             transform=axs[row, col].transAxes,
+    #         )
     #         if i == 0:
-    #             axs[row, col].legend(loc='lower right')
+    #             axs[row, col].legend(loc="lower right")
     #     indices = np.where(mask)[0]
     #     axs[0, 1].text(
-    #         0.95, 0.05,
-    #         f'Removed: {len(elevation) - len(indices)} / {len(elevation)} points \n'
-    #         f'Window: {window} samples \n'
-    #         f'Overlap: {window - 1} samples',
+    #         0.95,
+    #         0.05,
+    #         f"Removed: {len(elevation) - len(indices)} / {len(elevation)} points \n"
+    #         f"Window: {window} samples \n"
+    #         f"Overlap: {window - 1} samples",
     #         transform=axs[0, 1].transAxes,
-    #         ha='right',
-    #         va='bottom',
+    #         ha="right",
+    #         va="bottom",
     #         fontsize=14,
     #     )
     #     plt.tight_layout()
@@ -237,6 +251,10 @@ if __name__ == "__main__":
     # GNSS_end = 40.9
     GNSS_end = 39
     CDOG_augment = np.array([0, 0, 0])
-    GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = (
-        initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=1, save=True)
-    )
+    (
+        GPS_Coordinates,
+        GPS_data,
+        CDOG_data,
+        CDOG_guess,
+        gps1_to_others,
+    ) = initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=1, save=True)

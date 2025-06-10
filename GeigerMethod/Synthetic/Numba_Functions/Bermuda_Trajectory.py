@@ -53,10 +53,14 @@ if __name__ == "__main__":
     time_noise = 0
     position_noise = 0
 
-    CDOG_data, CDOG, GPS_Coordinates, GPS_data, transponder_coordinates = (
-        bermuda_trajectory(
-            time_noise, position_noise, dz_array, angle_array, esv_matrix
-        )
+    (
+        CDOG_data,
+        CDOG,
+        GPS_Coordinates,
+        GPS_data,
+        transponder_coordinates,
+    ) = bermuda_trajectory(
+        time_noise, position_noise, dz_array, angle_array, esv_matrix
     )
 
     lat = sio.loadmat("../../../GPSData/Unit1-camp_bis.mat")["lat"].flatten()

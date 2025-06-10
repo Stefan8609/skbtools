@@ -51,17 +51,21 @@ def modular_synthetic(
         # Generate Unaligned Realistic Data
         true_offset = np.random.rand() * 9000 + 1000
         print(true_offset)
-        CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = (
-            generateUnalignedRealistic(
-                20000,
-                time_noise,
-                true_offset,
-                in_esv_bias,
-                in_time_bias,
-                dz_array_generate,
-                angle_array_generate,
-                esv_matrix_generate,
-            )
+        (
+            CDOG_data,
+            CDOG,
+            GPS_Coordinates,
+            GPS_data,
+            true_transponder_coordinates,
+        ) = generateUnalignedRealistic(
+            20000,
+            time_noise,
+            true_offset,
+            in_esv_bias,
+            in_time_bias,
+            dz_array_generate,
+            angle_array_generate,
+            esv_matrix_generate,
         )
         GPS_Coordinates += np.random.normal(
             0, position_noise, (len(GPS_Coordinates), 4, 3)
@@ -72,15 +76,19 @@ def modular_synthetic(
         z_sample = False
     else:
         # Use Bermuda Dataset
-        CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = (
-            bermuda_trajectory(
-                time_noise,
-                position_noise,
-                dz_array_generate,
-                angle_array_generate,
-                esv_matrix_generate,
-                DOG_num,
-            )
+        (
+            CDOG_data,
+            CDOG,
+            GPS_Coordinates,
+            GPS_data,
+            true_transponder_coordinates,
+        ) = bermuda_trajectory(
+            time_noise,
+            position_noise,
+            dz_array_generate,
+            angle_array_generate,
+            esv_matrix_generate,
+            DOG_num,
         )
         true_offset = 1991.01236648
         gps1_to_others = np.array(
@@ -170,20 +178,24 @@ def modular_synthetic(
         )
         print("\n")
 
-        inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = (
-            final_bias_geiger(
-                inversion_guess,
-                CDOG_data,
-                GPS_data,
-                transponder_coordinates,
-                offset,
-                esv_bias,
-                time_bias,
-                dz_array_inversion,
-                angle_array_inversion,
-                esv_matrix_inversion,
-                real_data=real_data,
-            )
+        (
+            inversion_result,
+            CDOG_full,
+            GPS_full,
+            CDOG_clock,
+            GPS_clock,
+        ) = final_bias_geiger(
+            inversion_guess,
+            CDOG_data,
+            GPS_data,
+            transponder_coordinates,
+            offset,
+            esv_bias,
+            time_bias,
+            dz_array_inversion,
+            angle_array_inversion,
+            esv_matrix_inversion,
+            real_data=real_data,
         )
         inversion_guess = inversion_result[:3]
         time_bias = inversion_result[3]
@@ -235,20 +247,24 @@ def modular_synthetic(
         transponder_coordinates = findTransponder(
             GPS_Coordinates, gps1_to_others, lever
         )
-        inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = (
-            final_bias_geiger(
-                inversion_guess,
-                CDOG_data,
-                GPS_data,
-                transponder_coordinates,
-                offset,
-                esv_bias,
-                time_bias,
-                dz_array_inversion,
-                angle_array_inversion,
-                esv_matrix_inversion,
-                real_data=real_data,
-            )
+        (
+            inversion_result,
+            CDOG_full,
+            GPS_full,
+            CDOG_clock,
+            GPS_clock,
+        ) = final_bias_geiger(
+            inversion_guess,
+            CDOG_data,
+            GPS_data,
+            transponder_coordinates,
+            offset,
+            esv_bias,
+            time_bias,
+            dz_array_inversion,
+            angle_array_inversion,
+            esv_matrix_inversion,
+            real_data=real_data,
         )
 
     if plot:

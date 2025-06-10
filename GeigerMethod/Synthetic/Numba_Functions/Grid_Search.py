@@ -34,9 +34,13 @@ def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):
     GNSS_start, GNSS_end = 25, 40.9
     # GNSS_start, GNSS_end = 31.9, 34.75
     # GNSS_start, GNSS_end = 35.3, 37.6
-    GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = (
-        initialize_bermuda(GNSS_start, GNSS_end, CDOG_guess_augment)
-    )
+    (
+        GPS_Coordinates,
+        GPS_data,
+        CDOG_data,
+        CDOG_guess,
+        gps1_to_others,
+    ) = initialize_bermuda(GNSS_start, GNSS_end, CDOG_guess_augment)
 
     GPS_Coordinates = GPS_Coordinates[::25]
     GPS_data = GPS_data[::25]
@@ -56,21 +60,23 @@ def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):
             for y in y_grid:
                 for z in z_grid:
                     initial_lever = np.array([x, y, z]) + initial_lever_guess
-                    best_lever, best_offset, inversion_result = (
-                        simulated_annealing_bias(
-                            300,
-                            CDOG_data,
-                            GPS_data,
-                            GPS_Coordinates,
-                            gps1_to_others,
-                            CDOG_guess,
-                            initial_lever,
-                            dz_array,
-                            angle_array,
-                            esv_matrix,
-                            offset,
-                            True,
-                        )
+                    (
+                        best_lever,
+                        best_offset,
+                        inversion_result,
+                    ) = simulated_annealing_bias(
+                        300,
+                        CDOG_data,
+                        GPS_data,
+                        GPS_Coordinates,
+                        gps1_to_others,
+                        CDOG_guess,
+                        initial_lever,
+                        dz_array,
+                        angle_array,
+                        esv_matrix,
+                        offset,
+                        True,
                     )
                     inversion_guess = inversion_result[:3]
                     time_bias = inversion_result[3]
@@ -79,20 +85,24 @@ def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):
                     transponder_coordinates = findTransponder(
                         GPS_Coordinates, gps1_to_others, best_lever
                     )
-                    inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = (
-                        final_bias_geiger(
-                            inversion_guess,
-                            CDOG_data,
-                            GPS_data,
-                            transponder_coordinates,
-                            best_offset,
-                            esv_bias,
-                            time_bias,
-                            dz_array,
-                            angle_array,
-                            esv_matrix,
-                            real_data=True,
-                        )
+                    (
+                        inversion_result,
+                        CDOG_full,
+                        GPS_full,
+                        CDOG_clock,
+                        GPS_clock,
+                    ) = final_bias_geiger(
+                        inversion_guess,
+                        CDOG_data,
+                        GPS_data,
+                        transponder_coordinates,
+                        best_offset,
+                        esv_bias,
+                        time_bias,
+                        dz_array,
+                        angle_array,
+                        esv_matrix,
+                        real_data=True,
                     )
                     inversion_guess = inversion_result[:3]
                     time_bias = inversion_result[3]
