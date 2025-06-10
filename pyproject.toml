@@ -26,6 +26,9 @@ test = [
     "pytest",
     "pytest-cov",
 ]
+dev = [
+    "pre-commit",
+]
 
 [build-system]
 requires = ["hatchling"]
