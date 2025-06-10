@@ -1,8 +1,8 @@
 import os
 import numpy as np
+from Ray_Tracing_Iter_Locate import ray_tracing, ray_trace_locate
 
 os.environ["NUMBA_DISABLE_JIT"] = "1"
-from Ray_Tracing_Iter_Locate import ray_tracing, ray_trace_locate
 
 
 def test_ray_tracing_constant_speed():
