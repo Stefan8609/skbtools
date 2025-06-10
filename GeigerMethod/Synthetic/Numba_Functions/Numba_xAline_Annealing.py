@@ -1,7 +1,14 @@
 import numpy as np
 
-from Numba_xAline import *
-from Numba_xAline_Geiger import *
+from Numba_xAline import two_pointer_index, find_subint_offset
+from Numba_xAline_Geiger import (
+    initial_geiger,
+    transition_geiger,
+    final_geiger,
+    calculateTimesRayTracing,
+    findTransponder,
+    calculateTimesRayTracingReal,
+)
 from Generate_Unaligned_Realistic import generateUnalignedRealistic
 
 """
@@ -20,7 +27,8 @@ def simulated_annealing(
     initial_offset=0,
     real_data=False,
 ):
-    """Algorithm to determine the best lever arm, offset, and seafloor receiver position"""
+    """Algorithm to determine the best lever arm,
+    offset, and seafloor receiver position"""
 
     # Initialize variables
     status = "int"
@@ -30,7 +38,7 @@ def simulated_annealing(
     transponder_coordinates_found = findTransponder(
         GPS_Coordinates, gps1_to_others, initial_lever
     )
-    if real_data == False:
+    if not real_data:
         times_guess, esv = calculateTimesRayTracing(
             inversion_guess, transponder_coordinates_found
         )
@@ -116,7 +124,7 @@ def simulated_annealing(
                     real_data,
                 )
 
-        if real_data == False:
+        if not real_data:
             times_guess, esv = calculateTimesRayTracing(
                 inversion_guess, transponder_coordinates_found
             )

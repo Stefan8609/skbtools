@@ -4,10 +4,12 @@ from scipy.stats import norm
 
 
 def leverHist(transponder_coordinates_Actual, transponder_coordinates_Found):
-    # Plot histograms of coordinate differences between found transponder and actual transponder
+    # Plot histograms of coordinate differences
+    # between found transponder and actual transponder
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))
     fig.suptitle(
-        "Coordinate differences between calculated transponder and actual transponder, 2cm noise in each GPS",
+        "Coordinate differences between calculated transponder "
+        "and actual transponder, 2cm noise in each GPS",
         y=0.92,
     )
     xmin, xmax = -15, 15

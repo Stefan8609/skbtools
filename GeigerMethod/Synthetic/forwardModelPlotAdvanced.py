@@ -79,37 +79,3 @@ plt.scatter(
 plt.scatter(CDog[0], CDog[1], s=40, color="w", marker="x", label="CDOG", zorder=4)
 plt.legend(loc="upper left")
 plt.show()
-
-# Plot eigenvalues of (Jt * J)^-1 (no obvious relationship)
-
-# test_guess = [1000, 1000, -5000]
-# times = calculateTimes(test_guess, GPS_Coordinates, 1515)
-# jacobian = computeJacobian(test_guess, GPS_Coordinates, times, 1515)
-# mtrx = np.linalg.inv(jacobian.T @ jacobian)
-# eigenvalues, eigenvectors = np.linalg.eig(mtrx)
-# print(CDog, test_guess)
-# print(CDog-test_guess)
-# print(eigenvalues, eigenvectors)
-
-
-# # Create the color plot (This version is deprecated because contour version of higher priority)
-# plt.scatter(GPS_Coordinates[:,0], GPS_Coordinates[:,1], s=10, color="k", label="GPS Coordinates (1 cm noise)")
-# plt.scatter(CDog[0], CDog[1], s=40, color="w", marker="x", label="CDOG")
-# plt.imshow(vals, extent=(CDog[0]-2000,CDog[0]+2000, CDog[1]-2000,CDog[1]+2000), origin='lower', cmap='jet')#, interpolation='bilinear')
-# plt.colorbar(label="Model Update Distance (m)")
-# plt.xlabel('Easting (m)')
-# plt.ylabel('Northing (m)')
-# plt.title('Absolute Model Update with 10 \u03BCs arrival time noise')
-# plt.legend(loc="upper left")
-# plt.show()
-
-
-# Plot Jacobian Expressed in its units (would be good to show)
-#   Determinant, Trace, Eigenvalues, etc?
-#   Draw the spectrum of eigenvalues of Jt * J
-#   How many eigenvalues ( plot as stem plot )
-#   Is one noticably smaller than the other eigenvalues (z less impactful than x and y)
-
-#   Need to see horizontals separated from the verticals (what is the influence of z in optimization)
-
-# Add noise level onto the plot

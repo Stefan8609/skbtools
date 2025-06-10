@@ -32,7 +32,8 @@ def index_data(offset, CDOG_data, GPS_data, travel_times, transponder_coordinate
     unique_transponder_coordinates = transponder_coordinates[indices_GPS]
     unique_esv = esv[indices_GPS]
 
-    # Create a full size array that has indices for all times covered by CDOG or GPS times
+    # Create a full size array that has indices for all
+    # times covered by CDOG or GPS times
     min_time = min(unique_GPS_times.min(), unique_CDOG_times.min())
     max_time = max(unique_GPS_times.max(), unique_CDOG_times.max())
     full_times = np.arange(min_time, max_time + 1)
@@ -110,7 +111,8 @@ def find_int_offset(
             err_int += 500
             lag = np.inf
 
-    # Conditional check to ensure the resulting value is reasonable (and to prevent stack overflows)
+    # Conditional check to ensure the resulting
+    # value is reasonable (and to prevent stack overflows)
     if start > 20000:
         print("Error - No true offset found")
         return best
@@ -145,14 +147,13 @@ def find_subint_offset(
     offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
 ):
     # Initalize values for loop
-    l, u = offset - 0.5, offset + 0.5
+    lower, upper = offset - 0.5, offset + 0.5
     intervals = np.array([0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001])
     best_offset = offset
     best_RMSE = np.inf
 
-    # Iterate through each decimal offset (check this function to make sure it works properly)
     for interval in intervals:
-        for lag in np.arange(l, u + interval, interval):
+        for lag in np.arange(lower, upper + interval, interval):
             # Round to prevent numpy float errors
             lag = np.round(lag, 10)
             CDOG_full, GPS_full = index_data(
@@ -170,7 +171,7 @@ def find_subint_offset(
             if RMSE < best_RMSE:
                 best_offset = lag
                 best_RMSE = RMSE
-        l, u = best_offset - interval, best_offset + interval
+        lower, upper = best_offset - interval, best_offset + interval
     return best_offset
 
 
@@ -185,9 +186,6 @@ def two_pointer_index(
 ):
     """Module to index closest data points against each other given correct offset"""
     # Initialize information
-    CDOG_unwrap = np.unwrap(CDOG_data[:, 1] * 2 * np.pi) / (2 * np.pi)
-    CDOG_travel_times = CDOG_unwrap + GPS_travel_times[0] - CDOG_unwrap[0]
-
     CDOG_times = CDOG_data[:, 0] + CDOG_data[:, 1] - offset
     GPS_times = GPS_data + GPS_travel_times
 
@@ -239,7 +237,6 @@ if __name__ == "__main__":
     CDOG_data = sio.loadmat("../../GPSData/Realistic_CDOG_noise_subint_new.mat")[
         "tags"
     ].astype(float)
-    # transponder_coordinates = sio.loadmat('../../GPSData/Realistic_transponder_noise_subint_new.mat')['xyz'].astype(float)
     GPS_data = sio.loadmat("../../GPSData/Realistic_GPS_noise_subint_new.mat")["time"][
         0
     ].astype(float)
@@ -292,22 +289,7 @@ if __name__ == "__main__":
     CDOG_full[indices] += np.round(GPS_full[indices] - CDOG_full[indices])
     print(np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100, "cm")
 
-    """
-    Occationally getting offset wrong by 1 - I believe to be an issue with indexing (removing points
-        might misaline by 1 sometimes because its not able to index or find a better solution cause important points
-        are missing) - RMSE is still the best when the offset is absolutely correct
-
-        Maybe round is better than floor? Sometimes one point is really far off raising residuals
-            This is probably a situation where the sub-int is a gonna freak out (maybe find a way to remove)
-            We can empirically tell this point is wrong so removal is not bad
-
-    Investigate using cubic spline for interpolation then using the algorithm to find alignment
-        May remove issues with missing data points?
-    """
-
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 9))
-
-    """Make the bottom plot for 3 std around mean (say in paper that we plot 99% of data)"""
 
     ax1.scatter(
         full_times,

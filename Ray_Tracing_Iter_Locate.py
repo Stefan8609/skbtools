@@ -113,7 +113,7 @@ if __name__ == "__main__":
     cz = np.ascontiguousarray(np.genfromtxt("GPSData/cz_cast2_smoothed.txt"))
 
     start_time = time()
-    for i in range(1):
+    for _ in range(10):
         alpha = ray_trace_locate(100, 5000, 20000, depth, cz)
     end_time = time()
     print(f"Execution time: {(end_time - start_time) / 1:.2f} seconds")

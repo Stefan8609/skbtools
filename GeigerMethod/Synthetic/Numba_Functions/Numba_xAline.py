@@ -2,13 +2,6 @@ import numpy as np
 from numba import njit
 from scipy import signal
 
-"""
-Need to try to fix this function to work with the numba library
-Need subint to work fast
-
-Can get sub-int integration with 2-pointer approach with both being optimized by numba
-"""
-
 
 @njit(cache=True)
 def two_pointer_index(
@@ -21,7 +14,8 @@ def two_pointer_index(
     esv,
     exact=False,
 ):
-    """Optimized module to index closest data points against each other given correct offset."""
+    """Optimized module to index closest data
+    points against each other given correct offset."""
     CDOG_times = CDOG_data[:, 0] + CDOG_data[:, 1] - offset
     GPS_times = GPS_data + GPS_travel_times
 
@@ -60,7 +54,7 @@ def two_pointer_index(
     esv_full = esv_full[:count]
 
     # Best travel times for known offset
-    if exact == True:
+    if exact:
         CDOG_full = CDOG_clock - (GPS_clock - GPS_full)
     else:
         CDOG_full = CDOG_clock + GPS_travel_times[0] - CDOG_clock[0]
@@ -85,7 +79,7 @@ def find_subint_offset(
 ):
     """Optimized function to find the best sub-integer offset."""
     # Initialize values for loop
-    l, u = offset - 0.5, offset + 0.5
+    lower, upper = offset - 0.5, offset + 0.5
     intervals = np.array(
         [0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001]
     )
@@ -93,7 +87,7 @@ def find_subint_offset(
     best_RMSE = np.inf
 
     for interval in intervals:
-        for lag in np.arange(l, u + interval, interval):
+        for lag in np.arange(lower, upper + interval, interval):
             # Round to prevent numpy float errors
             lag = np.round(lag, 8)  # Adjust precision based on your interval
 
@@ -124,7 +118,7 @@ def find_subint_offset(
                 best_offset = lag
                 best_RMSE = RMSE
         # Narrow search bounds for the next iteration
-        l, u = best_offset - interval, best_offset + interval
+        lower, upper = best_offset - interval, best_offset + interval
     return best_offset
 
 
@@ -171,7 +165,8 @@ def find_int_offset(
             err_int += 500
             lag = np.inf
 
-    # Conditional check to ensure the resulting value is reasonable (and to prevent stack overflows)
+    # Conditional check to ensure the resulting value
+    # is reasonable (and to prevent stack overflows)
     if start > 10000:
         print(f"Error - No true offset found: {offset}")
         return best
@@ -201,7 +196,7 @@ def find_int_offset(
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    from Numba_Geiger import *
+    from Numba_Geiger import calculateTimesRayTracing, findTransponder
     from Generate_Unaligned_Realistic import generateUnalignedRealistic
 
     n = 10000

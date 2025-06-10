@@ -16,9 +16,11 @@ def geigerTimePlot(
     depth,
     time_noise,
     position_noise,
-    lever=[None, None, None],
+    lever=None,
     sim=0,
 ):
+    if lever is None:
+        lever = [None, None, None]
     if not lever[0]:
         lever = gps1_to_transponder
 
@@ -55,28 +57,32 @@ def geigerTimePlot(
         figsize=(17, 10),
         gridspec_kw={"width_ratios": [1, 4, 2], "height_ratios": [2, 2, 1]},
     )
-    # fig.suptitle("Comparison of calculated arrival times and actual arrival times", y=0.92)
 
     fig.text(
         0.07,
         0.85,
-        f"Noise: \n GPS: {position_noise * 100}cm \n Arrival time: {time_noise * 10**6}\u03bcs",
+        f"Noise: \n GPS: {position_noise * 100}cm "
+        f"\n Arrival time: {time_noise * 10**6}\u03bcs",
         fontsize=12,
         bbox=dict(facecolor="white", alpha=0.8),
     )
     fig.text(
         0.07,
         0.75,
-        f"Distance between \npredicted and actual \nCDog location:\n{np.round(np.linalg.norm(CDog - guess) * 100, 4)}cm",
+        f"Distance between \npredicted and actual \nCDog location:"
+        f"\n{np.round(np.linalg.norm(CDog - guess) * 100, 4)}cm",
         fontsize=12,
         bbox=dict(facecolor="white", alpha=0.8),
     )
     fig.text(
         0.07,
         0.61,
-        f"Initial Guess (x,y,z):\n({np.round(initial_guess[0], 2)}, {np.round(initial_guess[1], 2)}, {np.round(initial_guess[2]), 2})"
+        f"Initial Guess (x,y,z):\n({np.round(initial_guess[0], 2)}, "
+        f"{np.round(initial_guess[1], 2)}, {np.round(initial_guess[2]), 2})"
         f"\nAverage of residuals:\n{round(np.average(difference_data) * 1000, 4)}ms"
-        f"\nActual vs. Found lever:\n({round(lever[0] - gps1_to_transponder[0], 3)},{round(lever[1] - gps1_to_transponder[1], 3)},{round(lever[2] - gps1_to_transponder[2], 3)})m",
+        f"\nActual vs. Found lever:\n({round(lever[0] - gps1_to_transponder[0], 3)},"
+        f"{round(lever[1] - gps1_to_transponder[1], 3)},"
+        f"{round(lever[2] - gps1_to_transponder[2], 3)})m",
         fontsize=12,
         bbox=dict(facecolor="white", alpha=0.8),
     )

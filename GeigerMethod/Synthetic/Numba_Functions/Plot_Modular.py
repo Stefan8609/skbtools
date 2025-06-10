@@ -140,7 +140,8 @@ def time_series_plot(
 
     # invert axis and plot
     axes[1, 0].set_ylabel(
-        f"Difference (ms) \n Std: {np.round(std, 3)} ms or {np.round(std * 1515 / 10, 2)} cm"
+        f"Difference (ms) \n Std: {np.round(std, 3)} "
+        f"ms or {np.round(std * 1515 / 10, 2)} cm"
     )
     axes[1, 0].set_xlabel("Normalized Frequency")
     axes[1, 0].invert_xaxis()
@@ -222,7 +223,8 @@ def time_series_plot(
 
     # invert axis and plot
     axes[1, 3].set_ylabel(
-        f"Difference (ms) \n Std: {np.round(std_zoom, 3)} ms or {np.round(std_zoom * 1515 / 10, 2)} cm"
+        f"Difference (ms) \n Std: {np.round(std_zoom, 3)} "
+        f"ms or {np.round(std_zoom * 1515 / 10, 2)} cm"
     )
     axes[1, 3].yaxis.set_label_position("right")
     axes[1, 3].yaxis.tick_right()
@@ -272,8 +274,6 @@ def trajectory_plot(coordinates, GPS_clock, CDOGs, block=True):
 
 def range_residual(transponder_coordinates, ESV, CDOG, CDOG_full, GPS_full, GPS_clock):
     times_hours = GPS_clock / 3600  # Convert seconds to hours
-    min_time = np.min(times_hours)
-    max_time = np.max(times_hours)
     range_residuals = (CDOG_full - GPS_full) * ESV * 100  # Convert to cm
     calculated_range = np.linalg.norm(transponder_coordinates - CDOG, axis=1)
     mu_rr, std_rr = norm.fit(range_residuals)

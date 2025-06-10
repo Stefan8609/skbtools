@@ -3,7 +3,9 @@ import matplotlib.pyplot as plt
 import scipy.io as sio
 
 
-def experimentPathPlot(transponder_coordinates, CDog=[None, None, None]):
+def experimentPathPlot(transponder_coordinates, CDog=None):
+    if CDog is None:
+        CDog = [None, None, None]
     # Plot path of experiment
     points = len(transponder_coordinates)
     colors = plt.cm.viridis(np.linspace(0, 1, points))

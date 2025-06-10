@@ -1,15 +1,12 @@
 import numpy as np
-from advancedGeigerMethod import *
+from advancedGeigerMethod import (
+    geigersMethod,
+    calculateTimesRayTracing,
+    findTransponder,
+    generateRealistic_Transducer,
+)
+import random
 
-"""
-Purpose of this file is to test ways to optimize my simulated annealing algorithm
-
-Current method is to find the direction of greatest change and walk down that until RMSE doesn't reduce
-
-The generate realistic transducer is leading to offsets in the correct transducer lever arm
- - will need to find ways to account for this
- - Likely due to the fact that the lever arm is always trailing by some amount of from the boat
-"""
 
 cz = np.genfromtxt("../../GPSData/cz_cast2_smoothed.txt")[::100]
 depth = np.genfromtxt("../../GPSData/depth_cast2_smoothed.txt")[::100]
@@ -52,7 +49,7 @@ def simulated_annealing_optimized(
     gps1_to_others_in=None,
     gps1_to_transponder=None,
 ):
-    if main == True:
+    if main:
         (
             CDog,
             GPS_Coordinates_in,

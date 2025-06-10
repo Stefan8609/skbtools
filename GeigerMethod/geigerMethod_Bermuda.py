@@ -31,7 +31,8 @@ def findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder):
     numpy.ndarray
         Array of transponder coordinates for each time step.
     """
-    # Given initial information relative GPS locations and transponder and GPS Coords at each timestep
+    # Given initial information relative GPS locations
+    # and transponder and GPS Coords at each timestep
     xs, ys, zs = gps1_to_others.T
     initial_transponder = gps1_to_transponder
     n = len(GPS_Coordinates)
@@ -174,7 +175,8 @@ def computeJacobianRayTracing(guess, transponder_coordinates, times, sound_speed
         ``N x 3`` Jacobian matrix.
     """
 
-    # Computes the Jacobian, parameters are xyz coordinates and functions are the travel times
+    # Computes the Jacobian, parameters are xyz
+    # coordinates and functions are the travel times
     diffs = transponder_coordinates - guess
     jacobian = -diffs / (times[:, np.newaxis] * (sound_speed[:, np.newaxis] ** 2))
     return jacobian
@@ -199,7 +201,8 @@ def geigersMethod(guess, times_known, transponder_coordinates_Found):
         Optimised receiver coordinates.
     """
 
-    # Use Geiger's method to find the guess of CDOG location which minimizes sum of travel times squared
+    # Use Geiger's method to find the guess of CDOG location
+    # which minimizes sum of travel times squared
     # Define threshold
     epsilon = 10**-5
     # Sound Speed of water (right now constant, later will use ray tracing)

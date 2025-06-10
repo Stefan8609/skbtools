@@ -1,8 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from advancedGeigerMethod import *
+from advancedGeigerMethod import (
+    geigersMethod,
+    findTransponder,
+    calculateTimesRayTracing,
+)
 from geigerTimePlot import geigerTimePlot
 from Generate_Realistic_Transducer import generateRealistic_Transducer
+import random
 
 cz = np.genfromtxt("../../GPSData/cz_cast2_smoothed.txt")[::100]
 depth = np.genfromtxt("../../GPSData/depth_cast2_smoothed.txt")[::100]
@@ -23,7 +28,7 @@ def simulatedAnnealing(
     gps1_to_others_in=None,
     gps1_to_transponder=None,
 ):
-    if main == True:
+    if main:
         (
             CDog,
             GPS_Coordinates_in,
@@ -40,7 +45,6 @@ def simulatedAnnealing(
 
     # Get initial values
     times_known = calculateTimesRayTracing(CDog, transponder_coordinates_Actual)[0]
-    # old_lever = np.array([random.uniform(-15, -5), random.uniform(-10, 0), random.uniform(-15, -5)])
 
     old_lever = np.array([-11, 2, -13])
 
@@ -75,7 +79,7 @@ def simulatedAnnealing(
     # Plot initial conditions
     # experimentPathPlot(transponder_coordinates_Actual, CDog)
     # leverHist(transponder_coordinates_Actual, transponder_coordinates_Found)
-    if main == True:
+    if main:
         geigerTimePlot(
             initial_guess,
             GPS_Coordinates,
@@ -131,7 +135,7 @@ def simulatedAnnealing(
 
     # leverHist(transponder_coordinates_Actual, transponder_coordinates_Final)
 
-    if main == True:
+    if main:
         plt.plot(list(range(iter - 1)), RMS_arr)
         plt.xlabel("Simulated Annealing Iteration")
         plt.ylabel("RMSE from Inversion (cm)")

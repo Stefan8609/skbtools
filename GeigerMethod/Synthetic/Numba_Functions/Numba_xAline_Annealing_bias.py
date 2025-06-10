@@ -14,7 +14,8 @@ from Numba_xAline_bias import (
 from Plot_Modular import time_series_plot
 
 """
-Incorporate simulated annealing to find the transducer location in addition to the bias terms.
+Incorporate simulated annealing to find
+the transducer location in addition to the bias terms.
 """
 
 
@@ -34,7 +35,8 @@ def simulated_annealing_bias(
     enforce_offset=False,
     z_sample=False,
 ):
-    """Algorithm to determine the best lever arm, offset, and seafloor receiver position"""
+    """Algorithm to determine the best lever arm,
+    offset, and seafloor receiver position"""
     # Initialize variables
     status = "int"
     if enforce_offset:
@@ -52,7 +54,7 @@ def simulated_annealing_bias(
     transponder_coordinates_found = findTransponder(
         GPS_Coordinates, gps1_to_others, initial_lever
     )
-    if real_data == False:
+    if not real_data:
         times_guess, esv = calculateTimesRayTracing_Bias(
             initial_guess,
             transponder_coordinates_found,
@@ -152,7 +154,7 @@ def simulated_annealing_bias(
         time_bias = inversion_estimate[3]
         esv_bias = inversion_estimate[4]
 
-        if real_data == False:
+        if not real_data:
             times_guess, esv = calculateTimesRayTracing_Bias(
                 inversion_guess,
                 transponder_coordinates,

@@ -37,20 +37,24 @@ def generateRandomData(n):  # Generate the random data in the form of numpy arra
         ]
     )
 
-    # Generate the translations from initial point (random x,y,z translation with z/100) for each time step
+    # Generate the translations from initial point
+    # (random x,y,z translation with z/100) for each time step
     translations = (np.random.rand(n, 3) * 15000) - 7500
     translations = np.matmul(
         translations, np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1 / 100]])
     )
 
-    # Generate rotations from initial point for each time step (yaw, pitch, roll) between -pi/2 to pi/2
+    # Generate rotations from initial point for
+    # each time step (yaw, pitch, roll) between -pi/2 to pi/2
     rot = (np.random.rand(n, 3) * np.pi) - np.pi / 2
 
-    # Have GPS coordinates for all 4 GPS at each time step. Also have transponder for each time step
+    # Have GPS coordinates for all 4 GPS at each time step.
+    # Also have transponder for each time step
     GPS_Coordinates = np.zeros((n, 4, 3))
     transponder_coordinates = np.zeros((n, 3))
 
-    # Have a displacement vectors to find other GPS from first GPS. Also displacement from first GPS to transponder
+    # Have a displacement vectors to find other GPS
+    # from first GPS. Also displacement from first GPS to transponder
     gps1_to_others = np.array(
         [[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64
     )
@@ -326,7 +330,8 @@ def findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder):
     # gps1_to_transponder += np.random.normal(0, 2*10**-2, 3)
     # gps1_to_transponder += np.array([0,0,0])
 
-    # Given initial information relative GPS locations and transponder and GPS Coords at each timestep
+    # Given initial information relative
+    # GPS locations and transponder and GPS Coords at each timestep
     xs, ys, zs = gps1_to_others.T
     initial_transponder = gps1_to_transponder
     n = len(GPS_Coordinates)
@@ -373,14 +378,16 @@ def calculateTimesRayTracing(guess, transponder_coordinates):
 
 
 def computeJacobian(guess, transponder_coordinates, times, sound_speed):
-    # Computes the Jacobian, parameters are xyz coordinates and functions are the travel times
+    # Computes the Jacobian, parameters are xyz
+    # coordinates and functions are the travel times
     diffs = transponder_coordinates - guess
     jacobian = -diffs / (times[:, np.newaxis] * (sound_speed**2))
     return jacobian
 
 
 def computeJacobianRayTracing(guess, transponder_coordinates, times, sound_speed):
-    # Computes the Jacobian, parameters are xyz coordinates and functions are the travel times
+    # Computes the Jacobian, parameters are xyz
+    # coordinates and functions are the travel times
     diffs = transponder_coordinates - guess
     jacobian = -diffs / (times[:, np.newaxis] * (sound_speed[:, np.newaxis] ** 2))
     return jacobian
@@ -394,31 +401,25 @@ def geigersMethod(
     transponder_coordinates_Found,
     time_noise=0,
 ):
-    # Use Geiger's method to find the guess of CDOG location which minimizes sum of travel times squared
+    # Use Geiger's method to find the guess of CDOG location
+    # which minimizes sum of travel times squared
     # Define threshold
     epsilon = 10**-5
 
-    # Sound Speed of water (right now constant, later will use ray tracing)
-    sound_speed = 1515
-
     # Get known times
-    # times_known = calculateTimes(CDog, transponder_coordinates_Actual, sound_speed)
     times_known, esv = calculateTimesRayTracing(CDog, transponder_coordinates_Actual)
 
     # Apply noise to known times
     times_known += np.random.normal(0, time_noise, len(transponder_coordinates_Actual))
-    # times_known+=noise
 
     k = 0
     delta = 1
     estimate_arr = np.array([])
     # Loop until change in guess is less than the threshold
     while np.linalg.norm(delta) > epsilon and k < 100:
-        # times_guess = calculateTimes(guess, transponder_coordinates_Found, sound_speed)
         times_guess, esv = calculateTimesRayTracing(
             guess, transponder_coordinates_Found
         )
-        # jacobian = computeJacobian(guess, transponder_coordinates_Found, times_guess, sound_speed)
         jacobian = computeJacobianRayTracing(
             guess, transponder_coordinates_Found, times_guess, esv
         )
@@ -446,9 +447,6 @@ if __name__ == "__main__":
         gps1_to_transponder,
     ) = generateRealistic_Transducer(20000)
 
-    # Plot histograms of coordinate differences between found transponder and actual transponder
-    # leverHist(transponder_coordinates_Actual,transponder_coordinates_Found)
-
     # Define noise
     time_noise = 2 * 10**-5
     position_noise = 2 * 10**-2
@@ -467,7 +465,7 @@ if __name__ == "__main__":
     import timeit
 
     start = timeit.default_timer()
-    for i in range(1000):
+    for _ in range(1000):
         guess, times_known, bleh = geigersMethod(
             initial_guess,
             CDog,
@@ -489,13 +487,3 @@ if __name__ == "__main__":
         time_noise,
         position_noise,
     )
-
-
-# Geometric Dilulion of Precision is the square root of the trace of (J.t*J)^_1
-
-# Evaluate error distribution at the truth and compare with the best guess
-
-# Next steps to include:
-#   Allow for an offset in the matching of GPS and arrival times (see how much of an impact this has on performance)
-#   Write in code that makes it so the match GPS coordinates are at the time when emission arrives at receiver
-#       Hence, the boat is actually displaced from the place where it emitted the acoustic pulse...
