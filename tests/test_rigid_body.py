@@ -9,9 +9,9 @@ def test_find_rotation_and_displacement():
     axis = rng.random(3)
     axis /= np.linalg.norm(axis)
     angle = np.pi / 3
-    K = np.array([[0, -axis[2], axis[1]],
-                  [axis[2], 0, -axis[0]],
-                  [-axis[1], axis[0], 0]])
+    K = np.array(
+        [[0, -axis[2], axis[1]], [axis[2], 0, -axis[0]], [-axis[1], axis[0], 0]]
+    )
     R_true = np.eye(3) + np.sin(angle) * K + (1 - np.cos(angle)) * (K @ K)
     d_true = rng.random(3)
 

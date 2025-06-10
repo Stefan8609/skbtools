@@ -14,24 +14,25 @@ Outputs:
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def plotPlane(point, normVect, xrange, yrange):
     x_grid = np.linspace(xrange[0], xrange[1], 10)
     y_grid = np.linspace(yrange[0], yrange[1], 10)
     X, Y = np.meshgrid(x_grid, y_grid)
 
-    #Use equation ax+by+cz+d=0 for plane
+    # Use equation ax+by+cz+d=0 for plane
     a, b, c = normVect
     d = -np.dot(normVect, point)
-    Z = (-a*X-b*Y-d)/c
+    Z = (-a * X - b * Y - d) / c
 
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot_surface(X,Y,Z, alpha=0.7, rstride=50, cstride=50, color='b')
+    ax = fig.add_subplot(111, projection="3d")
+    ax.plot_surface(X, Y, Z, alpha=0.7, rstride=50, cstride=50, color="b")
 
-    ax.set_title('Plot of Plane')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
+    ax.set_title("Plot of Plane")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("z")
 
     return ax
 
@@ -44,10 +45,14 @@ Inputs:
 Default values are the point (10,-10,5) and the normal vector (-.5, 1, .2)
 """
 
-def demo(point = [10,-10,5], normVect = [-.5, 1, .2]):
-    ax = plotPlane(point, normVect, [point[0]-10,point[0]+10], [point[1]-10,point[1]+10])
-    ax.scatter(point[0], point[1], point[2], color='g')
+
+def demo(point=[10, -10, 5], normVect=[-0.5, 1, 0.2]):
+    ax = plotPlane(
+        point, normVect, [point[0] - 10, point[0] + 10], [point[1] - 10, point[1] + 10]
+    )
+    ax.scatter(point[0], point[1], point[2], color="g")
     plt.show()
+
 
 if __name__ == "__main__":
     demo()

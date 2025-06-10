@@ -2,23 +2,16 @@
 name = "skbtools"
 version = "0.1.0"
 authors = [
-    { name = "Unknown", email = "" }
+    { name = "Stefan Kildal-Brandt", email = "sk8609@princeton.edu" }
 ]
 requires-python = ">=3.8"
 dependencies = [
     "numpy",
     "matplotlib",
-    "xarray",
-    "gsw",
     "scipy",
-    "ecco_v4_py",
-    "cartopy",
-    "basemap",
     "pandas",
-    "numba",
+    "numba>=0.57",
     "pymap3d",
-    "geopy",
-    "certifi",
 ]
 
 [project.optional-dependencies]
@@ -39,7 +32,5 @@ build-backend = "hatchling.build"
 packages = ["GeigerMethod"]
 include = ["*.py"]
 
-[tool.ruff]
-line-length = 88
-target-version = "py38"
+[tool.ruff.lint]
 select = ["E", "F", "B"]

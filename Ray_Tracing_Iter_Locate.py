@@ -2,9 +2,11 @@ import numpy as np
 from numba import njit
 import numpy.typing as npt
 
+
 @njit
-def ray_tracing(iga: float, z_a: float, z_b: float,
-                depth: npt.NDArray, cz: npt.NDArray) -> tuple:
+def ray_tracing(
+    iga: float, z_a: float, z_b: float, depth: npt.NDArray, cz: npt.NDArray
+) -> tuple:
     """Optimized Ray Tracing Algorithm using vectorized operations.
     Inputs:
     iga: Initial grazing angle in degrees
@@ -42,7 +44,7 @@ def ray_tracing(iga: float, z_a: float, z_b: float,
 
     # Vectorized calculations for distance and time
     dx = dz * np.tan(thetas)
-    ds = np.sqrt(dx ** 2 + dz ** 2)
+    ds = np.sqrt(dx**2 + dz**2)
     dt = ds / cz_slice[:-1]
 
     # Sum up the results
@@ -53,8 +55,9 @@ def ray_tracing(iga: float, z_a: float, z_b: float,
 
 
 @njit
-def ray_trace_locate(z_a: float, z_b: float, target_x: float,
-                     depth: npt.NDArray, cz: npt.NDArray) -> float:
+def ray_trace_locate(
+    z_a: float, z_b: float, target_x: float, depth: npt.NDArray, cz: npt.NDArray
+) -> float:
     """Binary search implementation for finding the correct angle.
     Inputs:
     z_a: Source depth in meters
@@ -94,14 +97,15 @@ def ray_trace_locate(z_a: float, z_b: float, target_x: float,
 
 if __name__ == "__main__":
     from time import time
-    depth = np.ascontiguousarray(np.genfromtxt('GPSData/depth_cast2_smoothed.txt'))
-    cz = np.ascontiguousarray(np.genfromtxt('GPSData/cz_cast2_smoothed.txt'))
+
+    depth = np.ascontiguousarray(np.genfromtxt("GPSData/depth_cast2_smoothed.txt"))
+    cz = np.ascontiguousarray(np.genfromtxt("GPSData/cz_cast2_smoothed.txt"))
 
     start_time = time()
     for i in range(1):
         alpha = ray_trace_locate(100, 5000, 20000, depth, cz)
     end_time = time()
-    print(f"Execution time: {(end_time - start_time)/1:.2f} seconds")
+    print(f"Execution time: {(end_time - start_time) / 1:.2f} seconds")
 
     if not np.isnan(alpha):
         x, z, time = ray_tracing(alpha, 100, 5000, depth, cz)

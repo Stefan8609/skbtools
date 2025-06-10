@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-os.environ['NUMBA_DISABLE_JIT'] = '1'
+os.environ["NUMBA_DISABLE_JIT"] = "1"
 from Ray_Tracing_Iter_Locate import ray_tracing, ray_trace_locate
 
 

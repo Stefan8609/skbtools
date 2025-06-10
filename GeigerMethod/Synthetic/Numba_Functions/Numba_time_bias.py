@@ -1,11 +1,5 @@
 import numpy as np
 from numba import njit
-import matplotlib.pyplot as plt
-import scipy.io as sio
-import random
-from scipy.stats import norm
-from Numba_Geiger import generateRealistic, findTransponder
-from matplotlib.patches import Ellipse
 from ECEF_Geodetic import ECEF_Geodetic
 
 
@@ -14,17 +8,18 @@ Need an short algorithm to estimate the derivative of the ESV in x,y, and z
     According to the algorithm listed by bud (short and simple numerical method)
     Remove timing bias term from bud's algorithm (or investigate how it works as sub-integer offset)
     Implement Bud's algorithm for finding ESV bias
-    
+
 This algorithm finds a fixed bias (that is a constant in time and depth)
 
  - Stop the program from diverging
- 
+
  Next Steps:
   - Implement this alongside alignment (How can the sound bias term be used to improve alignment precision??)
   - Implement the combination with simulated annealing for transducer offset
-  
+
 Tau vs P plot for the rays in the ocean
 """
+
 
 @njit
 def find_esv(beta, dz, dz_array, angle_array, esv_matrix):
@@ -50,23 +45,32 @@ def find_esv(beta, dz, dz_array, angle_array, esv_matrix):
 
     return closest_esv
 
+
 @njit
-def calculateTimesRayTracing_Bias(guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix):
+def calculateTimesRayTracing_Bias(
+    guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
+):
     """
     Ray Tracing calculation of times using ESV
         Capable of handling an ESV bias input term
         (whether a constant or an array with same length as transponder_coordinates)
     """
-    hori_dist = np.sqrt((transponder_coordinates[:, 0] - guess[0])**2 + (transponder_coordinates[:, 1] - guess[1])**2)
-    abs_dist = np.sqrt(np.sum((transponder_coordinates - guess)**2, axis=1))
+    hori_dist = np.sqrt(
+        (transponder_coordinates[:, 0] - guess[0]) ** 2
+        + (transponder_coordinates[:, 1] - guess[1]) ** 2
+    )
+    abs_dist = np.sqrt(np.sum((transponder_coordinates - guess) ** 2, axis=1))
     beta = np.arccos(hori_dist / abs_dist) * 180 / np.pi
     dz = np.abs(guess[2] - transponder_coordinates[:, 2])
     esv = find_esv(beta, dz, dz_array, angle_array, esv_matrix) + esv_bias
     times = abs_dist / esv
     return times, esv
 
+
 @njit
-def calculateTimesRayTracing_Bias_Real(guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix):
+def calculateTimesRayTracing_Bias_Real(
+    guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
+):
     abs_dist = np.sqrt(np.sum((transponder_coordinates - guess) ** 2, axis=1))
     depth_arr = ECEF_Geodetic(transponder_coordinates)[2]
 
@@ -75,8 +79,9 @@ def calculateTimesRayTracing_Bias_Real(guess, transponder_coordinates, esv_bias,
     dz = depth_arr - depth
     beta = np.arcsin(dz / abs_dist) * 180 / np.pi
     esv = find_esv(beta, dz, dz_array, angle_array, esv_matrix) + esv_bias
-    times = abs_dist/esv
+    times = abs_dist / esv
     return times, esv
+
 
 @njit(cache=True)
 def compute_Jacobian_biased(guess, transponder_coordinates, times, esv, esv_bias):
@@ -86,29 +91,56 @@ def compute_Jacobian_biased(guess, transponder_coordinates, times, esv, esv_bias
 
     J = np.zeros((len(transponder_coordinates), 5))
 
-    #Compute different partial derivatives
-    J[:, 0] = -diffs[:, 0] / (times[:] * (esv[:] + esv_bias)**2)
-    J[:, 1] = -diffs[:, 1] / (times[:] * (esv[:] + esv_bias)**2)
-    J[:, 2] = -diffs[:, 2] / (times[:] * (esv[:] + esv_bias)**2)
+    # Compute different partial derivatives
+    J[:, 0] = -diffs[:, 0] / (times[:] * (esv[:] + esv_bias) ** 2)
+    J[:, 1] = -diffs[:, 1] / (times[:] * (esv[:] + esv_bias) ** 2)
+    J[:, 2] = -diffs[:, 2] / (times[:] * (esv[:] + esv_bias) ** 2)
     J[:, 3] = -1.0
     J[:, 4] = -times[:] / (esv[:] + esv_bias)
 
     return J
 
+
 @njit
-def numba_bias_geiger(guess, CDog, transponder_coordinates_Actual, transponder_coordinates_Found,
-                      esv_bias_input, time_bias_input, dz_array, angle_array, esv_matrix,
-                      dz_array_gen = np.array([]), angle_array_gen = np.array([]), esv_matrix_gen = np.array([]),  time_noise=0):
+def numba_bias_geiger(
+    guess,
+    CDog,
+    transponder_coordinates_Actual,
+    transponder_coordinates_Found,
+    esv_bias_input,
+    time_bias_input,
+    dz_array,
+    angle_array,
+    esv_matrix,
+    dz_array_gen=np.array([]),
+    angle_array_gen=np.array([]),
+    esv_matrix_gen=np.array([]),
+    time_noise=0,
+):
     """Geiger method with estimation of ESV bias term"""
     epsilon = 10**-5
 
-    #Calculate and apply noise for known times. Also apply time bias term
+    # Calculate and apply noise for known times. Also apply time bias term
     if dz_array_gen.size > 0:
-        times_known, esv = calculateTimesRayTracing_Bias(CDog, transponder_coordinates_Actual, esv_bias_input, dz_array_gen, angle_array_gen, esv_matrix_gen)
+        times_known, esv = calculateTimesRayTracing_Bias(
+            CDog,
+            transponder_coordinates_Actual,
+            esv_bias_input,
+            dz_array_gen,
+            angle_array_gen,
+            esv_matrix_gen,
+        )
     else:
-        times_known, esv = calculateTimesRayTracing_Bias(CDog, transponder_coordinates_Actual, esv_bias_input, dz_array, angle_array, esv_matrix)
-    times_known+=np.random.normal(0, time_noise, len(transponder_coordinates_Actual))
-    times_known+=time_bias_input
+        times_known, esv = calculateTimesRayTracing_Bias(
+            CDog,
+            transponder_coordinates_Actual,
+            esv_bias_input,
+            dz_array,
+            angle_array,
+            esv_matrix,
+        )
+    times_known += np.random.normal(0, time_noise, len(transponder_coordinates_Actual))
+    times_known += time_bias_input
 
     time_bias = 0.0
     esv_bias = 0.0
@@ -118,9 +150,23 @@ def numba_bias_geiger(guess, CDog, transponder_coordinates_Actual, transponder_c
     delta = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
 
     while np.linalg.norm(delta) > epsilon and k < 100:
-        times_guess, esv = calculateTimesRayTracing_Bias(guess, transponder_coordinates_Found, esv_bias, dz_array, angle_array, esv_matrix)
-        J = compute_Jacobian_biased(guess, transponder_coordinates_Found, times_guess, esv, esv_bias)
-        delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ ((times_guess - time_bias)-times_known)
+        times_guess, esv = calculateTimesRayTracing_Bias(
+            guess,
+            transponder_coordinates_Found,
+            esv_bias,
+            dz_array,
+            angle_array,
+            esv_matrix,
+        )
+        J = compute_Jacobian_biased(
+            guess, transponder_coordinates_Found, times_guess, esv, esv_bias
+        )
+        delta = (
+            -1
+            * np.linalg.inv(J.T @ J)
+            @ J.T
+            @ ((times_guess - time_bias) - times_known)
+        )
         estimate = estimate + delta
         guess = estimate[:3]
         time_bias = estimate[3]
@@ -128,7 +174,7 @@ def numba_bias_geiger(guess, CDog, transponder_coordinates_Actual, transponder_c
         k += 1
     return estimate, times_known
 
-if __name__ == "__main__":
-    print('Deprecated')
-    """Function was deprecated so it was removed"""
 
+if __name__ == "__main__":
+    print("Deprecated")
+    """Function was deprecated so it was removed"""

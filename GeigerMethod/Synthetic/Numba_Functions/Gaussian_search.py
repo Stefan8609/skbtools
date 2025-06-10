@@ -10,15 +10,20 @@ Add in some variations to the timing offset too (will require 4x more computatio
     Make it so the offsets can vary amongst eachother (for each term).
 """
 
+
 def gaussian_search_individual(
     dog_idx,
     num_points,
-    output_file='gaussian_individual_output.txt',
+    output_file="gaussian_individual_output.txt",
     initial_lever_base=np.array([-12.4659, 9.6021, -13.2993]),
-    initial_gps_grid = np.array([[0.0, 0.0, 0.0],
-                                 [-2.39341409, -4.22350344, 0.02941493],
-                                 [-12.09568416, -0.94568462, 0.0043972],
-                                 [-8.68674054, 5.16918806, -0.02499322]]),
+    initial_gps_grid=np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [-2.39341409, -4.22350344, 0.02941493],
+            [-12.09568416, -0.94568462, 0.0043972],
+            [-8.68674054, 5.16918806, -0.02499322],
+        ]
+    ),
     sigma_lever=np.array([0.5, 0.5, 2.0]),
     sigma_gps_grid=np.array([0.5, 0.5, 0.1]),
     downsample=50,
@@ -30,48 +35,54 @@ def gaussian_search_individual(
     np.set_printoptions(suppress=True)
 
     # Load the external ESV data
-    esv_table   = sio.loadmat('../../../GPSData/global_table_esv.mat')
-    dz_array    = esv_table['distance'].flatten()
-    angle_array = esv_table['angle'].flatten()
-    esv_matrix  = esv_table['matrice']
+    esv_table = sio.loadmat("../../../GPSData/global_table_esv.mat")
+    dz_array = esv_table["distance"].flatten()
+    angle_array = esv_table["angle"].flatten()
+    esv_matrix = esv_table["matrice"]
 
     # Load the external GPS data
-    data           = np.load('../../../GPSData/Processed_GPS_Receivers_DOG_1.npz')
-    GPS_Coordinates= data['GPS_Coordinates'][::downsample]
-    GPS_data       = data['GPS_data'][::downsample]
-    CDOG_guess     = data['CDOG_guess']
+    data = np.load("../../../GPSData/Processed_GPS_Receivers_DOG_1.npz")
+    GPS_Coordinates = data["GPS_Coordinates"][::downsample]
+    GPS_data = data["GPS_data"][::downsample]
+    CDOG_guess = data["CDOG_guess"]
 
     # Load the DOG data for each DOG (skipping i==2 as before)
     CDOG_all_data = []
     for i in range(1, 5):
         if i == 2:
             continue
-        CDOG_mat = sio.loadmat(f'../../../GPSData/DOG{i}-camp.mat')['tags'].astype(float)
+        CDOG_mat = sio.loadmat(f"../../../GPSData/DOG{i}-camp.mat")["tags"].astype(
+            float
+        )
         CDOG_mat[:, 1] /= 1e9
         CDOG_all_data.append(CDOG_mat)
 
     # Initialize the best-known augments and offsets
-    CDOG_augments = np.array([[-398.16,    371.90,    773.02],
-                              [ 825.182985, -111.05670221, -734.10011698],
-                              [ 236.428385, -1307.98390221, -2189.21991698]])
+    CDOG_augments = np.array(
+        [
+            [-398.16, 371.90, 773.02],
+            [825.182985, -111.05670221, -734.10011698],
+            [236.428385, -1307.98390221, -2189.21991698],
+        ]
+    )
     offsets = np.array([1866.0, 3175.0, 1939.0])
-    esv_bias  = 0.0
+    esv_bias = 0.0
     time_bias = 0.0
 
     # Open and write header
-    with open(output_file, 'w') as file:
+    with open(output_file, "w") as file:
         file.write("Lever, GPS_Grid, Offset, RMSE_individual\n")
 
         for i in range(num_points):
             # perturb lever and GPS grid
-            lever_guess      = initial_lever_base + np.random.normal(0, sigma_lever, 3)
-            gps1_grid_guess  = initial_gps_grid   + np.random.normal(0, sigma_gps_grid, (4, 3))
+            lever_guess = initial_lever_base + np.random.normal(0, sigma_lever, 3)
+            gps1_grid_guess = initial_gps_grid + np.random.normal(
+                0, sigma_gps_grid, (4, 3)
+            )
 
             # compute transponder coordinates
             transponder_coordinates = findTransponder(
-                GPS_Coordinates,
-                gps1_grid_guess,
-                lever_guess
+                GPS_Coordinates, gps1_grid_guess, lever_guess
             )
 
             # for this DOG, find best offset and RMSE
@@ -85,14 +96,17 @@ def gaussian_search_individual(
 
                 try:
                     _, CDOG_full, GPS_full, _, _ = final_bias_geiger(
-                        inversion_guess, CDOG_data,
+                        inversion_guess,
+                        CDOG_data,
                         GPS_data,
                         transponder_coordinates,
                         offset,
-                        esv_bias, time_bias,
-                        dz_array, angle_array,
+                        esv_bias,
+                        time_bias,
+                        dz_array,
+                        angle_array,
                         esv_matrix,
-                        real_data=True
+                        real_data=True,
                     )
                     RMSE = np.sqrt(np.mean((CDOG_full - GPS_full) ** 2))
                 except Exception:
@@ -100,7 +114,7 @@ def gaussian_search_individual(
 
                 if RMSE < best_offset_rmse:
                     best_offset_rmse = RMSE
-                    best_offset      = offset
+                    best_offset = offset
 
             # Write results
             file.write(
@@ -112,19 +126,25 @@ def gaussian_search_individual(
             file.flush()
 
             print(
-                f"Sample {i+1}/{num_points} – DOG{dog_idx+1}: "
-                f"Lever={lever_guess}, Offset={best_offset}, RMSE={best_offset_rmse*100*1515:.6f}"
+                f"Sample {i + 1}/{num_points} – DOG{dog_idx + 1}: "
+                f"Lever={lever_guess}, Offset={best_offset}, RMSE={best_offset_rmse * 100 * 1515:.6f}"
             )
 
-    print(f"Done: RMSE samples for DOG{dog_idx+1} saved to {output_file}")
+    print(f"Done: RMSE samples for DOG{dog_idx + 1} saved to {output_file}")
 
-def gaussian_search(num_points,
-    output_file='gaussian_output.txt',
+
+def gaussian_search(
+    num_points,
+    output_file="gaussian_output.txt",
     initial_lever_base=np.array([-12.4659, 9.6021, -13.2993]),
-    initial_gps_grid = np.array([[0.0, 0.0, 0.0],
-                           [-2.39341409, -4.22350344, 0.02941493],
-                           [-12.09568416, -0.94568462, 0.0043972],
-                           [-8.68674054, 5.16918806, -0.02499322]]),
+    initial_gps_grid=np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [-2.39341409, -4.22350344, 0.02941493],
+            [-12.09568416, -0.94568462, 0.0043972],
+            [-8.68674054, 5.16918806, -0.02499322],
+        ]
+    ),
     sigma_lever=np.array([0.5, 0.5, 2.0]),
     sigma_gps_grid=np.array([0.5, 0.5, 0.1]),
     downsample=50,
@@ -151,30 +171,36 @@ def gaussian_search(num_points,
     np.set_printoptions(suppress=True)
 
     # Load the external ESV data
-    esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
-    dz_array = esv_table['distance'].flatten()
-    angle_array = esv_table['angle'].flatten()
-    esv_matrix = esv_table['matrice']
+    esv_table = sio.loadmat("../../../GPSData/global_table_esv.mat")
+    dz_array = esv_table["distance"].flatten()
+    angle_array = esv_table["angle"].flatten()
+    esv_matrix = esv_table["matrice"]
 
     # Load the external GPS data
-    data = np.load(f'../../../GPSData/Processed_GPS_Receivers_DOG_1.npz')
-    GPS_Coordinates = data['GPS_Coordinates']
-    GPS_data = data['GPS_data']
-    CDOG_guess = data['CDOG_guess']
+    data = np.load("../../../GPSData/Processed_GPS_Receivers_DOG_1.npz")
+    GPS_Coordinates = data["GPS_Coordinates"]
+    GPS_data = data["GPS_data"]
+    CDOG_guess = data["CDOG_guess"]
 
     # Load the DOG data for each DOG
     CDOG_all_data = []
     for i in range(1, 5):
         if i == 2:
             continue
-        CDOG_data = sio.loadmat(f'../../../GPSData/DOG{i}-camp.mat')['tags'].astype(float)
+        CDOG_data = sio.loadmat(f"../../../GPSData/DOG{i}-camp.mat")["tags"].astype(
+            float
+        )
         CDOG_data[:, 1] = CDOG_data[:, 1] / 1e9
         CDOG_all_data.append(CDOG_data)
 
     # Initialize the best known augments and offsets
-    CDOG_augments = np.array([[-398.16, 371.90, 773.02],
-                              [825.182985, -111.05670221, -734.10011698],
-                              [236.428385, -1307.98390221, -2189.21991698]])
+    CDOG_augments = np.array(
+        [
+            [-398.16, 371.90, 773.02],
+            [825.182985, -111.05670221, -734.10011698],
+            [236.428385, -1307.98390221, -2189.21991698],
+        ]
+    )
     offsets = np.array([1866.0, 3175.0, 1939.0])
 
     esv_bias = 0.0
@@ -185,16 +211,20 @@ def gaussian_search(num_points,
     GPS_data = GPS_data[::downsample]
 
     # Initialize the output file
-    with open(output_file, 'w') as file:
+    with open(output_file, "w") as file:
         # Write a header line
         file.write("Grid Search Results\n")
         file.write("[Lever], [[GPS Grid Estimate]], Offset Adjustment, RMSE combined\n")
         for i in range(num_points):
             lever_guess = initial_lever_base + np.random.normal(0, sigma_lever, 3)
-            gps1_grid_guess = initial_gps_grid + np.random.normal(0, sigma_gps_grid, (4, 3))
+            gps1_grid_guess = initial_gps_grid + np.random.normal(
+                0, sigma_gps_grid, (4, 3)
+            )
 
             # Calculate the transponder coordinates
-            transponder_coordinates = findTransponder(GPS_Coordinates, gps1_grid_guess, lever_guess)
+            transponder_coordinates = findTransponder(
+                GPS_Coordinates, gps1_grid_guess, lever_guess
+            )
 
             # Run final_geiger for each DOG
             best_offset_rmse = np.full(3, np.inf)
@@ -206,17 +236,25 @@ def gaussian_search(num_points,
                     inversion_guess = CDOG_guess + CDOG_augments[j]
                     CDOG_data = CDOG_all_data[j]
                     try:
-                        inversion_result, CDOG_full, GPS_full, _, _ = final_bias_geiger(inversion_guess, CDOG_data,
-                                                                                        GPS_data,
-                                                                                        transponder_coordinates,
-                                                                                        offset,
-                                                                                        esv_bias, time_bias, dz_array,
-                                                                                        angle_array, esv_matrix,
-                                                                                        real_data=True)
+                        inversion_result, CDOG_full, GPS_full, _, _ = final_bias_geiger(
+                            inversion_guess,
+                            CDOG_data,
+                            GPS_data,
+                            transponder_coordinates,
+                            offset,
+                            esv_bias,
+                            time_bias,
+                            dz_array,
+                            angle_array,
+                            esv_matrix,
+                            real_data=True,
+                        )
                         RMSE = np.sqrt(np.mean((CDOG_full - GPS_full) ** 2))
                     except Exception as error:
                         print(error)
-                        print(f"Error in final_bias_geiger, skipping this iteration {j}")
+                        print(
+                            f"Error in final_bias_geiger, skipping this iteration {j}"
+                        )
                         RMSE_sum = np.inf
                         break
                     if RMSE < best_offset_rmse[j]:
@@ -237,9 +275,10 @@ def gaussian_search(num_points,
                     f"Lever: {np.array2string(lever_guess, precision=4, separator=', ', max_line_width=1000)},\n"
                     f"gps1_grid_guess: {str(gps1_grid_guess.round(4)).replace('\n', ' ')},\n"
                     f"Best Offsets: {np.array2string(best_offset, precision=4, separator=', ', max_line_width=1000)[1:-1]}\n"
-                    f"Best RMSE: {np.array2string(best_offset_rmse*100*1515, precision=4, separator=', ', max_line_width=1000)[1:-1]},\n"
+                    f"Best RMSE: {np.array2string(best_offset_rmse * 100 * 1515, precision=4, separator=', ', max_line_width=1000)[1:-1]},\n"
                     f"RMSE: {RMSE_sum * 100 * 1515:.4f}\n"
                 )
+
 
 if __name__ == "__main__":
     # gaussian_search(
@@ -259,13 +298,17 @@ if __name__ == "__main__":
         gaussian_search_individual(
             dog_idx=1,
             num_points=200,
-            output_file='gaussian_output.txt',
+            output_file="gaussian_output.txt",
             initial_lever_base=np.array([-12.4659, 9.6021, -13.2993]),
-            initial_gps_grid=np.array([[0.0, 0.0, 0.0],
-                                       [-2.3934, -4.2235, 0.0294],
-                                       [-12.0957, -0.9457, 0.0044],
-                                       [-8.6867, 5.1692, -0.0250]]),
+            initial_gps_grid=np.array(
+                [
+                    [0.0, 0.0, 0.0],
+                    [-2.3934, -4.2235, 0.0294],
+                    [-12.0957, -0.9457, 0.0044],
+                    [-8.6867, 5.1692, -0.0250],
+                ]
+            ),
             sigma_lever=np.array([0.5, 0.5, 0.5]),
             sigma_gps_grid=np.array([0.1, 0.1, 0.1]),
-            downsample=50
+            downsample=50,
         )

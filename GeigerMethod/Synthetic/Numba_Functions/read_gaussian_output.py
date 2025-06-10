@@ -3,18 +3,18 @@ import re
 
 
 def parse_grid_search_results(filename):
-    min_rmse = float('inf')
+    min_rmse = float("inf")
     min_lever = None
     min_grid = None
 
-    with open(filename, 'r') as file:
+    with open(filename, "r") as file:
         # Skip header lines
         next(file)  # Skip "Grid Search Results"
         next(file)  # Skip column headers
 
         for line in file:
             # Extract the three components using regex
-            match = re.match(r'\[(.*?)\], \[(.*?)\], (\d+\.\d+)', line)
+            match = re.match(r"\[(.*?)\], \[(.*?)\], (\d+\.\d+)", line)
             if match:
                 lever_str, grid_str, rmse_str = match.groups()
 
@@ -22,11 +22,11 @@ def parse_grid_search_results(filename):
                 rmse = float(rmse_str)
 
                 # Parse lever arm
-                lever = np.array([float(x.strip()) for x in lever_str.split(',')])
+                lever = np.array([float(x.strip()) for x in lever_str.split(",")])
 
                 # Parse GPS grid (trickier)
                 # Clean up the grid string and convert to a numpy array
-                grid_str = grid_str.replace('[', '').replace(']', '')
+                grid_str = grid_str.replace("[", "").replace("]", "")
                 grid_values = [float(x.strip()) for x in grid_str.split() if x.strip()]
                 grid = np.array(grid_values).reshape(4, 3)
 
@@ -38,8 +38,9 @@ def parse_grid_search_results(filename):
 
     return min_lever, min_grid, min_rmse
 
+
 if __name__ == "__main__":
-    filename = 'gaussian_output.txt'  # Change this to your actual filename
+    filename = "gaussian_output.txt"  # Change this to your actual filename
 
     min_lever, min_grid, min_rmse = parse_grid_search_results(filename)
 

@@ -1,7 +1,6 @@
 import numpy as np
 import scipy.io as sio
 from pymap3d import geodetic2ecef
-import matplotlib.pyplot as plt
 
 """
 Fix filtering padding so it doesn't pinch at ends
@@ -11,7 +10,7 @@ Add to filtering plot how much data was thrown out, what the window length is, t
 
 Make 3 inversions - one for each dogs with the realistic inversion parameters...
     make the plots and show them...
-    
+
 NEED TO FIX OFFSET INT SEARCH (FIND BUG)
 UNENFORCE OFFSET AND DOWNSAMPLING in MODULAR SYNTHETIC
 """
@@ -28,27 +27,35 @@ UNENFORCE OFFSET AND DOWNSAMPLING in MODULAR SYNTHETIC
 #         r"\usepackage{textcomp}",
 # })
 
-def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num = 3, save=False):
+
+def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=3, save=False):
     print("Initializing Bermuda Data")
+
     # Load GNSS Data during the time of expedition (25 through 40.9) hours
     def load_and_process_data(path, GNSS_start, GNSS_end):
         data = sio.loadmat(path)
-        days = data['days'].flatten() - 59015
-        times = data['times'].flatten()
+        days = data["days"].flatten() - 59015
+        times = data["times"].flatten()
         datetimes = (days * 24 * 3600) + times
-        condition_GNSS = (datetimes / 3600 >= GNSS_start) & (datetimes / 3600 <= GNSS_end)
+        condition_GNSS = (datetimes / 3600 >= GNSS_start) & (
+            datetimes / 3600 <= GNSS_end
+        )
 
         datetimes = datetimes[condition_GNSS]
         time_GNSS = datetimes
-        x, y, z, elev = data['x'].flatten()[condition_GNSS], data['y'].flatten()[condition_GNSS], data['z'].flatten()[
-            condition_GNSS], data['elev'].flatten()[condition_GNSS]
+        x, y, z, elev = (
+            data["x"].flatten()[condition_GNSS],
+            data["y"].flatten()[condition_GNSS],
+            data["z"].flatten()[condition_GNSS],
+            data["elev"].flatten()[condition_GNSS],
+        )
         return time_GNSS, x, y, z, elev
 
     paths = [
-        '../../../GPSData/Unit1-camp_bis.mat',
-        '../../../GPSData/Unit2-camp_bis.mat',
-        '../../../GPSData/Unit3-camp_bis.mat',
-        '../../../GPSData/Unit4-camp_bis.mat'
+        "../../../GPSData/Unit1-camp_bis.mat",
+        "../../../GPSData/Unit2-camp_bis.mat",
+        "../../../GPSData/Unit3-camp_bis.mat",
+        "../../../GPSData/Unit4-camp_bis.mat",
     ]
 
     all_data = [load_and_process_data(path, GNSS_start, GNSS_end) for path in paths]
@@ -60,7 +67,15 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num = 3, save=Fal
     filtered_data = []
     for datetimes, x, y, z, elev in all_data:
         mask = np.isin(datetimes, common_datetimes)
-        filtered_data.append([np.array(datetimes)[mask], np.array(x)[mask], np.array(y)[mask], np.array(z)[mask], np.array(elev)[mask]])
+        filtered_data.append(
+            [
+                np.array(datetimes)[mask],
+                np.array(x)[mask],
+                np.array(y)[mask],
+                np.array(z)[mask],
+                np.array(elev)[mask],
+            ]
+        )
     filtered_data = np.array(filtered_data)
 
     # Filtering Functions
@@ -91,10 +106,18 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num = 3, save=Fal
     window = 5000
     elev_upper = -35
     elev_lower = -38
-    mask = np.array([(filtered_data[0, 4, :] < elev_upper) & (filtered_data[0, 4, :] > elev_lower) &
-                     (filtered_data[1, 4, :] < elev_upper) & (filtered_data[1, 4, :] > elev_lower) &
-                     (filtered_data[2, 4, :] < elev_upper) & (filtered_data[2, 4, :] > elev_lower) &
-                     (filtered_data[3, 4, :] < elev_upper) & (filtered_data[3, 4, :] > elev_lower)])
+    mask = np.array(
+        [
+            (filtered_data[0, 4, :] < elev_upper)
+            & (filtered_data[0, 4, :] > elev_lower)
+            & (filtered_data[1, 4, :] < elev_upper)
+            & (filtered_data[1, 4, :] > elev_lower)
+            & (filtered_data[2, 4, :] < elev_upper)
+            & (filtered_data[2, 4, :] > elev_lower)
+            & (filtered_data[3, 4, :] < elev_upper)
+            & (filtered_data[3, 4, :] > elev_lower)
+        ]
+    )
     indices = np.where(mask[0])[0]
     filtered_data = filtered_data[:, :, indices]
 
@@ -103,7 +126,9 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num = 3, save=Fal
         elev = filtered_data[i, 4, :]
         median_elev = running_median(elev, window)
         abs_dev = running_abs_dev(elev, window)
-        mask &= (elev >= median_elev - 2 * abs_dev) & (elev <= median_elev + 2 * abs_dev)
+        mask &= (elev >= median_elev - 2 * abs_dev) & (
+            elev <= median_elev + 2 * abs_dev
+        )
     indices = np.where(mask)[0]
     filtered_data = filtered_data[:, :, indices]
 
@@ -118,10 +143,12 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num = 3, save=Fal
 
     # Initialize time-tagged data for GPS and CDOG
     GPS_data = filtered_data[0, 0, :]
-    CDOG_data = sio.loadmat(f'../../../GPSData/DOG{DOG_num}-camp.mat')['tags'].astype(float)
+    CDOG_data = sio.loadmat(f"../../../GPSData/DOG{DOG_num}-camp.mat")["tags"].astype(
+        float
+    )
 
-    lat = sio.loadmat('../../../GPSData/Unit1-camp_bis.mat')['lat'].flatten()
-    lon = sio.loadmat('../../../GPSData/Unit1-camp_bis.mat')['lon'].flatten()
+    lat = sio.loadmat("../../../GPSData/Unit1-camp_bis.mat")["lat"].flatten()
+    lon = sio.loadmat("../../../GPSData/Unit1-camp_bis.mat")["lon"].flatten()
 
     """If elevation plotting is desired"""
     # alpha = {0: 'A', 1: 'B', 2: 'C', 3: 'D'}
@@ -164,12 +191,24 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num = 3, save=Fal
     #     plt.show()
     """end plotting"""
 
-    CDOG_guess_geodetic = np.array([np.mean(lat), np.mean(lon), np.mean(elev)]) + np.array([0, 0, -5200])
-    CDOG_guess_base = np.array(geodetic2ecef(CDOG_guess_geodetic[0], CDOG_guess_geodetic[1], CDOG_guess_geodetic[2]))
+    CDOG_guess_geodetic = np.array(
+        [np.mean(lat), np.mean(lon), np.mean(elev)]
+    ) + np.array([0, 0, -5200])
+    CDOG_guess_base = np.array(
+        geodetic2ecef(
+            CDOG_guess_geodetic[0], CDOG_guess_geodetic[1], CDOG_guess_geodetic[2]
+        )
+    )
     CDOG_guess = CDOG_guess_base + CDOG_augment
 
-    gps1_to_others = np.array([[0.0, 0.0, 0.0], [-2.4054, -4.20905, 0.060621], [-12.1105, -0.956145, 0.00877],
-                               [-8.70446831, 5.165195, 0.04880436]])
+    gps1_to_others = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [-2.4054, -4.20905, 0.060621],
+            [-12.1105, -0.956145, 0.00877],
+            [-8.70446831, 5.165195, 0.04880436],
+        ]
+    )
 
     # Scale GPS Clock slightly and scale CDOG clock to nanoseconds
     clock_adjustment = {1: 70000.0, 2: 70000.0, 3: 70000.0, 4: 70000.0}
@@ -180,15 +219,24 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num = 3, save=Fal
 
     # Save the data if required
     if save:
-        np.savez(f'../../../GPSData/Processed_GPS_Receivers_DOG_{DOG_num}', GPS_Coordinates=GPS_Coordinates, GPS_data=GPS_data,
-                 CDOG_data=CDOG_data, CDOG_guess=CDOG_guess, gps1_to_others=gps1_to_others)
+        np.savez(
+            f"../../../GPSData/Processed_GPS_Receivers_DOG_{DOG_num}",
+            GPS_Coordinates=GPS_Coordinates,
+            GPS_data=GPS_data,
+            CDOG_data=CDOG_data,
+            CDOG_guess=CDOG_guess,
+            gps1_to_others=gps1_to_others,
+        )
 
     print("Bermuda Data Initialized")
     return GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others
+
 
 if __name__ == "__main__":
     GNSS_start = 25
     # GNSS_end = 40.9
     GNSS_end = 39
-    CDOG_augment = (np.array([0, 0, 0]))
-    GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=1, save=True)
+    CDOG_augment = np.array([0, 0, 0])
+    GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = (
+        initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=1, save=True)
+    )

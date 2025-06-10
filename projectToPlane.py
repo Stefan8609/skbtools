@@ -11,6 +11,7 @@ Output:
 
 import numpy as np
 
+
 def projectToPlane(pointVect, normVect):
     dot = np.dot(pointVect, normVect)
     normVect_Length = np.linalg.norm(normVect)

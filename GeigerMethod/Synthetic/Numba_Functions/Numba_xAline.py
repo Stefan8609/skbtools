@@ -9,8 +9,18 @@ Need subint to work fast
 Can get sub-int integration with 2-pointer approach with both being optimized by numba
 """
 
+
 @njit(cache=True)
-def two_pointer_index(offset, threshhold, CDOG_data, GPS_data, GPS_travel_times, transponder_coordinates, esv, exact=False):
+def two_pointer_index(
+    offset,
+    threshhold,
+    CDOG_data,
+    GPS_data,
+    GPS_travel_times,
+    transponder_coordinates,
+    esv,
+    exact=False,
+):
     """Optimized module to index closest data points against each other given correct offset."""
     CDOG_times = CDOG_data[:, 0] + CDOG_data[:, 1] - offset
     GPS_times = GPS_data + GPS_travel_times
@@ -59,15 +69,26 @@ def two_pointer_index(offset, threshhold, CDOG_data, GPS_data, GPS_travel_times,
             if abs(diff) >= 0.9:
                 CDOG_full[i] += np.round(diff)
 
-    return CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full
+    return (
+        CDOG_clock,
+        CDOG_full,
+        GPS_clock,
+        GPS_full,
+        transponder_coordinates_full,
+        esv_full,
+    )
 
 
 @njit(cache=True)
-def find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv):
+def find_subint_offset(
+    offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
+):
     """Optimized function to find the best sub-integer offset."""
     # Initialize values for loop
     l, u = offset - 0.5, offset + 0.5
-    intervals = np.array([0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001])
+    intervals = np.array(
+        [0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001]
+    )
     best_offset = offset
     best_RMSE = np.inf
 
@@ -77,7 +98,16 @@ def find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_co
             lag = np.round(lag, 8)  # Adjust precision based on your interval
 
             # Index data using lag
-            CDOG_full, GPS_clock, GPS_full = two_pointer_index(lag, 0.5, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv, True)[1:4]
+            CDOG_full, GPS_clock, GPS_full = two_pointer_index(
+                lag,
+                0.5,
+                CDOG_data,
+                GPS_data,
+                travel_times,
+                transponder_coordinates,
+                esv,
+                True,
+            )[1:4]
 
             # Adjust CDOG_full to match GPS_full
             for i in range(len(CDOG_full)):
@@ -97,7 +127,17 @@ def find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_co
         l, u = best_offset - interval, best_offset + interval
     return best_offset
 
-def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, esv, start=0, best=0, best_RMSE=np.inf):
+
+def find_int_offset(
+    CDOG_data,
+    GPS_data,
+    travel_times,
+    transponder_coordinates,
+    esv,
+    start=0,
+    best=0,
+    best_RMSE=np.inf,
+):
     """Function to find the best integer offset between two time series."""
     # Set initial parameters
     offset = start
@@ -107,12 +147,19 @@ def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, 
 
     while lag != 0 and k < 10:
         # Get indexed data according to offset
-        CDOG_full, GPS_clock, GPS_full = two_pointer_index(offset, 0.5, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)[1:4]
+        CDOG_full, GPS_clock, GPS_full = two_pointer_index(
+            offset, 0.5, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
+        )[1:4]
         # Get fractional parts of the data
         GPS_fp = np.modf(GPS_full)[0]
         CDOG_fp = np.modf(CDOG_full)[0]
         # Find the cross-correlation between the fractional parts of the time series
-        correlation = signal.correlate(CDOG_fp - np.mean(CDOG_fp), GPS_fp - np.mean(GPS_fp), mode="full", method="fft")
+        correlation = signal.correlate(
+            CDOG_fp - np.mean(CDOG_fp),
+            GPS_fp - np.mean(GPS_fp),
+            mode="full",
+            method="fft",
+        )
         lags = signal.correlation_lags(len(CDOG_fp), len(GPS_fp), mode="full")
         lag = lags[np.argmax(abs(correlation))]
         # Adjust the offset by the optimal lag
@@ -130,15 +177,25 @@ def find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, 
         return best
 
     # If RMSE is too high, rerun the algorithm to see if it can be improved
-    CDOG_full, GPS_clock, GPS_full = two_pointer_index(offset, .5, CDOG_data, GPS_data, travel_times,
-                                                       transponder_coordinates, esv)[1:4]
+    CDOG_full, GPS_clock, GPS_full = two_pointer_index(
+        offset, 0.5, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
+    )[1:4]
     RMSE = np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100
     if RMSE < best_RMSE:
         best = offset
         best_RMSE = RMSE
     if RMSE > 10000:
         start += 500
-        return find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, esv, start, best, best_RMSE)
+        return find_int_offset(
+            CDOG_data,
+            GPS_data,
+            travel_times,
+            transponder_coordinates,
+            esv,
+            start,
+            best,
+            best_RMSE,
+        )
     return best
 
 
@@ -149,33 +206,63 @@ if __name__ == "__main__":
 
     n = 10000
     true_offset = np.random.rand() * 10000
-    position_noise = 2 * 10 ** -2
-    time_noise = 2 * 10 ** -5
+    position_noise = 2 * 10**-2
+    time_noise = 2 * 10**-5
 
-    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = generateUnalignedRealistic(n, time_noise,
-                                                                                                          true_offset)
+    CDOG_data, CDOG, GPS_Coordinates, GPS_data, true_transponder_coordinates = (
+        generateUnalignedRealistic(n, time_noise, true_offset)
+    )
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 
-    gps1_to_others = np.array([[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64)
+    gps1_to_others = np.array(
+        [[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64
+    )
     gps1_to_transponder = np.array([-10, 3, -15], dtype=np.float64)
-    transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
+    transponder_coordinates = findTransponder(
+        GPS_Coordinates, gps1_to_others, gps1_to_transponder
+    )
     travel_times, esv = calculateTimesRayTracing(CDOG, transponder_coordinates)
 
     """BEGIN TESTING"""
-    CDOG_full_test, GPS_clock_test, GPS_full_test = two_pointer_index(np.round(true_offset), 0.9, CDOG_data, GPS_data, travel_times,
-                                                       transponder_coordinates, esv)[1:4]
+    CDOG_full_test, GPS_clock_test, GPS_full_test = two_pointer_index(
+        np.round(true_offset),
+        0.9,
+        CDOG_data,
+        GPS_data,
+        travel_times,
+        transponder_coordinates,
+        esv,
+    )[1:4]
     RMSE = np.sqrt(np.nanmean((CDOG_full_test - GPS_full_test) ** 2)) * 1515 * 100
     print("Closest INT RMSE:", RMSE, "cm", np.round(true_offset))
     """END TESTING"""
     # Find the derived offset
-    offset = find_int_offset(CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)
+    offset = find_int_offset(
+        CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
+    )
     print("int offset:", offset)
-    offset = find_subint_offset(offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv)
+    offset = find_subint_offset(
+        offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
+    )
 
     print("True offset:", true_offset, "\nDerived offset:", offset)
 
-    [CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full] = (
-        two_pointer_index(offset, 0.9, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv, True)
+    [
+        CDOG_clock,
+        CDOG_full,
+        GPS_clock,
+        GPS_full,
+        transponder_coordinates_full,
+        esv_full,
+    ] = two_pointer_index(
+        offset,
+        0.9,
+        CDOG_data,
+        GPS_data,
+        travel_times,
+        transponder_coordinates,
+        esv,
+        True,
     )
 
     abs_diff = np.abs(CDOG_full - GPS_full)
@@ -186,15 +273,24 @@ if __name__ == "__main__":
 
     print("RMSE:", RMSE, "cm")
 
-    fig, axes = plt.subplots(2,1 , figsize=(8,8))
+    fig, axes = plt.subplots(2, 1, figsize=(8, 8))
 
-    axes[0].scatter(CDOG_clock, CDOG_full, s=10, marker="x",
-                       label="Unwrapped/Adjusted Synthetic Dog Travel Time")
-    axes[0].scatter(GPS_clock, GPS_full, s=1, marker="o", label="Calculated GPS Travel Times")
+    axes[0].scatter(
+        CDOG_clock,
+        CDOG_full,
+        s=10,
+        marker="x",
+        label="Unwrapped/Adjusted Synthetic Dog Travel Time",
+    )
+    axes[0].scatter(
+        GPS_clock, GPS_full, s=1, marker="o", label="Calculated GPS Travel Times"
+    )
     axes[0].legend(loc="upper right")
     axes[0].set_xlabel("Arrivals in Absolute Time (s)")
     axes[0].set_ylabel("Travel Times (s)")
-    axes[0].set_title(f"Synthetic travel times with offset: {offset} and RMSE: {np.round(RMSE, 3)}")
+    axes[0].set_title(
+        f"Synthetic travel times with offset: {offset} and RMSE: {np.round(RMSE, 3)}"
+    )
 
     diff_data = CDOG_full - GPS_full
     axes[1].scatter(CDOG_clock, diff_data, s=1)
@@ -202,7 +298,7 @@ if __name__ == "__main__":
     axes[1].set_ylabel("Difference between calculated and unwrapped times (s)")
     axes[1].set_title("Residual Plot")
 
-    print('Mean of residuals: ', np.mean(diff_data) * 1000, "ms")
+    print("Mean of residuals: ", np.mean(diff_data) * 1000, "ms")
     print("Diff between found and true offset: ", (offset - true_offset) * 1000, "ms")
 
     plt.show()

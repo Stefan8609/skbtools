@@ -11,7 +11,14 @@ Output:
 
 import numpy as np
 
+
 def rotationMatrix(angle, vect):
-    A_Matrix = np.array([[0, -vect[2], vect[1]],[vect[2], 0, -vect[0]], [-vect[1], vect[0], 0]])
-    Rotation_Matrix = np.identity(3)+A_Matrix*np.sin(angle)+np.matmul(A_Matrix,A_Matrix)*(1-np.cos(angle))
+    A_Matrix = np.array(
+        [[0, -vect[2], vect[1]], [vect[2], 0, -vect[0]], [-vect[1], vect[0], 0]]
+    )
+    Rotation_Matrix = (
+        np.identity(3)
+        + A_Matrix * np.sin(angle)
+        + np.matmul(A_Matrix, A_Matrix) * (1 - np.cos(angle))
+    )
     return Rotation_Matrix

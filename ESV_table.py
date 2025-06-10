@@ -2,8 +2,8 @@ import numpy as np
 from numba import njit
 from Ray_Tracing_Iter_Locate import ray_trace_locate, ray_tracing
 
-depth = np.ascontiguousarray(np.genfromtxt('GPSData/depth_cast2_smoothed.txt')[::20])
-cz = np.ascontiguousarray(np.genfromtxt('GPSData/cz_cast2_smoothed.txt')[::20])
+depth = np.ascontiguousarray(np.genfromtxt("GPSData/depth_cast2_smoothed.txt")[::20])
+cz = np.ascontiguousarray(np.genfromtxt("GPSData/cz_cast2_smoothed.txt")[::20])
 
 """Build for depths -125 to [-5150 to -5275]
 
@@ -37,6 +37,7 @@ plt.plot(cz, depth, label="CTD Bermuda SVP")
 # plt.legend()
 # plt.show()
 
+
 @njit()
 def construct_esv(depth, cz):
     """Builds a table of effective sound velocities for a range of beta angles and dz values for given SVP
@@ -58,7 +59,6 @@ def construct_esv(depth, cz):
     beta_rad = beta_array * np.pi / 180
     tan_beta = np.tan(beta_rad)
 
-
     for i in range(len(z_array)):
         print("Progress: ", i, "/", len(z_array))
         z = z_array[i]
@@ -68,10 +68,11 @@ def construct_esv(depth, cz):
             x = x_values[j]
             alpha = ray_trace_locate(z_a, z, x, depth, cz)
             x_found, z_dist, time = ray_tracing(alpha, z_a, z, depth, cz)
-            dist = np.sqrt(x ** 2 + (z - z_a) ** 2)
+            dist = np.sqrt(x**2 + (z - z_a) ** 2)
             esv_matrix[i, j] = dist / time
 
     return beta_array, z_array, esv_matrix
+
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
@@ -87,8 +88,8 @@ if __name__ == "__main__":
     print(f"Execution time: {end_time - start_time:.2f} seconds")
 
     plt.figure(figsize=(10, 6))
-    plt.contourf(beta_array, z_array, esv_matrix, levels=10, cmap='viridis')
-    plt.colorbar(label='ESV (m/s)')
+    plt.contourf(beta_array, z_array, esv_matrix, levels=10, cmap="viridis")
+    plt.colorbar(label="ESV (m/s)")
     plt.gca().invert_yaxis()
     plt.xlabel("Elevation Angle (degrees)")
     plt.ylabel("Depth (m)")
@@ -97,9 +98,5 @@ if __name__ == "__main__":
 
     dz_array = z_array - z_a
 
-    data_to_save = {
-        "angle": beta_array,
-        "distance": dz_array,
-        "matrice": esv_matrix
-    }
-    sio.savemat('GPSData/global_table_esv_normal.mat', data_to_save)
+    data_to_save = {"angle": beta_array, "distance": dz_array, "matrice": esv_matrix}
+    sio.savemat("GPSData/global_table_esv_normal.mat", data_to_save)

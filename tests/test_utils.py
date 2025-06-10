@@ -6,7 +6,7 @@ from fitPlane import fitPlane
 
 def test_rotation_matrix_z_axis():
     vec = np.array([1.0, 0.0, 0.0])
-    R = rotationMatrix(np.pi/2, np.array([0.0, 0.0, 1.0]))
+    R = rotationMatrix(np.pi / 2, np.array([0.0, 0.0, 1.0]))
     rotated = R @ vec
     assert np.allclose(rotated, np.array([0.0, 1.0, 0.0]), atol=1e-6)
 

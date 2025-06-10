@@ -5,44 +5,46 @@ import re
 def parse_grid_search_line(line):
     """Parse a line from the grid search output file."""
     # Skip header lines
-    if line.startswith('Grid Search Results') or line.startswith('[Lever]'):
+    if line.startswith("Grid Search Results") or line.startswith("[Lever]"):
         return None
 
     # Extract lever array
-    lever_match = re.search(r'\[(.*?)\]', line)
+    lever_match = re.search(r"\[(.*?)\]", line)
     if not lever_match:
         return None
     lever_str = lever_match.group(1)
-    lever = np.array([float(x) for x in lever_str.split(',')])
+    lever = np.array([float(x) for x in lever_str.split(",")])
 
     # Extract CDOG estimate
-    cdog_match = re.search(r'\[(.*?)\]', line[lever_match.end():])
+    cdog_match = re.search(r"\[(.*?)\]", line[lever_match.end() :])
     if not cdog_match:
         return None
     cdog_str = cdog_match.group(1)
-    cdog = np.array([float(x) for x in cdog_str.split(',')])
+    cdog = np.array([float(x) for x in cdog_str.split(",")])
 
     # Extract other values: offset, time_bias, esv_bias, rmse
-    remaining = line[lever_match.end() + cdog_match.end():]
-    values = [float(x) for x in re.findall(r'[-+]?\d*\.\d+(?:[eE][-+]?\d+)?', remaining)]
+    remaining = line[lever_match.end() + cdog_match.end() :]
+    values = [
+        float(x) for x in re.findall(r"[-+]?\d*\.\d+(?:[eE][-+]?\d+)?", remaining)
+    ]
 
     if len(values) < 4:
         return None
 
     return {
-        'lever': lever,
-        'cdog': cdog,
-        'offset': values[0],
-        'time_bias': values[1],
-        'esv_bias': values[2],
-        'rmse': values[3]
+        "lever": lever,
+        "cdog": cdog,
+        "offset": values[0],
+        "time_bias": values[1],
+        "esv_bias": values[2],
+        "rmse": values[3],
     }
 
 
 def read_grid_search_file(filename):
     """Read a grid search output file and return the data as a list of dictionaries."""
     results = []
-    with open(filename, 'r') as f:
+    with open(filename, "r") as f:
         for line in f:
             parsed = parse_grid_search_line(line)
             if parsed:
@@ -53,10 +55,12 @@ def read_grid_search_file(filename):
 def find_best_iterations(results, z_threshold=-7):
     """Find the best iteration with lowest RMSE where lever z-index > threshold."""
     # Filter iterations where z-index of lever is greater than threshold
-    filtered_results = [result for result in results if result['lever'][2] < z_threshold]
+    filtered_results = [
+        result for result in results if result["lever"][2] < z_threshold
+    ]
     # Find the iteration with the lowest RMSE among the filtered iterations
     if filtered_results:
-        min_rmse_iter = min(filtered_results, key=lambda x: x['rmse'])
+        min_rmse_iter = min(filtered_results, key=lambda x: x["rmse"])
         return min_rmse_iter
     else:
         return None
@@ -67,7 +71,7 @@ if __name__ == "__main__":
     CDOG_guess_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
     z_threshold = 0
 
-    file_path = f"output.txt"  # Replace with your actual file path
+    file_path = "output.txt"  # Replace with your actual file path
     results = read_grid_search_file(file_path)
 
     # Find the best iteration with lever z-index greater than -7
