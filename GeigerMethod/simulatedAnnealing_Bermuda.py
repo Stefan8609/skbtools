@@ -18,6 +18,31 @@ def simulatedAnnealing_Bermuda(
     old_lever,
     timestamps,
 ):
+    """Estimate the GPS-to-transponder lever arm via simulated annealing.
+
+    Parameters
+    ----------
+    n : int
+        Number of annealing iterations.
+    GPS_Coordinates : ndarray
+        Array of GPS positions for each time step.
+    initial_guess : array-like, shape (3,)
+        Initial guess of the platform location.
+    times_known : ndarray
+        Measured travel times.
+    gps1_to_others : ndarray
+        Initial offsets between GPS receivers.
+    old_lever : ndarray
+        Starting lever-arm guess.
+    timestamps : ndarray
+        Time values associated with ``times_known``.
+
+    Returns
+    -------
+    numpy.ndarray
+        Estimated lever arm between GPS1 and the transponder.
+    """
+
     # Get initial values
     transponder_coordinates_Found = findTransponder(
         GPS_Coordinates, gps1_to_others, old_lever

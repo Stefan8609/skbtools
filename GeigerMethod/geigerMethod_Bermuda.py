@@ -15,6 +15,22 @@ esv_matrix = esv_table["matrice"]
 
 
 def findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder):
+    """Determine transponder positions from relative GPS motion.
+
+    Parameters
+    ----------
+    GPS_Coordinates : array-like, shape (N, 4, 3)
+        Recorded GPS positions at each time step.
+    gps1_to_others : array-like, shape (4, 3)
+        Initial relative offsets between GPS units.
+    gps1_to_transponder : array-like, shape (3,)
+        Lever arm from GPS1 to the transponder.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of transponder coordinates for each time step.
+    """
     # Given initial information relative GPS locations and transponder and GPS Coords at each timestep
     xs, ys, zs = gps1_to_others.T
     initial_transponder = gps1_to_transponder
@@ -30,6 +46,22 @@ def findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder):
 
 
 def calculateTimes(guess, transponder_coordinates, sound_speed):
+    """Compute straight-line travel times from a guess to transponders.
+
+    Parameters
+    ----------
+    guess : array-like, shape (3,)
+        Current estimate of the receiver position.
+    transponder_coordinates : array-like, shape (N, 3)
+        Positions of the transponders.
+    sound_speed : float
+        Speed of sound in metres per second.
+
+    Returns
+    -------
+    numpy.ndarray
+        One-way travel times for each transponder.
+    """
     times = np.zeros(len(transponder_coordinates))
     for i in range(len(transponder_coordinates)):
         distance = np.linalg.norm(transponder_coordinates[i] - guess)
@@ -38,6 +70,20 @@ def calculateTimes(guess, transponder_coordinates, sound_speed):
 
 
 def haversine_distance(lat1, lon1, lat2, lon2):  # Modified from Thalia
+    """Great‑circle distance between two latitude/longitude points.
+
+    Parameters
+    ----------
+    lat1, lon1 : float
+        Coordinates of the first point in degrees.
+    lat2, lon2 : float
+        Coordinates of the second point in degrees.
+
+    Returns
+    -------
+    float
+        Distance in metres along the Earth's surface.
+    """
     lat1, lon1, lat2, lon2 = (
         lat1 * np.pi / 180,
         lon1 * np.pi / 180,
@@ -58,6 +104,20 @@ def haversine_distance(lat1, lon1, lat2, lon2):  # Modified from Thalia
 
 
 def find_esv(beta, dz):
+    """Lookup the effective sound velocity for given geometry.
+
+    Parameters
+    ----------
+    beta : array-like of float
+        Grazing angles in degrees.
+    dz : array-like of float or float
+        Vertical separations between source and receiver in metres.
+
+    Returns
+    -------
+    numpy.ndarray
+        Effective sound velocity values.
+    """
     idx_closest_dz = np.searchsorted(dz_array, dz, side="left")
     idx_closest_dz = np.clip(idx_closest_dz, 0, len(dz_array) - 1)
     idx_closest_beta = np.searchsorted(angle_array, beta, side="left")
@@ -67,6 +127,21 @@ def find_esv(beta, dz):
 
 
 def calculateTimesRayTracing(guess, transponder_coordinates):
+    """Compute travel times using an effective sound speed model.
+
+    Parameters
+    ----------
+    guess : array-like, shape (3,)
+        Current estimate of receiver coordinates.
+    transponder_coordinates : array-like, shape (N, 3)
+        Locations of the transponders.
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        ``(times, esv)`` containing the travel time and the effective sound
+        velocity for each transponder.
+    """
     hori_dist = np.sqrt(
         (transponder_coordinates[:, 0] - guess[0]) ** 2
         + (transponder_coordinates[:, 1] - guess[1]) ** 2
@@ -80,6 +155,25 @@ def calculateTimesRayTracing(guess, transponder_coordinates):
 
 
 def computeJacobianRayTracing(guess, transponder_coordinates, times, sound_speed):
+    """Jacobian matrix of travel times with respect to the receiver position.
+
+    Parameters
+    ----------
+    guess : array-like, shape (3,)
+        Receiver position used for linearization.
+    transponder_coordinates : array-like, shape (N, 3)
+        Locations of the transponders.
+    times : array-like of float
+        Travel times predicted for ``guess``.
+    sound_speed : array-like of float
+        Effective sound speeds for each travel time.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``N x 3`` Jacobian matrix.
+    """
+
     # Computes the Jacobian, parameters are xyz coordinates and functions are the travel times
     diffs = transponder_coordinates - guess
     jacobian = -diffs / (times[:, np.newaxis] * (sound_speed[:, np.newaxis] ** 2))
@@ -88,6 +182,23 @@ def computeJacobianRayTracing(guess, transponder_coordinates, times, sound_speed
 
 # Goal is to minimize sum of the difference of times squared
 def geigersMethod(guess, times_known, transponder_coordinates_Found):
+    """Iteratively invert for the receiver position using Geiger's method.
+
+    Parameters
+    ----------
+    guess : array-like, shape (3,)
+        Initial estimate of the receiver coordinates.
+    times_known : array-like of float
+        Observed travel times.
+    transponder_coordinates_Found : array-like, shape (N, 3)
+        Positions of the transponders.
+
+    Returns
+    -------
+    numpy.ndarray
+        Optimised receiver coordinates.
+    """
+
     # Use Geiger's method to find the guess of CDOG location which minimizes sum of travel times squared
     # Define threshold
     epsilon = 10**-5

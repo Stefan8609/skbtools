@@ -40,14 +40,20 @@ plt.plot(cz, depth, label="CTD Bermuda SVP")
 
 @njit()
 def construct_esv(depth, cz):
-    """Builds a table of effective sound velocities for a range of beta angles and dz values for given SVP
-    Inputs
-    depth: Depth array (m)
-    cz: Sound speed array (m/s) corresponding to depth array
-    Outputs
-    beta_array: Array of beta angles (degrees)
-    z_array: Array of dz values (m)
-    esv_matrix: Matrix of effective sound velocities (m/s) corresponding to beta angles and dz values
+    """Generate an effective sound velocity lookup table.
+
+    Parameters
+    ----------
+    depth : array-like of float
+        Depth values in metres.
+    cz : array-like of float
+        Sound speed values aligned with ``depth``.
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        ``(beta_array, z_array, esv_matrix)`` where ``beta_array`` is in degrees
+        and ``esv_matrix`` contains the effective sound velocities.
     """
     beta_array = np.linspace(20, 90, 400)
     z_array = np.linspace(5150, 5250, 101)

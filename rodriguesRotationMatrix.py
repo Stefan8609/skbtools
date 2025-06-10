@@ -13,6 +13,21 @@ import numpy as np
 
 
 def rotationMatrix(angle, vect):
+    """Return the Rodrigues rotation matrix for a rotation about ``vect``.
+
+    Parameters
+    ----------
+    angle : float
+        Rotation angle in radians.
+    vect : array-like of float, shape (3,)
+        Unit vector describing the axis of rotation.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``3 x 3`` rotation matrix corresponding to the rotation.
+    """
+
     A_Matrix = np.array(
         [[0, -vect[2], vect[1]], [vect[2], 0, -vect[0]], [-vect[1], vect[0], 0]]
     )

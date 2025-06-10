@@ -1,17 +1,22 @@
-"""
-Function that neatly prints a table given headers and data
-Written by Stefan Kildal-Brandt (with assistance from chat GPT)
-
-Inputs:
-    headers (list len=n): The headers of each column in the table
-    data (list len=n of tuples): The data that you want to be printed (each value
-        in the tuple corresponds to the header of the same index)
-Outputs:
-    table (string): The string that contains the table that we desire to print
-"""
+"""Simple utilities for rendering data tables in the console."""
 
 
 def printTable(headers, data):
+    """Print a formatted table.
+
+    Parameters
+    ----------
+    headers : list of str
+        Labels for each table column.
+    data : sequence of tuple
+        Rows to display. Each tuple must match the header length.
+
+    Returns
+    -------
+    str
+        The rendered table as a string.
+    """
+
     try:
         headers[len(data[0]) - 1]
     except:
@@ -54,6 +59,7 @@ import string
 
 
 def demo():
+    """Example usage generating random values."""
     headers = ["x", "y", "z", "string"]
     data = []
     for i in range(10):

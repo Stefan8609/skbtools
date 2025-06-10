@@ -7,6 +7,19 @@ from scipy.stats import norm
 def geigerTimePlot(
     initial_guess, times_known, transponder_coordinates_Found, timestamps
 ):
+    """Plot residuals between calculated and observed travel times.
+
+    Parameters
+    ----------
+    initial_guess : array-like, shape (3,)
+        Starting coordinates for the inversion.
+    times_known : array-like of float
+        Measured travel times.
+    transponder_coordinates_Found : array-like, shape (N, 3)
+        Transponder locations.
+    timestamps : array-like of float
+        Time values corresponding to ``times_known``.
+    """
     guess = geigersMethod(initial_guess, times_known, transponder_coordinates_Found)
     print(guess)
     times_calc = calculateTimesRayTracing(guess, transponder_coordinates_Found)[0]

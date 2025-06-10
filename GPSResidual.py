@@ -5,6 +5,20 @@ import matplotlib.pyplot as plt
 
 
 def load_and_process_data(path):
+    """Load MATLAB GPS data and return time series and coordinates.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path to the ``.mat`` file.
+
+    Returns
+    -------
+    tuple
+        Arrays of datetimes in hours and the corresponding ``x``, ``y`` and ``z``
+        coordinates.
+    """
+
     data = sio.loadmat(path)
     days = data["days"].flatten() - 59015
     times = data["times"].flatten()

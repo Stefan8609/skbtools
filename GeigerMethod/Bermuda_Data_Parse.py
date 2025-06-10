@@ -6,6 +6,19 @@ from GPS_Lever_Arms import GPS_Lever_arms
 
 # Load GNSS Data during the time of expedition (25 through 40.9) hours
 def load_and_process_data(path):
+    """Load GNSS data for the Bermuda experiment period.
+
+    Parameters
+    ----------
+    path : str or Path
+        MATLAB ``.mat`` file containing receiver data.
+
+    Returns
+    -------
+    tuple
+        Time array in hours and the associated ``x``, ``y`` and ``z`` coordinates.
+    """
+
     data = sio.loadmat(path)
     days = data["days"].flatten() - 59015
     times = data["times"].flatten()

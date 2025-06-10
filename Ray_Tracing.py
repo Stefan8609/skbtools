@@ -7,7 +7,23 @@ cz = np.ascontiguousarray(np.genfromtxt("GPSData/cz_cast2_smoothed.txt"))
 
 @njit
 def ray_tracing(iga, z_a, z_b, depth, cz):
-    """Ray Tracing Algorithm for a given initial grazing angle, source and receiver depths, and sound speed profile."""
+    """Trace a ray through a layered sound speed profile.
+
+    Parameters
+    ----------
+    iga : float
+        Initial grazing angle in degrees.
+    z_a, z_b : float
+        Source and receiver depths in metres.
+    depth, cz : ndarray
+        Depth grid and corresponding sound speed profile.
+
+    Returns
+    -------
+    tuple
+        ``(x, z, time, x_arr, z_arr)`` describing the horizontal range, final
+        depth, travel time and path coordinates.
+    """
     z_b_closest = np.abs(depth - z_b).argmin()
     z_a_closest = np.abs(depth - z_a).argmin()
     depth = depth[z_a_closest:z_b_closest]

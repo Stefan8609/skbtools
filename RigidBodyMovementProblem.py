@@ -6,6 +6,22 @@ import numpy as np
 
 
 def findRotationAndDisplacement(xyzs_init, xyzs_final):
+    """Estimate the rigid body rotation and translation between two point clouds.
+
+    Parameters
+    ----------
+    xyzs_init : array-like, shape (3, N)
+        Initial coordinates.
+    xyzs_final : array-like, shape (3, N)
+        Transformed coordinates.
+
+    Returns
+    -------
+    tuple
+        ``(R, d)`` where ``R`` is a ``3 x 3`` rotation matrix and ``d`` is the
+        translation vector.
+    """
+
     # Compute centroid of the initial and final point clouds
     centroid_init = np.mean(xyzs_init, axis=1, keepdims=True)
     centroid_final = np.mean(xyzs_final, axis=1, keepdims=True)
@@ -33,6 +49,7 @@ DEMO BELOW
 
 
 def demo():
+    """Demonstrate the rigid body estimation with random data."""
     xs = np.random.rand(4) * 10 - 5
     ys = np.random.rand(4) * 10 - 5
     zs = np.random.rand(4) * 2 - 1

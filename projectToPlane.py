@@ -13,6 +13,21 @@ import numpy as np
 
 
 def projectToPlane(pointVect, normVect):
+    """Project ``pointVect`` onto the plane defined by ``normVect``.
+
+    Parameters
+    ----------
+    pointVect : array-like of float, shape (3,)
+        Vector to be projected.
+    normVect : array-like of float, shape (3,)
+        Normal vector defining the plane.
+
+    Returns
+    -------
+    numpy.ndarray
+        Projected vector lying in the plane.
+    """
+
     dot = np.dot(pointVect, normVect)
     normVect_Length = np.linalg.norm(normVect)
     projection = pointVect - (dot * normVect / normVect_Length**2)
