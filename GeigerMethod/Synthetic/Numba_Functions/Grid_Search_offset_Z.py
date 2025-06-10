@@ -21,8 +21,8 @@ def grid_search_annealing(
     zh,
     num_points,
     output_file="output.txt",
-    CDOG_guess_augment=np.array([0.0, 0.0, 0.0]),
-    initial_lever_base=np.array([-16, 0.5, -15]),
+    CDOG_guess_augment=None,
+    initial_lever_base=None,
     downsample=50,
     sa_iterations=300,
     offset_range=4,
@@ -30,6 +30,10 @@ def grid_search_annealing(
     z_range=4,
     DOG_num=3,
 ):
+    if CDOG_guess_augment is None:
+        CDOG_guess_augment = np.array([0.0, 0.0, 0.0])
+    if initial_lever_base is None:
+        initial_lever_base = np.array([-16.0, 0.0, -15.0])
     """
     Performs a grid search over lever-arm values (x, y, z) and small offset adjustments,
     running a simulated annealing approach for each combination. Saves intermediate
@@ -137,7 +141,8 @@ def grid_search_annealing(
                 time_bias = inversion_result[3]
                 esv_bias = inversion_result[4]
 
-                """Search the z-range to find the lowest RMSE while evaluating the poorly resolved z-axis"""
+                """Search the z-range to find the lowest RMSE
+                while evaluating the poorly resolved z-axis"""
                 for z in np.linspace(-z_range, z_range, z_range * 2 + 1):
                     offset_perturbed = current_offset + off_adjust
                     best_lever_perturbed = best_lever + np.array([0, 0, z])
@@ -175,15 +180,24 @@ def grid_search_annealing(
 
                 # Write line to file
                 file.write(
-                    f"[{np.array2string(best_lever, precision=4, separator=', ')[1:-1]}], "
-                    f"[{np.array2string(inversion_guess, precision=4, separator=', ')[1:-1]}], "
-                    f"{current_offset + off_adjust:.4f}, {time_bias:.4e}, {esv_bias:.4f}, {RMSE * 100 * 1515:.4f}\n"
+                    f"[{
+                        np.array2string(best_lever, precision=4, separator=', ')[1:-1]
+                    }], "
+                    f"[{
+                        np.array2string(inversion_guess, precision=4, separator=', ')[
+                            1:-1
+                        ]
+                    }], "
+                    f"{current_offset + off_adjust:.4f}, "
+                    f"{time_bias:.4e}, {esv_bias:.4f}, {RMSE * 100 * 1515:.4f}\n"
                 )
                 file.flush()  # ensures immediate write
 
                 print(
                     f"Iteration {iteration_count}/{total_iterations}: "
-                    f"Lever: {best_lever}, Offset: {current_offset + off_adjust:.4f}, RMSE: {RMSE * 100 * 1515:.4f}"
+                    f"Lever: {best_lever}, "
+                    f"Offset: {current_offset + off_adjust:.4f}"
+                    f", RMSE: {RMSE * 100 * 1515:.4f}"
                 )
 
     print("Grid Search Completed. Results saved to", output_file)
@@ -198,8 +212,8 @@ def grid_search_discrete(
     zh,
     num_points,
     output_file="output.txt",
-    CDOG_guess_augment=np.array([0.0, 0.0, 0.0]),
-    initial_lever_base=np.array([-16.0, 0.0, -15.0]),
+    CDOG_guess_augment=None,
+    initial_lever_base=None,
     downsample=50,
     offset_range=4,
     current_offset=0,
@@ -236,16 +250,17 @@ def grid_search_discrete(
     DOG_num : int
         Number of the DOG that is analyzed
     """
+    if CDOG_guess_augment is None:
+        CDOG_guess_augment = np.array([0.0, 0.0, 0.0])
+    if initial_lever_base is None:
+        initial_lever_base = np.array([-16.0, 0.0, -15.0])
+
     # Load the external ESV data
     esv_table = sio.loadmat("../../../GPSData/global_table_esv_normal.mat")
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]
 
-    # # Load GNSS and CDOG data
-    # GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, GPS1_to_others = initialize_bermuda(
-    #     GNSS_start, GNSS_end, CDOG_guess_augment, DOG_num
-    # )
     data = np.load(f"../../../GPSData/Processed_GPS_Receivers_DOG_{DOG_num}.npz")
     GPS_Coordinates = data["GPS_Coordinates"]
     GPS_data = data["GPS_data"]
@@ -323,9 +338,11 @@ def grid_search_discrete(
                     inversion_guess = inversion_result[:3]
                     time_bias = inversion_result[3]
                     esv_bias = inversion_result[4]
-                except:
+                except Exception:
                     print(
-                        f"Error in final_bias_geiger, skipping this iteration. offset = {current_offset + off_adjust}"
+                        f"Error in final_bias_geiger, "
+                        f"skipping this iteration. offset = "
+                        f"{current_offset + off_adjust}"
                     )
                     continue
 
@@ -333,16 +350,26 @@ def grid_search_discrete(
                 RMSE = np.sqrt(np.nanmean(diff_data**2)) / 1000 * 1515 * 100
                 # Write line to file
                 file.write(
-                    f"[{np.array2string(lever_guess, precision=4, separator=', ')[1:-1]}], "
-                    f"[{np.array2string(inversion_guess, precision=4, separator=', ')[1:-1]}], "
-                    f"{current_offset + off_adjust:.4f}, {time_bias:.4e}, {esv_bias:.4f}, {RMSE:.4f}\n"
+                    f"[{
+                        np.array2string(lever_guess, precision=4, separator=', ')[1:-1]
+                    }], "
+                    f"[{
+                        np.array2string(inversion_guess, precision=4, separator=', ')[
+                            1:-1
+                        ]
+                    }], "
+                    f"{current_offset + off_adjust:.4f}, "
+                    f"{time_bias:.4e}, {esv_bias:.4f}, {RMSE:.4f}\n"
                 )
                 file.flush()  # ensures immediate write
 
                 print(
                     f"Iteration {iteration_count}/{total_iterations}: "
-                    f"Lever: {lever_guess}, Offset: {current_offset + off_adjust:.4f}, RMSE: {RMSE:.4f} \n"
-                    f"Inversion Guess: {np.round(inversion_guess - CDOG_guess_base, 5)}, time_bias: {time_bias:.4f}, esv_bias: {esv_bias:.4f} \n"
+                    f"Lever: {lever_guess}, Offset: {current_offset + off_adjust:.4f},"
+                    f" RMSE: {RMSE:.4f} \n"
+                    f"Inversion Guess: "
+                    f"{np.round(inversion_guess - CDOG_guess_base, 5)}, "
+                    f"time_bias: {time_bias:.4f}, esv_bias: {esv_bias:.4f} \n"
                 )
 
     print("Grid Search Completed. Results saved to", output_file)

@@ -2,19 +2,6 @@ import numpy as np
 import scipy.io as sio
 from pymap3d import geodetic2ecef
 
-"""
-Fix filtering padding so it doesn't pinch at ends
-
-Add to filtering plot how much data was thrown out, what the window length is, the overlap, etc...'
-    Clean up the plot (only show deviations in the one with all of the data)
-
-Make 3 inversions - one for each dogs with the realistic inversion parameters...
-    make the plots and show them...
-
-NEED TO FIX OFFSET INT SEARCH (FIND BUG)
-UNENFORCE OFFSET AND DOWNSAMPLING in MODULAR SYNTHETIC
-"""
-
 """Enable this for paper plots"""
 # plt.rcParams.update({
 #     "text.usetex":      True,
@@ -170,7 +157,8 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=3, save=False
     #         upper_band = median_elev + 2 * abs_dev
     #         lower_band = median_elev - 2 * abs_dev
     #         axs[row, col].plot(
-    #             GPS_data, median_elev, color="red", linewidth=2, label=r"Running Median"
+    #             GPS_data, median_elev, color="red",
+    #             linewidth=2, label=r"Running Median"
     #         )
     #         axs[row, col].plot(
     #             GPS_data, upper_band, color="orange", label=r"2 Absolute Deviations"

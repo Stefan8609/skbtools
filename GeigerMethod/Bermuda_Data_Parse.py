@@ -69,7 +69,6 @@ for i in range(len(filtered_data[0, 0])):
 
 # Initialize Dog Acoustic Data
 
-# offset:RMSE, 68116:222.186, 68126:165.453, 68136:219.04, 68130:184.884, 68128: 170.04, 68124: 168.05, 68125:167
 offset = 68126  # 66828#68126 This is approximately overlaying them now
 data_DOG = sio.loadmat("../GPSData/DOG1-camp.mat")["tags"].astype(float)
 acoustic_DOG = np.unwrap(data_DOG[:, 1] / 1e9 * 2 * np.pi) / (
@@ -144,47 +143,3 @@ simulatedAnnealing_Bermuda(
     initial_lever_guess,
     valid_timestamp,
 )
-
-# transponder_coordinates_found = findTransponder(GPS_Coordinates, gps1_to_others, [-7.56446, 7.54666, -3.661])
-# transponder_coordinates_found = findTransponder(GPS_Coordinates, gps1_to_others, initial_lever_guess)
-# geigerTimePlot([1979507.95, -5077545.81, 3312550.46], valid_acoustic_DOG, transponder_coordinates_found, valid_timestamp, sound_speed)
-
-
-# Test use this to gps1_to_others lever arm
-# from GPS_Lever_Arms import GPS_Lever_arms
-# GPS_Lever_arms(GPS_Coordinates)
-
-# Change findxyzt
-# check if time offset is good.
-
-# Try modifying lever arms between gps and see what happens
-
-# [ 1979507.8868552  -5077545.65205964  3312550.35393797]
-# [ 1979508.02136779 -5077545.99643553  3312550.57786073]
-
-# Does the curvature of the Earth mess up the transducer displacement??
-
-
-# Model is not adequately capturing the real scenario
-# First source of error is no ray tracing implemented.
-#
-# Look at residuals as a function of range -> Bias (Look in dissertation) Manuscripts 2
-# Third and Fourth manuscripts are not relevant right now
-# First and Second are relevant to seafloor geodesy
-
-# Add an offset into the synthetic to see how it affects things
-
-# I think their is still a major problem with matching the emission arrival with the point where emitted
-#   Need to take the (arrival time - travel time) to find the GPS coordinates to use for emission point
-#   This seems like a potentially difficult problem as travel time is a considerable unknown
-#   Maybe can estimate with the approximate esv from known GPS at time of arrival
-#       Idea: Take the travel time from the given location at arrival time and subtract from given time
-#           To find the time of emission (then can do further corrections by seeing how travel time changes)
-#           Kinda will descend towards the actual emission time
-
-# Use the 'elev' tag in the MATLAB file to get the z-distance when calculating sound speed.
-
-# Check periodicity of unwrap function and make sure that it is right
-
-# Get absolute distance (diff in xyzs) and the vertical diff (diff in elev), then find the
-#   Hori distance using Hi = sqrt(absDist^2 - vertDist^2)

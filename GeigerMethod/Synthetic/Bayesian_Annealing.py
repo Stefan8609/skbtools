@@ -1,13 +1,3 @@
-"""
-File to use Bayesian Analysis to find the Posterior distribution of the CDOG and Lever-arm estimate
-
-Prior is a uniform distribution between -10000 to 10000 in x,y and -4000 to -6000 in z.
-    Lever arm prior is -15 to -5 in x, 0 to 10 in y, and -10 to -20 in z
-Sampled likelihood found using simulated annealing and gauss-newton inversion
-
-Need to plot the 1,2,3 std of the posterior distribution.
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse

@@ -4,34 +4,37 @@ import scipy.io as sio
 from Numba_xAline_bias import final_bias_geiger
 from Numba_Geiger import findTransponder
 
-"""Gaussian Samples for gps1_to_others, and gps1_to_transponder
-
-Add in some variations to the timing offset too (will require 4x more computations for each added offset)
-    Make it so the offsets can vary amongst eachother (for each term).
-"""
-
 
 def gaussian_search_individual(
     dog_idx,
     num_points,
     output_file="gaussian_individual_output.txt",
-    initial_lever_base=np.array([-12.4659, 9.6021, -13.2993]),
-    initial_gps_grid=np.array(
-        [
-            [0.0, 0.0, 0.0],
-            [-2.39341409, -4.22350344, 0.02941493],
-            [-12.09568416, -0.94568462, 0.0043972],
-            [-8.68674054, 5.16918806, -0.02499322],
-        ]
-    ),
-    sigma_lever=np.array([0.5, 0.5, 2.0]),
-    sigma_gps_grid=np.array([0.5, 0.5, 0.1]),
+    initial_lever_base=None,
+    initial_gps_grid=None,
+    sigma_lever=None,
+    sigma_gps_grid=None,
     downsample=50,
 ):
     """
     Samples lever and GPS‐grid parameters in Gaussian fashion and computes
     the RMSE Gaussian for a single DOG (index 0–2).
     """
+    if initial_lever_base is None:
+        initial_lever_base = np.array([-12.4659, 9.6021, -13.2993])
+    if initial_gps_grid is None:
+        initial_gps_grid = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [-2.39341409, -4.22350344, 0.02941493],
+                [-12.09568416, -0.94568462, 0.0043972],
+                [-8.68674054, 5.16918806, -0.02499322],
+            ]
+        )
+    if sigma_lever is None:
+        sigma_lever = np.array([0.5, 0.5, 2.0])
+    if sigma_gps_grid is None:
+        sigma_gps_grid = np.array([0.5, 0.5, 0.1])
+
     np.set_printoptions(suppress=True)
 
     # Load the external ESV data
@@ -127,7 +130,8 @@ def gaussian_search_individual(
 
             print(
                 f"Sample {i + 1}/{num_points} – DOG{dog_idx + 1}: "
-                f"Lever={lever_guess}, Offset={best_offset}, RMSE={best_offset_rmse * 100 * 1515:.6f}"
+                f"Lever={lever_guess}, Offset={best_offset}, "
+                f"RMSE={best_offset_rmse * 100 * 1515:.6f}"
             )
 
     print(f"Done: RMSE samples for DOG{dog_idx + 1} saved to {output_file}")
@@ -136,17 +140,10 @@ def gaussian_search_individual(
 def gaussian_search(
     num_points,
     output_file="gaussian_output.txt",
-    initial_lever_base=np.array([-12.4659, 9.6021, -13.2993]),
-    initial_gps_grid=np.array(
-        [
-            [0.0, 0.0, 0.0],
-            [-2.39341409, -4.22350344, 0.02941493],
-            [-12.09568416, -0.94568462, 0.0043972],
-            [-8.68674054, 5.16918806, -0.02499322],
-        ]
-    ),
-    sigma_lever=np.array([0.5, 0.5, 2.0]),
-    sigma_gps_grid=np.array([0.5, 0.5, 0.1]),
+    initial_lever_base=None,
+    initial_gps_grid=None,
+    sigma_lever=None,
+    sigma_gps_grid=None,
     downsample=50,
 ):
     """
@@ -168,6 +165,22 @@ def gaussian_search(
     downsample : int
         Downsample factor for the data.
     """
+    if initial_lever_base is None:
+        initial_lever_base = np.array([-12.4659, 9.6021, -13.2993])
+    if initial_gps_grid is None:
+        initial_gps_grid = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [-2.39341409, -4.22350344, 0.02941493],
+                [-12.09568416, -0.94568462, 0.0043972],
+                [-8.68674054, 5.16918806, -0.02499322],
+            ]
+        )
+    if sigma_lever is None:
+        sigma_lever = np.array([0.5, 0.5, 2.0])
+    if sigma_gps_grid is None:
+        sigma_gps_grid = np.array([0.5, 0.5, 0.1])
+
     np.set_printoptions(suppress=True)
 
     # Load the external ESV data

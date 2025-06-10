@@ -1,7 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from advancedGeigerMethod import *
+from advancedGeigerMethod import (
+    calculateTimesRayTracing,
+    geigersMethod,
+    findTransponder,
+    generateRealistic,
+)
 from simulatedAnnealing_Synthetic import simulatedAnnealing
+import random
 
 
 def point_dependence(time_noise, position_noise, lever_noise=5):

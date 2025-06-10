@@ -118,7 +118,6 @@ def modular_synthetic(
             if generate_type == 0
             else np.array([-12.48862757, 0.22622633, -15.89601934])
         )
-        # lever = np.array([-10.0, 3.0, -15.0]) if generate_type == 0 else np.array([-12.48862757, 2.22622633, -14.89601934])
 
         # Add some randomness to the lever
         lever += np.random.normal(0, 3, 3)
@@ -214,7 +213,8 @@ def modular_synthetic(
         )
         initial_lever = np.array([-12.478, 0.667, -14.292])
 
-        """True levers: Realistic Generate [-10, 3, -15], Bermuda Generate: [-12.48862757, 0.22622633, -15.89601934]"""
+        """True levers: Realistic Generate [-10, 3, -15],
+        Bermuda Generate: [-12.48862757, 0.22622633, -15.89601934]"""
 
         lever, offset, inversion_result = simulated_annealing_bias(
             300,
@@ -304,4 +304,3 @@ if __name__ == "__main__":
         inversion_type=1,
         DOG_num=3,
     )
-    # modular_synthetic(2 * 10**-5, 2 * 10**-2, esv_bias, time_bias, "global_table_esv","global_table_esv", generate_type = 1, inversion_type=1)

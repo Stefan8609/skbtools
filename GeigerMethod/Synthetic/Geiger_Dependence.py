@@ -258,7 +258,7 @@ def random_dependence(points, n):
                 transponder_coordinates_Found,
                 time_noise[i],
             )[:2]
-        except:
+        except Exception:
             print(initial_guess, time_noise[i], position_noise[i])
             std_observed[i] = 0
             continue

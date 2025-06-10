@@ -52,7 +52,7 @@ Default values are the point (10,-10,5) and the normal vector (-.5, 1, .2)
 """
 
 
-def demo(point=[10, -10, 5], normVect=[-0.5, 1, 0.2]):
+def demo(point=None, normVect=None):
     """Visualize a plane using example input values.
 
     Parameters
@@ -62,6 +62,10 @@ def demo(point=[10, -10, 5], normVect=[-0.5, 1, 0.2]):
     normVect : array-like of float, optional
         Plane normal vector, by default ``[-0.5, 1, 0.2]``.
     """
+    if point is None:
+        point = [10, -10, 5]
+    if normVect is None:
+        normVect = [-0.5, 1, 0.2]
     ax = plotPlane(
         point, normVect, [point[0] - 10, point[0] + 10], [point[1] - 10, point[1] + 10]
     )

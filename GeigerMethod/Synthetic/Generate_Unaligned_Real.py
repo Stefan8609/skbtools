@@ -63,9 +63,6 @@ def load_and_process_data(path):
     days = data["days"].flatten() - 59015
     times = data["times"].flatten()
     datetimes = (days * 24 * 3600) + times
-    # condition_GNSS = (datetimes/3600 >= 25) & (datetimes / 3600 <= 40.9)
-    # time_GNSS = datetimes[condition_GNSS]/3600
-    # x,y,z = data['x'].flatten()[condition_GNSS], data['y'].flatten()[condition_GNSS], data['z'].flatten()[condition_GNSS]
 
     time_GNSS = datetimes / 3600
     x, y, z = data["x"].flatten(), data["y"].flatten(), data["z"].flatten()
@@ -182,7 +179,7 @@ removed_CDOG = np.array([])
 removed_travel_times = np.array([])
 temp_travel_times = np.copy(travel_times)
 # Remove random indices from CDOG data
-for i in range(10):
+for _ in range(10):
     length_to_remove = np.random.randint(200, 1000)
     start_index = np.random.randint(
         0, len(CDOG_mat) - length_to_remove + 1
@@ -246,8 +243,3 @@ sio.savemat(
     "../../GPSData/Synthetic_GPS_noise_subint_new.mat",
     {"time": GPS_time, "xyz": GPS_Coordinates},
 )
-
-
-"""
-Currently x,y,z of dog is not very good (the ecef coords don't have z correspondign to depth)
-"""

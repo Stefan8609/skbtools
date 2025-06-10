@@ -2,16 +2,6 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 
-"""
-Generates a realistic transducer that follows behind the trajectory of the boat
-(turns are sharp and should be made gradual)
-
-Sensitivity in y-axis is extremely low for some reason (leads to hard to resolve transponder in y-axis)
-    x and z are surpisingly fine (although z has low variation?)
-
-Will need to fix in the future
-"""
-
 
 def generateRealistic_Transducer(n):
     # Initialize CDog and GPS locations

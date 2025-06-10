@@ -29,9 +29,6 @@ def load_and_process_data(path):
     days = data["days"].flatten() - 59015
     times = data["times"].flatten()
     datetimes = (days * 24 * 3600) + times
-    # condition_GNSS = (datetimes/3600 >= 25) & (datetimes / 3600 <= 40.9)
-    # time_GNSS = datetimes[condition_GNSS]/3600
-    # x,y,z = data['x'].flatten()[condition_GNSS], data['y'].flatten()[condition_GNSS], data['z'].flatten()[condition_GNSS]
 
     time_GNSS = datetimes / 3600
     x, y, z = data["x"].flatten(), data["y"].flatten(), data["z"].flatten()
@@ -82,7 +79,6 @@ CDOG = [31.46356091, 291.29859266, -5271.47395559]
 CDOG = np.array(geodetic2ecef(CDOG[0], CDOG[1], CDOG[2]))
 
 # Initialize Dog Acoustic Data
-# offset:RMSE, 68116:222.186, 68126:165.453, 68136:219.04, 68130:184.884, 68128: 170.04, 68124: 168.05, 68125:167
 offset = 68126  # 66828#68126 This is approximately overlaying them now
 
 DOG = 4
@@ -120,22 +116,9 @@ print(time_GNSS + travel_times)
 plt.rcParams.update({"font.size": 14})  # Set the default font size to 14
 plt.figure(figsize=(8, 4.8))
 plt.scatter(time_DOG, acoustic_DOG, s=1, color="r", label=f"DOG {DOG} Data")
-# plt.scatter(time_GNSS + travel_times, travel_times, s=1, color='r', label="GPS Data + travel times")
 plt.legend()
 plt.xlabel("Absolute Time (hours)")
 plt.ylabel(f"Travel Time for DOG {DOG} (s)")
 plt.xlim(25, 40.9)
 plt.ylim(1, 9)
-# plt.scatter(list(range(len(acoustic_DOG))),acoustic_DOG + data_DOG[:,0], s=1)
-# plt.scatter(list(range(len(acoustic_DOG))),acoustic_DOG, s=1)
 plt.show()
-
-
-"""
-Good next step -- overlay plot of best CDOG guess and calculated travel times from GPS on top of plot of
-    wrapped dog versus absolute dog time (can figure out offset and scaling).
-
-Coincidence that the wrapping time matches up with the actual travel time
-
-Need to create an algorithm to automatically find the best time offset
-"""

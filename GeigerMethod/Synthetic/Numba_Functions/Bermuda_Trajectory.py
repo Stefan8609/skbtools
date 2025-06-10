@@ -16,9 +16,6 @@ def bermuda_trajectory(
     lever = np.array([-12.48862757, 0.22622633, -15.89601934])
     offset = 1991.01236648
 
-    # GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = initialize_bermuda(25.0, 40.9,
-    #                                                                                       CDOG_augment)
-
     data = np.load(f"../../../GPSData/Processed_GPS_Receivers_DOG_{DOG_num}.npz")
     GPS_Coordinates = data["GPS_Coordinates"]
     GPS_data = data["GPS_data"]

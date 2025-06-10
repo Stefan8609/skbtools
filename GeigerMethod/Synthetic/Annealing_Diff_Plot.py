@@ -1,4 +1,10 @@
-from advancedGeigerMethod import *
+import numpy as np
+from advancedGeigerMethod import (
+    calculateTimesRayTracing,
+    geigersMethod,
+    findTransponder,
+    generateRealistic,
+)
 from simulatedAnnealing_Synthetic import simulatedAnnealing
 import matplotlib.pyplot as plt
 
@@ -69,7 +75,6 @@ def annealing_plot(n, time_noise, position_noise, lever_noise=5, geom_noise=0):
     annealing_diff = (annealing_times - times_known) * 100
 
     offset_std = np.std(offset_diff)
-    annealing_std = np.std(annealing_diff)
 
     # Make a vertical figure with 2 plots of the residual time series
     fig, axs = plt.subplots(2, 2, figsize=(14, 9), gridspec_kw={"width_ratios": [3, 1]})

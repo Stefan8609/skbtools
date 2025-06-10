@@ -65,7 +65,8 @@ def RMSE_iter_plot(n, runs, time_noise, position_noise):
         plt.plot(np.arange(len(RMSE_arr)), RMSE_arr, label=f"Run {i + 1}")
     plt.title(
         f"RMSE by iteration of Geiger's Method: \n"
-        f"Time noise:{round(time_noise * 10**6, 3)} µs, Position noise: {round(position_noise * 100, 3)} cm"
+        f"Time noise:{round(time_noise * 10**6, 3)} µs, "
+        f"Position noise: {round(position_noise * 100, 3)} cm"
     )
     plt.xlabel("Iteration")
     plt.ylabel("RMSE (s)")

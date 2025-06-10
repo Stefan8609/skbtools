@@ -8,7 +8,8 @@ from ECEF_Geodetic import ECEF_Geodetic
 
 @njit(cache=True)
 def findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder):
-    # Given initial information relative GPS locations and transponder and GPS Coords at each timestep
+    # Given initial information relative GPS
+    # locations and transponder and GPS Coords at each timestep
     xs, ys, zs = gps1_to_others.T
     initial_transponder = gps1_to_transponder
     n = len(GPS_Coordinates)
@@ -73,7 +74,7 @@ def calculateTimesRayTracing(guess, transponder_coordinates, ray=True):
     dz = np.abs(guess[2] - transponder_coordinates[:, 2])
     esv = find_esv(beta, dz)
     times = abs_dist / esv
-    if ray == False:
+    if not ray:
         times = abs_dist / 1515.0
         esv = np.full(len(transponder_coordinates), 1515.0)
     return times, esv
@@ -81,7 +82,8 @@ def calculateTimesRayTracing(guess, transponder_coordinates, ray=True):
 
 @njit
 def computeJacobianRayTracing(guess, transponder_coordinates, times, sound_speed):
-    # Computes the Jacobian, parameters are xyz coordinates and functions are the travel times
+    # Computes the Jacobian, parameters are
+    # xyz coordinates and functions are the travel times
     diffs = transponder_coordinates - guess
     jacobian = -diffs / (times[:, np.newaxis] * (sound_speed[:, np.newaxis] ** 2))
     return jacobian
@@ -95,7 +97,8 @@ def geigersMethod(
     transponder_coordinates_Found,
     time_noise=0,
 ):
-    # Use Geiger's method to find the guess of CDOG location which minimizes sum of travel times squared
+    # Use Geiger's method to find the guess of
+    # CDOG location which minimizes sum of travel times squared
     # Define threshold
     epsilon = 10**-5
     times_known, esv = calculateTimesRayTracing(CDog, transponder_coordinates_Actual)
@@ -107,11 +110,9 @@ def geigersMethod(
     delta = np.array([1.0, 1.0, 1.0])
     # Loop until change in guess is less than the threshold
     while np.linalg.norm(delta) > epsilon and k < 100:
-        # times_guess = calculateTimes(guess, transponder_coordinates_Found, sound_speed)
         times_guess, esv = calculateTimesRayTracing(
             guess, transponder_coordinates_Found
         )
-        # jacobian = computeJacobian(guess, transponder_coordinates_Found, times_guess, sound_speed)
         jacobian = computeJacobianRayTracing(
             guess, transponder_coordinates_Found, times_guess, esv
         )
@@ -236,7 +237,7 @@ if __name__ == "__main__":
     import timeit
 
     start = timeit.default_timer()
-    for i in range(100):
+    for _ in range(100):
         guess, times_known = geigersMethod(
             guess,
             CDog,

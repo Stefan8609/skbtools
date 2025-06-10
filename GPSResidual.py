@@ -43,7 +43,6 @@ for data in all_data[1:]:
     common_datetimes.intersection_update(data[0])
 common_datetimes = sorted(common_datetimes)
 
-# Appliquer le masque pour conserver uniquement les datetimes communs et les valeurs correspondantes
 filtered_data = []
 for datetimes, x, y, z in all_data:
     mask = np.isin(datetimes, common_datetimes)

@@ -12,7 +12,8 @@ from numba import njit
 def ECEF_Geodetic(coords):
     """Convert ECEF coordinates to Geodetic coordinates
     Args:
-        coords (numpy.ndarray): ECEF coordinates in the form of a 2D array with shape (n, 3)
+        coords (numpy.ndarray): ECEF coordinates in the form of a
+            2D array with shape (n, 3)
             where n is the number of points and 3 corresponds to x, y, z coordinates.
     Returns:
         tuple: A tuple containing:
@@ -48,7 +49,6 @@ def ECEF_Geodetic(coords):
 
 
 if __name__ == "__main__":
-    """Test the ECEF_Geodetic function compared against the ecef2geodetic function from pymap3d"""
     from pymap3d import ecef2geodetic
     from Numba_Geiger import findTransponder
     import scipy.io as sio
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     print(np.abs(h - depth_arr))
 
     start = timeit.default_timer()
-    for i in range(100):
+    for _ in range(100):
         theta, clambda, h = ECEF_Geodetic(transponder_coordinates)
     stop = timeit.default_timer()
     print("Time: ", (stop - start) / 100)

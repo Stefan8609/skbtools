@@ -6,14 +6,6 @@ from Numba_xAline import two_pointer_index
 from Numba_Geiger import findTransponder
 from ESV_bias_split import calculateTimesRayTracing_split
 
-"""
-Look into the correlation of the data (have to read into papers on esimating GPS data correlation)
-    Can be done by splitting the data in multiple parts and finding correlation in each part
-    Maybe can decorrelate the entire time series
-
-Split the ESV bias term into multiple parts (based on time, range, location, etc.) and see if it improves the results
-"""
-
 
 # @njit
 def compute_log_likelihood(
@@ -63,7 +55,8 @@ def compute_log_likelihood(
                     esv_matrix,
                 )
 
-            """Note doing GPS_data - time_bias to include time_bias in offset when calculating travel times"""
+            """Note doing GPS_data - time_bias to
+            include time_bias in offset when calculating travel times"""
             (
                 CDOG_clock,
                 CDOG_full,
@@ -110,7 +103,8 @@ def mcmc_sampler(
     proposal_scales=None,
 ):
     """
-    Metropolis-Hastings MCMC over {lever, gps1_grid, CDOG_augments, esv_bias, time_bias}.
+    Metropolis-Hastings MCMC over
+    {lever, gps1_grid, CDOG_augments, esv_bias, time_bias}.
     """
     # default proposal stds
     if proposal_scales is None:

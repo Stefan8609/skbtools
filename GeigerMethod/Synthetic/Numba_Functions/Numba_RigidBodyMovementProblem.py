@@ -13,7 +13,8 @@ def findRotationAndDisplacement(xyzs_init, xyzs_final):
         [[np.mean(xyzs_final[0]), np.mean(xyzs_final[1]), np.mean(xyzs_final[2])]]
     ).T
 
-    # Compute matrices for each point in point cloud subtracted by its respective centroid
+    # Compute matrices for each point in
+    # point cloud subtracted by its respective centroid
     A_mtrx = xyzs_init - centroid_init
     B_mtrx = xyzs_final - centroid_final
 
@@ -21,7 +22,8 @@ def findRotationAndDisplacement(xyzs_init, xyzs_final):
     C_mtrx = B_mtrx @ A_mtrx.T
     U, S, V_t = np.linalg.svd(C_mtrx)
 
-    # Use the SVD to compute the rotation matrix and displacement between the point clouds
+    # Use the SVD to compute the rotation matrix and
+    # displacement between the point clouds
     #   Following the instructions of the source above
     det = np.linalg.det(U @ V_t)
     R_mtrx = U @ np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, det]]) @ V_t
@@ -72,13 +74,6 @@ def demo():
         zs[i] += translate[2]
     xyzt = np.matmul(totalRot, xyzt)
     xyzt = xyzt + translate
-
-    # Apply perturbation to some points to investigate how error occurs when points are not
-    #   In exact position after translation/rotation
-    # xs += np.random.normal(0, .02, 4)
-    # ys += np.random.normal(0, .02, 4)
-    # zs += np.random.normal(0, .02, 4)
-    # Error due to perturbation scales fast with perturbation magnitude
 
     xyzs_final = np.array([xs, ys, zs])
     xyzt_final = xyzt

@@ -1,9 +1,3 @@
-"""
-Module to run a grid search for the best parameters on the real data
-
-    Designed to be run over long term on the clusters (needs to print out results in realish time).
-"""
-
 import numpy as np
 import scipy.io as sio
 
@@ -11,12 +5,6 @@ from Numba_xAline_bias import final_bias_geiger
 from Numba_Geiger import findTransponder
 from Numba_xAline_Annealing_bias import simulated_annealing_bias
 from Initialize_Bermuda_Data import initialize_bermuda
-
-"""
-Function to search the grid of levers finding simulated annealing local minimums
-Writes the local minimums to a txt file
-Looking to find a global minimum
-"""
 
 
 def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):
@@ -126,7 +114,8 @@ def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):
                     )
                     iteration += 1
                     print(
-                        f"Iteration {iteration}/{iter**3}: Lever: {best_lever}, Offset: {best_offset}, RMSE: {RMSE}"
+                        f"Iteration {iteration}/{iter**3}: Lever: "
+                        f"{best_lever}, Offset: {best_offset}, RMSE: {RMSE}"
                     )
     print("Grid Search Completed. Results saved to output.txt")
 

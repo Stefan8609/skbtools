@@ -4,22 +4,8 @@ import random
 from Numba_time_bias import numba_bias_geiger, find_esv
 from Numba_Geiger import generateRealistic, findTransponder
 
-"""
-Plot the distribution of esv differences
-"""
-
-"""
-Investigating how the ESV bias compares to the difference in the sections of the ESV table that are sampled
-"""
-
 
 def compare_tables(esv_table1, esv_table2):
-    """
-    Compare the relevant angles and depths within ESV table to see if their average difference is the ESV-bias
-
-    esv1 used to generate the data
-    esv2 is used in inversion
-    """
     dz_array_gen = esv_table1["distance"].flatten()
     angle_array_gen = esv_table1["angle"].flatten()
     esv_matrix_gen = esv_table1["matrice"]
@@ -78,10 +64,13 @@ def compare_tables(esv_table1, esv_table2):
     print(f"Input: {[CDOG[0], CDOG[1], CDOG[2], time_bias, esv_bias]}")
     print(f"Output: {estimate}")
     print(
-        f"Diff: {estimate - np.array([CDOG[0], CDOG[1], CDOG[2], -time_bias, esv_bias])}"
+        f"Diff: "
+        f"{estimate - np.array([CDOG[0], CDOG[1], CDOG[2], -time_bias, esv_bias])}"
     )
     print(
-        f"Distance: {np.sqrt(np.sum((estimate[:3] - np.array([CDOG[0], CDOG[1], CDOG[2]]))) ** 2)}"
+        f"Distance: {
+            np.sqrt(np.sum((estimate[:3] - np.array([CDOG[0], CDOG[1], CDOG[2]]))) ** 2)
+        }"
     )
 
     hori_dist = np.sqrt(
@@ -118,16 +107,3 @@ if __name__ == "__main__":
     esv_table2 = sio.loadmat("../../../GPSData/global_table_esv.mat")
 
     compare_tables(esv_table1, esv_table2)
-
-    # plt.figure(figsize=(10, 6))
-    # # plt.contourf(angle_array1, dz_array1, esv_matrix1 - esv_matrix2, levels=10)
-    # angle_idx = np.array([np.abs(angle_array1 - a).argmin() for a in angle_array2])
-    # depth_idx = np.array([np.abs(dz_array1 - d).argmin() for d in dz_array2])
-    # plt.contourf(angle_array1[angle_idx], dz_array1[depth_idx], esv_matrix1[np.ix_(depth_idx, angle_idx)] - esv_matrix2,
-    #              levels=10)
-    # plt.colorbar()
-    # plt.gca().invert_yaxis()
-    # plt.xlabel("Elevation Angle (degrees)")
-    # plt.ylabel("Depth (m)")
-    # plt.title("Effective Sound Velocity (m/s)")
-    # plt.show()

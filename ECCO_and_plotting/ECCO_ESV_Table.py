@@ -3,7 +3,7 @@ import xarray as xr
 import gsw
 import scipy.io as sio
 
-from SVP_Calculations import *
+from SVP_Calculations import DelGrosso_SV, depth_to_pressure
 from ESV_table import construct_esv
 
 """Build ESV table for every month of ECCO to ECCO Depth"""
@@ -46,13 +46,13 @@ for month in months:
     num = month_to_num[month]
     if num > 9:
         ds = xr.open_dataset(
-            ecco_dir
-            + f"/OCEAN_TEMPERATURE_SALINITY_mon_mean_2017-{num}_ECCO_V4r4_latlon_0p50deg.nc"
+            ecco_dir + f"/OCEAN_TEMPERATURE_SALINITY_mon_mean_2017-{num}"
+            f"_ECCO_V4r4_latlon_0p50deg.nc"
         )
     else:
         ds = xr.open_dataset(
-            ecco_dir
-            + f"/OCEAN_TEMPERATURE_SALINITY_mon_mean_2017-0{num}_ECCO_V4r4_latlon_0p50deg.nc"
+            ecco_dir + f"/OCEAN_TEMPERATURE_SALINITY_mon_mean_2017-0{num}"
+            f"_ECCO_V4r4_latlon_0p50deg.nc"
         )
 
     # Define coordinates for Bermuda

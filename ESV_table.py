@@ -1,20 +1,14 @@
 import numpy as np
 from numba import njit
 from Ray_Tracing_Iter_Locate import ray_trace_locate, ray_tracing
+import matplotlib.pyplot as plt
+
 
 depth = np.ascontiguousarray(np.genfromtxt("GPSData/depth_cast2_smoothed.txt")[::20])
 cz = np.ascontiguousarray(np.genfromtxt("GPSData/cz_cast2_smoothed.txt")[::20])
 
-"""Build for depths -125 to [-5150 to -5275]
-
-The SVP limits us to 5250 meters
-    May need some extrapolation method to get to depths below 5250 meters
-    The SVP appears linear at such depths (velocity changes approximately with pressure)
-"""
-
-import matplotlib.pyplot as plt
-
 plt.plot(cz, depth, label="CTD Bermuda SVP")
+
 # Create a perturbation that starts at ~5 m/s at surface and diminishes below 100m
 # surface_effect = 5.0 * np.exp(-depth/40)  # Exponential decay with depth
 # deep_variation = 0.3 * np.sin(depth/200)  # Small sinusoidal variation for deep water

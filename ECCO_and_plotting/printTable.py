@@ -1,3 +1,6 @@
+import random
+import string
+
 """Simple utilities for rendering data tables in the console."""
 
 
@@ -19,7 +22,7 @@ def printTable(headers, data):
 
     try:
         headers[len(data[0]) - 1]
-    except:
+    except Exception:
         print("Error: Number of headers does not match size of data")
 
     # Determine max width of each column
@@ -46,23 +49,11 @@ def printTable(headers, data):
     return table
 
 
-"""
-Demo - Demonstrates how a table is printed given headers and data. Prints random numbers and random string
-Inputs:
-    None
-Outputs:
-    None
-Uncomment below to run
-"""
-import random
-import string
-
-
 def demo():
     """Example usage generating random values."""
     headers = ["x", "y", "z", "string"]
     data = []
-    for i in range(10):
+    for _ in range(10):
         tup = (
             random.random() * 10,
             random.random() * 10,

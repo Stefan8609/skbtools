@@ -128,7 +128,6 @@ def Bayesian_Geiger(iterations, n, time_noise, position_noise):
     plt.show()
 
 
-# Using the same GPS coordinates with same noise, but randomly sampling a subset at each iteration
 def Sampled_Geiger(iterations, n, sample_size, time_noise, position_noise):
     (
         CDog,
@@ -236,9 +235,6 @@ def Sampled_Geiger(iterations, n, sample_size, time_noise, position_noise):
     plt.show()
 
 
-# Using same GPS coordinates with same noise, but randomly choosing a consecutive subset at each time
-#   This one is the worst by far - can sometimes get singular matrices as well
-#   This demonstrates the importance of trajectory geometry in the inversion of the position.
 def Consecutive_Geiger(iterations, n, sample_size, time_noise, position_noise):
     (
         CDog,
@@ -274,11 +270,6 @@ def Consecutive_Geiger(iterations, n, sample_size, time_noise, position_noise):
             time_noise,
         )[:2]
         guess_arr[i] = guess
-
-        # plt.scatter(GPS_Coordinates_iter[:, 0, 0], GPS_Coordinates_iter[:, 0, 1], color='b')
-        # plt.scatter(CDog[0], CDog[1], color="r")
-        # plt.scatter(guess[0], guess[1], color='k')
-        # plt.show()
 
     print(np.mean(guess_arr, axis=0))
     print(CDog)

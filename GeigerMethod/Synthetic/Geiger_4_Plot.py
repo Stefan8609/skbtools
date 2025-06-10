@@ -199,7 +199,8 @@ def fourPlot(n, time_noise, position_noise):
     axes[1, 1].set_xlabel("Noise (ms)")
     axes[1, 1].set_ylabel("Probability Density")
     axes[1, 1].set_title(
-        f"Input Time Noise: {time_noise * 1000} ms, Input Position Noise: {position_noise * 100} cm"
+        f"Input Time Noise: {time_noise * 1000} ms, "
+        f"Input Position Noise: {position_noise * 100} cm"
     )
 
     std_height, time_noise_height, position_noise_height = (

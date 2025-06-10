@@ -4,19 +4,7 @@ import xarray as xr
 import gsw
 import scipy.io as sio
 
-from SVP_Calculations import *
-
-"""
-See differences between months for SVP
-    Month by month variation
-    Give simpler SVP to reduce using Bud's algorithm
-    Show that the Bias matches the average differenc e in the ESV table
-    Use SVP from ECCO
-    Need to fix ray-tracing algorithm
-
-    Once I get the bias down for ECCO for multiple months move onto identifying bias in real data
-
-"""
+from SVP_Calculations import DelGrosso_SV, depth_to_pressure
 
 CTD = sio.loadmat("../GPSData/CTD_Data/AE2008_Cast2.mat")["AE2008_Cast2"]
 depth = CTD[:, 0][::100]
@@ -43,13 +31,13 @@ month_to_num = {
 num = month_to_num[month]
 if num > 9:
     ds = xr.open_dataset(
-        ecco_dir
-        + f"/OCEAN_TEMPERATURE_SALINITY_mon_mean_2017-{num}_ECCO_V4r4_latlon_0p50deg.nc"
+        ecco_dir + f"/OCEAN_TEMPERATURE_SALINITY_mon_mean_2017-{num}"
+        f"_ECCO_V4r4_latlon_0p50deg.nc"
     )
 else:
     ds = xr.open_dataset(
-        ecco_dir
-        + f"/OCEAN_TEMPERATURE_SALINITY_mon_mean_2017-0{num}_ECCO_V4r4_latlon_0p50deg.nc"
+        ecco_dir + f"/OCEAN_TEMPERATURE_SALINITY_mon_mean_2017-0{num}"
+        f"_ECCO_V4r4_latlon_0p50deg.nc"
     )
 
 # Define coordinates for Bermuda
@@ -138,13 +126,13 @@ for i, month in enumerate(months):
     num = month_to_num[month]
     if num > 9:
         ds = xr.open_dataset(
-            ecco_dir
-            + f"/OCEAN_TEMPERATURE_SALINITY_mon_mean_2017-{num}_ECCO_V4r4_latlon_0p50deg.nc"
+            ecco_dir + f"/OCEAN_TEMPERATURE_SALINITY_mon_mean_2017-{num}"
+            f"_ECCO_V4r4_latlon_0p50deg.nc"
         )
     else:
         ds = xr.open_dataset(
-            ecco_dir
-            + f"/OCEAN_TEMPERATURE_SALINITY_mon_mean_2017-0{num}_ECCO_V4r4_latlon_0p50deg.nc"
+            ecco_dir + f"/OCEAN_TEMPERATURE_SALINITY_mon_mean_2017-0{num}"
+            f"_ECCO_V4r4_latlon_0p50deg.nc"
         )
 
     temp_profile = ds.THETA.sel(

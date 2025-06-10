@@ -1,8 +1,3 @@
-"""
-This is a version of the time alignment script that generates a trajectory that is completely synthetic
-    contrary to the other version which uses the trajectory from the Bermuda experiment
-"""
-
 import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
@@ -48,7 +43,7 @@ def generateUnalignedRealistic(n, time_noise, offset, main=False):
     temp_travel_times = np.copy(true_travel_times)
 
     # Remove random indices from CDOG data
-    for i in range(10):
+    for _ in range(10):
         length_to_remove = np.random.randint(200, 1000)
         start_index = np.random.randint(
             0, len(CDOG_mat) - length_to_remove + 1
@@ -64,7 +59,7 @@ def generateUnalignedRealistic(n, time_noise, offset, main=False):
         CDOG_mat = np.delete(CDOG_mat, indices_to_remove, axis=0)
         temp_travel_times = np.delete(temp_travel_times, indices_to_remove, axis=0)
 
-    if main == True:
+    if main:
         return (
             CDOG_mat,
             CDOG,

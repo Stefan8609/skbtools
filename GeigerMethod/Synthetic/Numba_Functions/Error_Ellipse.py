@@ -124,7 +124,7 @@ def error_ellipse(num_points, time_noise, position_noise):
     # Plot the CDOG estimates and actual
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))
     # Easting vs Northing
-    sc0 = axs[0].scatter(
+    axs[0].scatter(
         estimate_converted[:, 0] * 100,
         estimate_converted[:, 1] * 100,
         c=RMSE_array,
@@ -150,7 +150,7 @@ def error_ellipse(num_points, time_noise, position_noise):
     axs[0].grid()
 
     # Easting vs Elevation
-    sc1 = axs[1].scatter(
+    axs[1].scatter(
         estimate_converted[:, 0] * 100,
         estimate_converted[:, 2] * 100,
         c=RMSE_array,
@@ -210,7 +210,7 @@ def error_ellipse(num_points, time_noise, position_noise):
     # Plot the lever error
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))
     # x vs y error
-    sc3 = axs[0].scatter(
+    axs[0].scatter(
         lever_diff_array[:, 0] * 100,
         lever_diff_array[:, 1] * 100,
         c=RMSE_array,
@@ -235,7 +235,7 @@ def error_ellipse(num_points, time_noise, position_noise):
     axs[0].grid()
 
     # x vs z error
-    sc4 = axs[1].scatter(
+    axs[1].scatter(
         lever_diff_array[:, 0] * 100,
         lever_diff_array[:, 2] * 100,
         c=RMSE_array,
@@ -268,7 +268,7 @@ def error_ellipse(num_points, time_noise, position_noise):
         s=5,
         label=r"Lever Errors",
     )
-    cbar5 = fig.colorbar(sc5, ax=axs[2])
+    fig.colorbar(sc5, ax=axs[2])
     for std in range(2):
         _plot_error_ellipse(
             axs[2],

@@ -1,13 +1,3 @@
-"""
-Document to find placement of GPS relative to eachother in xyz coordinates
-Idea is to check relative distance between GPS at each time step on the plane of best fit
-    x-axis will be defined by vector to GPS1 projected onto plane
-    y-axis will be defined by cross product of norm vect and vector to GPS1
-    z-axis will be defined by the normal vector of plane of best fit
-
-Can find relative distance by projecting our vector between each GPS onto these planes
-"""
-
 import numpy as np
 from fitPlane import fitPlane
 from projectToPlane import projectToPlane
@@ -37,16 +27,19 @@ def GPS_Lever_arms(GPS_Coordinates):
         barycenter = np.mean(points, axis=0, keepdims=True)
         normVect = fitPlane(xs, ys, zs)
 
-        # Check that normal vector is oriented on the same side of the plane at each time and flip if not
+        # Check that normal vector is oriented on the
+        # same side of the plane at each time and flip if not
         if np.dot(np.array([0, 0, 1]), normVect) < 0:
             normVect *= -1
 
-        # Get x-axis defined by projection of vector from barycenter to GPS1 onto the plane
+        # Get x-axis defined by projection of vector
+        # from barycenter to GPS1 onto the plane
         xaxis = points[0] - barycenter
         xaxis = projectToPlane(xaxis, normVect)[0]
         xaxis /= np.linalg.norm(xaxis)
 
-        # Get y-axis defined by cross product of x-axis and plane normal vector
+        # Get y-axis defined by cross product
+        # of x-axis and plane normal vector
         yaxis = np.cross(normVect, xaxis)
         yaxis /= np.linalg.norm(yaxis)
 

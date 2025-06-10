@@ -5,12 +5,6 @@ import matplotlib.pyplot as plt
 from Numba_time_bias import compute_Jacobian_biased, calculateTimesRayTracing_Bias
 from Modular_Synthetic import modular_synthetic
 
-"""
- Investigate GtG inverse for various subsets of points (1 point, half points, all points)...
-
-    Do it at various stages
-"""
-
 
 def geometric_dilution(interval):
     table_str = "global_table_esv_realistic_perturbed"
@@ -44,7 +38,6 @@ def geometric_dilution(interval):
     esv_matrix = esv_table["matrice"]
 
     CDOG_guess = inversion_result[:3]
-    time_bias = inversion_result[3]
     esv_bias = inversion_result[4]
     times, esv = calculateTimesRayTracing_Bias(
         CDOG_guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix

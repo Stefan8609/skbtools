@@ -2,8 +2,6 @@ import numpy as np
 
 from RigidBodyMovementProblem import findRotationAndDisplacement
 
-"""Uses manually found coordinates from schematic vs the ones I have found with averaging to analyze GPS grid"""
-
 # pf to sf = 4.4 in y
 # pf to sa = -10.9 in x, -6.5 in y
 # pf to pa = -10.9 in x, -0.4 in y

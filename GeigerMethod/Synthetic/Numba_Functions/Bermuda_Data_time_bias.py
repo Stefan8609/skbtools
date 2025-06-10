@@ -7,14 +7,10 @@ from Numba_xAline_bias import (
     transition_bias_geiger,
     final_bias_geiger,
 )
+from Numba_time_bias import calculateTimesRayTracing_Bias_Real
+from Numba_xAline import two_pointer_index
 from Plot_Modular import time_series_plot, range_residual
 
-"""
-Look at the Durbin watson and Q test for determining if the small section is normal
-
-Add density plot to the GPS elevation distribution
-    Find a better way to delete points (median over time with 2 absolute deivations above and below
-"""
 
 # esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
 esv_table = sio.loadmat("../../../GPSData/global_table_esv_normal.mat")
@@ -130,28 +126,13 @@ print("Final Complete")
 best_lever = initial_lever_guess
 """End No simulated annealing"""
 
-"""Simulated Annealing"""
-# best_lever, best_offset, inversion_result = simulated_annealing_bias(300, CDOG_data, GPS_data, GPS_Coordinates, gps1_to_others,
-#                                                                 CDOG_guess, initial_lever_guess,dz_array, angle_array, esv_matrix, offset, True, True)
-#
-# inversion_guess = inversion_result[:3]
-# time_bias = inversion_result[3]
-# esv_bias = inversion_result[4]
-#
-# transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, best_lever)
-# inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(inversion_guess, CDOG_data, GPS_data,
-#                                                                                      transponder_coordinates, best_offset, esv_bias, time_bias,
-#                                                                                      dz_array, angle_array, esv_matrix, real_data=True)
-# inversion_guess = inversion_result[:3]
-# time_bias = inversion_result[3]
-# esv_bias = inversion_result[4]
-# GPS_full = GPS_full - time_bias
-"""End Simulated Annealing"""
 print(inversion_result[3])
 best_offset = best_offset - inversion_result[3]
 print(f"Estimate: {np.round(inversion_result, 4)}")
 print(
-    f"Best Lever: {np.round(best_lever, 3)}, Offset: {np.round(best_offset, 4)}, Inversion Guess: {np.round(inversion_guess - CDOG_guess_base, 5)}"
+    f"Best Lever: {np.round(best_lever, 3)}, "
+    f"Offset: {np.round(best_offset, 4)}, "
+    f"Inversion Guess: {np.round(inversion_guess - CDOG_guess_base, 5)}"
 )
 diff_data = (CDOG_full - GPS_full) * 1000
 RMSE = np.sqrt(np.nanmean(diff_data**2)) / 1000 * 1515 * 100
@@ -160,9 +141,6 @@ print("RMSE:", np.round(RMSE, 3), "cm")
 time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full)
 
 """Plot range residuals"""
-from Numba_time_bias import calculateTimesRayTracing_Bias_Real
-from Numba_xAline import two_pointer_index
-
 times_guess, esv = calculateTimesRayTracing_Bias_Real(
     inversion_guess,
     transponder_coordinates,

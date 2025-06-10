@@ -5,13 +5,6 @@ from statsmodels.graphics.tsaplots import plot_acf
 import itertools
 
 
-"""
-Color code plots with RMSE and also add in the best estimates from previous algorithms (starting positions)
-    Add in all of the parameters to the plots
-    Separate the time bias and esv biases into their own plots (or normalize them in some way)
-"""
-
-
 def trace_plot(chain, initial_params=None, downsample=1):
     # Trace Plots
     fig, axes = plt.subplots(nrows=6, ncols=1, figsize=(8, 10), sharex=True)

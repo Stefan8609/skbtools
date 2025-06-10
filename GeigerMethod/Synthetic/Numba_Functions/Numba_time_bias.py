@@ -3,24 +3,6 @@ from numba import njit
 from ECEF_Geodetic import ECEF_Geodetic
 
 
-"""
-Need an short algorithm to estimate the derivative of the ESV in x,y, and z
-    According to the algorithm listed by bud (short and simple numerical method)
-    Remove timing bias term from bud's algorithm (or investigate how it works as sub-integer offset)
-    Implement Bud's algorithm for finding ESV bias
-
-This algorithm finds a fixed bias (that is a constant in time and depth)
-
- - Stop the program from diverging
-
- Next Steps:
-  - Implement this alongside alignment (How can the sound bias term be used to improve alignment precision??)
-  - Implement the combination with simulated annealing for transducer offset
-
-Tau vs P plot for the rays in the ocean
-"""
-
-
 @njit
 def find_esv(beta, dz, dz_array, angle_array, esv_matrix):
     idx_closest_dz = np.empty_like(dz, dtype=np.int64)
@@ -112,12 +94,19 @@ def numba_bias_geiger(
     dz_array,
     angle_array,
     esv_matrix,
-    dz_array_gen=np.array([]),
-    angle_array_gen=np.array([]),
-    esv_matrix_gen=np.array([]),
+    dz_array_gen=None,
+    angle_array_gen=None,
+    esv_matrix_gen=None,
     time_noise=0,
 ):
     """Geiger method with estimation of ESV bias term"""
+    if dz_array_gen is None:
+        dz_array_gen = np.empty(0)
+    if angle_array_gen is None:
+        angle_array_gen = np.empty(0)
+    if esv_matrix_gen is None:
+        esv_matrix_gen = np.empty(0)
+
     epsilon = 10**-5
 
     # Calculate and apply noise for known times. Also apply time bias term
