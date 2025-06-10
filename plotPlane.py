@@ -6,7 +6,7 @@ Inputs:
     (vector len=3) point = point on the plane
     (vector len=3) normVect = Vector normal to the plane
     (list[min, max]) xrange = The range over which the plane extends in the x-direction
-    (list[min, max]) yrange = The range over which the plane extense in the y-direction
+    (list[min, max]) yrange = The range over which the plane extends in the y-direction
 Outputs:
     (axes object) ax = Figure object containing axes of plot
 """

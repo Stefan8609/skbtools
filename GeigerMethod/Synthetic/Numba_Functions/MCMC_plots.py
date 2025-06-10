@@ -10,21 +10,30 @@ Color code plots with RMSE and also add in the best estimates from previous algo
     Add in all of the parameters to the plots
     Separate the time bias and esv biases into their own plots (or normalize them in some way)
 """
-def trace_plot(chain, initial_params = None):
+def trace_plot(chain, initial_params = None, downsample=1):
     # Trace Plots
     fig, axes = plt.subplots(nrows=6, ncols=1, figsize=(8, 10), sharex=True)
-    axes[0].plot(chain['lever'][:, 0]);
+    axes[0].plot(chain['lever'][::downsample, 0]);
     axes[0].set_ylabel('lever x')
-    axes[1].plot(chain['lever'][:, 1]);
+    axes[1].plot(chain['lever'][::downsample, 1]);
     axes[1].set_ylabel('lever y')
-    axes[2].plot(chain['lever'][:, 2]);
+    axes[2].plot(chain['lever'][::downsample, 2]);
     axes[2].set_ylabel('lever z')
-    axes[3].plot(chain['esv_bias']);
+    axes[3].plot(chain['esv_bias'][::downsample]);
     axes[3].set_ylabel('ESV bias')
-    axes[4].plot(chain['time_bias']);
+    axes[4].plot(chain['time_bias'][::downsample]);
     axes[4].set_ylabel('time bias')
-    axes[5].plot(chain['logpost'] * -2);
+    axes[5].plot(chain['logpost'][::downsample] * -2);
     axes[5].set_ylabel('RMSE')
+
+    if initial_params:
+        axes[0].axhline(initial_params['lever'][0], color='red', linestyle='--', label='Initial x')
+        axes[1].axhline(initial_params['lever'][1], color='red', linestyle='--', label='Initial y')
+        axes[2].axhline(initial_params['lever'][2], color='red', linestyle='--', label='Initial z')
+        for i in range(3):
+            axes[3].axhline(initial_params['esv_bias'][i], linestyle='--', label=f'Initial GPS grid x{i}')
+            axes[4].axhline(initial_params['time_bias'][i], linestyle='--', label=f'Initial GPS grid x{i}')
+
     plt.xlabel('Iteration')
     plt.show()
 
@@ -38,33 +47,25 @@ def marginal_hists(chain, initial_params = None):
     axes[1].set_title('lever y')
     axes[2].hist(chain['lever'][:, 2], bins=30);
     axes[2].set_title('lever z')
-    axes[3].hist(chain['esv_bias'], bins=30);
-    axes[3].set_title('ESV bias')
-    axes[4].hist(chain['time_bias'], bins=30);
-    axes[4].set_title('time bias')
-    axes[5].axis('off')
-    plt.show()
+    axes[3].hist(chain['CDOG_aug'][:, 0, 0], bins=30);
+    axes[3].set_title('CDOG_aug x')
+    axes[3].set_xlabel('CDOG Location Augment x (m)')
+    axes[4].hist(chain['CDOG_aug'][:, 0, 1], bins=30);
+    axes[4].set_title('CDOG_aug y')
+    axes[4].set_xlabel('CDOG Location Augment y (m)')
+    axes[5].hist(chain['CDOG_aug'][:, 0, 2], bins=30);
+    axes[5].set_title('CDOG_aug z')
+    axes[5].set_xlabel('CDOG Location Augment z (m)')
 
-# def corner_plot(chain, initial_params = None):
-#     # Corner Plot
-#     pars = {
-#         'lx': chain['lever'][:, 0],
-#         'ly': chain['lever'][:, 1],
-#         'lz': chain['lever'][:, 2],
-#         'esv': chain['esv_bias'],
-#         'tmb': chain['time_bias']
-#     }
-#     keys = list(pars)
-#     fig, axes = plt.subplots(len(keys), len(keys), figsize=(12, 12))
-#     for i, j in itertools.product(range(len(keys)), range(len(keys))):
-#         if i == j:
-#             axes[i, j].hist(pars[keys[i]], bins=30)
-#         else:
-#             axes[i, j].plot(pars[keys[j]], pars[keys[i]], '.', ms=1, alpha=0.3)
-#         if i == len(keys) - 1: axes[i, j].set_xlabel(keys[j])
-#         if j == 0:        axes[i, j].set_ylabel(keys[i])
-#     plt.tight_layout()
-#     plt.show()
+    if initial_params:
+        axes[0].axvline(initial_params['lever'][0], color='red', linestyle='--', label='Initial x')
+        axes[1].axvline(initial_params['lever'][1], color='red', linestyle='--', label='Initial y')
+        axes[2].axvline(initial_params['lever'][2], color='red', linestyle='--', label='Initial z')
+        axes[3].axvline(initial_params['CDOG_aug'][0, 0], color='red', linestyle='--', label='Initial CDOG_aug x')
+        axes[4].axvline(initial_params['CDOG_aug'][0, 1], color='red', linestyle='--', label='Initial CDOG_aug y')
+        axes[5].axvline(initial_params['CDOG_aug'][0, 2], color='red', linestyle='--', label='Initial CDOG_aug z')
+
+    plt.show()
 
 def corner_plot(chain, initial_params=None, downsample=1):
     # Extract parameter arrays
@@ -76,6 +77,16 @@ def corner_plot(chain, initial_params=None, downsample=1):
         'augy': chain['CDOG_aug'][::downsample, 0, 1],
         'augz': chain['CDOG_aug'][::downsample, 0, 2],
     }
+    if initial_params:
+        initial_params = {
+            'lx': initial_params['lever'][0],
+            'ly': initial_params['lever'][1],
+            'lz': initial_params['lever'][2],
+            'augx': initial_params['CDOG_aug'][0, 0],
+            'augy': initial_params['CDOG_aug'][0, 1],
+            'augz': initial_params['CDOG_aug'][0, 2]
+        }
+
     keys = list(pars)
     n = len(keys)
 
@@ -92,12 +103,19 @@ def corner_plot(chain, initial_params=None, downsample=1):
         ax = axes[i, j]
         if i == j:
             ax.hist(pars[keys[i]], bins=30, color='gray')
+            if initial_params:
+                ax.axvline(initial_params[keys[i]], color='red', linestyle='--', label='Initial')
         else:
             sc = ax.scatter(
                 pars[keys[j]], pars[keys[i]],
                 c=logpost, cmap=cmap, norm=norm,
                 s=1, alpha=0.8
             )
+            if initial_params:
+                ax.scatter(
+                    initial_params[keys[j]], initial_params[keys[i]],
+                    color='red', marker='x', s=50, label='Initial'
+                )
         # Labeling
         if i == n - 1:
             ax.set_xlabel(keys[j])
@@ -138,9 +156,15 @@ if __name__ == "__main__":
     init_ebias = np.array([-0.4775, -0.3199, 0.1122])
     init_tbias = np.array([0.01518602, 0.015779, 0.018898])
 
-    chain = np.load('mcmc_chain_slurm.npz')
+    initial_params = {'lever': init_lever,
+                      'gps_grid': init_gps_grid,
+                      'CDOG_aug': init_aug,
+                      'esv_bias': init_ebias,
+                      'time_bias': init_tbias}
 
-    # trace_plot(chain)
-    # marginal_hists(chain)
-    corner_plot(chain, downsample=50)
+    chain = np.load('mcmc_chain_largest.npz')
+
+    trace_plot(chain, initial_params = initial_params, downsample=500)
+    marginal_hists(chain, initial_params = initial_params)
+    corner_plot(chain, initial_params = initial_params, downsample=5000)
 

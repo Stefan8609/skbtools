@@ -5,6 +5,7 @@ from numba import njit
 from Numba_time_bias import calculateTimesRayTracing_Bias_Real
 from Numba_xAline import two_pointer_index
 from Numba_Geiger import findTransponder
+from ESV_bias_split import calculateTimesRayTracing_split
 
 """
 Look into the correlation of the data (have to read into papers on esimating GPS data correlation)
@@ -14,7 +15,7 @@ Look into the correlation of the data (have to read into papers on esimating GPS
 Split the ESV bias term into multiple parts (based on time, range, location, etc.) and see if it improves the results
 """
 
-@njit
+# @njit
 def compute_log_likelihood(
     lever_guess,
     gps1_grid_guess,
@@ -30,6 +31,9 @@ def compute_log_likelihood(
     angle_array,
     esv_matrix
 ):
+    split_esv = False
+    if esv_bias.ndim == 2:
+        split_esv = True
     # first: compute transponder positions
     trans_coords = findTransponder(GPS_Coordinates, gps1_grid_guess, lever_guess)
 
@@ -39,15 +43,22 @@ def compute_log_likelihood(
         inv_guess = CDOG_guess + CDOG_augments[j]
         CDOG_data = CDOG_all_data[j]
         try:
-            times_guess, esv = calculateTimesRayTracing_Bias_Real(inv_guess, trans_coords, esv_bias[j],
+            # Calculate the times either with the split ESV bias or the regular ESV bias
+            if split_esv:
+                times_guess, esv = calculateTimesRayTracing_split(inv_guess, trans_coords, esv_bias[j],
+                                                                  dz_array, angle_array, esv_matrix)
+            else:
+                times_guess, esv = calculateTimesRayTracing_Bias_Real(inv_guess, trans_coords, esv_bias[j],
                                                                       dz_array, angle_array, esv_matrix)
+
             """Note doing GPS_data - time_bias to include time_bias in offset when calculating travel times"""
             CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
                 two_pointer_index(offsets[j], 0.6, CDOG_data, GPS_data+time_bias[j], times_guess, trans_coords,
                                       esv, True)
                 )
-        except Exception:
+        except Exception as e:
             # if inversion fails, give very low likelihood
+            print("Error: ", e)
             return -np.inf
         resid = (CDOG_full - GPS_full)*1515*100
         total_ssq += np.sqrt(np.nansum(resid**2)/len(resid))
@@ -79,11 +90,19 @@ def mcmc_sampler(
             'time_bias':   0.000001,
         }
 
+    split_esv = False
+    if initial_esv_bias.ndim == 2:
+        split_esv = True
+        num_splits = initial_esv_bias.shape[1]
+
     # initialize chain
     lever_chain       = np.zeros((n_iters, 3))
     gps_chain         = np.zeros((n_iters, 4, 3))
     cdog_aug_chain    = np.zeros((n_iters, 3, 3))
-    ebias_chain       = np.zeros((n_iters,3))
+    if split_esv:
+        ebias_chain       = np.zeros((n_iters, 3, num_splits))
+    else:
+        ebias_chain       = np.zeros((n_iters,3))
     tbias_chain       = np.zeros((n_iters,3))
     logpost_chain     = np.zeros(n_iters)
 
@@ -105,7 +124,7 @@ def mcmc_sampler(
         lever_prop    = lever_curr    + np.random.normal(0, proposal_scales['lever'],   3)
         gps_prop      = gps_curr      + np.random.normal(0, proposal_scales['gps_grid'], gps_curr.shape)
         cdog_aug_prop = cdog_aug_curr + np.random.normal(0, proposal_scales['CDOG_aug'], cdog_aug_curr.shape)
-        ebias_prop    = ebias_curr    + np.random.normal(0, proposal_scales['esv_bias'], 3)
+        ebias_prop    = ebias_curr    + np.random.normal(0, proposal_scales['esv_bias'], ebias_curr.shape)
         tbias_prop    = tbias_curr    + np.random.normal(0, proposal_scales['time_bias'], 3)
 
         ll_prop = compute_log_likelihood(
@@ -157,7 +176,6 @@ if __name__ == "__main__":
     data = np.load('../../../GPSData/Processed_GPS_Receivers_DOG_1.npz')
     GPS_Coordinates = data['GPS_Coordinates'][::downsample]
     GPS_data        = data['GPS_data'][::downsample]
-    # CDOG_guess      = data['CDOG_guess']
     CDOG_guess = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
 
     CDOG_all_data = []
@@ -177,7 +195,9 @@ if __name__ == "__main__":
     init_aug     = np.array([[-397.63809, 371.47355, 773.26347],
                              [825.31541, -110.93683, -734.15039],
                              [236.27742, -1307.44426, -2189.59746]])
-    init_ebias   = np.array([-0.4775, -0.3199, 0.1122])
+    # init_ebias   = np.array([-0.4775, -0.3199, 0.1122])
+    init_ebias   = np.array([[-0.4775, -0.5775], [-0.3199, -0.4199], [0.1122, 0.0122]])
+
     init_tbias   = np.array([0.01518602, 0.015779, 0.018898])
 
     chain = mcmc_sampler(

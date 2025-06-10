@@ -74,33 +74,32 @@ def construct_esv(depth, cz):
     return beta_array, z_array, esv_matrix
 
 if __name__ == "__main__":
-    if __name__ == "__main__":
-        import matplotlib.pyplot as plt
-        import scipy.io as sio
-        from time import time
+    import matplotlib.pyplot as plt
+    import scipy.io as sio
+    from time import time
 
-        z_a = 35
+    z_a = 35
 
-        # Time the execution
-        start_time = time()
-        beta_array, z_array, esv_matrix = construct_esv(depth, cz)
-        end_time = time()
-        print(f"Execution time: {end_time - start_time:.2f} seconds")
+    # Time the execution
+    start_time = time()
+    beta_array, z_array, esv_matrix = construct_esv(depth, cz)
+    end_time = time()
+    print(f"Execution time: {end_time - start_time:.2f} seconds")
 
-        plt.figure(figsize=(10, 6))
-        plt.contourf(beta_array, z_array, esv_matrix, levels=10, cmap='viridis')
-        plt.colorbar(label='ESV (m/s)')
-        plt.gca().invert_yaxis()
-        plt.xlabel("Elevation Angle (degrees)")
-        plt.ylabel("Depth (m)")
-        plt.title("Effective Sound Velocity (m/s)")
-        plt.show()
+    plt.figure(figsize=(10, 6))
+    plt.contourf(beta_array, z_array, esv_matrix, levels=10, cmap='viridis')
+    plt.colorbar(label='ESV (m/s)')
+    plt.gca().invert_yaxis()
+    plt.xlabel("Elevation Angle (degrees)")
+    plt.ylabel("Depth (m)")
+    plt.title("Effective Sound Velocity (m/s)")
+    plt.show()
 
-        dz_array = z_array - z_a
+    dz_array = z_array - z_a
 
-        data_to_save = {
-            "angle": beta_array,
-            "distance": dz_array,
-            "matrice": esv_matrix
-        }
-        sio.savemat('GPSData/global_table_esv_normal.mat', data_to_save)
+    data_to_save = {
+        "angle": beta_array,
+        "distance": dz_array,
+        "matrice": esv_matrix
+    }
+    sio.savemat('GPSData/global_table_esv_normal.mat', data_to_save)
