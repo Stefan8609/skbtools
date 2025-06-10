@@ -32,5 +32,13 @@ build-backend = "hatchling.build"
 packages = ["GeigerMethod"]
 include = ["*.py"]
 
+[tool.ruff]
+line-length = 100
+
 [tool.ruff.lint]
 select = ["E", "F", "B"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "tab"
+docstring-code-format = true

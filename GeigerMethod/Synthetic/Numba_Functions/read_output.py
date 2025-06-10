@@ -79,16 +79,16 @@ if __name__ == "__main__":
 
     if best_iter:
         print(f"Best iteration with z-index < {z_threshold}:")
-        print(f"Lever: {best_iter['lever']}")
-        print(f"CDOG Estimate: {best_iter['cdog'] - CDOG_guess_base}")
-        print(f"Offset: {best_iter['offset']}")
-        print(f"Time Bias: {best_iter['time_bias']}")
-        print(f"ESV Bias: {best_iter['esv_bias']}")
-        print(f"RMSE: {best_iter['rmse']}")
+        print(f'Lever: {best_iter["lever"]}')
+        print(f'CDOG Estimate: {best_iter["cdog"] - CDOG_guess_base}')
+        print(f'Offset: {best_iter["offset"]}')
+        print(f'Time Bias: {best_iter["time_bias"]}')
+        print(f'ESV Bias: {best_iter["esv_bias"]}')
+        print(f'RMSE: {best_iter["rmse"]}')
     else:
         print("No iterations found where the z-index of the lever is greater than -7.")
     # Additional statistics
     print(f"\nTotal iterations analyzed: {len(results)}")
-    print(f"Average RMSE: {np.mean([r['rmse'] for r in results]):.6f}")
-    print(f"Min RMSE: {np.min([r['rmse'] for r in results]):.6f}")
-    print(f"Max RMSE: {np.max([r['rmse'] for r in results]):.6f}")
+    print(f'Average RMSE: {np.mean([r["rmse"] for r in results]):.6f}')
+    print(f'Min RMSE: {np.min([r["rmse"] for r in results]):.6f}')
+    print(f'Max RMSE: {np.max([r["rmse"] for r in results]):.6f}')

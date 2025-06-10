@@ -171,8 +171,8 @@ def grid_search_annealing(
 
                 # Write line to file
                 file.write(
-                    f"[{np.array2string(best_lever, precision=4, separator=', ')[1:-1]}], "
-                    f"[{np.array2string(inversion_guess, precision=4, separator=', ')[1:-1]}], "
+                    f'[{np.array2string(best_lever, precision=4, separator=", ")[1:-1]}], '
+                    f'[{np.array2string(inversion_guess, precision=4, separator=", ")[1:-1]}], '
                     f"{current_offset + off_adjust:.4f}, {time_bias:.4e}, {esv_bias:.4f}, {RMSE * 100 * 1515:.4f}\n"
                 )
                 file.flush()  # ensures immediate write
@@ -329,8 +329,8 @@ def grid_search_discrete(
                 RMSE = np.sqrt(np.nanmean(diff_data**2)) / 1000 * 1515 * 100
                 # Write line to file
                 file.write(
-                    f"[{np.array2string(lever_guess, precision=4, separator=', ')[1:-1]}], "
-                    f"[{np.array2string(inversion_guess, precision=4, separator=', ')[1:-1]}], "
+                    f'[{np.array2string(lever_guess, precision=4, separator=", ")[1:-1]}], '
+                    f'[{np.array2string(inversion_guess, precision=4, separator=", ")[1:-1]}], '
                     f"{current_offset + off_adjust:.4f}, {time_bias:.4e}, {esv_bias:.4f}, {RMSE:.4f}\n"
                 )
                 file.flush()  # ensures immediate write

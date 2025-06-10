@@ -262,21 +262,42 @@ def gaussian_search(
                         best_offset[j] = offset
                         """Extend on this idea post meeting"""
                 RMSE_sum = np.sum(best_offset_rmse)
+                lever_str = np.array2string(
+                    lever_guess, precision=4, separator=", ", max_line_width=1000
+                )[1:-1]
+                gps1_str = str(gps1_grid_guess.round(4)).replace("\n", " ")[1:-1]
+                offset_str = np.array2string(
+                    best_offset, precision=4, separator=", ", max_line_width=1000
+                )[1:-1]
+                rmse_val = RMSE_sum * 100 * 1515
+
                 file.write(
-                    f"[{np.array2string(lever_guess, precision=4, separator=', ', max_line_width=1000)[1:-1]}], "
-                    f"[{str(gps1_grid_guess.round(4)).replace('\n', ' ')[1:-1]}], "
-                    f"[{np.array2string(best_offset, precision=4, separator=', ', max_line_width=1000)[1:-1]}], "
-                    f"{RMSE_sum * 100 * 1515:.4f}\n"
+                    f"[{lever_str}], [{gps1_str}], [{offset_str}], {rmse_val:.4f}\n"
                 )
                 file.flush()  # ensures immediate write
 
+                lever_str = np.array2string(
+                    lever_guess, precision=4, separator=", ", max_line_width=1000
+                )
+                gps1_str = str(gps1_grid_guess.round(4)).replace("\n", " ")
+                offset_str = np.array2string(
+                    best_offset, precision=4, separator=", ", max_line_width=1000
+                )[1:-1]
+                rmse_offset_str = np.array2string(
+                    best_offset_rmse * 100 * 1515,
+                    precision=4,
+                    separator=", ",
+                    max_line_width=1000,
+                )[1:-1]
+                rmse_val = RMSE_sum * 100 * 1515
+
                 print(
-                    f"Iteration {i + 1}/{num_points}: \n"
-                    f"Lever: {np.array2string(lever_guess, precision=4, separator=', ', max_line_width=1000)},\n"
-                    f"gps1_grid_guess: {str(gps1_grid_guess.round(4)).replace('\n', ' ')},\n"
-                    f"Best Offsets: {np.array2string(best_offset, precision=4, separator=', ', max_line_width=1000)[1:-1]}\n"
-                    f"Best RMSE: {np.array2string(best_offset_rmse * 100 * 1515, precision=4, separator=', ', max_line_width=1000)[1:-1]},\n"
-                    f"RMSE: {RMSE_sum * 100 * 1515:.4f}\n"
+                    f"Iteration {i + 1}/{num_points}:\n"
+                    f"Lever: {lever_str},\n"
+                    f"gps1_grid_guess: {gps1_str},\n"
+                    f"Best Offsets: {offset_str}\n"
+                    f"Best RMSE: {rmse_offset_str},\n"
+                    f"RMSE: {rmse_val:.4f}\n"
                 )
 
 

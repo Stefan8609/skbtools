@@ -21,7 +21,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install .[test,dev]
       - name: Run ruff
-        run: ruff .
+        run: ruff check .
       - name: Run pre-commit
         uses: pre-commit/action@v3.0.1
       - name: Run tests
