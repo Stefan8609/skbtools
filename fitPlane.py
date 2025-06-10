@@ -12,6 +12,8 @@ Output:
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
+from ECCO_and_plotting.plotPlane import plotPlane
 
 
 def fitPlane(xs, ys, zs):
@@ -44,16 +46,15 @@ Inputs:
 Default value for parameters are 10 random points with coordinates between -100 and 100
 """
 
-import matplotlib.pyplot as plt
-from ECCO_and_plotting.plotPlane import plotPlane
 
-
-def demo(
-    xs=np.random.rand(10) * 100,
-    ys=np.random.rand(10) * 100,
-    zs=np.random.rand(10) * 100,
-):
+def demo(xs=None, ys=None, zs=None):
     """Visualize the plane fit for the provided points."""
+    if xs is None:
+        xs = np.random.rand(10) * 100
+    if ys is None:
+        ys = np.random.rand(10) * 100
+    if zs is None:
+        zs = np.random.rand(10) * 100
     normVect = fitPlane(xs, ys, zs)
     points = np.array([xs, ys, zs])
     ax = plotPlane(

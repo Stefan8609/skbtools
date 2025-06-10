@@ -1,45 +1,3 @@
-"""
-Given an initial cloud of points with a known point of interest, this algorithm finds the point of interest
-    after the cloud of points has been translated/rotated
-
-Given a cloud of n points and one additional independent point (POI), determines the relative position of the POI
-with respect to that cloud by first characterizing the cloud by its plane of best fit (found using SVD) and
-
-Written by Stefan Kildal-Brandt
-
-2 functions: Initialization and findXyzt
-
-Initialization - Given the cloud of points and known point of interest, this function finds the latitude angle, colatitude angle, and length
-    from the barycenter of the point cloud to the point of interest,
-Inputs:
-    xs (list len=n) = x coordinates of points
-    ys (list len=n) = y coordinates of points
-    zs (list len=n) = z coordinates of points   (xs, ys, zs are initial states used for initialization purposes)
-    pointIdx (int (0, n-1)) = Index of the point in cloud that will be used as a reference
-    xyzt (list len=3) = The coordinates of the point of interest that we wish to find
-Outputs:
-    theta (float) = Latitude angle in radians from the plane of best fit from point cloud to xyzt
-    phi (float) = Colatitude angle in radians along the plane of best fit from the chosen reference point to xyzt
-    length (float) = Length of vector between barycenter of point cloud and xyzt
-    orientation (boolean) = True/False depending on what side of the plane the normal vector points out of
-
-findXyzt - Given the information found in the initialization function and a new set of xyz points in the point cloud, this function
-    finds where the xyzt point is relative to the new plane of best fit
-Inputs:
-    xs (list len=n) = x coordinates of points
-    ys (list len=n) = y coordinates of points
-    zs (list len=n) = z coordinates of points   (xy, ys, zs in translated/rotated point cloud)
-    pointIdx (int (0, n-1)) = Index of the point in cloud that will be used as a reference
-    theta (float) = Latitude angle in radians from the plane of best fit from point cloud to xyzt
-    phi (float) = Colatitude angle in radians along the plane of best fit from the chosen reference point to xyzt
-    length (float) = Length of vector between barycenter of point cloud and xyzt
-    orientation (boolean) = True/False depending on what side of the plane the normal vector points out of
-Outputs:
-    xyztVector: Vector between barycenter of the translated/rotated point cloud and the new xyzt point
-    barycenter: Barycenter of the translated/rotated point cloud
-    normVector: Normal vector of the plane of best fit for the translated/rotated point cloud
-"""
-
 import numpy as np
 from fitPlane import fitPlane
 from projectToPlane import projectToPlane
@@ -95,8 +53,9 @@ def findPhi(barycenter, xyzt, point, normVect):
     distanceVect = np.array(xyzt - barycenter)
     distanceProjection = projectToPlane(distanceVect, normVect)
 
-    # Cannot use normal method of getting angle because rotation could be out of arccos range of [0, 180]
-    # Use plane embedded in 3D instead - https://math.stackexchange.com/questions/878785/how-to-find-an-angle-in-range0-360-between-2-vectors
+    # Cannot use normal method of getting angle
+    # because rotation could be out of arccos range of [0, 180]
+    # Use plane embedded in 3D instead
     det = np.dot(normVect, np.cross(pointProjection, distanceProjection))
     dot = np.dot(pointProjection, distanceProjection)
     phi = np.arctan2(det, dot)
@@ -143,11 +102,6 @@ def initializeFunction(xs, ys, zs, pointIdx, xyzt):
     points = np.array([xs, ys, zs])
     barycenter = np.mean(points, axis=1)
     normVect = fitPlane(xs, ys, zs)
-    # check orientation of normVect versus point so can correct for normVect direction later
-    # if np.dot(np.array([0,0,1]), normVect) > 0: #Testing this method to see if it tracks orientation better for non-rigid gps
-    #     orientation=True
-    # else:
-    #     orientation=False
 
     if np.dot(np.array(points[:, pointIdx] - barycenter), normVect) > 0:
         orientation = True
@@ -191,16 +145,15 @@ def findXyzt(
     if (np.dot(point - barycenter, normVect) > 0) != orientation:
         normVect = normVect * -1
 
-    # if (np.dot(np.array([0,0,1]), normVect) > 0) != orientation:
-    #     normVect = normVect * -1
-
     normVect_Length = np.linalg.norm(normVect)
     unitNorm = normVect / normVect_Length
 
-    # Scale the normal vector to the length of the distance between barycenter and xyzt
+    # Scale the normal vector to the length
+    #  of the distance between barycenter and xyzt
     xyztVector = normVect * length / normVect_Length
 
-    # Rotate the scaled vector theta degrees around vector between barycenter and chosen point
+    # Rotate the scaled vector theta degrees around
+    #  vector between barycenter and chosen point
     rotationPoint = projectToPlane(point, normVect)
     rotationPoint_Vect = rotationPoint - barycenter
     rotationVector = np.cross(normVect, rotationPoint_Vect)
@@ -216,34 +169,7 @@ def findXyzt(
     return [xyztVector, barycenter, normVect]
 
 
-"""
-Demo - Demonstrate how a point is inversely found using this method after initialization
-Input:
-    xs (list len=n) = x coordinates of points
-    ys (list len=n) = y coordinates of points
-    zs (list len=n) = z coordinates of points   (xs, ys, zs are initial states used for initialization purposes)
-    xyzt (list len=3) = xyz of point that we want to find (xyzt is the initial state of this point used for initialization)
-    rot (list len=3) = list containing the xyz rotations applied to points
-    translate (list len=3) = list containing the xyz translations applied to points
-Default:
-    xs = 10 random coordinates between 0 and 10
-    ys = 10 random coordinates between 0 and 10
-    zs = 10 random coordinates between 0 and 25
-    xyzt = random between 0 and 25
-    rot = randomly determined between 0 and pi/2 for each axis (radians)
-    translate = randomly determined -10 and 10 for each coordinate
-
-"""
-
-
-def demo(
-    xs=np.random.rand(4) * 10 - 20,
-    ys=np.random.rand(4) * 10 - 20,
-    zs=np.random.rand(4) * 5 - 4,
-    xyzt=np.random.rand(3) * 30 - 25,
-    rot=np.random.rand(3) * np.pi / 2 - np.pi / 4,
-    translate=np.random.rand(3) * 10 - 5,
-):
+def demo(xs=None, ys=None, zs=None, xyzt=None, rot=None, translate=None):
     """Run a randomized demonstration of point reconstruction.
 
     Parameters
@@ -255,6 +181,18 @@ def demo(
     rot, translate : array-like of float, optional
         Random rotation (radians) and translation applied to the cloud.
     """
+    if xs is None:
+        xs = np.random.rand(4) * 10 - 20
+    if ys is None:
+        ys = np.random.rand(4) * 10 - 20
+    if zs is None:
+        zs = np.random.rand(4) * 5 - 4
+    if xyzt is None:
+        xyzt = np.random.rand(3) * 30 - 25
+    if rot is None:
+        rot = np.random.rand(3) * np.pi / 2 - np.pi / 4
+    if translate is None:
+        translate = np.random.rand(3) * 10 - 5
     [theta0, phi0, length0, orientation0] = initializeFunction(xs, ys, zs, 0, xyzt)
     [theta1, phi1, length1, orientation1] = initializeFunction(xs, ys, zs, 1, xyzt)
     [theta2, phi2, length2, orientation2] = initializeFunction(xs, ys, zs, 2, xyzt)
@@ -292,7 +230,8 @@ def demo(
     xyzt = np.matmul(totalRot, xyzt)
     xyzt = xyzt + translate
 
-    # Apply perturbation to some points to investigate how error occurs when points are not
+    # Apply perturbation to some points to investigate
+    #   how error occurs when points are not
     #   In exact position after translation/rotation
     xs += np.random.normal(0, 0.02, 4)
     ys += np.random.normal(0, 0.02, 4)

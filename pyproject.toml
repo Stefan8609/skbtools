@@ -6,24 +6,23 @@ authors = [
 ]
 requires-python = ">=3.8"
 dependencies = [
-    "numpy",
-    "matplotlib",
-    "scipy",
-    "pandas",
+    "numpy>=1.24",
+    "matplotlib>=3.5",
+    "scipy>=1.10",
+    "pandas>=1.5",
     "numba>=0.57",
-    "pymap3d",
+    "pymap3d>=2.9",
 ]
 
 [project.optional-dependencies]
 test = [
-    "pytest",
-    "pytest-cov",
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
 ]
 dev = [
-    "pre-commit",
-    "ruff",
+    "pre-commit>=3.0",
+    "ruff>=0.4",
 ]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -45,3 +44,6 @@ select = ["E", "F", "B"]
 quote-style = "double"
 indent-style = "space"
 docstring-code-format = true
+
+[tool.uv.sources]
+skbtools = { workspace = true }

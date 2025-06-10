@@ -94,7 +94,8 @@ def DelGrosso_SV(S, T, P):
 
 def UNESCO_SV(S, T, P):
     """
-    Algorithm to calculate sound velocity given Salinity, Temperature, and Pressure using UNESCO Equations
+    Algorithm to calculate sound velocity given Salinity,
+    Temperature, and Pressure using UNESCO Equations
     Inputs are in terms of Celsius, Practical Salinity Units, and bars
     Returns sound speed in m/s
     """
@@ -186,9 +187,11 @@ def UNESCO_SV(S, T, P):
 
 def NPL_ESV(S, T, Z, lat):
     """
-    Algorithm to calculate sound velocity given Salinity, Temperature, and Depth given NPL Equations
-        Inputs appear to be in terms of Celsius, Practical Salinity Units, meters, and degrees
-        returns sound speed in m/s
+    Algorithm to calculate sound velocity given Salinity,
+        Temperature, and Depth given NPL Equations
+    Inputs appear to be in terms of Celsius, Practical Salinity Units, meters,
+        and degrees
+    returns sound speed in m/s
     """
     c = (
         1402.5
@@ -211,9 +214,10 @@ def NPL_ESV(S, T, Z, lat):
 
 def Mackenzie_ESV(S, T, Z):
     """
-    Algorithm to calculate sound velocity given Salinity, Temperature, and Depth given Mackenzie Equations
-        Inputs are in terms of Celsius, Practical Salinity Units, and meters
-        Returns sound speed in m/s
+    Algorithm to calculate sound velocity given Salinity, Temperature,
+    and Depth given Mackenzie Equations
+    Inputs are in terms of Celsius, Practical Salinity Units, and meters
+    Returns sound speed in m/s
     """
     c = (
         1448.96
@@ -231,9 +235,10 @@ def Mackenzie_ESV(S, T, Z):
 
 def Coppens_ESV(S, T, Z):
     """
-    Algorithm to calculate sound velocity given Salinity, Temperature, and Depth given Coppens Equations
-        Inputs are in terms of Celsius, Practical Salinity Units, and meters
-        Returns sound speed in m/s
+    Algorithm to calculate sound velocity given Salinity, Temperature,
+    and Depth given Coppens Equations
+    Inputs are in terms of Celsius, Practical Salinity Units, and meters
+    Returns sound speed in m/s
     """
     T = T / 10
     Z = Z / 1000
@@ -307,7 +312,8 @@ if __name__ == "__main__":
     plt.legend()
     plt.show()
 
-    # Calculate the difference between each value in the sound speed profile and the closest cz_t
+    # Calculate the difference between each value in the
+    # sound speed profile and the closest cz_t
     sound_speed_diff1 = np.zeros_like(sound_speed1)
     sound_speed_diff2 = np.zeros_like(sound_speed2)
     sound_speed_diff3 = np.zeros_like(sound_speed3)
