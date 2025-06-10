@@ -47,6 +47,22 @@ from rodriguesRotationMatrix import rotationMatrix
 
 
 def findTheta(barycenter, xyzt, normVect):
+    """Return the angle between ``xyzt`` and the plane normal.
+
+    Parameters
+    ----------
+    barycenter : array-like of float, shape (3,)
+        Centroid of the reference point cloud.
+    xyzt : array-like of float, shape (3,)
+        Point of interest.
+    normVect : array-like of float, shape (3,)
+        Normal vector of the fitted plane.
+
+    Returns
+    -------
+    float
+        Angle in radians between ``xyzt`` and ``normVect``.
+    """
     disVect = np.array(xyzt - barycenter)
     dot = np.dot(disVect, normVect)
     disVect_Length = np.linalg.norm(disVect)
@@ -56,6 +72,24 @@ def findTheta(barycenter, xyzt, normVect):
 
 
 def findPhi(barycenter, xyzt, point, normVect):
+    """Compute the in-plane angle from ``point`` to ``xyzt``.
+
+    Parameters
+    ----------
+    barycenter : array-like of float, shape (3,)
+        Cloud centroid.
+    xyzt : array-like of float, shape (3,)
+        Point of interest.
+    point : array-like of float, shape (3,)
+        Reference point lying in the plane.
+    normVect : array-like of float, shape (3,)
+        Plane normal vector.
+
+    Returns
+    -------
+    float
+        Angle ``phi`` in radians within the plane.
+    """
     pointVect = np.array(point - barycenter)
     pointProjection = projectToPlane(pointVect, normVect)
     distanceVect = np.array(xyzt - barycenter)
@@ -70,11 +104,42 @@ def findPhi(barycenter, xyzt, point, normVect):
 
 
 def findLength(barycenter, xyzt):
+    """Return the distance from ``barycenter`` to ``xyzt``.
+
+    Parameters
+    ----------
+    barycenter : array-like of float, shape (3,)
+        Reference point.
+    xyzt : array-like of float, shape (3,)
+        Point of interest.
+
+    Returns
+    -------
+    float
+        Euclidean distance between the two points.
+    """
     length = np.linalg.norm(np.array(xyzt - barycenter))
     return length
 
 
 def initializeFunction(xs, ys, zs, pointIdx, xyzt):
+    """Initialize geometric parameters describing ``xyzt``.
+
+    Parameters
+    ----------
+    xs, ys, zs : array-like of float
+        Coordinates of the point cloud.
+    pointIdx : int
+        Index of the reference point within the cloud.
+    xyzt : array-like of float, shape (3,)
+        Point of interest.
+
+    Returns
+    -------
+    list
+        ``[theta, phi, length, orientation]`` describing the orientation and
+        radial position of ``xyzt`` relative to the cloud.
+    """
     points = np.array([xs, ys, zs])
     barycenter = np.mean(points, axis=1)
     normVect = fitPlane(xs, ys, zs)
@@ -97,6 +162,27 @@ def initializeFunction(xs, ys, zs, pointIdx, xyzt):
 def findXyzt(
     xs, ys, zs, pointIdx, length, theta, phi, orientation
 ):  # Main function finding the xyzt given initial conditions
+    """Reconstruct ``xyzt`` from the updated point cloud.
+
+    Parameters
+    ----------
+    xs, ys, zs : array-like of float
+        Coordinates of the transformed point cloud.
+    pointIdx : int
+        Index of the reference point used during initialization.
+    length : float
+        Distance from the barycenter to ``xyzt``.
+    theta, phi : float
+        Rotation angles returned by :func:`initializeFunction`.
+    orientation : bool
+        True if the plane normal pointed towards ``xyzt`` at initialization.
+
+    Returns
+    -------
+    list
+        ``[xyztVector, barycenter, normVect]`` giving the location of ``xyzt``
+        relative to the new point cloud.
+    """
     barycenter = np.mean(np.array([xs, ys, zs]), axis=1)
     normVect = fitPlane(xs, ys, zs)
     point = np.array([xs[pointIdx], ys[pointIdx], zs[pointIdx]])
@@ -158,6 +244,17 @@ def demo(
     rot=np.random.rand(3) * np.pi / 2 - np.pi / 4,
     translate=np.random.rand(3) * 10 - 5,
 ):
+    """Run a randomized demonstration of point reconstruction.
+
+    Parameters
+    ----------
+    xs, ys, zs : array-like of float, optional
+        Initial coordinates for the point cloud.
+    xyzt : array-like of float, optional
+        Location of the target point.
+    rot, translate : array-like of float, optional
+        Random rotation (radians) and translation applied to the cloud.
+    """
     [theta0, phi0, length0, orientation0] = initializeFunction(xs, ys, zs, 0, xyzt)
     [theta1, phi1, length1, orientation1] = initializeFunction(xs, ys, zs, 1, xyzt)
     [theta2, phi2, length2, orientation2] = initializeFunction(xs, ys, zs, 2, xyzt)

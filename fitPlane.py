@@ -15,6 +15,19 @@ import numpy as np
 
 
 def fitPlane(xs, ys, zs):
+    """Calculate the normal vector of the best-fit plane for a point cloud.
+
+    Parameters
+    ----------
+    xs, ys, zs : array-like of float
+        Coordinates of the points.
+
+    Returns
+    -------
+    numpy.ndarray
+        Unit normal vector of the fitted plane.
+    """
+
     points = np.array([xs, ys, zs])
     svd = np.linalg.svd(points - np.mean(points, axis=1, keepdims=True))
     left = svd[0]
@@ -40,6 +53,7 @@ def demo(
     ys=np.random.rand(10) * 100,
     zs=np.random.rand(10) * 100,
 ):
+    """Visualize the plane fit for the provided points."""
     normVect = fitPlane(xs, ys, zs)
     points = np.array([xs, ys, zs])
     ax = plotPlane(

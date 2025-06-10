@@ -1,21 +1,27 @@
-"""
-Plots a plane given a normal vector and a point on the plane
-Written by Stefan Kildal-Brandt
-
-Inputs:
-    (vector len=3) point = point on the plane
-    (vector len=3) normVect = Vector normal to the plane
-    (list[min, max]) xrange = The range over which the plane extends in the x-direction
-    (list[min, max]) yrange = The range over which the plane extends in the y-direction
-Outputs:
-    (axes object) ax = Figure object containing axes of plot
-"""
+"""Utility routines for visualizing a plane in 3‑D space."""
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 
 def plotPlane(point, normVect, xrange, yrange):
+    """Plot a plane defined by a point and its normal vector.
+
+    Parameters
+    ----------
+    point : array-like of float, shape (3,)
+        Point lying on the plane.
+    normVect : array-like of float, shape (3,)
+        Normal vector of the plane.
+    xrange, yrange : sequence of float
+        ``[min, max]`` bounds describing the extent of the mesh grid.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        Axes object containing the 3‑D plot.
+    """
+
     x_grid = np.linspace(xrange[0], xrange[1], 10)
     y_grid = np.linspace(yrange[0], yrange[1], 10)
     X, Y = np.meshgrid(x_grid, y_grid)
@@ -47,6 +53,15 @@ Default values are the point (10,-10,5) and the normal vector (-.5, 1, .2)
 
 
 def demo(point=[10, -10, 5], normVect=[-0.5, 1, 0.2]):
+    """Visualize a plane using example input values.
+
+    Parameters
+    ----------
+    point : array-like of float, optional
+        Location on the plane, by default ``[10, -10, 5]``.
+    normVect : array-like of float, optional
+        Plane normal vector, by default ``[-0.5, 1, 0.2]``.
+    """
     ax = plotPlane(
         point, normVect, [point[0] - 10, point[0] + 10], [point[1] - 10, point[1] + 10]
     )

@@ -11,6 +11,20 @@ from pymap3d import geodetic2ecef
 
 # Load GNSS Data during the time of expedition (25 through 40.9) hours
 def load_and_process_data(path):
+    """Load MATLAB GPS data and return time series and coordinates.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path to the ``.mat`` file.
+
+    Returns
+    -------
+    tuple
+        Arrays of times in hours and the corresponding ``x``, ``y`` and ``z``
+        coordinates.
+    """
+
     data = sio.loadmat(path)
     days = data["days"].flatten() - 59015
     times = data["times"].flatten()

@@ -7,17 +7,22 @@ import numpy.typing as npt
 def ray_tracing(
     iga: float, z_a: float, z_b: float, depth: npt.NDArray, cz: npt.NDArray
 ) -> tuple:
-    """Optimized Ray Tracing Algorithm using vectorized operations.
-    Inputs:
-    iga: Initial grazing angle in degrees
-    z_a: Source depth in meters
-    z_b: Receiver depth in meters
-    depth: Depth array in meters
-    cz: Sound speed array in m/s
-    Outputs:
-    x: Source-Receiver distance in meters
-    z: Receiver depth in meters
-    time: Travel time in seconds
+    """Ray trace a path through a stratified sound speed profile.
+
+    Parameters
+    ----------
+    iga : float
+        Initial grazing angle in degrees.
+    z_a, z_b : float
+        Source and receiver depths in metres.
+    depth, cz : ndarray
+        Discrete depth array and corresponding sound speed.
+
+    Returns
+    -------
+    tuple
+        ``(x, z, time)`` where ``x`` is the horizontal distance in metres,
+        ``z`` is the final depth and ``time`` is the travel time in seconds.
     """
     z_b_closest = np.abs(depth - z_b).argmin()
     z_a_closest = np.abs(depth - z_a).argmin()
@@ -58,15 +63,21 @@ def ray_tracing(
 def ray_trace_locate(
     z_a: float, z_b: float, target_x: float, depth: npt.NDArray, cz: npt.NDArray
 ) -> float:
-    """Binary search implementation for finding the correct angle.
-    Inputs:
-    z_a: Source depth in meters
-    z_b: Receiver depth in meters
-    target_x: Target source-receiver distance in meters
-    depth: Depth array in meters
-    cz: Sound speed array in m/s
-    Outputs:
-    alpha: Angle in degrees
+    """Locate the launch angle that yields the desired range using bisection.
+
+    Parameters
+    ----------
+    z_a, z_b : float
+        Source and receiver depths in metres.
+    target_x : float
+        Horizontal range between source and receiver in metres.
+    depth, cz : ndarray
+        Discrete depth array and corresponding sound speed profile.
+
+    Returns
+    -------
+    float
+        Angle in degrees that achieves ``target_x`` or ``NaN`` if none is found.
     """
     left = 1.0
     right = 90.0

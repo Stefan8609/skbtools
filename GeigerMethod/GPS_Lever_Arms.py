@@ -16,6 +16,18 @@ np.set_printoptions(suppress=True)
 
 
 def GPS_Lever_arms(GPS_Coordinates):
+    """Compute lever arms between GPS receivers.
+
+    Parameters
+    ----------
+    GPS_Coordinates : array-like, shape (N, 4, 3)
+        Positions of the four GPS units for ``N`` time steps.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of lever arm vectors with shape ``(4, N, 3)``.
+    """
     all_arms = np.zeros((4, len(GPS_Coordinates), 3))
     for i in range(len(GPS_Coordinates)):
         xs, ys, zs = GPS_Coordinates[i].T
