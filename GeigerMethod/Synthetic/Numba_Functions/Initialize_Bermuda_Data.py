@@ -16,10 +16,29 @@ from pymap3d import geodetic2ecef
 
 
 def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=3, save=False):
+    """Load DOG and GPS data for the Bermuda experiment.
+
+    Parameters
+    ----------
+    GNSS_start, GNSS_end : float
+        Start and end times (hours) for slicing the GNSS data.
+    CDOG_augment : ndarray
+        Offset applied to the base CDOG position.
+    DOG_num : int, optional
+        DOG data set number to load.
+    save : bool, optional
+        If ``True`` save processed arrays as ``.npz`` files.
+
+    Returns
+    -------
+    tuple
+        ``(GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others)``.
+    """
     print("Initializing Bermuda Data")
 
     # Load GNSS Data during the time of expedition (25 through 40.9) hours
     def load_and_process_data(path, GNSS_start, GNSS_end):
+        """Load GNSS unit data within the specified time range."""
         data = sio.loadmat(path)
         days = data["days"].flatten() - 59015
         times = data["times"].flatten()
@@ -67,6 +86,7 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=3, save=False
 
     # Filtering Functions
     def running_median(data, window=50):
+        """Return the running median of ``data`` using the given window."""
         half = window // 2
         n = len(data)
         result = np.empty(n)
@@ -77,6 +97,7 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=3, save=False
         return result
 
     def running_abs_dev(data, window=50):
+        """Median absolute deviation computed over a moving window."""
         half = window // 2
         n = len(data)
         result = np.empty(n)

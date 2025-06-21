@@ -27,8 +27,7 @@ def simulated_annealing(
     initial_offset=0,
     real_data=False,
 ):
-    """Algorithm to determine the best lever arm,
-    offset, and seafloor receiver position"""
+    """Estimate lever arm and receiver location via simulated annealing."""
 
     # Initialize variables
     status = "int"

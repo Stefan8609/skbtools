@@ -3,6 +3,7 @@ import re
 
 
 def parse_grid_search_results(filename):
+    """Parse the best entry from a grid search output file."""
     min_rmse = float("inf")
     min_lever = None
     min_grid = None

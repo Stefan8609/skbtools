@@ -14,8 +14,32 @@ def two_pointer_index(
     esv,
     exact=False,
 ):
-    """Optimized module to index closest data
-    points against each other given correct offset."""
+    """Synchronize DOG and GPS data streams given a time offset.
+
+    Parameters
+    ----------
+    offset : float
+        Candidate time offset between the DOG and GPS records.
+    threshhold : float
+        Maximum time difference allowed when pairing samples.
+    CDOG_data : ndarray
+        ``(N, 2)`` DOG integer and fractional times.
+    GPS_data : ndarray
+        ``(M,)`` GPS absolute times.
+    GPS_travel_times : ndarray
+        Modeled travel times from GPS to transponder.
+    transponder_coordinates : ndarray
+        Positions of the transponder for each GPS sample.
+    esv : ndarray
+        Effective sound speeds for each GPS sample.
+    exact : bool, optional
+        If ``True`` return the arrays without trimming.
+
+    Returns
+    -------
+    tuple
+        ``(CDOG_clock, GPS_clock, GPS_full, transponder_coords, esv_full)``.
+    """
     CDOG_times = CDOG_data[:, 0] + CDOG_data[:, 1] - offset
     GPS_times = GPS_data + GPS_travel_times
 
@@ -77,7 +101,7 @@ def two_pointer_index(
 def find_subint_offset(
     offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
 ):
-    """Optimized function to find the best sub-integer offset."""
+    """Search for the fractional time offset with minimum RMSE."""
     # Initialize values for loop
     lower, upper = offset - 0.5, offset + 0.5
     intervals = np.array(
@@ -132,7 +156,7 @@ def find_int_offset(
     best=0,
     best_RMSE=np.inf,
 ):
-    """Function to find the best integer offset between two time series."""
+    """Find the integer offset between two time series."""
     # Set initial parameters
     offset = start
     err_int = 1000

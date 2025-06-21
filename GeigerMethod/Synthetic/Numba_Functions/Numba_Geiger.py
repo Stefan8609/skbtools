@@ -8,8 +8,24 @@ from ECEF_Geodetic import ECEF_Geodetic
 
 @njit(cache=True)
 def findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder):
-    # Given initial information relative GPS
-    # locations and transponder and GPS Coords at each timestep
+    """Estimate transponder positions for each time step.
+
+    Parameters
+    ----------
+    GPS_Coordinates : ndarray
+        ``(N, 4, 3)`` array of GPS positions for each time step.
+    gps1_to_others : ndarray
+        Relative positions of the additional GPS receivers to GPS1.
+    gps1_to_transponder : ndarray
+        Initial guess for the lever arm from GPS1 to the transponder.
+
+    Returns
+    -------
+    ndarray
+        ``(N, 3)`` array of transponder coordinates.
+    """
+    # Given initial relative GPS locations and transponder and GPS Coords
+    # at each timestep
     xs, ys, zs = gps1_to_others.T
     initial_transponder = gps1_to_transponder
     n = len(GPS_Coordinates)
@@ -26,6 +42,20 @@ def findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder):
 
 @njit
 def find_esv(beta, dz):
+    """Look up effective sound velocities for given angles and depths.
+
+    Parameters
+    ----------
+    beta : ndarray
+        Ray takeoff angles in degrees.
+    dz : ndarray
+        Vertical distance between the receiver and the source.
+
+    Returns
+    -------
+    ndarray
+        Effective sound velocity for each input pair.
+    """
     idx_closest_dz = np.empty_like(dz, dtype=np.int64)
     idx_closest_beta = np.empty_like(beta, dtype=np.int64)
 
@@ -51,6 +81,20 @@ def find_esv(beta, dz):
 
 @njit
 def calculateTimesRayTracingReal(guess, transponder_coordinates):
+    """Compute travel times using a real ESV table.
+
+    Parameters
+    ----------
+    guess : ndarray
+        Current estimate of the source location.
+    transponder_coordinates : ndarray
+        ``(N, 3)`` array of receiver positions.
+
+    Returns
+    -------
+    tuple of ndarray
+        ``(times, esv)`` travel times and sound speeds.
+    """
     abs_dist = np.sqrt(np.sum((transponder_coordinates - guess) ** 2, axis=1))
     depth_arr = ECEF_Geodetic(transponder_coordinates)[2]
 
@@ -65,6 +109,22 @@ def calculateTimesRayTracingReal(guess, transponder_coordinates):
 
 @njit
 def calculateTimesRayTracing(guess, transponder_coordinates, ray=True):
+    """Compute travel times using a synthetic or constant sound speed.
+
+    Parameters
+    ----------
+    guess : ndarray
+        Current estimate of the source location.
+    transponder_coordinates : ndarray
+        ``(N, 3)`` array of receiver positions.
+    ray : bool, optional
+        If ``False`` use a fixed 1515 m/s sound speed.
+
+    Returns
+    -------
+    tuple of ndarray
+        ``(times, esv)`` travel times and sound speeds.
+    """
     hori_dist = np.sqrt(
         (transponder_coordinates[:, 0] - guess[0]) ** 2
         + (transponder_coordinates[:, 1] - guess[1]) ** 2
@@ -82,7 +142,24 @@ def calculateTimesRayTracing(guess, transponder_coordinates, ray=True):
 
 @njit
 def computeJacobianRayTracing(guess, transponder_coordinates, times, sound_speed):
-    # Computes the Jacobian, parameters are
+    """Jacobian of travel times with respect to source position.
+
+    Parameters
+    ----------
+    guess : ndarray
+        Current estimate of the source location.
+    transponder_coordinates : ndarray
+        ``(N, 3)`` array of receiver positions.
+    times : ndarray
+        Travel times for the current guess.
+    sound_speed : ndarray
+        Sound speed used for each receiver.
+
+    Returns
+    -------
+    ndarray
+        Jacobian matrix of shape ``(N, 3)``.
+    """
     # xyz coordinates and functions are the travel times
     diffs = transponder_coordinates - guess
     jacobian = -diffs / (times[:, np.newaxis] * (sound_speed[:, np.newaxis] ** 2))
@@ -97,8 +174,26 @@ def geigersMethod(
     transponder_coordinates_Found,
     time_noise=0,
 ):
-    # Use Geiger's method to find the guess of
-    # CDOG location which minimizes sum of travel times squared
+    """Iteratively refine a CDOG position using Geiger's algorithm.
+
+    Parameters
+    ----------
+    guess : ndarray
+        Initial estimate of the CDOG location.
+    CDog : ndarray
+        True CDOG location used to generate synthetic times.
+    transponder_coordinates_Actual : ndarray
+        Actual receiver coordinates for the data generation.
+    transponder_coordinates_Found : ndarray
+        Receiver coordinates used in the inversion.
+    time_noise : float, optional
+        Standard deviation of noise added to the travel times.
+
+    Returns
+    -------
+    tuple of ndarray
+        ``(estimate, times_known)`` final position and noisy arrival times.
+    """
     # Define threshold
     epsilon = 10**-5
     times_known, esv = calculateTimesRayTracing(CDog, transponder_coordinates_Actual)
@@ -129,7 +224,20 @@ def geigersMethod(
 
 @njit
 def generateRealistic(n):
-    # Initialize CDog and GPS locations
+    """Create a synthetic survey with random boat motion.
+
+    Parameters
+    ----------
+    n : int
+        Number of time steps in the synthetic trajectory.
+
+    Returns
+    -------
+    tuple of ndarray
+        ``(CDog, GPS_Coordinates, transponder_coordinates, gps1_to_others,
+        gps1_to_transponder)``.
+    """
+    # Initialize CDOG and GPS locations
     CDog = np.array(
         [
             random.uniform(-5000, 5000),

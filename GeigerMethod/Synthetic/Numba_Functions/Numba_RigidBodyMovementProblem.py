@@ -4,6 +4,20 @@ from numba import njit
 
 @njit(cache=True)
 def findRotationAndDisplacement(xyzs_init, xyzs_final):
+    """Rigid body transform between two point clouds.
+
+    Parameters
+    ----------
+    xyzs_init : ndarray
+        ``(3, N)`` initial coordinates.
+    xyzs_final : ndarray
+        ``(3, N)`` final coordinates.
+
+    Returns
+    -------
+    tuple
+        ``(R_mtrx, d)`` rotation matrix and translation vector.
+    """
     # Compute centroid of the initial and final point clouds
 
     centroid_init = np.array(
@@ -33,6 +47,7 @@ def findRotationAndDisplacement(xyzs_init, xyzs_final):
 
 
 def demo():
+    """Demonstration of the rigid body solver using random data."""
     xs = np.random.rand(4) * 10 - 5
     ys = np.random.rand(4) * 10 - 5
     zs = np.random.rand(4) * 2 - 1

@@ -5,6 +5,22 @@ from Numba_Geiger import generateRealistic
 
 
 def find_esv_generate(beta, dz, dz_array, angle_array, esv_matrix):
+    """Look up effective sound velocity for generation.
+
+    Parameters
+    ----------
+    beta : ndarray
+        Takeoff angles in degrees.
+    dz : ndarray
+        Vertical separation between source and receiver.
+    dz_array, angle_array, esv_matrix : ndarray
+        Discrete ESV table lookup grids.
+
+    Returns
+    -------
+    ndarray
+        Effective sound velocities matching ``beta`` and ``dz``.
+    """
     idx_closest_dz = np.empty_like(dz, dtype=np.int64)
     idx_closest_beta = np.empty_like(beta, dtype=np.int64)
 
@@ -37,6 +53,26 @@ def calculateTimesRayTracingGenerate(
     angle_array,
     esv_matrix,
 ):
+    """Ray trace travel times for the generation phase.
+
+    Parameters
+    ----------
+    guess : array-like, shape (3,)
+        Source location estimate.
+    transponder_coordinates : ndarray
+        ``(N, 3)`` coordinates of the transponder.
+    esv_bias : float
+        Bias applied to the effective sound velocity.
+    time_bias : float
+        Bias applied directly to the travel times.
+    dz_array, angle_array, esv_matrix : ndarray
+        ESV lookup tables used for interpolation.
+
+    Returns
+    -------
+    tuple of ndarray
+        ``(times, esv)`` travel times and effective sound speeds.
+    """
     hori_dist = np.sqrt(
         (transponder_coordinates[:, 0] - guess[0]) ** 2
         + (transponder_coordinates[:, 1] - guess[1]) ** 2
@@ -52,6 +88,7 @@ def calculateTimesRayTracingGenerate(
 
 
 # Function to generate the unaligned time series for a realistic trajectory
+# Function to generate the unaligned time series for a realistic trajectory
 def generateUnalignedRealistic(
     n,
     time_noise,
@@ -63,6 +100,29 @@ def generateUnalignedRealistic(
     esv_matrix,
     main=False,
 ):
+    """Generate noisy travel times for a realistic trajectory.
+
+    Parameters
+    ----------
+    n : int
+        Number of points along the synthetic path.
+    time_noise : float
+        Standard deviation of arrival time noise.
+    offset : float
+        Base offset applied to DOG times.
+    esv_bias, time_bias : float
+        Bias values applied to ESV and times.
+    dz_array, angle_array, esv_matrix : ndarray
+        Lookup table for the ESV.
+    main : bool, optional
+        If ``True`` return arrays useful for plotting.
+
+    Returns
+    -------
+    tuple
+        Either ``(CDOG_mat, CDOG, GPS_Coordinates, GPS_time, transponder_coordinates)``
+        or a longer tuple if ``main`` is ``True``.
+    """
     (
         CDOG,
         GPS_Coordinates,

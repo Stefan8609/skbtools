@@ -8,6 +8,20 @@ from Initialize_Bermuda_Data import initialize_bermuda
 
 
 def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):
+    """Brute force lever-arm search using simulated annealing.
+
+    Parameters
+    ----------
+    xl, xh, yl, yh, zl, zh : float
+        Bounds for the lever-arm search grid.
+    iter : int
+        Number of grid points along each axis.
+
+    Returns
+    -------
+    None
+        Results are written to ``output.txt``.
+    """
     esv_table = sio.loadmat("../../../GPSData/global_table_esv.mat")
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()

@@ -26,6 +26,7 @@ def time_series_plot(
     time_noise=0,
     block=True,
 ):
+    """Plot DOG and GPS time series with residuals."""
     difference_data = CDOG_full - GPS_full
 
     # convert ms residuals to a normal distribution
@@ -239,6 +240,7 @@ def time_series_plot(
 
 
 def trajectory_plot(coordinates, GPS_clock, CDOGs, block=True):
+    """Plot the surface vessel trajectory in the horizontal plane."""
     # Calculate time values in hours for proper colorbar range
     times_hours = GPS_clock / 3600  # Convert seconds to hours
     min_time = np.min(times_hours)
@@ -273,6 +275,7 @@ def trajectory_plot(coordinates, GPS_clock, CDOGs, block=True):
 
 
 def range_residual(transponder_coordinates, ESV, CDOG, CDOG_full, GPS_full, GPS_clock):
+    """Plot residual range errors along the track."""
     times_hours = GPS_clock / 3600  # Convert seconds to hours
     range_residuals = (CDOG_full - GPS_full) * ESV * 100  # Convert to cm
     calculated_range = np.linalg.norm(transponder_coordinates - CDOG, axis=1)
