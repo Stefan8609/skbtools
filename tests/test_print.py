@@ -1,4 +1,4 @@
-from ECCO_and_plotting.printTable import printTable
+from skbtools.plotting.print_table import printTable
 
 
 def test_print_table_simple(capsys):

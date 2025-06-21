@@ -1,7 +1,7 @@
 import numpy as np
-from rodriguesRotationMatrix import rotationMatrix
-from projectToPlane import projectToPlane
-from fitPlane import fitPlane
+from skbtools.geometry.rodrigues import rotationMatrix
+from skbtools.geometry.project_to_plane import projectToPlane
+from skbtools.geometry.fit_plane import fitPlane
 
 
 def test_rotation_matrix_z_axis():

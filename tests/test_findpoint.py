@@ -1,5 +1,5 @@
 import numpy as np
-from findPointByPlane import initializeFunction, findXyzt
+from skbtools.geometry.find_point_by_plane import initializeFunction, findXyzt
 
 
 def test_initialize_and_find_xyzt_simple():

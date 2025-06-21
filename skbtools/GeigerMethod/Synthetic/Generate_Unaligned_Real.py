@@ -12,7 +12,7 @@ Could use GPS data from our experiment at some point
 import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
-from RigidBodyMovementProblem import findRotationAndDisplacement
+from skbtools.geometry.rigid_body import findRotationAndDisplacement
 from pymap3d import geodetic2ecef
 
 esv_table = sio.loadmat("../../GPSData/global_table_esv.mat")

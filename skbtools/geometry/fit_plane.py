@@ -13,7 +13,7 @@ Output:
 
 import numpy as np
 import matplotlib.pyplot as plt
-from ECCO_and_plotting.plotPlane import plotPlane
+from skbtools.plotting.plot_plane import plotPlane
 
 
 def fitPlane(xs, ys, zs):

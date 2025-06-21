@@ -6,7 +6,7 @@ Written by Stefan Kildal-Brandt
 
 import numpy as np
 import random
-from RigidBodyMovementProblem import findRotationAndDisplacement
+from skbtools.geometry.rigid_body import findRotationAndDisplacement
 import scipy.io as sio
 from Generate_Realistic_Transducer import generateRealistic_Transducer
 
