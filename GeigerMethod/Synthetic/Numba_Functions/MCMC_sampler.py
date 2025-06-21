@@ -23,6 +23,7 @@ def compute_log_likelihood(
     angle_array,
     esv_matrix,
 ):
+    """Compute the log likelihood for a given parameter set."""
     split_esv = False
     if esv_bias.ndim == 2:
         split_esv = True
@@ -102,9 +103,37 @@ def mcmc_sampler(
     offsets,
     proposal_scales=None,
 ):
-    """
-    Metropolis-Hastings MCMC over
-    {lever, gps1_grid, CDOG_augments, esv_bias, time_bias}.
+    """Run a simple Metropolis-Hastings sampler over several parameters.
+
+    Parameters
+    ----------
+    n_iters : int
+        Number of MCMC iterations to perform.
+    initial_lever_base : ndarray
+        Starting lever arm vector.
+    initial_gps_grid : ndarray
+        Initial GPS grid offsets.
+    initial_CDOG_augments : ndarray
+        Initial CDOG augment vectors for each DOG.
+    initial_esv_bias, initial_time_bias : ndarray
+        Starting bias values for each DOG.
+    dz_array, angle_array, esv_matrix : ndarray
+        ESV lookup table used during the likelihood evaluation.
+    GPS_Coordinates, GPS_data : ndarray
+        Observed GPS positions and times.
+    CDOG_guess : ndarray
+        Base DOG position.
+    CDOG_all_data : list
+        Raw DOG arrival times for each unit.
+    offsets : ndarray
+        Offset guesses for each DOG.
+    proposal_scales : dict, optional
+        Dictionary of proposal standard deviations.
+
+    Returns
+    -------
+    dict
+        Dictionary containing arrays for all sampled parameters.
     """
     # default proposal stds
     if proposal_scales is None:

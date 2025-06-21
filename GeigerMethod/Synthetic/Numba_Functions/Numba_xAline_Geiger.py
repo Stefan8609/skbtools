@@ -13,7 +13,7 @@ from Generate_Unaligned_Realistic import generateUnalignedRealistic
 def initial_geiger(
     guess, CDOG_data, GPS_data, transponder_coordinates, real_data=False
 ):
-    """For use when looking for int offset"""
+    """Initial Geiger solver used with integer offset search."""
     epsilon = 10**-5
     k = 0
     delta = 1
@@ -64,7 +64,7 @@ def initial_geiger(
 def transition_geiger(
     guess, CDOG_data, GPS_data, transponder_coordinates, offset, real_data=False
 ):
-    """For when looking for sub-int offset"""
+    """Refine position using sub-integer offset adjustments."""
     epsilon = 10**-5
     k = 0
     delta = np.array([1.0, 1.0, 1.0])
@@ -124,7 +124,7 @@ def transition_geiger(
 def final_geiger(
     guess, CDOG_data, GPS_data, transponder_coordinates, offset, real_data=False
 ):
-    """For use when offset is known to a high degree"""
+    """Final refinement assuming the offset is accurately known."""
     epsilon = 10**-5
     k = 0
     delta = np.array([1.0, 1.0, 1.0])

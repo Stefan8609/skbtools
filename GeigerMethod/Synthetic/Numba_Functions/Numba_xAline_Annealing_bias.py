@@ -35,8 +35,7 @@ def simulated_annealing_bias(
     enforce_offset=False,
     z_sample=False,
 ):
-    """Algorithm to determine the best lever arm,
-    offset, and seafloor receiver position"""
+    """Estimate lever arm and biases using simulated annealing."""
     # Initialize variables
     status = "int"
     if enforce_offset:

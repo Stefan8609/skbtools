@@ -30,42 +30,42 @@ def grid_search_annealing(
     z_range=4,
     DOG_num=3,
 ):
+    """Run a grid search over lever arm and offset using annealing.
+
+    Parameters
+    ----------
+    xl, xh, yl, yh, zl, zh : float
+        Bounds for the lever-arm search grid.
+    num_points : int
+        Number of samples along each axis.
+    output_file : str, optional
+        Path for the text output of the search.
+    CDOG_guess_augment : ndarray, optional
+        Base adjustment to the DOG initial guess.
+    initial_lever_base : ndarray, optional
+        Initial lever arm used for the search origin.
+    downsample : int
+        Downsampling factor for data.
+    sa_iterations : int
+        Number of annealing steps per grid point.
+    offset_range : int
+        Magnitude of offset adjustments to test.
+    current_offset : float
+        Starting offset for annealing.
+    z_range : int
+        Number of z-axis points to evaluate.
+    DOG_num : int
+        DOG data set identifier.
+
+    Returns
+    -------
+    None
+        Results are appended to ``output_file``.
+    """
     if CDOG_guess_augment is None:
         CDOG_guess_augment = np.array([0.0, 0.0, 0.0])
     if initial_lever_base is None:
         initial_lever_base = np.array([-16.0, 0.0, -15.0])
-    """
-    Performs a grid search over lever-arm values (x, y, z) and small offset adjustments,
-    running a simulated annealing approach for each combination. Saves intermediate
-    and final results to a text file (and prints progress to console).
-
-    Parameters
-    ----------
-    xl, xh : float
-        Lower and upper bounds for the x coordinate of the lever-arm search range.
-    yl, yh : float
-        Lower and upper bounds for the y coordinate of the lever-arm search range.
-    zl, zh : float
-        Lower and upper bounds for the z coordinate of the lever-arm search range.
-    num_points : int
-        Number of points to sample along each axis (x, y, z).
-    output_file : str, optional
-        Path to the output text file where results are appended.
-    CDOG_guess_augment : np.ndarray, optional
-        Base vector for initial CDOG guess augmentation.
-    initial_lever_base : np.ndarray, optional
-        Base vector for the lever-arm guess.
-    offset_initial : float, optional
-        Initial offset used as a starting point for finer searches.
-    gnss_start, gnss_end : float
-        Start and end times for GNSS data slicing.
-    downsample : int
-        Downsampling step used for the GPS data.
-    sa_iterations : int
-        Number of simulated annealing iterations to run per sample.
-    offset_search_range : tuple (start, stop, num)
-        Defines the np.linspace() range for searching offset around offset_initial.
-    """
 
     # Load the external ESV data
     esv_table = sio.loadmat("../../../GPSData/global_table_esv.mat")

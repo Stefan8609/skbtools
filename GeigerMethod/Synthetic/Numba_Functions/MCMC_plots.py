@@ -6,6 +6,17 @@ import itertools
 
 
 def trace_plot(chain, initial_params=None, downsample=1):
+    """Plot traces of MCMC parameters.
+
+    Parameters
+    ----------
+    chain : dict of ndarray
+        Output chain from ``mcmc_sampler``.
+    initial_params : dict, optional
+        Starting parameter values to plot as references.
+    downsample : int, optional
+        Step used when plotting chain values.
+    """
     # Trace Plots
     fig, axes = plt.subplots(nrows=6, ncols=1, figsize=(8, 10), sharex=True)
     axes[0].plot(chain["lever"][::downsample, 0])
@@ -48,6 +59,7 @@ def trace_plot(chain, initial_params=None, downsample=1):
 
 
 def marginal_hists(chain, initial_params=None):
+    """Plot marginal histograms of the MCMC parameters."""
     # Marginal Histograms
     fig, axes = plt.subplots(2, 3, figsize=(12, 8))
     axes = axes.flatten()
@@ -100,6 +112,7 @@ def marginal_hists(chain, initial_params=None):
 
 
 def corner_plot(chain, initial_params=None, downsample=1):
+    """Plot a corner plot of the posterior samples."""
     # Extract parameter arrays
     pars = {
         "lx": chain["lever"][::downsample, 0],
@@ -180,6 +193,7 @@ def corner_plot(chain, initial_params=None, downsample=1):
 
 
 def acf_plots(chain, initial_params=None):
+    """Plot autocorrelation functions for key parameters."""
     # ACF Plots
     fig, axes = plt.subplots(3, 2, figsize=(12, 10))
     axes = axes.flatten()

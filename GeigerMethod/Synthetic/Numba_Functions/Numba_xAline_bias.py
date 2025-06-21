@@ -23,7 +23,7 @@ def initial_bias_geiger(
     esv_matrix,
     real_data=False,
 ):
-    """For use when looking for int offset"""
+    """Initial inversion including time and ESV bias parameters."""
     epsilon = 10**-5
     k = 0
     delta = 1
@@ -89,7 +89,7 @@ def transition_bias_geiger(
     esv_matrix,
     real_data=False,
 ):
-    """For when looking for sub-int offset using time bias"""
+    """Refine estimate while solving for time/ESV bias."""
     epsilon = 10**-5
     delta = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
     estimate = np.array([guess[0], guess[1], guess[2], time_bias, esv_bias])
@@ -158,7 +158,7 @@ def final_bias_geiger(
     esv_matrix,
     real_data=False,
 ):
-    """For when looking for sub-int offset"""
+    """Final bias-aware inversion with fixed offset."""
     epsilon = 10**-5
     k = 0
     delta = np.array([1.0, 1.0, 1.0])

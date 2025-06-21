@@ -7,6 +7,7 @@ from Modular_Synthetic import modular_synthetic
 
 
 def combined_dependence():
+    """Map position and timing noise to resulting RMSE."""
     space_axis = np.linspace(1 * 10**-2, 5 * 10**-2, 25)
     time_axis = np.linspace(2 * 10**-6, 5 * 10**-5, 25)
 

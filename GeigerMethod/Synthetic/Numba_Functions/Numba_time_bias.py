@@ -5,6 +5,22 @@ from ECEF_Geodetic import ECEF_Geodetic
 
 @njit
 def find_esv(beta, dz, dz_array, angle_array, esv_matrix):
+    """Interpolate effective sound velocities from a lookup table.
+
+    Parameters
+    ----------
+    beta : ndarray
+        Takeoff angles in degrees.
+    dz : ndarray
+        Vertical separation of receiver and source.
+    dz_array, angle_array, esv_matrix : ndarray
+        Discrete lookup grids defining the ESV table.
+
+    Returns
+    -------
+    ndarray
+        Interpolated effective sound velocities.
+    """
     idx_closest_dz = np.empty_like(dz, dtype=np.int64)
     idx_closest_beta = np.empty_like(beta, dtype=np.int64)
 
@@ -32,10 +48,23 @@ def find_esv(beta, dz, dz_array, angle_array, esv_matrix):
 def calculateTimesRayTracing_Bias(
     guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
 ):
-    """
-    Ray Tracing calculation of times using ESV
-        Capable of handling an ESV bias input term
-        (whether a constant or an array with same length as transponder_coordinates)
+    """Compute travel times with an optional ESV bias term.
+
+    Parameters
+    ----------
+    guess : array-like, shape (3,)
+        Current estimate of the source location.
+    transponder_coordinates : ndarray
+        ``(N, 3)`` array of transponder positions.
+    esv_bias : float or ndarray
+        Bias added to the effective sound velocity.
+    dz_array, angle_array, esv_matrix : ndarray
+        Lookup table for computing the ESV.
+
+    Returns
+    -------
+    tuple of ndarray
+        ``(times, esv)`` travel times and sound velocities.
     """
     hori_dist = np.sqrt(
         (transponder_coordinates[:, 0] - guess[0]) ** 2
@@ -53,6 +82,7 @@ def calculateTimesRayTracing_Bias(
 def calculateTimesRayTracing_Bias_Real(
     guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
 ):
+    """Calculate times for real data using geodetic depths."""
     abs_dist = np.sqrt(np.sum((transponder_coordinates - guess) ** 2, axis=1))
     depth_arr = ECEF_Geodetic(transponder_coordinates)[2]
 
@@ -67,8 +97,7 @@ def calculateTimesRayTracing_Bias_Real(
 
 @njit(cache=True)
 def compute_Jacobian_biased(guess, transponder_coordinates, times, esv, esv_bias):
-    """Compute the Jacobian of the system with respect to the ESV bias term
-    According to Bud's algorithm for Gauss-Newton Inversion"""
+    """Jacobian of travel times with respect to state and bias terms."""
     diffs = transponder_coordinates - guess
 
     J = np.zeros((len(transponder_coordinates), 5))
@@ -99,7 +128,7 @@ def numba_bias_geiger(
     esv_matrix_gen=None,
     time_noise=0,
 ):
-    """Geiger method with estimation of ESV bias term"""
+    """Perform Gauss–Newton inversion including ESV and time bias terms."""
     if dz_array_gen is None:
         dz_array_gen = np.empty(0)
     if angle_array_gen is None:

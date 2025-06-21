@@ -10,16 +10,17 @@ from numba import njit
 
 @njit(cache=True)
 def ECEF_Geodetic(coords):
-    """Convert ECEF coordinates to Geodetic coordinates
-    Args:
-        coords (numpy.ndarray): ECEF coordinates in the form of a
-            2D array with shape (n, 3)
-            where n is the number of points and 3 corresponds to x, y, z coordinates.
-    Returns:
-        tuple: A tuple containing:
-            - theta (float): Latitude in degrees
-            - clambda (float): Longitude in degrees
-            - h (float): Height in meters
+    """Convert ECEF coordinates to geodetic coordinates.
+
+    Parameters
+    ----------
+    coords : ndarray, shape (N, 3)
+        Array of ``(x, y, z)`` positions in metres.
+
+    Returns
+    -------
+    tuple of ndarray
+        ``(lat, lon, h)`` arrays in degrees/metres for each input point.
     """
     x, y, z = coords[:, 0], coords[:, 1], coords[:, 2]
     # --- WGS84 constants
@@ -55,6 +56,18 @@ if __name__ == "__main__":
     import timeit
 
     def load_and_process_data(path):
+        """Load unit data and slice to the GNSS window.
+
+        Parameters
+        ----------
+        path : str
+            Path to the ``.mat`` file containing receiver data.
+
+        Returns
+        -------
+        tuple of ndarray
+            ``(time, x, y, z)`` arrays filtered to the GNSS window.
+        """
         data = sio.loadmat(path)
         days = data["days"].flatten() - 59015
         times = data["times"].flatten()

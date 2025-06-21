@@ -3,7 +3,18 @@ import re
 
 
 def parse_grid_search_line(line):
-    """Parse a line from the grid search output file."""
+    """Parse a line from the grid search output file.
+
+    Parameters
+    ----------
+    line : str
+        Single line from the text output.
+
+    Returns
+    -------
+    dict or None
+        Parsed values or ``None`` if the line is a header.
+    """
     # Skip header lines
     if line.startswith("Grid Search Results") or line.startswith("[Lever]"):
         return None
@@ -42,7 +53,18 @@ def parse_grid_search_line(line):
 
 
 def read_grid_search_file(filename):
-    """Read a grid search output file and return the data as a list of dictionaries."""
+    """Load an output file produced by ``grid_search``.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the text file.
+
+    Returns
+    -------
+    list of dict
+        Parsed entries for each iteration.
+    """
     results = []
     with open(filename, "r") as f:
         for line in f:
@@ -53,7 +75,7 @@ def read_grid_search_file(filename):
 
 
 def find_best_iterations(results, z_threshold=-7):
-    """Find the best iteration with lowest RMSE where lever z-index > threshold."""
+    """Return the iteration with minimum RMSE below a depth threshold."""
     # Filter iterations where z-index of lever is greater than threshold
     filtered_results = [
         result for result in results if result["lever"][2] < z_threshold
