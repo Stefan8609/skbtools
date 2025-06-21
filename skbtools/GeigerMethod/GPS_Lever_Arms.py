@@ -1,6 +1,6 @@
 import numpy as np
-from fitPlane import fitPlane
-from projectToPlane import projectToPlane
+from skbtools.geometry.fit_plane import fitPlane
+from skbtools.geometry.project_to_plane import projectToPlane
 
 np.set_printoptions(suppress=True)
 

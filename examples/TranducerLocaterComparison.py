@@ -1,6 +1,6 @@
-from RigidBodyMovementProblem import findRotationAndDisplacement
+from skbtools.geometry.rigid_body import findRotationAndDisplacement
 from findPointByPlane import initializeFunction, findXyzt
-from fitPlane import fitPlane
+from skbtools.geometry.fit_plane import fitPlane
 
 import numpy as np
 import matplotlib.pyplot as plt

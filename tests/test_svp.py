@@ -1,5 +1,5 @@
 import numpy as np
-from SVP_Calculations import (
+from skbtools.acoustics.svp import (
     depth_to_pressure_Leroy,
     depth_to_pressure,
     DelGrosso_SV,

@@ -5,7 +5,7 @@ Written by Stefan Kildal-Brandt
 """
 
 import numpy as np
-from RigidBodyMovementProblem import findRotationAndDisplacement
+from skbtools.geometry.rigid_body import findRotationAndDisplacement
 import scipy.io as sio
 
 esv_table = sio.loadmat("../GPSData/global_table_esv.mat")

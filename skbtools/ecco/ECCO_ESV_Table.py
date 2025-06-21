@@ -3,8 +3,8 @@ import xarray as xr
 import gsw
 import scipy.io as sio
 
-from SVP_Calculations import DelGrosso_SV, depth_to_pressure
-from ESV_table import construct_esv
+from skbtools.acoustics.svp import DelGrosso_SV, depth_to_pressure
+from examples.ESV_table import construct_esv
 
 """Build ESV table for every month of ECCO to ECCO Depth"""
 

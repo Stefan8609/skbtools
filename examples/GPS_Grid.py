@@ -1,6 +1,6 @@
 import numpy as np
 
-from RigidBodyMovementProblem import findRotationAndDisplacement
+from skbtools.geometry.rigid_body import findRotationAndDisplacement
 
 # pf to sf = 4.4 in y
 # pf to sa = -10.9 in x, -6.5 in y
