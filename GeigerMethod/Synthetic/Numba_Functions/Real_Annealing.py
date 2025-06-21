@@ -19,8 +19,29 @@ def _evaluate(
     esv_matrix,
     offset,
 ):
-    """Finds RMSE for given lever arm and offset
-    Only uses the transition_bias_geiger function as this is numba compatible
+    """Evaluate RMSE for a given lever and offset.
+
+    Parameters
+    ----------
+    CDOG_data, GPS_data : ndarray
+        Raw arrival data for the DOG and GPS receivers.
+    GPS_Coordinates : ndarray
+        ``(N, 4, 3)`` array of GPS positions.
+    gps1_to_others : ndarray
+        Relative positions of the other GPS receivers.
+    inversion_in : ndarray
+        Current estimate of ``(x, y, z, time_bias, esv_bias)``.
+    lever : ndarray
+        Lever arm vector from GPS1 to the transponder.
+    dz_array, angle_array, esv_matrix : ndarray
+        Effective sound velocity lookup tables.
+    offset : float
+        Initial timing offset between DOG and GPS data.
+
+    Returns
+    -------
+    tuple
+        ``(inversion_result, RMSE)`` best estimate and associated error.
     """
     inversion_guess = inversion_in[:3]
     time_bias = inversion_in[3]
@@ -60,8 +81,31 @@ def simulated_annealing_real(
     esv_matrix,
     offset=2000.0,
 ):
-    """Simulated Annealing Algorithm
-    Optimized for real data with an inputted offset...
+    """Run simulated annealing to estimate lever arm and biases.
+
+    Parameters
+    ----------
+    max_iterations : int
+        Number of annealing steps to perform.
+    CDOG_data, GPS_data : ndarray
+        Arrival data for the DOG and GPS receivers.
+    GPS_Coordinates : ndarray
+        ``(N, 4, 3)`` array of GPS positions.
+    gps1_to_others : ndarray
+        Relative offsets of the other GPS receivers.
+    initial_guess : ndarray
+        Starting estimate of the CDOG position.
+    initial_lever : ndarray
+        Initial guess for the lever arm.
+    dz_array, angle_array, esv_matrix : ndarray
+        Effective sound velocity lookup tables.
+    offset : float, optional
+        Initial timing offset between DOG and GPS data.
+
+    Returns
+    -------
+    tuple
+        ``(inversion_estimate, best_lever, RMSE)`` final state and error.
     """
     inversion_estimate = np.array(
         [initial_guess[0], initial_guess[1], initial_guess[2], 0.0, 0.0]
