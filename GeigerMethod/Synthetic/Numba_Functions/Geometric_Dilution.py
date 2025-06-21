@@ -7,6 +7,20 @@ from Modular_Synthetic import modular_synthetic
 
 
 def geometric_dilution(interval):
+    """Plot the geometric dilution of precision for a given interval.
+
+    Parameters
+    ----------
+    interval : int
+        Step between successive transponder points used in the GDOP
+        calculation.
+
+    Returns
+    -------
+    None
+        A figure showing GDOP versus time is displayed.
+    """
+
     table_str = "global_table_esv_realistic_perturbed"
 
     (

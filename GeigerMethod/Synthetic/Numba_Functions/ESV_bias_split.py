@@ -6,21 +6,27 @@ from Numba_time_bias import find_esv
 def calculateTimesRayTracing_split(
     guess, transponder_coordinates, esv_biases, dz_array, angle_array, esv_matrix
 ):
-    """
-    Ray Tracing calculation of times using ESV
-        Capable of handling an array of ESV biases split by time
-    :param guess:
-        The guess for the position of the source.
-    :param transponder_coordinates:
-        The transponder coordinates to calculate the times for.
-    :param esv_biases:
-        The array of ESV biases to be applied to the transponder coordinates.
-    :param dz_array:
-        The array of depth differences to be used for the ESV calculation.
-    :param angle_array:
-        The array of angles to be used for the ESV calculation.
-    :param esv_matrix:
-        The ESV matrix to be used for the ESV calculation.
+    """Ray trace times with separate ESV biases for consecutive blocks.
+
+    Parameters
+    ----------
+    guess : array-like of float, shape (3,)
+        Current estimate of the source location.
+    transponder_coordinates : ndarray
+        ``(N, 3)`` array of transponder positions.
+    esv_biases : ndarray
+        Sequence of ESV biases applied in order along the track.
+    dz_array : ndarray
+        Depth grid used for the ESV table.
+    angle_array : ndarray
+        Angle grid used for the ESV table in degrees.
+    esv_matrix : ndarray
+        Effective sound velocity table.
+
+    Returns
+    -------
+    tuple of ndarray
+        ``(times, esv)`` travel times and effective sound speeds.
     """
     times = np.zeros(len(transponder_coordinates))
     esv = np.zeros(len(transponder_coordinates))

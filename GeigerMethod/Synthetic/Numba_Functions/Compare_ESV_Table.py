@@ -6,6 +6,19 @@ from Numba_Geiger import generateRealistic, findTransponder
 
 
 def compare_tables(esv_table1, esv_table2):
+    """Compare two ESV lookup tables using a synthetic scenario.
+
+    Parameters
+    ----------
+    esv_table1, esv_table2 : dict
+        ``.mat`` structures with ``distance``, ``angle`` and ``matrice`` arrays.
+
+    Returns
+    -------
+    None
+        Statistics are printed to ``stdout``.
+    """
+
     dz_array_gen = esv_table1["distance"].flatten()
     angle_array_gen = esv_table1["angle"].flatten()
     esv_matrix_gen = esv_table1["matrice"]

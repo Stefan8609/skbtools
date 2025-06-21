@@ -65,6 +65,23 @@ def _plot_error_ellipse(
 
 
 def error_ellipse(num_points, time_noise, position_noise):
+    """Plot error ellipses from Monte Carlo samples.
+
+    Parameters
+    ----------
+    num_points : int
+        Number of Monte Carlo iterations to run.
+    time_noise : float
+        Standard deviation of timing noise.
+    position_noise : float
+        Standard deviation of position noise in metres.
+
+    Returns
+    -------
+    None
+        Displays plots of the estimated CDOG positions and lever errors.
+    """
+
     # Real Lever
     real_lever = np.array([-12.48862757, 0.22622633, -15.89601934])
 
