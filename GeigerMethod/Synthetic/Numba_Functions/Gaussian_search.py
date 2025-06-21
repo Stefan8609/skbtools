@@ -15,9 +15,31 @@ def gaussian_search_individual(
     sigma_gps_grid=None,
     downsample=50,
 ):
-    """
-    Samples lever and GPS‐grid parameters in Gaussian fashion and computes
-    the RMSE Gaussian for a single DOG (index 0–2).
+    """Sample lever and grid parameters for a single DOG.
+
+    Parameters
+    ----------
+    dog_idx : int
+        Index of the DOG (0–2).
+    num_points : int
+        Number of samples to generate.
+    output_file : str, optional
+        Destination file for the RMSE results.
+    initial_lever_base : ndarray, optional
+        Base estimate of the lever arm.
+    initial_gps_grid : ndarray, optional
+        Estimated GPS grid for DOG1.
+    sigma_lever : ndarray, optional
+        Standard deviation of lever perturbations.
+    sigma_gps_grid : ndarray, optional
+        Standard deviation of GPS grid perturbations.
+    downsample : int, optional
+        Downsample factor for the raw data.
+
+    Returns
+    -------
+    None
+        Results are written to ``output_file``.
     """
     if initial_lever_base is None:
         initial_lever_base = np.array([-12.4659, 9.6021, -13.2993])
@@ -146,24 +168,29 @@ def gaussian_search(
     sigma_gps_grid=None,
     downsample=50,
 ):
-    """
-    Function to sample the GPS grid and GPS to transducer in a Gaussian distribution.
-        Calculates the RMSE of the joint CDOGs and saves each sample and RMSE to a file.
+    """Perform a Gaussian search over lever and grid parameters.
 
     Parameters
     ----------
     num_points : int
-        Number of points to sample in the Gaussian distribution.
-    output_file : str
-        Path to the output file.
-    CDOG_guess_augment : np.ndarray
-        Augmented guess for CDOG coordinates.
-    initial_lever_base : np.ndarray
-        Base guess for the initial lever arm.
-    initial_gps_grid : np.ndarray
-        Initial guess for the GPS grid coordinates.
-    downsample : int
-        Downsample factor for the data.
+        Number of samples to generate.
+    output_file : str, optional
+        File where the combined RMSE values are stored.
+    initial_lever_base : ndarray, optional
+        Base estimate of the lever arm.
+    initial_gps_grid : ndarray, optional
+        Estimated GPS grid for DOG1.
+    sigma_lever : ndarray, optional
+        Standard deviation of lever perturbations.
+    sigma_gps_grid : ndarray, optional
+        Standard deviation of GPS grid perturbations.
+    downsample : int, optional
+        Downsample factor for the raw data.
+
+    Returns
+    -------
+    None
+        The RMSE values are written to ``output_file``.
     """
     if initial_lever_base is None:
         initial_lever_base = np.array([-12.4659, 9.6021, -13.2993])

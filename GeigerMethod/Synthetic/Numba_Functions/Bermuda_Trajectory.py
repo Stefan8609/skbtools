@@ -9,7 +9,24 @@ from Numba_time_bias import calculateTimesRayTracing_Bias_Real
 def bermuda_trajectory(
     time_noise, position_noise, dz_array, angle_array, esv_matrix, DOG_num=3
 ):
-    """Calculate trajectory and synthetic arrival times for Bermuda dataset"""
+    """Generate synthetic Bermuda trajectory and travel times.
+
+    Parameters
+    ----------
+    time_noise : float
+        Standard deviation of timing noise added to the data.
+    position_noise : float
+        Standard deviation of position noise in metres.
+    dz_array, angle_array, esv_matrix : ndarray
+        Effective sound velocity lookup tables.
+    DOG_num : int, optional
+        DOG data set to load (1–4).
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        ``(CDOG_data, CDOG, GPS_Coordinates, GPS_data, transponder_coordinates)``.
+    """
     CDOG_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
     CDOG_augment = np.array([974.12667502, -80.98121315, -805.07870249])
     CDOG = CDOG_base + CDOG_augment
