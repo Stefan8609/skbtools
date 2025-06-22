@@ -1,7 +1,10 @@
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 import numpy as np
-from advancedGeigerMethod import geigersMethod, calculateTimesRayTracing
+from GeigerMethod.Synthetic.advancedGeigerMethod import (
+    geigersMethod,
+    calculateTimesRayTracing,
+)
 from scipy.stats import norm
 
 

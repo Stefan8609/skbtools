@@ -2,8 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 
-from Modular_Synthetic import modular_synthetic
-from ECEF_Geodetic import ECEF_Geodetic
+from GeigerMethod.Synthetic.Numba_Functions.Modular_Synthetic import (
+    modular_synthetic,
+)
+from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
 
 from pymap3d import geodetic2enu
 

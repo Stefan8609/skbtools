@@ -1,5 +1,5 @@
 import numpy as np
-from advancedGeigerMethod import (
+from GeigerMethod.Synthetic.advancedGeigerMethod import (
     geigersMethod,
     calculateTimesRayTracing,
     findTransponder,

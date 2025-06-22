@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import random
-from advancedGeigerMethod import (
+from GeigerMethod.Synthetic.advancedGeigerMethod import (
     generateRealistic,
     calculateTimesRayTracing,
     findTransponder,

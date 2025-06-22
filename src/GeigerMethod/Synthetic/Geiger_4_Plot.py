@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
-from advancedGeigerMethod import (
+from GeigerMethod.Synthetic.advancedGeigerMethod import (
     geigersMethod,
     generateRealistic,
     calculateTimesRayTracing,

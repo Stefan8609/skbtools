@@ -220,8 +220,13 @@ def find_int_offset(
 
 
 if __name__ == "__main__":
-    from .Numba_Geiger import calculateTimesRayTracing, findTransponder
-    from .Generate_Unaligned_Realistic import generateUnalignedRealistic
+    from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import (
+        calculateTimesRayTracing,
+        findTransponder,
+    )
+    from GeigerMethod.Synthetic.Generate_Unaligned_Realistic import (
+        generateUnalignedRealistic,
+    )
 
     n = 10000
     true_offset = np.random.rand() * 10000

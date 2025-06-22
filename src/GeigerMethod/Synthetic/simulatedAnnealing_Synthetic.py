@@ -1,12 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from advancedGeigerMethod import (
+from GeigerMethod.Synthetic.advancedGeigerMethod import (
     geigersMethod,
     findTransponder,
     calculateTimesRayTracing,
 )
-from geigerTimePlot import geigerTimePlot
-from Generate_Realistic_Transducer import generateRealistic_Transducer
+from GeigerMethod.Synthetic.geigerTimePlot import geigerTimePlot
+from GeigerMethod.Synthetic.Generate_Realistic_Transducer import (
+    generateRealistic_Transducer,
+)
 import random
 from data import gps_data_path
 

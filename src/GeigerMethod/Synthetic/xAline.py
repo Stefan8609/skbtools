@@ -6,7 +6,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
 from scipy import signal
-from advancedGeigerMethod import calculateTimesRayTracing, findTransponder
+from GeigerMethod.Synthetic.advancedGeigerMethod import (
+    calculateTimesRayTracing,
+    findTransponder,
+)
 from data import gps_data_path
 
 

@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
-from advancedGeigerMethod import (
+from GeigerMethod.Synthetic.advancedGeigerMethod import (
     generateRealistic,
 )
-from simulatedAnnealing_Synthetic import simulatedAnnealing
+from GeigerMethod.Synthetic.simulatedAnnealing_Synthetic import simulatedAnnealing
 
 
 def Bayesian_Annealing(iterations, n, time_noise, position_noise, geom_noise):

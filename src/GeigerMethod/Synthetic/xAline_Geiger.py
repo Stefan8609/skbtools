@@ -1,12 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from advancedGeigerMethod import (
+from GeigerMethod.Synthetic.advancedGeigerMethod import (
     calculateTimesRayTracing,
     computeJacobianRayTracing,
     findTransponder,
 )
-from Generate_Unaligned_Realistic import generateUnalignedRealistic
-from xAline import index_data, find_int_offset, two_pointer_index
+from GeigerMethod.Synthetic.Generate_Unaligned_Realistic import (
+    generateUnalignedRealistic,
+)
+from GeigerMethod.Synthetic.xAline import (
+    index_data,
+    find_int_offset,
+    two_pointer_index,
+)
 
 
 def xAline_Geiger2(guess, CDOG_data, GPS_data, transponder_coordinates, offset):

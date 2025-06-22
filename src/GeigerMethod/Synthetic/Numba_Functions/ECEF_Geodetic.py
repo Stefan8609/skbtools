@@ -54,7 +54,9 @@ def ECEF_Geodetic(coords):
 
 
 if __name__ == "__main__":
-    from .Numba_Geiger import findTransponder
+    from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import (
+        findTransponder,
+    )
 
     def load_and_process_data(path):
         """Load unit data and slice to the GNSS window.

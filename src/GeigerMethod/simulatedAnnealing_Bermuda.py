@@ -1,12 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from geigerMethod_Bermuda import (
+from GeigerMethod.geigerMethod_Bermuda import (
     findTransponder,
     geigersMethod,
     calculateTimesRayTracing,
 )
-from Synthetic.experimentPathPlot import experimentPathPlot
-from timePlot_Bermuda import geigerTimePlot
+from GeigerMethod.Synthetic.experimentPathPlot import experimentPathPlot
+from GeigerMethod.timePlot_Bermuda import geigerTimePlot
 
 
 def simulatedAnnealing_Bermuda(

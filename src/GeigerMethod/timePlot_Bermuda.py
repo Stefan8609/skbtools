@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from geigerMethod_Bermuda import geigersMethod, calculateTimesRayTracing
+from GeigerMethod.geigerMethod_Bermuda import (
+    geigersMethod,
+    calculateTimesRayTracing,
+)
 from scipy.stats import norm
 
 
