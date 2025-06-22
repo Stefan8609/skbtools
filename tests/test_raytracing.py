@@ -1,8 +1,5 @@
-import os
 import numpy as np
 from acoustics.ray_tracing import ray_tracing, ray_trace_locate
-
-os.environ["NUMBA_DISABLE_JIT"] = "1"
 
 
 def test_ray_tracing_constant_speed():
