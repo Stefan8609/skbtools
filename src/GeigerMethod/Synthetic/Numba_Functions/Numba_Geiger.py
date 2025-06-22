@@ -6,7 +6,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_RigidBodyMovementProblem impor
     findRotationAndDisplacement,
 )
 from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 import timeit
 
 

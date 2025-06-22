@@ -11,7 +11,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
 from GeigerMethod.Synthetic.Numba_Functions.ESV_bias_split import (
     calculateTimesRayTracing_split,
 )
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 
 
 # @njit
