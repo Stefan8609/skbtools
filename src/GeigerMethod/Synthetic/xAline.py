@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import scipy.io as sio
 from scipy import signal
 from advancedGeigerMethod import calculateTimesRayTracing, findTransponder
+from data import gps_data_path
 
 
 # Function to extend the time series so that they can be aligned (given an offset)
@@ -231,7 +232,6 @@ def two_pointer_index(
 
 
 if __name__ == "__main__":
-    from data import gps_data_path
 
     CDOG = sio.loadmat(gps_data_path("Realistic_CDOG_loc_noise_subint_new.mat"))["xyz"][
         0

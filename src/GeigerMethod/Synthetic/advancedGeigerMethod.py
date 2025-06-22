@@ -10,6 +10,8 @@ from geometry.rigid_body import findRotationAndDisplacement
 import scipy.io as sio
 from Generate_Realistic_Transducer import generateRealistic_Transducer
 from data import gps_data_path
+from geigerTimePlot import geigerTimePlot
+import timeit
 
 esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
 cz = np.genfromtxt(gps_data_path("cz_cast2_smoothed.txt"))[::100]
@@ -438,7 +440,6 @@ def geigersMethod(
 
 
 if __name__ == "__main__":
-    from geigerTimePlot import geigerTimePlot
 
     (
         CDog,
@@ -462,8 +463,6 @@ if __name__ == "__main__":
 
     # Make plot
     initial_guess = [-10000, 5000, -4000]
-
-    import timeit
 
     start = timeit.default_timer()
     for _ in range(1000):

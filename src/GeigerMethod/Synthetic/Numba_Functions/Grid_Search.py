@@ -5,6 +5,7 @@ from Numba_xAline_bias import final_bias_geiger
 from Numba_Geiger import findTransponder
 from Numba_xAline_Annealing_bias import simulated_annealing_bias
 from Initialize_Bermuda_Data import initialize_bermuda
+from data import gps_data_path
 
 
 def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):
@@ -22,8 +23,6 @@ def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):
     None
         Results are written to ``output.txt``.
     """
-    from data import gps_data_path
-
     esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()

@@ -2,6 +2,9 @@ import numpy as np
 from .fit_plane import fitPlane
 from .project_to_plane import projectToPlane
 from .rodrigues import rotationMatrix
+import matplotlib.pyplot as plt
+from plotting.plot_plane import plotPlane
+from plotting.print_table import printTable
 
 
 def findTheta(barycenter, xyzt, normVect):
@@ -306,9 +309,6 @@ def demo(xs=None, ys=None, zs=None, xyzt=None, rot=None, translate=None):
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    from plotting.plot_plane import plotPlane
-    from plotting.print_table import printTable
 
     # xs = np.array([0, -2.4054, -12.11, -8.7])
     # ys = np.array([0, -4.21, -0.956, 5.165])

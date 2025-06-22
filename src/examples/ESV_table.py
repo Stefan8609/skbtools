@@ -2,6 +2,8 @@ import numpy as np
 from numba import njit
 from Ray_Tracing_Iter_Locate import ray_trace_locate, ray_tracing
 import matplotlib.pyplot as plt
+import scipy.io as sio
+from time import time
 from data import gps_data_path
 
 
@@ -78,9 +80,6 @@ def construct_esv(depth, cz):
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    import scipy.io as sio
-    from time import time
 
     z_a = 35
 

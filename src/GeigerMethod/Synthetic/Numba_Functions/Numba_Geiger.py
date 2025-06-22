@@ -4,6 +4,8 @@ import scipy.io as sio
 from numba import njit
 from Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 from ECEF_Geodetic import ECEF_Geodetic
+from data import gps_data_path
+import timeit
 
 
 @njit(cache=True)
@@ -311,7 +313,6 @@ def generateRealistic(n):
 
 
 if __name__ == "__main__":
-    from data import gps_data_path
 
     esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()
@@ -343,8 +344,6 @@ if __name__ == "__main__":
             random.uniform(-5225, -5235),
         ]
     )
-
-    import timeit
 
     start = timeit.default_timer()
     for _ in range(100):

@@ -1,5 +1,6 @@
 import numpy as np
 from numba import njit
+import matplotlib.pyplot as plt
 
 from data import gps_data_path
 
@@ -64,7 +65,6 @@ def ray_tracing(iga, z_a, z_b, depth, cz):
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
 
     plt.figure(figsize=(10, 6))
     for i in range(0, 91, 5):

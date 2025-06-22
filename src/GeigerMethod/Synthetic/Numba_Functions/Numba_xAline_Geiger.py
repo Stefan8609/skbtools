@@ -8,6 +8,8 @@ from Numba_Geiger import (
 )
 from Numba_xAline import two_pointer_index, find_subint_offset, find_int_offset
 from Generate_Unaligned_Realistic import generateUnalignedRealistic
+import scipy.io as sio
+from data import gps_data_path
 
 
 def initial_geiger(
@@ -208,8 +210,6 @@ def final_geiger(
 
 
 if __name__ == "__main__":
-    import scipy.io as sio
-    from data import gps_data_path
 
     true_offset = np.random.rand() * 9000 + 1000
     print(true_offset)

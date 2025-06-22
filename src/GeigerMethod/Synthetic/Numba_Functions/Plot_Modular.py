@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 from ECEF_Geodetic import ECEF_Geodetic
+from data import gps_data_path
 
 """Enable this for paper plots"""
 plt.rcParams.update(
@@ -334,8 +335,6 @@ if __name__ == "__main__":
     CDOGs += CDOG_guess_base
 
     CDOGs_lat, CDOGs_lon, CDOGs_height = ECEF_Geodetic(CDOGs)
-
-    from data import gps_data_path
 
     data = np.load(gps_data_path("Processed_GPS_Receivers_DOG_1.npz"))
     GPS_Coordinates = data["GPS_Coordinates"]

@@ -1,4 +1,7 @@
 import numpy as np
+import scipy.io as sio
+import matplotlib.pyplot as plt
+from data import gps_data_path
 
 """
 Equations of State found here: http://resource.npl.co.uk/acoustics/techguides/soundseawater/underlying-phys.html
@@ -259,11 +262,6 @@ def Coppens_ESV(S, T, Z):
 
 
 if __name__ == "__main__":
-    import numpy as np
-    import scipy.io as sio
-    import matplotlib.pyplot as plt
-
-    from data import gps_data_path
 
     CTD = sio.loadmat(gps_data_path("CTD_Data", "AE2008_Cast2.mat"))["AE2008_Cast2"]
 

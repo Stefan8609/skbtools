@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.io as sio
 from pymap3d import geodetic2ecef
+from data import gps_data_path
 
 """Enable this for paper plots"""
 # plt.rcParams.update({
@@ -56,8 +57,6 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=3, save=False
             data["elev"].flatten()[condition_GNSS],
         )
         return time_GNSS, x, y, z, elev
-
-    from data import gps_data_path
 
     paths = [
         gps_data_path("Unit1-camp_bis.mat"),

@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
+from data import gps_data_path
 
 
 def experimentPathPlot(transponder_coordinates, CDog=None):
@@ -53,8 +54,6 @@ if __name__ == "__main__":
         # x,y,z = data['x'].flatten(), data['y'].flatten(), data['z'].flatten()
 
         return time_GNSS, x, y, z
-
-    from data import gps_data_path
 
     paths = [
         gps_data_path("Unit1-camp_bis.mat"),

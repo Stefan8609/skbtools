@@ -11,6 +11,7 @@ from Numba_time_bias import (
 from Numba_Geiger import findTransponder
 from numba import njit
 from Plot_Modular import time_series_plot
+from data import gps_data_path
 
 
 def initial_bias_geiger(
@@ -254,7 +255,6 @@ def final_bias_geiger(
 
 
 if __name__ == "__main__":
-    from data import gps_data_path
 
     # Table to generate synthetic times
     esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))

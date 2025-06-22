@@ -1,5 +1,7 @@
 import numpy as np
 import numpy.typing as npt
+from time import time
+from data import gps_data_path
 
 
 def ray_tracing(
@@ -118,8 +120,6 @@ def ray_trace_locate(
 
 
 if __name__ == "__main__":
-    from time import time
-    from data import gps_data_path
 
     depth = np.ascontiguousarray(
         np.genfromtxt(gps_data_path("depth_cast2_smoothed.txt"))

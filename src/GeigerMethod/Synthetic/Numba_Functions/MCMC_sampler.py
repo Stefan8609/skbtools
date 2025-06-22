@@ -5,6 +5,7 @@ from Numba_time_bias import calculateTimesRayTracing_Bias_Real
 from Numba_xAline import two_pointer_index
 from Numba_Geiger import findTransponder
 from ESV_bias_split import calculateTimesRayTracing_split
+from data import gps_data_path
 
 
 # @njit
@@ -252,7 +253,6 @@ def mcmc_sampler(
 # Example usage:
 if __name__ == "__main__":
     # — load your data once —
-    from data import gps_data_path
 
     esv = sio.loadmat(gps_data_path("global_table_esv_normal.mat"))
     dz_array = esv["distance"].flatten()
