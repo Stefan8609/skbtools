@@ -28,7 +28,15 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/skbtools"]
+packages = [
+    "src/GeigerMethod",
+    "src/acoustics",
+    "src/ecco",
+    "src/examples",
+    "src/geometry",
+    "src/plotting",
+    "src/skbtools",
+]
 include = ["*.py"]
 
 [tool.black]
@@ -46,4 +54,4 @@ indent-style = "space"
 docstring-code-format = true
 
 [tool.uv.sources]
-skbtools = { path = "src/skbtools" }
+skbtools = { path = "src" }
