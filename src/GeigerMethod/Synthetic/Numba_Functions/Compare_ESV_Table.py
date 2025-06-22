@@ -1,9 +1,9 @@
 import numpy as np
 import scipy.io as sio
 import random
-from Numba_time_bias import numba_bias_geiger, find_esv
-from Numba_Geiger import generateRealistic, findTransponder
-from data import gps_data_path
+from .Numba_time_bias import numba_bias_geiger, find_esv
+from .Numba_Geiger import generateRealistic, findTransponder
+from ...data import gps_data_path
 
 
 def compare_tables(esv_table1, esv_table2):

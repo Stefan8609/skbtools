@@ -1,11 +1,11 @@
 import numpy as np
 import scipy.io as sio
 
-from Numba_xAline_bias import final_bias_geiger
-from Numba_Geiger import findTransponder
-from Numba_xAline_Annealing_bias import simulated_annealing_bias
-from Initialize_Bermuda_Data import initialize_bermuda
-from data import gps_data_path
+from .Numba_xAline_bias import final_bias_geiger
+from .Numba_Geiger import findTransponder
+from .Numba_xAline_Annealing_bias import simulated_annealing_bias
+from .Initialize_Bermuda_Data import initialize_bermuda
+from ...data import gps_data_path
 
 
 def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):

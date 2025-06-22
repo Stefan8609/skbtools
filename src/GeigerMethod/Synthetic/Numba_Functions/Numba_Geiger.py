@@ -2,9 +2,9 @@ import random
 import numpy as np
 import scipy.io as sio
 from numba import njit
-from Numba_RigidBodyMovementProblem import findRotationAndDisplacement
-from ECEF_Geodetic import ECEF_Geodetic
-from data import gps_data_path
+from .Numba_RigidBodyMovementProblem import findRotationAndDisplacement
+from .ECEF_Geodetic import ECEF_Geodetic
+from ...data import gps_data_path
 import timeit
 
 

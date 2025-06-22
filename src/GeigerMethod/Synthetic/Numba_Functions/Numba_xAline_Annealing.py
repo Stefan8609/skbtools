@@ -1,7 +1,7 @@
 import numpy as np
 
-from Numba_xAline import two_pointer_index, find_subint_offset
-from Numba_xAline_Geiger import (
+from .Numba_xAline import two_pointer_index, find_subint_offset
+from .Numba_xAline_Geiger import (
     initial_geiger,
     transition_geiger,
     final_geiger,
@@ -9,7 +9,7 @@ from Numba_xAline_Geiger import (
     findTransponder,
     calculateTimesRayTracingReal,
 )
-from Generate_Unaligned_Realistic import generateUnalignedRealistic
+from .Generate_Unaligned_Realistic import generateUnalignedRealistic
 
 """
 Maybe try to implement the more complicated schematic

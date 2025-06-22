@@ -1,15 +1,15 @@
 import numpy as np
 from numba import njit
-from Numba_Geiger import (
+from .Numba_Geiger import (
     computeJacobianRayTracing,
     findTransponder,
     calculateTimesRayTracing,
     calculateTimesRayTracingReal,
 )
-from Numba_xAline import two_pointer_index, find_subint_offset, find_int_offset
-from Generate_Unaligned_Realistic import generateUnalignedRealistic
+from .Numba_xAline import two_pointer_index, find_subint_offset, find_int_offset
+from .Generate_Unaligned_Realistic import generateUnalignedRealistic
 import scipy.io as sio
-from data import gps_data_path
+from ...data import gps_data_path
 
 
 def initial_geiger(

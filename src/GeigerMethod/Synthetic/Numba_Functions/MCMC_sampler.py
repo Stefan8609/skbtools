@@ -1,11 +1,11 @@
 import numpy as np
 import scipy.io as sio
 
-from Numba_time_bias import calculateTimesRayTracing_Bias_Real
-from Numba_xAline import two_pointer_index
-from Numba_Geiger import findTransponder
-from ESV_bias_split import calculateTimesRayTracing_split
-from data import gps_data_path
+from .Numba_time_bias import calculateTimesRayTracing_Bias_Real
+from .Numba_xAline import two_pointer_index
+from .Numba_Geiger import findTransponder
+from .ESV_bias_split import calculateTimesRayTracing_split
+from ...data import gps_data_path
 
 
 # @njit
