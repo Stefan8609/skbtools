@@ -1,9 +1,11 @@
 import numpy as np
 import numpy.typing as npt
+from numba import njit
 from time import time
 from data import gps_data_path
 
 
+@njit
 def ray_tracing(
     iga: float, z_a: float, z_b: float, depth: npt.NDArray, cz: npt.NDArray
 ) -> tuple:
@@ -73,6 +75,7 @@ def ray_tracing(
     return x, z_b - z_a, time
 
 
+@njit
 def ray_trace_locate(
     z_a: float, z_b: float, target_x: float, depth: npt.NDArray, cz: npt.NDArray
 ) -> float:

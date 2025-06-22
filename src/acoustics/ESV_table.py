@@ -1,4 +1,5 @@
 import numpy as np
+from numba import njit
 from acoustics.ray_tracing import ray_trace_locate, ray_tracing
 import matplotlib.pyplot as plt
 import scipy.io as sio
@@ -36,6 +37,7 @@ plt.plot(cz, depth, label="CTD Bermuda SVP")
 # plt.show()
 
 
+@njit
 def construct_esv(depth, cz):
     """Generate an effective sound velocity lookup table.
 
