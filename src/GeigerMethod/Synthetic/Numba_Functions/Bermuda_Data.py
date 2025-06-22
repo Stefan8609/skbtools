@@ -1,15 +1,15 @@
 import numpy as np
 import scipy.io as sio
 
-from .Numba_Geiger import (
+from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import (
     findTransponder,
 )
-from .Numba_xAline_Geiger import initial_geiger, transition_geiger, final_geiger
-from .Initialize_Bermuda_Data import initialize_bermuda
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Geiger import initial_geiger, transition_geiger, final_geiger
+from GeigerMethod.Synthetic.Numba_Functions.Initialize_Bermuda_Data import initialize_bermuda
 
 import matplotlib.pyplot as plt
 
-from ...data import gps_data_path
+from GeigerMethod.data import gps_data_path
 
 esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
 

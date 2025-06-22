@@ -1,8 +1,8 @@
-from .rodrigues import rotationMatrix
-from .project_to_plane import projectToPlane
-from .fit_plane import fitPlane
-from .find_point_by_plane import initializeFunction, findXyzt
-from .rigid_body import findRotationAndDisplacement
+from geometry.rodrigues import rotationMatrix
+from geometry.project_to_plane import projectToPlane
+from geometry.fit_plane import fitPlane
+from geometry.find_point_by_plane import initializeFunction, findXyzt
+from geometry.rigid_body import findRotationAndDisplacement
 
 __all__ = [
     "rotationMatrix",

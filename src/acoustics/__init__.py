@@ -1,5 +1,5 @@
-from .ray_tracing import ray_tracing, ray_trace_locate
-from .svp import (
+from acoustics.ray_tracing import ray_tracing, ray_trace_locate
+from acoustics.svp import (
     depth_to_pressure_Leroy,
     depth_to_pressure,
     DelGrosso_SV,

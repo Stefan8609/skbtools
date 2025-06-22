@@ -1,18 +1,18 @@
 import numpy as np
 import scipy.io as sio
 
-from .Bermuda_Trajectory import bermuda_trajectory
-from .Numba_xAline import two_pointer_index
-from .Numba_time_bias import calculateTimesRayTracing_Bias
-from .Numba_Geiger import findTransponder
-from .Numba_xAline_bias import (
+from GeigerMethod.Synthetic.Numba_Functions.Bermuda_Trajectory import bermuda_trajectory
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index
+from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import calculateTimesRayTracing_Bias
+from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import (
     initial_bias_geiger,
     transition_bias_geiger,
     final_bias_geiger,
     calculateTimesRayTracing_Bias_Real,
 )
-from .Plot_Modular import time_series_plot
-from ...data import gps_data_path
+from GeigerMethod.Synthetic.Numba_Functions.Plot_Modular import time_series_plot
+from GeigerMethod.data import gps_data_path
 
 """
 Incorporate simulated annealing to find

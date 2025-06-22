@@ -2,9 +2,9 @@ import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
 
-from .Numba_time_bias import compute_Jacobian_biased, calculateTimesRayTracing_Bias
-from .Modular_Synthetic import modular_synthetic
-from ...data import gps_data_path
+from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import compute_Jacobian_biased, calculateTimesRayTracing_Bias
+from GeigerMethod.Synthetic.Numba_Functions.Modular_Synthetic import modular_synthetic
+from GeigerMethod.data import gps_data_path
 
 
 def geometric_dilution(interval):
