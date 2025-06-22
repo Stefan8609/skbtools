@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+
+# Project specific
+GPSData/
+ecco_access/
+Figs/
+
+
+# IDE
+.idea/
+
+# OS specific
+.DS_Store
+**/.DS_Store
+
+# venc
+.venv/
+
+# uv
+uv.lock
+
+# data files and figures
+*.npz
+*.txt
+*.png
+*.pdf
