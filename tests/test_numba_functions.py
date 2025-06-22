@@ -84,4 +84,3 @@ def test_compute_jacobian_ray_tracing():
     jac = ng.computeJacobianRayTracing(guess, receivers, times, speed)
     expected = -(receivers - guess) / (dist[:, None] * speed[:, None])
     assert np.allclose(jac, expected, atol=1e-6)
-
