@@ -1,15 +1,5 @@
 """MCMC utilities for synthetic data generation."""
 
-from __future__ import annotations
-
-import sys
-from pathlib import Path
-
-# Allow running this module directly without installing the package.
-if __package__ is None or __package__ == "":
-    # Ensure the project's ``src`` directory is available for absolute imports
-    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-
 import numpy as np
 import scipy.io as sio
 
