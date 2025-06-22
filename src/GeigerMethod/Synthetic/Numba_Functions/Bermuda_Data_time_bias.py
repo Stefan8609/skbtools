@@ -18,7 +18,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Plot_Modular import (
 
 
 # esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 
 esv_table = sio.loadmat(gps_data_path("global_table_esv_normal.mat"))
 

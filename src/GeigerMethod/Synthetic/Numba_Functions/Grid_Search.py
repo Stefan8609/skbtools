@@ -9,7 +9,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Annealing_bias import (
 from GeigerMethod.Synthetic.Numba_Functions.Initialize_Bermuda_Data import (
     initialize_bermuda,
 )
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 
 
 def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):

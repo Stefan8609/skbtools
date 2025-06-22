@@ -9,7 +9,6 @@ from numba import njit
 from pymap3d import ecef2geodetic
 import scipy.io as sio
 import timeit
-from GeigerMethod.data import gps_data_path
 
 
 @njit(cache=True)
@@ -57,6 +56,7 @@ if __name__ == "__main__":
     from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import (
         findTransponder,
     )
+    from data import gps_data_path
 
     def load_and_process_data(path):
         """Load unit data and slice to the GNSS window.

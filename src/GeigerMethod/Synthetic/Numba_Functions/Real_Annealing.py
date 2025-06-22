@@ -8,7 +8,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import (
     initial_bias_geiger,
 )
 from GeigerMethod.Synthetic.Numba_Functions.Bermuda_Trajectory import bermuda_trajectory
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 
 
 @njit

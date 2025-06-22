@@ -8,7 +8,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import (
     final_bias_geiger,
 )
 from GeigerMethod.Synthetic.Numba_Functions.Bermuda_Trajectory import bermuda_trajectory
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 
 esv_table_generate = sio.loadmat(gps_data_path("global_table_esv.mat"))
 dz_array_generate = esv_table_generate["distance"].flatten()

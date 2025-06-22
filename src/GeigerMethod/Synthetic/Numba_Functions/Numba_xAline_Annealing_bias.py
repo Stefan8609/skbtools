@@ -14,7 +14,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from GeigerMethod.Synthetic.Numba_Functions.Plot_Modular import time_series_plot
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 
 """
 Incorporate simulated annealing to find
