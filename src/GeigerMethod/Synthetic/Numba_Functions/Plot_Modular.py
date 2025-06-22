@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 
 """Enable this for paper plots"""
 plt.rcParams.update(

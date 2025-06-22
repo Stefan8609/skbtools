@@ -15,7 +15,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Initialize_Bermuda_Data import (
 
 import matplotlib.pyplot as plt
 
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 
 esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
 

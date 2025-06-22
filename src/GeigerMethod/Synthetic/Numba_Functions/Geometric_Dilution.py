@@ -7,7 +7,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
     calculateTimesRayTracing_Bias,
 )
 from GeigerMethod.Synthetic.Numba_Functions.Modular_Synthetic import modular_synthetic
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 
 
 def geometric_dilution(interval):

@@ -15,7 +15,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Generate_Unaligned_Realistic import 
     generateUnalignedRealistic,
 )
 import scipy.io as sio
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 
 
 def initial_geiger(

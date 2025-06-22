@@ -10,7 +10,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
 from GeigerMethod.Synthetic.Numba_Functions.Real_Annealing import (
     simulated_annealing_real,
 )
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 
 """Plot all of the Seafloor guesses from the grid search and find the correlation
 

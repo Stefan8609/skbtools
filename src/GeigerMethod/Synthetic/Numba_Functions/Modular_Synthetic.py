@@ -15,7 +15,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Annealing_bias import (
     simulated_annealing_bias,
 )
 from GeigerMethod.Synthetic.Numba_Functions.Plot_Modular import time_series_plot
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 
 """
 File to allow for easy changing of parameters when running synthetic

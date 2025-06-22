@@ -3,7 +3,7 @@ import scipy.io as sio
 
 from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import final_bias_geiger
 from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 
 
 def gaussian_search_individual(
