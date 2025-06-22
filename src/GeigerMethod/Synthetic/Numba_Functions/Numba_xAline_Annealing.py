@@ -1,6 +1,9 @@
 import numpy as np
 
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index, find_subint_offset
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import (
+    two_pointer_index,
+    find_subint_offset,
+)
 from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Geiger import (
     initial_geiger,
     transition_geiger,
@@ -9,7 +12,9 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Geiger import (
     findTransponder,
     calculateTimesRayTracingReal,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Generate_Unaligned_Realistic import generateUnalignedRealistic
+from GeigerMethod.Synthetic.Numba_Functions.Generate_Unaligned_Realistic import (
+    generateUnalignedRealistic,
+)
 
 """
 Maybe try to implement the more complicated schematic

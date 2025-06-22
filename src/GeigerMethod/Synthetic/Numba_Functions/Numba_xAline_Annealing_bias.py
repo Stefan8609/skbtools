@@ -3,7 +3,9 @@ import scipy.io as sio
 
 from GeigerMethod.Synthetic.Numba_Functions.Bermuda_Trajectory import bermuda_trajectory
 from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index
-from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import calculateTimesRayTracing_Bias
+from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
+    calculateTimesRayTracing_Bias,
+)
 from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
 from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import (
     initial_bias_geiger,
@@ -256,7 +258,6 @@ def simulated_annealing_bias(
 
 
 if __name__ == "__main__":
-
     esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()

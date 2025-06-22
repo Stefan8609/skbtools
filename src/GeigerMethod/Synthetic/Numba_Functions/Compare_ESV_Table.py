@@ -1,8 +1,14 @@
 import numpy as np
 import scipy.io as sio
 import random
-from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import numba_bias_geiger, find_esv
-from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import generateRealistic, findTransponder
+from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
+    numba_bias_geiger,
+    find_esv,
+)
+from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import (
+    generateRealistic,
+    findTransponder,
+)
 from GeigerMethod.data import gps_data_path
 
 
@@ -116,7 +122,6 @@ def compare_tables(esv_table1, esv_table2):
 
 
 if __name__ == "__main__":
-
     esv_table1 = sio.loadmat(gps_data_path("global_table_esv_perturbed.mat"))
 
     esv_table2 = sio.loadmat(gps_data_path("global_table_esv.mat"))

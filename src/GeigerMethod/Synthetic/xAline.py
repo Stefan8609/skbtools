@@ -232,7 +232,6 @@ def two_pointer_index(
 
 
 if __name__ == "__main__":
-
     CDOG = sio.loadmat(gps_data_path("Realistic_CDOG_loc_noise_subint_new.mat"))["xyz"][
         0
     ].astype(float)

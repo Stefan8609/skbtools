@@ -3,8 +3,12 @@ import scipy.io as sio
 
 from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import final_bias_geiger
 from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Annealing_bias import simulated_annealing_bias
-from GeigerMethod.Synthetic.Numba_Functions.Initialize_Bermuda_Data import initialize_bermuda
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Annealing_bias import (
+    simulated_annealing_bias,
+)
+from GeigerMethod.Synthetic.Numba_Functions.Initialize_Bermuda_Data import (
+    initialize_bermuda,
+)
 from GeigerMethod.data import gps_data_path
 
 

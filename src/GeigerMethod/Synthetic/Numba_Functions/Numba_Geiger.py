@@ -2,7 +2,9 @@ import random
 import numpy as np
 import scipy.io as sio
 from numba import njit
-from GeigerMethod.Synthetic.Numba_Functions.Numba_RigidBodyMovementProblem import findRotationAndDisplacement
+from GeigerMethod.Synthetic.Numba_Functions.Numba_RigidBodyMovementProblem import (
+    findRotationAndDisplacement,
+)
 from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
 from GeigerMethod.data import gps_data_path
 import timeit
@@ -313,7 +315,6 @@ def generateRealistic(n):
 
 
 if __name__ == "__main__":
-
     esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()

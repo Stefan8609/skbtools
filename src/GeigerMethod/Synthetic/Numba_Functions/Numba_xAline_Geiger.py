@@ -6,8 +6,14 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import (
     calculateTimesRayTracing,
     calculateTimesRayTracingReal,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index, find_subint_offset, find_int_offset
-from GeigerMethod.Synthetic.Numba_Functions.Generate_Unaligned_Realistic import generateUnalignedRealistic
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import (
+    two_pointer_index,
+    find_subint_offset,
+    find_int_offset,
+)
+from GeigerMethod.Synthetic.Numba_Functions.Generate_Unaligned_Realistic import (
+    generateUnalignedRealistic,
+)
 import scipy.io as sio
 from GeigerMethod.data import gps_data_path
 
@@ -210,7 +216,6 @@ def final_geiger(
 
 
 if __name__ == "__main__":
-
     true_offset = np.random.rand() * 9000 + 1000
     print(true_offset)
 

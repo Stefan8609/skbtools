@@ -4,8 +4,14 @@ import scipy.io as sio
 from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import (
     findTransponder,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Geiger import initial_geiger, transition_geiger, final_geiger
-from GeigerMethod.Synthetic.Numba_Functions.Initialize_Bermuda_Data import initialize_bermuda
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Geiger import (
+    initial_geiger,
+    transition_geiger,
+    final_geiger,
+)
+from GeigerMethod.Synthetic.Numba_Functions.Initialize_Bermuda_Data import (
+    initialize_bermuda,
+)
 
 import matplotlib.pyplot as plt
 

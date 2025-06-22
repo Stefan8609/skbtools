@@ -7,9 +7,14 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import (
     transition_bias_geiger,
     final_bias_geiger,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import calculateTimesRayTracing_Bias_Real
+from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
+    calculateTimesRayTracing_Bias_Real,
+)
 from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index
-from GeigerMethod.Synthetic.Numba_Functions.Plot_Modular import time_series_plot, range_residual
+from GeigerMethod.Synthetic.Numba_Functions.Plot_Modular import (
+    time_series_plot,
+    range_residual,
+)
 
 
 # esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')

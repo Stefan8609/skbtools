@@ -309,7 +309,6 @@ def demo(xs=None, ys=None, zs=None, xyzt=None, rot=None, translate=None):
 
 
 if __name__ == "__main__":
-
     # xs = np.array([0, -2.4054, -12.11, -8.7])
     # ys = np.array([0, -4.21, -0.956, 5.165])
     # zs = np.array([0, 0.060621, 0.00877, 0.0488])

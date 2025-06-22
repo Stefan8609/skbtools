@@ -440,7 +440,6 @@ def geigersMethod(
 
 
 if __name__ == "__main__":
-
     (
         CDog,
         GPS_Coordinates,

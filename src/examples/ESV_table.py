@@ -80,7 +80,6 @@ def construct_esv(depth, cz):
 
 
 if __name__ == "__main__":
-
     z_a = 35
 
     # Time the execution

@@ -2,7 +2,10 @@ import numpy as np
 import scipy.io as sio
 
 from GeigerMethod.Synthetic.Numba_Functions.Bermuda_Trajectory import bermuda_trajectory
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index, find_int_offset
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import (
+    two_pointer_index,
+    find_int_offset,
+)
 from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
     calculateTimesRayTracing_Bias,
     calculateTimesRayTracing_Bias_Real,
@@ -255,7 +258,6 @@ def final_bias_geiger(
 
 
 if __name__ == "__main__":
-
     # Table to generate synthetic times
     esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()

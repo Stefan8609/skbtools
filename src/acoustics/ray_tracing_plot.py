@@ -65,7 +65,6 @@ def ray_tracing(iga, z_a, z_b, depth, cz):
 
 
 if __name__ == "__main__":
-
     plt.figure(figsize=(10, 6))
     for i in range(0, 91, 5):
         x, z, time, x_arr, z_arr = ray_tracing(i, 52, 5250, depth, cz)

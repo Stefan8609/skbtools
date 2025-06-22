@@ -262,7 +262,6 @@ def Coppens_ESV(S, T, Z):
 
 
 if __name__ == "__main__":
-
     CTD = sio.loadmat(gps_data_path("CTD_Data", "AE2008_Cast2.mat"))["AE2008_Cast2"]
 
     depth_t = np.ascontiguousarray(

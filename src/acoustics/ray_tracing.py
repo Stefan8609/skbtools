@@ -120,7 +120,6 @@ def ray_trace_locate(
 
 
 if __name__ == "__main__":
-
     depth = np.ascontiguousarray(
         np.genfromtxt(gps_data_path("depth_cast2_smoothed.txt"))
     )
