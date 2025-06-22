@@ -19,7 +19,9 @@ This will also install the numerical dependencies defined in
 `pyproject.toml` (NumPy, SciPy, pandas, matplotlib, numba and pymap3d).
 
 If working straight from the source you can alternatively add the `src`
-directory to your `PYTHONPATH`.
+directory to your `PYTHONPATH`. This is necessary when launching the
+individual scripts directly, e.g. `python src/GeigerMethod/.../MCMC_sampler.py`,
+so that the package imports resolve correctly.
 
 ## Package overview
 
