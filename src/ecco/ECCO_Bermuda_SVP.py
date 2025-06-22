@@ -4,7 +4,7 @@ import xarray as xr
 import gsw
 import scipy.io as sio
 
-from skbtools.acoustics.svp import DelGrosso_SV, depth_to_pressure
+from acoustics.svp import DelGrosso_SV, depth_to_pressure
 
 CTD = sio.loadmat("../GPSData/CTD_Data/AE2008_Cast2.mat")["AE2008_Cast2"]
 depth = CTD[:, 0][::100]

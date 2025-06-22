@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from skbtools.geometry.rigid_body import findRotationAndDisplacement
+from geometry.rigid_body import findRotationAndDisplacement
 
 # Define 4 GPS points as an array (each row: [x, y, z])
 gps1_to_others = np.array(

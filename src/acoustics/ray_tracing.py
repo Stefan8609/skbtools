@@ -1,9 +1,7 @@
 import numpy as np
-from numba import njit
 import numpy.typing as npt
 
 
-@njit
 def ray_tracing(
     iga: float, z_a: float, z_b: float, depth: npt.NDArray, cz: npt.NDArray
 ) -> tuple:
@@ -24,13 +22,27 @@ def ray_tracing(
         ``(x, z, time)`` where ``x`` is the horizontal distance in metres,
         ``z`` is the final depth and ``time`` is the travel time in seconds.
     """
-    z_b_closest = np.abs(depth - z_b).argmin()
-    z_a_closest = np.abs(depth - z_a).argmin()
+    # Find nearest indices without using NumPy helpers that are unsupported by numba
+    z_b_closest = 0
+    diff = abs(depth[0] - z_b)
+    for i in range(1, depth.size):
+        d = abs(depth[i] - z_b)
+        if d < diff:
+            diff = d
+            z_b_closest = i
+
+    z_a_closest = 0
+    diff = abs(depth[0] - z_a)
+    for i in range(1, depth.size):
+        d = abs(depth[i] - z_a)
+        if d < diff:
+            diff = d
+            z_a_closest = i
 
     # Pre-calculate all required arrays
     depth_slice = depth[z_a_closest:z_b_closest]
     cz_slice = cz[z_a_closest:z_b_closest]
-    dz = np.diff(depth_slice)
+    dz = depth_slice[1:] - depth_slice[:-1]
 
     # Initial conditions
     theta = (90 - iga) * np.pi / 180
@@ -45,7 +57,7 @@ def ray_tracing(
 
     # Check for total internal reflection
     if np.any(thetas > np.pi / 2):
-        return np.NaN, np.NaN, np.NaN
+        return np.nan, np.nan, np.nan
 
     # Vectorized calculations for distance and time
     dx = dz * np.tan(thetas)
@@ -59,7 +71,6 @@ def ray_tracing(
     return x, z_b - z_a, time
 
 
-@njit
 def ray_trace_locate(
     z_a: float, z_b: float, target_x: float, depth: npt.NDArray, cz: npt.NDArray
 ) -> float:
@@ -103,7 +114,7 @@ def ray_trace_locate(
 
         iteration += 1
 
-    return np.NaN
+    return np.nan
 
 
 if __name__ == "__main__":

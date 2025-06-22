@@ -1,5 +1,5 @@
 import numpy as np
-from skbtools.geometry.fit_plane import fitPlane
+from geometry.fit_plane import fitPlane
 import scipy.io as sio
 import matplotlib.pyplot as plt
 

@@ -307,8 +307,8 @@ def demo(xs=None, ys=None, zs=None, xyzt=None, rot=None, translate=None):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    from skbtools.plotting.plot_plane import plotPlane
-    from skbtools.plotting.print_table import printTable
+    from plotting.plot_plane import plotPlane
+    from plotting.print_table import printTable
 
     # xs = np.array([0, -2.4054, -12.11, -8.7])
     # ys = np.array([0, -4.21, -0.956, 5.165])
