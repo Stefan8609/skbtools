@@ -1,7 +1,7 @@
 import scipy.io as sio
 import numpy as np
-from simulatedAnnealing_Bermuda import simulatedAnnealing_Bermuda
-from GPS_Lever_Arms import GPS_Lever_arms
+from GeigerMethod.simulatedAnnealing_Bermuda import simulatedAnnealing_Bermuda
+from GeigerMethod.GPS_Lever_Arms import GPS_Lever_arms
 from data import gps_data_path
 
 

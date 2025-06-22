@@ -1,7 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Modular_Synthetic import modular_synthetic
+from GeigerMethod.Synthetic.Numba_Functions.Modular_Synthetic import (
+    modular_synthetic,
+)
 
 """Do both mapping to RMSE and mapping to average distance from real CDOG"""
 

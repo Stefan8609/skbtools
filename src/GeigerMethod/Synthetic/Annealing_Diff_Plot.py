@@ -1,11 +1,11 @@
 import numpy as np
-from advancedGeigerMethod import (
+from GeigerMethod.Synthetic.advancedGeigerMethod import (
     calculateTimesRayTracing,
     geigersMethod,
     findTransponder,
     generateRealistic,
 )
-from simulatedAnnealing_Synthetic import simulatedAnnealing
+from GeigerMethod.Synthetic.simulatedAnnealing_Synthetic import simulatedAnnealing
 import matplotlib.pyplot as plt
 
 

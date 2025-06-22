@@ -220,7 +220,7 @@ if __name__ == "__main__":
     )  # Numpy page describes how unwrap works
 
     # Save the CDOG to a matlabfile
-    from ...data import gps_data_path
+    from data import gps_data_path
 
     sio.savemat(
         gps_data_path("Realistic_CDOG_noise_subint_new.mat"),

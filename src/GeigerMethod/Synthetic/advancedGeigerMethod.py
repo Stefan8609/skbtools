@@ -8,9 +8,11 @@ import numpy as np
 import random
 from geometry.rigid_body import findRotationAndDisplacement
 import scipy.io as sio
-from Generate_Realistic_Transducer import generateRealistic_Transducer
+from GeigerMethod.Synthetic.Generate_Realistic_Transducer import (
+    generateRealistic_Transducer,
+)
 from data import gps_data_path
-from geigerTimePlot import geigerTimePlot
+from GeigerMethod.Synthetic.geigerTimePlot import geigerTimePlot
 import timeit
 
 esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))

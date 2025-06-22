@@ -4,7 +4,10 @@ Looks at the shape of the C-DOG files to get an understanding of what they look 
 
 import scipy.io as sio
 import numpy as np
-from geigerMethod_Bermuda import findTransponder, calculateTimesRayTracing
+from GeigerMethod.geigerMethod_Bermuda import (
+    findTransponder,
+    calculateTimesRayTracing,
+)
 import matplotlib.pyplot as plt
 from pymap3d import geodetic2ecef
 from data import gps_data_path
