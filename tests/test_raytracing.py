@@ -13,3 +13,12 @@ def test_ray_tracing_constant_speed():
 
     alpha = ray_trace_locate(0.0, 1000.0, x, depth, cz)
     assert np.isclose(alpha, 45.0, atol=1e-2)
+
+
+def test_ray_tracing_total_internal_reflection():
+    depth = np.array([0.0, 50.0, 100.0])
+    cz = np.array([1500.0, 2000.0, 2000.0])
+    x, dz, t = ray_tracing(0.0, 0.0, 100.0, depth, cz)
+    assert np.isnan(x)
+    assert np.isnan(t)
+    assert dz == 100.0
