@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.io as sio
 from pymap3d import geodetic2ecef
+from data import gps_data_path
 
 """Enable this for paper plots"""
 # plt.rcParams.update({
@@ -58,10 +59,10 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=3, save=False
         return time_GNSS, x, y, z, elev
 
     paths = [
-        "../../../GPSData/Unit1-camp_bis.mat",
-        "../../../GPSData/Unit2-camp_bis.mat",
-        "../../../GPSData/Unit3-camp_bis.mat",
-        "../../../GPSData/Unit4-camp_bis.mat",
+        gps_data_path("Unit1-camp_bis.mat"),
+        gps_data_path("Unit2-camp_bis.mat"),
+        gps_data_path("Unit3-camp_bis.mat"),
+        gps_data_path("Unit4-camp_bis.mat"),
     ]
 
     all_data = [load_and_process_data(path, GNSS_start, GNSS_end) for path in paths]
@@ -151,12 +152,12 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=3, save=False
 
     # Initialize time-tagged data for GPS and CDOG
     GPS_data = filtered_data[0, 0, :]
-    CDOG_data = sio.loadmat(f"../../../GPSData/DOG{DOG_num}-camp.mat")["tags"].astype(
+    CDOG_data = sio.loadmat(gps_data_path(f"DOG{DOG_num}-camp.mat"))["tags"].astype(
         float
     )
 
-    lat = sio.loadmat("../../../GPSData/Unit1-camp_bis.mat")["lat"].flatten()
-    lon = sio.loadmat("../../../GPSData/Unit1-camp_bis.mat")["lon"].flatten()
+    lat = sio.loadmat(gps_data_path("Unit1-camp_bis.mat"))["lat"].flatten()
+    lon = sio.loadmat(gps_data_path("Unit1-camp_bis.mat"))["lon"].flatten()
 
     """If elevation plotting is desired"""
     # alpha = {0: "A", 1: "B", 2: "C", 3: "D"}
@@ -243,7 +244,7 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=3, save=False
     # Save the data if required
     if save:
         np.savez(
-            f"../../../GPSData/Processed_GPS_Receivers_DOG_{DOG_num}",
+            gps_data_path(f"Processed_GPS_Receivers_DOG_{DOG_num}"),
             GPS_Coordinates=GPS_Coordinates,
             GPS_data=GPS_data,
             CDOG_data=CDOG_data,

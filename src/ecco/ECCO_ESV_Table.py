@@ -3,6 +3,8 @@ import xarray as xr
 import gsw
 import scipy.io as sio
 
+from data import gps_data_path
+
 from acoustics.svp import DelGrosso_SV, depth_to_pressure
 from examples.ESV_table import construct_esv
 
@@ -12,7 +14,7 @@ from examples.ESV_table import construct_esv
 lat_bermuda = 31.447
 lon_bermuda = -68.6896
 
-ecco_dir = "../GPSData/ECCO_Temp_Salinity"
+ecco_dir = str(gps_data_path("ECCO_Temp_Salinity"))
 months = [
     "January",
     "February",
@@ -93,7 +95,7 @@ for month in months:
     data_to_save = {"angle": beta_array, "distance": dz_array, "matrice": esv_matrix}
 
     sio.savemat(
-        f"GPSData/global_table_esv_ECCO_{month}.mat",
+        gps_data_path(f"global_table_esv_ECCO_{month}.mat"),
         {"distance": z_array, "angle": beta_array, "matrice": esv_matrix},
     )
     print(f"Finished {month}")

@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 from Numba_time_bias import compute_Jacobian_biased, calculateTimesRayTracing_Bias
 from Modular_Synthetic import modular_synthetic
+from data import gps_data_path
 
 
 def geometric_dilution(interval):
@@ -46,7 +47,7 @@ def geometric_dilution(interval):
         plot=False,
     )
 
-    esv_table = sio.loadmat(f"../../../GPSData/{table_str}.mat")
+    esv_table = sio.loadmat(gps_data_path(f"{table_str}.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]

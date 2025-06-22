@@ -1,8 +1,11 @@
 import numpy as np
 from numba import njit
+import matplotlib.pyplot as plt
 
-depth = np.ascontiguousarray(np.genfromtxt("GPSData/depth_cast2_smoothed.txt"))
-cz = np.ascontiguousarray(np.genfromtxt("GPSData/cz_cast2_smoothed.txt"))
+from data import gps_data_path
+
+depth = np.ascontiguousarray(np.genfromtxt(gps_data_path("depth_cast2_smoothed.txt")))
+cz = np.ascontiguousarray(np.genfromtxt(gps_data_path("cz_cast2_smoothed.txt")))
 
 
 @njit
@@ -62,7 +65,6 @@ def ray_tracing(iga, z_a, z_b, depth, cz):
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
 
     plt.figure(figsize=(10, 6))
     for i in range(0, 91, 5):

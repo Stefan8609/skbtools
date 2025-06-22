@@ -12,6 +12,7 @@ from Numba_xAline_bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from Plot_Modular import time_series_plot
+from data import gps_data_path
 
 """
 Incorporate simulated annealing to find
@@ -255,7 +256,8 @@ def simulated_annealing_bias(
 
 
 if __name__ == "__main__":
-    esv_table = sio.loadmat("../../../GPSData/global_table_esv.mat")
+
+    esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]

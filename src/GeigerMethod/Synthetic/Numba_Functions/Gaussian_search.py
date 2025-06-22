@@ -3,6 +3,7 @@ import scipy.io as sio
 
 from Numba_xAline_bias import final_bias_geiger
 from Numba_Geiger import findTransponder
+from data import gps_data_path
 
 
 def gaussian_search_individual(
@@ -60,13 +61,13 @@ def gaussian_search_individual(
     np.set_printoptions(suppress=True)
 
     # Load the external ESV data
-    esv_table = sio.loadmat("../../../GPSData/global_table_esv.mat")
+    esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]
 
     # Load the external GPS data
-    data = np.load("../../../GPSData/Processed_GPS_Receivers_DOG_1.npz")
+    data = np.load(gps_data_path("Processed_GPS_Receivers_DOG_1.npz"))
     GPS_Coordinates = data["GPS_Coordinates"][::downsample]
     GPS_data = data["GPS_data"][::downsample]
     CDOG_guess = data["CDOG_guess"]
@@ -76,9 +77,7 @@ def gaussian_search_individual(
     for i in range(1, 5):
         if i == 2:
             continue
-        CDOG_mat = sio.loadmat(f"../../../GPSData/DOG{i}-camp.mat")["tags"].astype(
-            float
-        )
+        CDOG_mat = sio.loadmat(gps_data_path(f"DOG{i}-camp.mat"))["tags"].astype(float)
         CDOG_mat[:, 1] /= 1e9
         CDOG_all_data.append(CDOG_mat)
 
@@ -211,13 +210,13 @@ def gaussian_search(
     np.set_printoptions(suppress=True)
 
     # Load the external ESV data
-    esv_table = sio.loadmat("../../../GPSData/global_table_esv.mat")
+    esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]
 
     # Load the external GPS data
-    data = np.load("../../../GPSData/Processed_GPS_Receivers_DOG_1.npz")
+    data = np.load(gps_data_path("Processed_GPS_Receivers_DOG_1.npz"))
     GPS_Coordinates = data["GPS_Coordinates"]
     GPS_data = data["GPS_data"]
     CDOG_guess = data["CDOG_guess"]
@@ -227,9 +226,7 @@ def gaussian_search(
     for i in range(1, 5):
         if i == 2:
             continue
-        CDOG_data = sio.loadmat(f"../../../GPSData/DOG{i}-camp.mat")["tags"].astype(
-            float
-        )
+        CDOG_data = sio.loadmat(gps_data_path(f"DOG{i}-camp.mat"))["tags"].astype(float)
         CDOG_data[:, 1] = CDOG_data[:, 1] / 1e9
         CDOG_all_data.append(CDOG_data)
 

@@ -6,12 +6,14 @@ import scipy.io as sio
 
 from acoustics.svp import DelGrosso_SV, depth_to_pressure
 
-CTD = sio.loadmat("../GPSData/CTD_Data/AE2008_Cast2.mat")["AE2008_Cast2"]
+from data import gps_data_path
+
+CTD = sio.loadmat(gps_data_path("CTD_Data", "AE2008_Cast2.mat"))["AE2008_Cast2"]
 depth = CTD[:, 0][::100]
 temperature = CTD[:, 1][::100]
 salinity = CTD[:, 4][::100]
 
-ecco_dir = "../GPSData/ECCO_Temp_Salinity"
+ecco_dir = str(gps_data_path("ECCO_Temp_Salinity"))
 
 month = "January"
 month_to_num = {
@@ -92,10 +94,12 @@ plt.gca().invert_yaxis()
 plt.show()
 
 # Plot sound speed profile
-depth_t = np.ascontiguousarray(np.genfromtxt("../GPSData/depth_cast2_smoothed.txt"))[
+depth_t = np.ascontiguousarray(
+    np.genfromtxt(gps_data_path("depth_cast2_smoothed.txt"))
+)[::100]
+cz_t = np.ascontiguousarray(np.genfromtxt(gps_data_path("cz_cast2_smoothed.txt")))[
     ::100
 ]
-cz_t = np.ascontiguousarray(np.genfromtxt("../GPSData/cz_cast2_smoothed.txt"))[::100]
 
 plt.figure(figsize=(6, 8))
 plt.plot(sound_speed1, -1 * z_arr[: len(salinity_data)], label="DelGrosso ECCO")

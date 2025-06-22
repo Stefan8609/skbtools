@@ -9,7 +9,9 @@ from Initialize_Bermuda_Data import initialize_bermuda
 
 import matplotlib.pyplot as plt
 
-esv_table = sio.loadmat("../../../GPSData/global_table_esv.mat")
+from data import gps_data_path
+
+esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
 
 """
 Process:

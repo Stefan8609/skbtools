@@ -8,14 +8,15 @@ from Numba_xAline_bias import (
     final_bias_geiger,
 )
 from Bermuda_Trajectory import bermuda_trajectory
+from data import gps_data_path
 
-esv_table_generate = sio.loadmat("../../../GPSData/global_table_esv.mat")
+esv_table_generate = sio.loadmat(gps_data_path("global_table_esv.mat"))
 dz_array_generate = esv_table_generate["distance"].flatten()
 angle_array_generate = esv_table_generate["angle"].flatten()
 esv_matrix_generate = esv_table_generate["matrice"]
 
 esv_table_inversion = sio.loadmat(
-    "../../../GPSData/global_table_esv_realistic_perturbed.mat"
+    gps_data_path("global_table_esv_realistic_perturbed.mat")
 )
 dz_array_inversion = esv_table_inversion["distance"].flatten()
 angle_array_inversion = esv_table_inversion["angle"].flatten()

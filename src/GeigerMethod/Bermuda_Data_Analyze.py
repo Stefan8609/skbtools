@@ -7,6 +7,7 @@ import numpy as np
 from geigerMethod_Bermuda import findTransponder, calculateTimesRayTracing
 import matplotlib.pyplot as plt
 from pymap3d import geodetic2ecef
+from data import gps_data_path
 
 
 # Load GNSS Data during the time of expedition (25 through 40.9) hours
@@ -37,10 +38,10 @@ def load_and_process_data(path):
 
 
 paths = [
-    "../GPSData/Unit1-camp_bis.mat",
-    "../GPSData/Unit2-camp_bis.mat",
-    "../GPSData/Unit3-camp_bis.mat",
-    "../GPSData/Unit4-camp_bis.mat",
+    gps_data_path("Unit1-camp_bis.mat"),
+    gps_data_path("Unit2-camp_bis.mat"),
+    gps_data_path("Unit3-camp_bis.mat"),
+    gps_data_path("Unit4-camp_bis.mat"),
 ]
 
 all_data = [load_and_process_data(path) for path in paths]
@@ -82,7 +83,7 @@ CDOG = np.array(geodetic2ecef(CDOG[0], CDOG[1], CDOG[2]))
 offset = 68126  # 66828#68126 This is approximately overlaying them now
 
 DOG = 4
-data_DOG = sio.loadmat(f"../GPSData/DOG{DOG}-camp.mat")["tags"].astype(float)
+data_DOG = sio.loadmat(gps_data_path(f"DOG{DOG}-camp.mat"))["tags"].astype(float)
 acoustic_DOG = np.unwrap(data_DOG[:, 1] / 1e9 * 2 * np.pi) / (
     2 * np.pi
 )  # Numpy page describes how unwrap works

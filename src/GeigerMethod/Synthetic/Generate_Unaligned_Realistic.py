@@ -99,16 +99,24 @@ if __name__ == "__main__":
     )  # Numpy page describes how unwrap works
 
     # Save the CDOG to a matlabfile
-    sio.savemat("../../GPSData/Realistic_CDOG_noise_subint_new.mat", {"tags": CDOG_mat})
-    sio.savemat("../../GPSData/Realistic_CDOG_loc_noise_subint_new.mat", {"xyz": CDOG})
+    from data import gps_data_path
+
+    sio.savemat(
+        gps_data_path("Realistic_CDOG_noise_subint_new.mat"),
+        {"tags": CDOG_mat},
+    )
+    sio.savemat(
+        gps_data_path("Realistic_CDOG_loc_noise_subint_new.mat"),
+        {"xyz": CDOG},
+    )
 
     # Save transponder + GPS data
     sio.savemat(
-        "../../GPSData/Realistic_transponder_noise_subint_new.mat",
+        gps_data_path("Realistic_transponder_noise_subint_new.mat"),
         {"time": GPS_time, "xyz": transponder_coordinates},
     )
     sio.savemat(
-        "../../GPSData/Realistic_GPS_noise_subint_new.mat",
+        gps_data_path("Realistic_GPS_noise_subint_new.mat"),
         {"time": GPS_time, "xyz": GPS_Coordinates},
     )
 

@@ -4,6 +4,8 @@ from numba import njit
 
 from Numba_Geiger import findTransponder
 from Numba_xAline_bias import final_bias_geiger, initial_bias_geiger
+from Bermuda_Trajectory import bermuda_trajectory
+from data import gps_data_path
 
 
 @njit
@@ -153,14 +155,13 @@ def simulated_annealing_real(
 
 
 if __name__ == "__main__":
-    from Bermuda_Trajectory import bermuda_trajectory
 
-    esv_table_generate = sio.loadmat("../../../GPSData/global_table_esv.mat")
+    esv_table_generate = sio.loadmat(gps_data_path("global_table_esv.mat"))
     dz_array_generate = esv_table_generate["distance"].flatten()
     angle_array_generate = esv_table_generate["angle"].flatten()
     esv_matrix_generate = esv_table_generate["matrice"]
 
-    esv_table = sio.loadmat("../../../GPSData/global_table_esv_realistic_perturbed.mat")
+    esv_table = sio.loadmat(gps_data_path("global_table_esv_realistic_perturbed.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]

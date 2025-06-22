@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
+from data import gps_data_path
 
 
 def experimentPathPlot(transponder_coordinates, CDog=None):
@@ -55,10 +56,10 @@ if __name__ == "__main__":
         return time_GNSS, x, y, z
 
     paths = [
-        "../../GPSData/Unit1-camp_bis.mat",
-        "../../GPSData/Unit2-camp_bis.mat",
-        "../../GPSData/Unit3-camp_bis.mat",
-        "../../GPSData/Unit4-camp_bis.mat",
+        gps_data_path("Unit1-camp_bis.mat"),
+        gps_data_path("Unit2-camp_bis.mat"),
+        gps_data_path("Unit3-camp_bis.mat"),
+        gps_data_path("Unit4-camp_bis.mat"),
     ]
 
     all_data = [load_and_process_data(path) for path in paths]

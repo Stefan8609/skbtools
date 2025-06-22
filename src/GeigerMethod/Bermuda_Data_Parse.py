@@ -2,6 +2,7 @@ import scipy.io as sio
 import numpy as np
 from simulatedAnnealing_Bermuda import simulatedAnnealing_Bermuda
 from GPS_Lever_Arms import GPS_Lever_arms
+from data import gps_data_path
 
 
 # Load GNSS Data during the time of expedition (25 through 40.9) hours
@@ -34,10 +35,10 @@ def load_and_process_data(path):
 
 
 paths = [
-    "../GPSData/Unit1-camp_bis.mat",
-    "../GPSData/Unit2-camp_bis.mat",
-    "../GPSData/Unit3-camp_bis.mat",
-    "../GPSData/Unit4-camp_bis.mat",
+    gps_data_path("Unit1-camp_bis.mat"),
+    gps_data_path("Unit2-camp_bis.mat"),
+    gps_data_path("Unit3-camp_bis.mat"),
+    gps_data_path("Unit4-camp_bis.mat"),
 ]
 
 all_data = [load_and_process_data(path) for path in paths]
@@ -70,7 +71,7 @@ for i in range(len(filtered_data[0, 0])):
 # Initialize Dog Acoustic Data
 
 offset = 68126  # 66828#68126 This is approximately overlaying them now
-data_DOG = sio.loadmat("../GPSData/DOG1-camp.mat")["tags"].astype(float)
+data_DOG = sio.loadmat(gps_data_path("DOG1-camp.mat"))["tags"].astype(float)
 acoustic_DOG = np.unwrap(data_DOG[:, 1] / 1e9 * 2 * np.pi) / (
     2 * np.pi
 )  # Numpy page describes how unwrap works

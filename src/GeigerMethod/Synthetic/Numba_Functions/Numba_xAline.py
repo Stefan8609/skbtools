@@ -1,6 +1,7 @@
 import numpy as np
 from numba import njit
 from scipy import signal
+import matplotlib.pyplot as plt
 
 
 @njit(cache=True)
@@ -219,7 +220,6 @@ def find_int_offset(
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
     from Numba_Geiger import calculateTimesRayTracing, findTransponder
     from Generate_Unaligned_Realistic import generateUnalignedRealistic
 

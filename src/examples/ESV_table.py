@@ -2,10 +2,15 @@ import numpy as np
 from numba import njit
 from Ray_Tracing_Iter_Locate import ray_trace_locate, ray_tracing
 import matplotlib.pyplot as plt
+import scipy.io as sio
+from time import time
+from data import gps_data_path
 
 
-depth = np.ascontiguousarray(np.genfromtxt("GPSData/depth_cast2_smoothed.txt")[::20])
-cz = np.ascontiguousarray(np.genfromtxt("GPSData/cz_cast2_smoothed.txt")[::20])
+depth = np.ascontiguousarray(
+    np.genfromtxt(gps_data_path("depth_cast2_smoothed.txt"))[::20]
+)
+cz = np.ascontiguousarray(np.genfromtxt(gps_data_path("cz_cast2_smoothed.txt"))[::20])
 
 plt.plot(cz, depth, label="CTD Bermuda SVP")
 
@@ -75,9 +80,6 @@ def construct_esv(depth, cz):
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    import scipy.io as sio
-    from time import time
 
     z_a = 35
 
@@ -99,4 +101,4 @@ if __name__ == "__main__":
     dz_array = z_array - z_a
 
     data_to_save = {"angle": beta_array, "distance": dz_array, "matrice": esv_matrix}
-    sio.savemat("GPSData/global_table_esv_normal.mat", data_to_save)
+    sio.savemat(gps_data_path("global_table_esv_normal.mat"), data_to_save)
