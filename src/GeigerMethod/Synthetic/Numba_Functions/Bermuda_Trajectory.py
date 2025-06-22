@@ -6,7 +6,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
 from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
     calculateTimesRayTracing_Bias_Real,
 )
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 
 
 def bermuda_trajectory(

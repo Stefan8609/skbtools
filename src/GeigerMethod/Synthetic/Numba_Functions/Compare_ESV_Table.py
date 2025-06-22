@@ -9,7 +9,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import (
     generateRealistic,
     findTransponder,
 )
-from GeigerMethod.data import gps_data_path
+from data import gps_data_path
 
 
 def compare_tables(esv_table1, esv_table2):
