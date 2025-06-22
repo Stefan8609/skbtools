@@ -46,7 +46,7 @@ def ray_tracing(iga, z_a, z_b, depth, cz):
 
         if theta > np.pi / 2 - 0.01:
             print("Error: Total Internal Reflection")
-            return np.NaN, np.NaN, np.NaN, x_arr[:i], z_arr[:i]
+            return np.nan, np.nan, np.nan, x_arr[:i], z_arr[:i]
         dx = dz[i] * np.tan(theta)
         ds = np.sqrt(dx**2 + dz[i] ** 2)
         dt = ds / c
