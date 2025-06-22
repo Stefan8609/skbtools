@@ -1,17 +1,17 @@
 import numpy as np
 import scipy.io as sio
 
-from .Bermuda_Trajectory import bermuda_trajectory
-from .Numba_xAline import two_pointer_index, find_int_offset
-from .Numba_time_bias import (
+from GeigerMethod.Synthetic.Numba_Functions.Bermuda_Trajectory import bermuda_trajectory
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index, find_int_offset
+from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
     calculateTimesRayTracing_Bias,
     calculateTimesRayTracing_Bias_Real,
     compute_Jacobian_biased,
 )
-from .Numba_Geiger import findTransponder
+from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
 from numba import njit
-from .Plot_Modular import time_series_plot
-from ...data import gps_data_path
+from GeigerMethod.Synthetic.Numba_Functions.Plot_Modular import time_series_plot
+from GeigerMethod.data import gps_data_path
 
 
 def initial_bias_geiger(

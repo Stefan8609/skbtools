@@ -1,5 +1,5 @@
 import numpy as np
-from .Numba_time_bias import find_esv
+from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import find_esv
 
 
 # @njit
