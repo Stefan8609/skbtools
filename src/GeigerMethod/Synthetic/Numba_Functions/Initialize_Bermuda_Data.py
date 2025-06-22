@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.io as sio
 from pymap3d import geodetic2ecef
-from ...data import gps_data_path
+from GeigerMethod.data import gps_data_path
 
 """Enable this for paper plots"""
 # plt.rcParams.update({

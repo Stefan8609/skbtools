@@ -1,17 +1,17 @@
 import numpy as np
 import scipy.io as sio
 
-from .Generate_Unaligned_Realistic import generateUnalignedRealistic
-from .Bermuda_Trajectory import bermuda_trajectory
-from .Numba_Geiger import findTransponder
-from .Numba_xAline_bias import (
+from GeigerMethod.Synthetic.Numba_Functions.Generate_Unaligned_Realistic import generateUnalignedRealistic
+from GeigerMethod.Synthetic.Numba_Functions.Bermuda_Trajectory import bermuda_trajectory
+from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import (
     initial_bias_geiger,
     transition_bias_geiger,
     final_bias_geiger,
 )
-from .Numba_xAline_Annealing_bias import simulated_annealing_bias
-from .Plot_Modular import time_series_plot
-from ...data import gps_data_path
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Annealing_bias import simulated_annealing_bias
+from GeigerMethod.Synthetic.Numba_Functions.Plot_Modular import time_series_plot
+from GeigerMethod.data import gps_data_path
 
 """
 File to allow for easy changing of parameters when running synthetic

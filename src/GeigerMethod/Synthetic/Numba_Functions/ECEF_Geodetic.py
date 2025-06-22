@@ -9,7 +9,7 @@ from numba import njit
 from pymap3d import ecef2geodetic
 import scipy.io as sio
 import timeit
-from ...data import gps_data_path
+from GeigerMethod.data import gps_data_path
 
 
 @njit(cache=True)

@@ -1,19 +1,19 @@
 import numpy as np
 import scipy.io as sio
 
-from .Numba_Geiger import findTransponder
-from .Numba_xAline_bias import (
+from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import (
     initial_bias_geiger,
     transition_bias_geiger,
     final_bias_geiger,
 )
-from .Numba_time_bias import calculateTimesRayTracing_Bias_Real
-from .Numba_xAline import two_pointer_index
-from .Plot_Modular import time_series_plot, range_residual
+from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import calculateTimesRayTracing_Bias_Real
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index
+from GeigerMethod.Synthetic.Numba_Functions.Plot_Modular import time_series_plot, range_residual
 
 
 # esv_table = sio.loadmat('../../../GPSData/global_table_esv.mat')
-from ...data import gps_data_path
+from GeigerMethod.data import gps_data_path
 
 esv_table = sio.loadmat(gps_data_path("global_table_esv_normal.mat"))
 

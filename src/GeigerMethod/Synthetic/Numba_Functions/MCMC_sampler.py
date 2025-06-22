@@ -1,11 +1,22 @@
+"""MCMC utilities for synthetic data generation."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+# Allow running this module directly without installing the package.
+if __package__ is None or __package__ == "":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 import numpy as np
 import scipy.io as sio
 
-from .Numba_time_bias import calculateTimesRayTracing_Bias_Real
-from .Numba_xAline import two_pointer_index
-from .Numba_Geiger import findTransponder
-from .ESV_bias_split import calculateTimesRayTracing_split
-from ...data import gps_data_path
+from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import calculateTimesRayTracing_Bias_Real
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index
+from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
+from GeigerMethod.Synthetic.Numba_Functions.ESV_bias_split import calculateTimesRayTracing_split
+from GeigerMethod.data import gps_data_path
 
 
 # @njit

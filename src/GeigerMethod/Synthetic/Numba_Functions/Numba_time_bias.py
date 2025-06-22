@@ -1,6 +1,6 @@
 import numpy as np
 from numba import njit
-from .ECEF_Geodetic import ECEF_Geodetic
+from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
 
 
 @njit

@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
-from .Numba_Geiger import generateRealistic
+from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import generateRealistic
 
 
 def find_esv_generate(beta, dz, dz_array, angle_array, esv_matrix):
