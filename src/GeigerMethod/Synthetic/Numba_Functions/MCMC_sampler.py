@@ -252,20 +252,22 @@ def mcmc_sampler(
 # Example usage:
 if __name__ == "__main__":
     # — load your data once —
-    esv = sio.loadmat("../../../GPSData/global_table_esv_normal.mat")
+    from data import gps_data_path
+
+    esv = sio.loadmat(gps_data_path("global_table_esv_normal.mat"))
     dz_array = esv["distance"].flatten()
     angle_array = esv["angle"].flatten()
     esv_matrix = esv["matrice"]
 
     downsample = 50
-    data = np.load("../../../GPSData/Processed_GPS_Receivers_DOG_1.npz")
+    data = np.load(gps_data_path("Processed_GPS_Receivers_DOG_1.npz"))
     GPS_Coordinates = data["GPS_Coordinates"][::downsample]
     GPS_data = data["GPS_data"][::downsample]
     CDOG_guess = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
 
     CDOG_all_data = []
     for i in (1, 3, 4):
-        tmp = sio.loadmat(f"../../../GPSData/DOG{i}-camp.mat")["tags"].astype(float)
+        tmp = sio.loadmat(gps_data_path(f"DOG{i}-camp.mat"))["tags"].astype(float)
         tmp[:, 1] /= 1e9
         CDOG_all_data.append(tmp)
 

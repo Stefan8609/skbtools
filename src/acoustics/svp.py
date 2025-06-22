@@ -263,12 +263,16 @@ if __name__ == "__main__":
     import scipy.io as sio
     import matplotlib.pyplot as plt
 
-    CTD = sio.loadmat("GPSData/CTD_Data/AE2008_Cast2.mat")["AE2008_Cast2"]
+    from data import gps_data_path
 
-    depth_t = np.ascontiguousarray(np.genfromtxt("GPSData/depth_cast2_smoothed.txt"))[
+    CTD = sio.loadmat(gps_data_path("CTD_Data", "AE2008_Cast2.mat"))["AE2008_Cast2"]
+
+    depth_t = np.ascontiguousarray(
+        np.genfromtxt(gps_data_path("depth_cast2_smoothed.txt"))
+    )[::100]
+    cz_t = np.ascontiguousarray(np.genfromtxt(gps_data_path("cz_cast2_smoothed.txt")))[
         ::100
     ]
-    cz_t = np.ascontiguousarray(np.genfromtxt("GPSData/cz_cast2_smoothed.txt"))[::100]
 
     depth = CTD[:, 0][::100]
     temperature = CTD[:, 1][::100]

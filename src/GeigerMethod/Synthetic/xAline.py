@@ -231,16 +231,18 @@ def two_pointer_index(
 
 
 if __name__ == "__main__":
-    CDOG = sio.loadmat("../../GPSData/Realistic_CDOG_loc_noise_subint_new.mat")["xyz"][
+    from data import gps_data_path
+
+    CDOG = sio.loadmat(gps_data_path("Realistic_CDOG_loc_noise_subint_new.mat"))["xyz"][
         0
     ].astype(float)
-    CDOG_data = sio.loadmat("../../GPSData/Realistic_CDOG_noise_subint_new.mat")[
+    CDOG_data = sio.loadmat(gps_data_path("Realistic_CDOG_noise_subint_new.mat"))[
         "tags"
     ].astype(float)
-    GPS_data = sio.loadmat("../../GPSData/Realistic_GPS_noise_subint_new.mat")["time"][
+    GPS_data = sio.loadmat(gps_data_path("Realistic_GPS_noise_subint_new.mat"))["time"][
         0
     ].astype(float)
-    GPS_Coordinates = sio.loadmat("../../GPSData/Realistic_GPS_noise_subint_new.mat")[
+    GPS_Coordinates = sio.loadmat(gps_data_path("Realistic_GPS_noise_subint_new.mat"))[
         "xyz"
     ].astype(float)
 

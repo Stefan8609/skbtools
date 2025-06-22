@@ -64,6 +64,8 @@ def GPS_Lever_arms(GPS_Coordinates):
 
 
 if __name__ == "__main__":
-    data = np.load("../GPSData/Processed_GPS_Receivers_DOG_1.npz")
+    from data import gps_data_path
+
+    data = np.load(gps_data_path("Processed_GPS_Receivers_DOG_1.npz"))
     GPS_Coordinates = data["GPS_Coordinates"]
     GPS_Lever_arms(GPS_Coordinates)

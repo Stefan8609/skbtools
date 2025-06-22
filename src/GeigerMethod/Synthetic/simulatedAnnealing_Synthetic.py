@@ -8,9 +8,10 @@ from advancedGeigerMethod import (
 from geigerTimePlot import geigerTimePlot
 from Generate_Realistic_Transducer import generateRealistic_Transducer
 import random
+from data import gps_data_path
 
-cz = np.genfromtxt("../../GPSData/cz_cast2_smoothed.txt")[::100]
-depth = np.genfromtxt("../../GPSData/depth_cast2_smoothed.txt")[::100]
+cz = np.genfromtxt(gps_data_path("cz_cast2_smoothed.txt"))[::100]
+depth = np.genfromtxt(gps_data_path("depth_cast2_smoothed.txt"))[::100]
 
 """This program feels inefficient recalculating times known a bunch of times"""
 

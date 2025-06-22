@@ -5,6 +5,7 @@ import itertools
 from Numba_xAline_bias import final_bias_geiger, initial_bias_geiger
 from Numba_Geiger import findTransponder
 from Real_Annealing import simulated_annealing_real
+from data import gps_data_path
 
 """Plot all of the Seafloor guesses from the grid search and find the correlation
 
@@ -68,12 +69,12 @@ def grid_search_annealing(
         initial_lever_base = np.array([-16.0, 0.0, -15.0])
 
     # Load the external ESV data
-    esv_table = sio.loadmat("../../../GPSData/global_table_esv.mat")
+    esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]
 
-    data = np.load(f"../../../GPSData/Processed_GPS_Receivers_DOG_{DOG_num}.npz")
+    data = np.load(gps_data_path(f"Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
     GPS_Coordinates = data["GPS_Coordinates"]
     GPS_data = data["GPS_data"]
     CDOG_data = data["CDOG_data"]
@@ -256,12 +257,12 @@ def grid_search_discrete(
         initial_lever_base = np.array([-16.0, 0.0, -15.0])
 
     # Load the external ESV data
-    esv_table = sio.loadmat("../../../GPSData/global_table_esv_normal.mat")
+    esv_table = sio.loadmat(gps_data_path("global_table_esv_normal.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]
 
-    data = np.load(f"../../../GPSData/Processed_GPS_Receivers_DOG_{DOG_num}.npz")
+    data = np.load(gps_data_path(f"Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
     GPS_Coordinates = data["GPS_Coordinates"]
     GPS_data = data["GPS_data"]
     CDOG_data = data["CDOG_data"]

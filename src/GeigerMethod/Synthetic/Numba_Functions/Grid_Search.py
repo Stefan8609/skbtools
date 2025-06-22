@@ -22,7 +22,9 @@ def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):
     None
         Results are written to ``output.txt``.
     """
-    esv_table = sio.loadmat("../../../GPSData/global_table_esv.mat")
+    from data import gps_data_path
+
+    esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]

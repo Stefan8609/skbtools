@@ -35,9 +35,8 @@ packages = [
     "src/examples",
     "src/geometry",
     "src/plotting",
-    "src/skbtools",
 ]
-include = ["*.py"]
+include = ["*.py", "src/data.py"]
 
 [tool.black]
 line-length = 88

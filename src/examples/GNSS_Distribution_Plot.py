@@ -1,9 +1,10 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
+from data import gps_data_path
 
 # Load your CSV data
-unavco_data = pd.read_csv("GPSData/network-monitoring.csv")
+unavco_data = pd.read_csv(gps_data_path("network-monitoring.csv"))
 
 # Set up the plot
 plt.figure(figsize=(10, 6))

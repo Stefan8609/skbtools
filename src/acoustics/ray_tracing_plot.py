@@ -1,8 +1,10 @@
 import numpy as np
 from numba import njit
 
-depth = np.ascontiguousarray(np.genfromtxt("GPSData/depth_cast2_smoothed.txt"))
-cz = np.ascontiguousarray(np.genfromtxt("GPSData/cz_cast2_smoothed.txt"))
+from data import gps_data_path
+
+depth = np.ascontiguousarray(np.genfromtxt(gps_data_path("depth_cast2_smoothed.txt")))
+cz = np.ascontiguousarray(np.genfromtxt(gps_data_path("cz_cast2_smoothed.txt")))
 
 
 @njit

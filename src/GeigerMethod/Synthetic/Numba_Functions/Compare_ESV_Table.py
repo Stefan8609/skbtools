@@ -115,8 +115,10 @@ def compare_tables(esv_table1, esv_table2):
 
 
 if __name__ == "__main__":
-    esv_table1 = sio.loadmat("../../../GPSData/global_table_esv_perturbed.mat")
+    from data import gps_data_path
 
-    esv_table2 = sio.loadmat("../../../GPSData/global_table_esv.mat")
+    esv_table1 = sio.loadmat(gps_data_path("global_table_esv_perturbed.mat"))
+
+    esv_table2 = sio.loadmat(gps_data_path("global_table_esv.mat"))
 
     compare_tables(esv_table1, esv_table2)

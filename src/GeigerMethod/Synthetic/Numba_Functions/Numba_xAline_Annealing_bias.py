@@ -255,7 +255,9 @@ def simulated_annealing_bias(
 
 
 if __name__ == "__main__":
-    esv_table = sio.loadmat("../../../GPSData/global_table_esv.mat")
+    from data import gps_data_path
+
+    esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]

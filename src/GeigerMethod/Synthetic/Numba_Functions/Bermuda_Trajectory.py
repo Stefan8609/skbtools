@@ -4,6 +4,7 @@ import scipy.io as sio
 from pymap3d import ecef2geodetic
 from Numba_Geiger import findTransponder
 from Numba_time_bias import calculateTimesRayTracing_Bias_Real
+from data import gps_data_path
 
 
 def bermuda_trajectory(
@@ -33,7 +34,7 @@ def bermuda_trajectory(
     lever = np.array([-12.48862757, 0.22622633, -15.89601934])
     offset = 1991.01236648
 
-    data = np.load(f"../../../GPSData/Processed_GPS_Receivers_DOG_{DOG_num}.npz")
+    data = np.load(gps_data_path(f"Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
     GPS_Coordinates = data["GPS_Coordinates"]
     GPS_data = data["GPS_data"]
     gps1_to_others = data["gps1_to_others"]
@@ -59,7 +60,7 @@ def bermuda_trajectory(
 
 
 if __name__ == "__main__":
-    esv_table = sio.loadmat("../../../GPSData/global_table_esv.mat")
+    esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]
@@ -77,11 +78,11 @@ if __name__ == "__main__":
         time_noise, position_noise, dz_array, angle_array, esv_matrix
     )
 
-    lat = sio.loadmat("../../../GPSData/Unit1-camp_bis.mat")["lat"].flatten()
-    lon = sio.loadmat("../../../GPSData/Unit1-camp_bis.mat")["lon"].flatten()
-    elev = sio.loadmat("../../../GPSData/Unit1-camp_bis.mat")["elev"].flatten()
-    times = sio.loadmat("../../../GPSData/Unit1-camp_bis.mat")["times"].flatten()
-    days = sio.loadmat("../../../GPSData/Unit1-camp_bis.mat")["days"].flatten() - 59015
+    lat = sio.loadmat(gps_data_path("Unit1-camp_bis.mat"))["lat"].flatten()
+    lon = sio.loadmat(gps_data_path("Unit1-camp_bis.mat"))["lon"].flatten()
+    elev = sio.loadmat(gps_data_path("Unit1-camp_bis.mat"))["elev"].flatten()
+    times = sio.loadmat(gps_data_path("Unit1-camp_bis.mat"))["times"].flatten()
+    days = sio.loadmat(gps_data_path("Unit1-camp_bis.mat"))["days"].flatten() - 59015
 
     datetimes = (days * 24 * 3600) + times
     condition_GNSS = (datetimes / 3600 >= 25) & (datetimes / 3600 <= 40.9)

@@ -6,10 +6,11 @@ from advancedGeigerMethod import (
     generateRealistic_Transducer,
 )
 import random
+from data import gps_data_path
 
 
-cz = np.genfromtxt("../../GPSData/cz_cast2_smoothed.txt")[::100]
-depth = np.genfromtxt("../../GPSData/depth_cast2_smoothed.txt")[::100]
+cz = np.genfromtxt(gps_data_path("cz_cast2_smoothed.txt"))[::100]
+depth = np.genfromtxt(gps_data_path("depth_cast2_smoothed.txt"))[::100]
 
 
 def RMSE_function(
