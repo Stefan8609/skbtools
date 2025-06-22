@@ -6,7 +6,7 @@ import scipy.io as sio
 from data import gps_data_path
 
 from acoustics.svp import DelGrosso_SV, depth_to_pressure
-from examples.ESV_table import construct_esv
+from acoustics.ESV_table import construct_esv
 
 """Build ESV table for every month of ECCO to ECCO Depth"""
 
