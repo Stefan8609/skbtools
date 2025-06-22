@@ -1,4 +1,4 @@
-from skbtools.plotting.print_table import printTable
+from plotting.print_table import printTable
 
 
 def test_print_table_simple(capsys):

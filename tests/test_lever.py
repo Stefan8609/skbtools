@@ -1,5 +1,5 @@
 import numpy as np
-from skbtools.GeigerMethod.GPS_Lever_Arms import GPS_Lever_arms
+from GeigerMethod.GPS_Lever_Arms import GPS_Lever_arms
 
 
 def test_gps_lever_arms_basic(capsys):

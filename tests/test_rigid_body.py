@@ -1,5 +1,5 @@
 import numpy as np
-from skbtools.geometry.rigid_body import findRotationAndDisplacement
+from geometry.rigid_body import findRotationAndDisplacement
 
 
 def test_find_rotation_and_displacement():

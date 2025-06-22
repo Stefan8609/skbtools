@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from skbtools.acoustics.ray_tracing import ray_tracing, ray_trace_locate
+from acoustics.ray_tracing import ray_tracing, ray_trace_locate
 
 os.environ["NUMBA_DISABLE_JIT"] = "1"
 
