@@ -7,10 +7,9 @@ Function to convert from ECEF coordinates to Geodetic coordinates
 import numpy as np
 from numba import njit
 from pymap3d import ecef2geodetic
-from Numba_Geiger import findTransponder
 import scipy.io as sio
 import timeit
-from data import gps_data_path
+from ...data import gps_data_path
 
 
 @njit(cache=True)
@@ -55,6 +54,7 @@ def ECEF_Geodetic(coords):
 
 
 if __name__ == "__main__":
+    from .Numba_Geiger import findTransponder
 
     def load_and_process_data(path):
         """Load unit data and slice to the GNSS window.

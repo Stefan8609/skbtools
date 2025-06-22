@@ -1,6 +1,6 @@
 import numpy as np
 from numba import njit
-from ECEF_Geodetic import ECEF_Geodetic
+from .ECEF_Geodetic import ECEF_Geodetic
 
 
 @njit

@@ -2,9 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
 from pymap3d import ecef2geodetic
-from Numba_Geiger import findTransponder
-from Numba_time_bias import calculateTimesRayTracing_Bias_Real
-from data import gps_data_path
+from .Numba_Geiger import findTransponder
+from .Numba_time_bias import calculateTimesRayTracing_Bias_Real
+from ...data import gps_data_path
 
 
 def bermuda_trajectory(

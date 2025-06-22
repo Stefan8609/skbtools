@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
-from Numba_Geiger import generateRealistic
+from .Numba_Geiger import generateRealistic
 
 
 def find_esv_generate(beta, dz, dz_array, angle_array, esv_matrix):
@@ -220,7 +220,7 @@ if __name__ == "__main__":
     )  # Numpy page describes how unwrap works
 
     # Save the CDOG to a matlabfile
-    from data import gps_data_path
+    from ...data import gps_data_path
 
     sio.savemat(
         gps_data_path("Realistic_CDOG_noise_subint_new.mat"),

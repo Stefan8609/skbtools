@@ -2,10 +2,10 @@ import numpy as np
 import scipy.io as sio
 from numba import njit
 
-from Numba_Geiger import findTransponder
-from Numba_xAline_bias import final_bias_geiger, initial_bias_geiger
-from Bermuda_Trajectory import bermuda_trajectory
-from data import gps_data_path
+from .Numba_Geiger import findTransponder
+from .Numba_xAline_bias import final_bias_geiger, initial_bias_geiger
+from .Bermuda_Trajectory import bermuda_trajectory
+from ...data import gps_data_path
 
 
 @njit

@@ -1,5 +1,5 @@
 import numpy as np
-from Numba_time_bias import find_esv
+from .Numba_time_bias import find_esv
 
 
 # @njit

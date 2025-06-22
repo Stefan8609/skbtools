@@ -1,9 +1,9 @@
 import numpy as np
 import scipy.io as sio
 
-from Numba_xAline_bias import final_bias_geiger
-from Numba_Geiger import findTransponder
-from data import gps_data_path
+from .Numba_xAline_bias import final_bias_geiger
+from .Numba_Geiger import findTransponder
+from ...data import gps_data_path
 
 
 def gaussian_search_individual(

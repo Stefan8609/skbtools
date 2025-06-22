@@ -1,14 +1,14 @@
 import numpy as np
 import scipy.io as sio
 
-from Numba_Geiger import findTransponder
-from Numba_xAline_bias import (
+from .Numba_Geiger import findTransponder
+from .Numba_xAline_bias import (
     initial_bias_geiger,
     transition_bias_geiger,
     final_bias_geiger,
 )
-from Bermuda_Trajectory import bermuda_trajectory
-from data import gps_data_path
+from .Bermuda_Trajectory import bermuda_trajectory
+from ...data import gps_data_path
 
 esv_table_generate = sio.loadmat(gps_data_path("global_table_esv.mat"))
 dz_array_generate = esv_table_generate["distance"].flatten()
