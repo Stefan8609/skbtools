@@ -8,7 +8,6 @@ import numpy as np
 from numba import njit
 from pymap3d import ecef2geodetic
 import scipy.io as sio
-import timeit
 
 
 @njit(cache=True)
@@ -57,6 +56,7 @@ if __name__ == "__main__":
         findTransponder,
     )
     from data import gps_data_path
+    import timeit
 
     def load_and_process_data(path):
         """Load unit data and slice to the GNSS window.
