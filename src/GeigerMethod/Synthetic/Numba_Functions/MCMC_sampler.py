@@ -146,7 +146,7 @@ def mcmc_sampler(
     if proposal_scales is None:
         proposal_scales = {
             "lever": np.array([0.01, 0.01, 0.1]),
-            "gps_grid": 0.005,
+            "gps_grid": 0.0,
             "CDOG_aug": 0.1,
             "esv_bias": 0.001,
             "time_bias": 0.000001,
@@ -296,8 +296,14 @@ if __name__ == "__main__":
             [236.27742, -1307.44426, -2189.59746],
         ]
     )
-    init_ebias = np.array([-0.4775, -0.3199, 0.1122])
-    # init_ebias = np.array([[-0.4775, -0.5775], [-0.3199, -0.4199], [0.1122, 0.0122]])
+    # init_ebias = np.array([-0.4775, -0.3199, 0.1122])
+    init_ebias = np.array(
+        [
+            [-0.4775, -0.4775, -0.4775, -0.4775],
+            [-0.3199, -0.3199, -0.3199, -0.3199],
+            [0.1122, 0.1122, 0.1122, 0.1122],
+        ]
+    )
 
     init_tbias = np.array([0.01518602, 0.015779, 0.018898])
 

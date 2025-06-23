@@ -1,5 +1,6 @@
 import numpy as np
 from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import find_esv
+from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
 
 
 # @njit
@@ -28,26 +29,37 @@ def calculateTimesRayTracing_split(
     tuple of ndarray
         ``(times, esv)`` travel times and effective sound speeds.
     """
-    times = np.zeros(len(transponder_coordinates))
-    esv = np.zeros(len(transponder_coordinates))
-    left, right = 0, 0
-    for n in range(len(esv_biases)):
-        # Split the transponder coordinates
-        # into chunks based on the number of ESV biases
-        left = right
-        right = left + len(transponder_coordinates) // len(esv_biases)
-        if n == len(esv_biases) - 1:
-            right = len(transponder_coordinates)
-        curr_transponder = transponder_coordinates[left:right]
-        hori_dist = np.sqrt(
-            (curr_transponder[:, 0] - guess[0]) ** 2
-            + (curr_transponder[:, 1] - guess[1]) ** 2
-        )
-        abs_dist = np.sqrt(np.sum((curr_transponder - guess) ** 2, axis=1))
-        beta = np.arccos(hori_dist / abs_dist) * 180 / np.pi
-        dz = np.abs(guess[2] - curr_transponder[:, 2])
-        esv[left:right] = (
-            find_esv(beta, dz, dz_array, angle_array, esv_matrix) + esv_biases[n]
-        )
+    N = len(transponder_coordinates)
+    B = len(esv_biases)
+
+    # Get depth of receiver guess
+    guess = guess[np.newaxis, :]
+    lat, lon, depth = ECEF_Geodetic(guess)
+
+    # 1) Split coords into B blocks (some blocks may be 1 sample larger)
+    blocks = np.array_split(transponder_coordinates, B, axis=0)
+    # 2) Prepare output arrays
+    times = np.zeros(N)
+    esv = np.zeros(N)
+
+    # 3) Compute cumulative indices so we know where each block lives in the full vector
+    lengths = [blk.shape[0] for blk in blocks]
+    cumidx = np.concatenate(([0], np.cumsum(lengths)))
+
+    # 4) Loop each block/apply its bias
+    for n in range(B):
+        blk = blocks[n]
+        left, right = cumidx[n], cumidx[n + 1]
+
+        depth_arr = ECEF_Geodetic(blk)[2]
+
+        # vertical & absolute distances on this block
+        dz = depth_arr - depth
+        abs_dist = np.sqrt(np.sum((blk - guess) ** 2, axis=1))
+        beta = np.arcsin(dz / abs_dist) * 180 / np.pi
+
+        # lookup & bias
+        block_esv = find_esv(beta, dz, dz_array, angle_array, esv_matrix)
+        esv[left:right] = block_esv + esv_biases[n]
         times[left:right] = abs_dist / esv[left:right]
     return times, esv
