@@ -20,7 +20,7 @@ wheels/
 *.egg-info/
 
 # Project specific
-GPSData/
+Data/
 ecco_access/
 Figs/
 
