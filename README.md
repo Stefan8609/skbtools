@@ -64,7 +64,9 @@ Convenience helpers for visualising results.
 
 The `examples` and `GeigerMethod` directories contain scripts and
 notebooks used during development. They illustrate typical workflows for
-processing GPS data and analysing transducer positions.
+processing GPS data and analysing transducer positions. See the
+[GeigerMethod README](src/GeigerMethod/README.md) for an overview of
+these helper modules.
 
 ## Usage
 
