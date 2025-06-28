@@ -11,7 +11,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
 from GeigerMethod.Synthetic.Numba_Functions.ESV_bias_split import (
     calculateTimesRayTracing_split,
 )
-from data import gps_data_path
+from data import gps_data_path, gps_output_path
 
 
 # @njit
@@ -326,7 +326,7 @@ if __name__ == "__main__":
 
     """Saving and plotting the chain"""
     np.savez(
-        "mcmc_chain.npz",
+        gps_output_path("mcmc_chain.npz"),
         lever=chain["lever"],
         gps1_grid=chain["gps1_grid"],
         CDOG_aug=chain["CDOG_aug"],

@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.io as sio
 from pymap3d import geodetic2ecef
-from data import gps_data_path
+from data import gps_data_path, gps_output_path
 
 """Enable this for paper plots"""
 # plt.rcParams.update({
@@ -244,7 +244,7 @@ def initialize_bermuda(GNSS_start, GNSS_end, CDOG_augment, DOG_num=3, save=False
     # Save the data if required
     if save:
         np.savez(
-            gps_data_path(f"Processed_GPS_Receivers_DOG_{DOG_num}"),
+            gps_output_path(f"Processed_GPS_Receivers_DOG_{DOG_num}"),
             GPS_Coordinates=GPS_Coordinates,
             GPS_data=GPS_data,
             CDOG_data=CDOG_data,

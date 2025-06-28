@@ -10,7 +10,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
 from GeigerMethod.Synthetic.Numba_Functions.Real_Annealing import (
     simulated_annealing_real,
 )
-from data import gps_data_path
+from data import gps_data_path, gps_output_path
 
 """Plot all of the Seafloor guesses from the grid search and find the correlation
 
@@ -26,7 +26,7 @@ def grid_search_annealing(
     zl,
     zh,
     num_points,
-    output_file="output.txt",
+    output_file=None,
     CDOG_guess_augment=None,
     initial_lever_base=None,
     downsample=50,
@@ -68,6 +68,8 @@ def grid_search_annealing(
     None
         Results are appended to ``output_file``.
     """
+    if output_file is None:
+        output_file = gps_output_path("output.txt")
     if CDOG_guess_augment is None:
         CDOG_guess_augment = np.array([0.0, 0.0, 0.0])
     if initial_lever_base is None:
@@ -217,7 +219,7 @@ def grid_search_discrete(
     zl,
     zh,
     num_points,
-    output_file="output.txt",
+    output_file=None,
     CDOG_guess_augment=None,
     initial_lever_base=None,
     downsample=50,
@@ -256,6 +258,8 @@ def grid_search_discrete(
     DOG_num : int
         Number of the DOG that is analyzed
     """
+    if output_file is None:
+        output_file = gps_output_path("output.txt")
     if CDOG_guess_augment is None:
         CDOG_guess_augment = np.array([0.0, 0.0, 0.0])
     if initial_lever_base is None:
@@ -402,7 +406,7 @@ if __name__ == "__main__":
         zl=-1,
         zh=1,
         num_points=20,
-        output_file="output.txt",
+        output_file=gps_output_path("output.txt"),
         CDOG_guess_augment=np.array([-398.16, 371.90, 773.02]),
         downsample=50,
         offset_range=1,

@@ -11,3 +11,10 @@ GPS_DATA_PATH = PROJECT_ROOT / "Data"
 def gps_data_path(*paths: str | Path) -> Path:
     """Return absolute path inside the ``Data`` directory."""
     return GPS_DATA_PATH.joinpath(*map(str, paths))
+
+
+def gps_output_path(*paths: str | Path) -> Path:
+    """Return absolute path inside the ``Data/Output`` directory."""
+    path = GPS_DATA_PATH.joinpath("Output", *map(str, paths))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path

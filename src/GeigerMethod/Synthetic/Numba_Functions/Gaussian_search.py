@@ -3,13 +3,13 @@ import scipy.io as sio
 
 from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import final_bias_geiger
 from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from data import gps_data_path
+from data import gps_data_path, gps_output_path
 
 
 def gaussian_search_individual(
     dog_idx,
     num_points,
-    output_file="gaussian_individual_output.txt",
+    output_file=None,
     initial_lever_base=None,
     initial_gps_grid=None,
     sigma_lever=None,
@@ -42,6 +42,8 @@ def gaussian_search_individual(
     None
         Results are written to ``output_file``.
     """
+    if output_file is None:
+        output_file = gps_output_path("gaussian_individual_output.txt")
     if initial_lever_base is None:
         initial_lever_base = np.array([-12.4659, 9.6021, -13.2993])
     if initial_gps_grid is None:
@@ -160,7 +162,7 @@ def gaussian_search_individual(
 
 def gaussian_search(
     num_points,
-    output_file="gaussian_output.txt",
+    output_file=None,
     initial_lever_base=None,
     initial_gps_grid=None,
     sigma_lever=None,
@@ -191,6 +193,8 @@ def gaussian_search(
     None
         The RMSE values are written to ``output_file``.
     """
+    if output_file is None:
+        output_file = gps_output_path("gaussian_output.txt")
     if initial_lever_base is None:
         initial_lever_base = np.array([-12.4659, 9.6021, -13.2993])
     if initial_gps_grid is None:
@@ -356,7 +360,7 @@ if __name__ == "__main__":
         gaussian_search_individual(
             dog_idx=1,
             num_points=200,
-            output_file="gaussian_output.txt",
+            output_file=gps_output_path("gaussian_output.txt"),
             initial_lever_base=np.array([-12.4659, 9.6021, -13.2993]),
             initial_gps_grid=np.array(
                 [

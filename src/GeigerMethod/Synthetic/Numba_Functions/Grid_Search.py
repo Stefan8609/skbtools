@@ -9,7 +9,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Annealing_bias import (
 from GeigerMethod.Synthetic.Numba_Functions.Initialize_Bermuda_Data import (
     initialize_bermuda,
 )
-from data import gps_data_path
+from data import gps_data_path, gps_output_path
 
 
 def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):
@@ -56,7 +56,7 @@ def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):
     z_grid = np.linspace(zl, zh, iter)
 
     # Open a text file in write mode
-    with open("output.txt", "w") as file:
+    with open(gps_output_path("output.txt"), "w") as file:
         # Write some text to the file
         file.write("Grid Search Results\n")
         file.write("[Lever], [CDOG Estimate], Offset, Time Bias, ESV Bias, RMSE \n")
@@ -136,7 +136,7 @@ def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):
                         f"Iteration {iteration}/{iter**3}: Lever: "
                         f"{best_lever}, Offset: {best_offset}, RMSE: {RMSE}"
                     )
-    print("Grid Search Completed. Results saved to output.txt")
+    print("Grid Search Completed. Results saved to", gps_output_path("output.txt"))
 
 
 if __name__ == "__main__":

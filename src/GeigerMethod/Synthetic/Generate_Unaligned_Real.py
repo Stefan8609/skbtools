@@ -14,7 +14,7 @@ import scipy.io as sio
 import matplotlib.pyplot as plt
 from geometry.rigid_body import findRotationAndDisplacement
 from pymap3d import geodetic2ecef
-from data import gps_data_path
+from data import gps_data_path, gps_output_path
 
 esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
 dz_array = esv_table["distance"].flatten()
@@ -233,14 +233,14 @@ plt.ylabel("Difference between i and i-1 corrupted nanosecond clock times")
 plt.show()
 
 # Save the synthetic to a matlabfile
-sio.savemat(gps_data_path("Synthetic_CDOG_noise_subint_new.mat"), {"tags": CDOG_mat})
+sio.savemat(gps_output_path("Synthetic_CDOG_noise_subint_new.mat"), {"tags": CDOG_mat})
 
 # Save transponder + GPS data
 sio.savemat(
-    gps_data_path("Synthetic_transponder_noise_subint_new.mat"),
+    gps_output_path("Synthetic_transponder_noise_subint_new.mat"),
     {"time": GPS_time, "xyz": transponder_coordinates},
 )
 sio.savemat(
-    gps_data_path("Synthetic_GPS_noise_subint_new.mat"),
+    gps_output_path("Synthetic_GPS_noise_subint_new.mat"),
     {"time": GPS_time, "xyz": GPS_Coordinates},
 )
