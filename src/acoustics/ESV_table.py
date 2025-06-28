@@ -4,7 +4,7 @@ from acoustics.ray_tracing import ray_trace_locate, ray_tracing
 import matplotlib.pyplot as plt
 import scipy.io as sio
 from time import time
-from data import gps_data_path
+from data import gps_data_path, gps_output_path
 
 
 depth = np.ascontiguousarray(
@@ -100,4 +100,4 @@ if __name__ == "__main__":
     dz_array = z_array - z_a
 
     data_to_save = {"angle": beta_array, "distance": dz_array, "matrice": esv_matrix}
-    sio.savemat(gps_data_path("global_table_esv_normal.mat"), data_to_save)
+    sio.savemat(gps_output_path("global_table_esv_normal.mat"), data_to_save)

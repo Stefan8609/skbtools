@@ -3,7 +3,7 @@ import xarray as xr
 import gsw
 import scipy.io as sio
 
-from data import gps_data_path
+from data import gps_data_path, gps_output_path
 
 from acoustics.svp import DelGrosso_SV, depth_to_pressure
 from acoustics.ESV_table import construct_esv
@@ -95,7 +95,7 @@ for month in months:
     data_to_save = {"angle": beta_array, "distance": dz_array, "matrice": esv_matrix}
 
     sio.savemat(
-        gps_data_path(f"global_table_esv_ECCO_{month}.mat"),
+        gps_output_path(f"global_table_esv_ECCO_{month}.mat"),
         {"distance": z_array, "angle": beta_array, "matrice": esv_matrix},
     )
     print(f"Finished {month}")
