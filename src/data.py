@@ -9,12 +9,28 @@ GPS_DATA_PATH = PROJECT_ROOT / "Data"
 
 
 def gps_data_path(*paths: str | Path) -> Path:
-    """Return absolute path inside the ``Data`` directory."""
+    """Return absolute path inside the ``Data`` directory.
+
+    Parameters may be provided either as separate path segments or as a
+    single string containing forward slashes. For example, the following
+    calls are equivalent::
+
+        gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz")
+        gps_data_path("GPS_Data", "Processed_GPS_Receivers_DOG_1.npz")
+    """
+
     return GPS_DATA_PATH.joinpath(*map(str, paths))
 
 
 def gps_output_path(*paths: str | Path) -> Path:
-    """Return absolute path inside the ``Data/Output`` directory."""
+    """Return absolute path inside the ``Data/Output`` directory.
+
+    The path is created if it does not already exist. Example usage::
+
+        gps_output_path("mcmc_chain.npz")
+        gps_output_path("Chains", "mcmc_chain.npz")
+    """
+
     path = GPS_DATA_PATH.joinpath("Output", *map(str, paths))
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
