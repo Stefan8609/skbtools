@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from data import gps_output_path
 from statsmodels.graphics.tsaplots import plot_acf
 import itertools
 
@@ -233,7 +234,7 @@ if __name__ == "__main__":
         "time_bias": init_tbias,
     }
 
-    chain = np.load("mcmc_chain_constant_grid.npz")
+    chain = np.load(gps_output_path("mcmc_chain_constant_grid.npz"))
 
     trace_plot(chain, initial_params=initial_params, downsample=100)
     marginal_hists(chain, initial_params=initial_params)

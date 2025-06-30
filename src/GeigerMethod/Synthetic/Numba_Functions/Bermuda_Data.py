@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 from data import gps_data_path
 
-esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
+esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
 
 """
 Process:

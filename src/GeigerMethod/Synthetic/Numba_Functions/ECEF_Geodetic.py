@@ -90,10 +90,10 @@ if __name__ == "__main__":
         return time_GNSS, x, y, z
 
     paths = [
-        gps_data_path("Unit1-camp_bis.mat"),
-        gps_data_path("Unit2-camp_bis.mat"),
-        gps_data_path("Unit3-camp_bis.mat"),
-        gps_data_path("Unit4-camp_bis.mat"),
+        gps_data_path("GPS_Data/Unit1-camp_bis.mat"),
+        gps_data_path("GPS_Data/Unit2-camp_bis.mat"),
+        gps_data_path("GPS_Data/Unit3-camp_bis.mat"),
+        gps_data_path("GPS_Data/Unit4-camp_bis.mat"),
     ]
 
     all_data = [load_and_process_data(path) for path in paths]

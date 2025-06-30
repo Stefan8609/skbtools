@@ -76,12 +76,12 @@ def grid_search_annealing(
         initial_lever_base = np.array([-16.0, 0.0, -15.0])
 
     # Load the external ESV data
-    esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
+    esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]
 
-    data = np.load(gps_data_path(f"Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
+    data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
     GPS_Coordinates = data["GPS_Coordinates"]
     GPS_data = data["GPS_data"]
     CDOG_data = data["CDOG_data"]
@@ -187,17 +187,16 @@ def grid_search_annealing(
                 esv_bias = inversion_result[4]
 
                 # Write line to file
+                lever_str = np.array2string(best_lever, precision=4, separator=", ")[
+                    1:-1
+                ]
+                inv_str = np.array2string(inversion_guess, precision=4, separator=", ")[
+                    1:-1
+                ]
                 file.write(
-                    f"[{
-                        np.array2string(best_lever, precision=4, separator=', ')[1:-1]
-                    }], "
-                    f"[{
-                        np.array2string(inversion_guess, precision=4, separator=', ')[
-                            1:-1
-                        ]
-                    }], "
+                    f"[{lever_str}], [{inv_str}], "
                     f"{current_offset + off_adjust:.4f}, "
-                    f"{time_bias:.4e}, {esv_bias:.4f}, {RMSE * 100 * 1515:.4f}\n"
+                    f"{time_bias:.4e}, {esv_bias:.4f}, {RMSE * 100 * 1515:.4f}\n",
                 )
                 file.flush()  # ensures immediate write
 
@@ -266,12 +265,12 @@ def grid_search_discrete(
         initial_lever_base = np.array([-16.0, 0.0, -15.0])
 
     # Load the external ESV data
-    esv_table = sio.loadmat(gps_data_path("global_table_esv_normal.mat"))
+    esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_normal.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]
 
-    data = np.load(gps_data_path(f"Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
+    data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
     GPS_Coordinates = data["GPS_Coordinates"]
     GPS_data = data["GPS_data"]
     CDOG_data = data["CDOG_data"]
@@ -359,17 +358,16 @@ def grid_search_discrete(
                 diff_data = (CDOG_full - GPS_full) * 1000
                 RMSE = np.sqrt(np.nanmean(diff_data**2)) / 1000 * 1515 * 100
                 # Write line to file
+                lever_str = np.array2string(lever_guess, precision=4, separator=", ")[
+                    1:-1
+                ]
+                inv_str = np.array2string(inversion_guess, precision=4, separator=", ")[
+                    1:-1
+                ]
                 file.write(
-                    f"[{
-                        np.array2string(lever_guess, precision=4, separator=', ')[1:-1]
-                    }], "
-                    f"[{
-                        np.array2string(inversion_guess, precision=4, separator=', ')[
-                            1:-1
-                        ]
-                    }], "
+                    f"[{lever_str}], [{inv_str}], "
                     f"{current_offset + off_adjust:.4f}, "
-                    f"{time_bias:.4e}, {esv_bias:.4f}, {RMSE:.4f}\n"
+                    f"{time_bias:.4e}, {esv_bias:.4f}, {RMSE:.4f}\n",
                 )
                 file.flush()  # ensures immediate write
 

@@ -315,7 +315,7 @@ def generateRealistic(n):
 
 
 if __name__ == "__main__":
-    esv_table = sio.loadmat(gps_data_path("global_table_esv.mat"))
+    esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]
