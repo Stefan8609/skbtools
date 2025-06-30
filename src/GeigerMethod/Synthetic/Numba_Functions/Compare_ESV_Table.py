@@ -88,9 +88,8 @@ def compare_tables(esv_table1, esv_table2):
         f"{estimate - np.array([CDOG[0], CDOG[1], CDOG[2], -time_bias, esv_bias])}"
     )
     print(
-        f"Distance: {
-            np.sqrt(np.sum((estimate[:3] - np.array([CDOG[0], CDOG[1], CDOG[2]]))) ** 2)
-        }"
+        "Distance:",
+        np.sqrt(np.sum((estimate[:3] - np.array([CDOG[0], CDOG[1], CDOG[2]])) ** 2)),
     )
 
     hori_dist = np.sqrt(
@@ -122,8 +121,8 @@ def compare_tables(esv_table1, esv_table2):
 
 
 if __name__ == "__main__":
-    esv_table1 = sio.loadmat(gps_data_path("global_table_esv_perturbed.mat"))
+    esv_table1 = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_perturbed.mat"))
 
-    esv_table2 = sio.loadmat(gps_data_path("global_table_esv.mat"))
+    esv_table2 = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
 
     compare_tables(esv_table1, esv_table2)

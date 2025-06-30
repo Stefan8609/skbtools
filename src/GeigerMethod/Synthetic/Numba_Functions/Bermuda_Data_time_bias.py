@@ -20,7 +20,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Plot_Modular import (
 # esv_table = sio.loadmat('../../../Data/global_table_esv.mat')
 from data import gps_data_path
 
-esv_table = sio.loadmat(gps_data_path("global_table_esv_normal.mat"))
+esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_normal.mat"))
 
 dz_array = esv_table["distance"].flatten()
 angle_array = esv_table["angle"].flatten()
@@ -28,7 +28,7 @@ esv_matrix = esv_table["matrice"]
 
 DOG_num = 4
 
-data = np.load(gps_data_path(f"Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
+data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
 GPS_Coordinates = data["GPS_Coordinates"]
 GPS_data = data["GPS_data"]
 CDOG_data = data["CDOG_data"]

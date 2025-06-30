@@ -219,7 +219,7 @@ if __name__ == "__main__":
     true_offset = np.random.rand() * 9000 + 1000
     print(true_offset)
 
-    esv_table = sio.loadmat(gps_data_path("global_table_esv_normal.mat"))
+    esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_normal.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]
