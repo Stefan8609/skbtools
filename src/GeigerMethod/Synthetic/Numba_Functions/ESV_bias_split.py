@@ -1,9 +1,10 @@
 import numpy as np
+from numba import njit
 from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import find_esv
 from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
 
 
-# @njit
+@njit(cache=True, fastmath=True)
 def calculateTimesRayTracing_split(
     guess, transponder_coordinates, esv_biases, dz_array, angle_array, esv_matrix
 ):
@@ -29,37 +30,37 @@ def calculateTimesRayTracing_split(
     tuple of ndarray
         ``(times, esv)`` travel times and effective sound speeds.
     """
-    N = len(transponder_coordinates)
-    B = len(esv_biases)
+    N = transponder_coordinates.shape[0]
+    B = esv_biases.shape[0]
 
     # Get depth of receiver guess
     guess = guess[np.newaxis, :]
     lat, lon, depth = ECEF_Geodetic(guess)
 
-    # 1) Split coords into B blocks (some blocks may be 1 sample larger)
-    blocks = np.array_split(transponder_coordinates, B, axis=0)
-    # 2) Prepare output arrays
+    # Output arrays
     times = np.zeros(N)
     esv = np.zeros(N)
 
-    # 3) Compute cumulative indices so we know where each block lives in the full vector
-    lengths = [blk.shape[0] for blk in blocks]
-    cumidx = np.concatenate(([0], np.cumsum(lengths)))
+    # Determine block sizes (equivalent to np.array_split)
+    base = N // B
+    remainder = N % B
+    start = 0
 
-    # 4) Loop each block/apply its bias
     for n in range(B):
-        blk = blocks[n]
-        left, right = cumidx[n], cumidx[n + 1]
+        size = base + 1 if n < remainder else base
+        end = start + size
 
+        blk = transponder_coordinates[start:end]
         depth_arr = ECEF_Geodetic(blk)[2]
 
-        # vertical & absolute distances on this block
         dz = depth_arr - depth
         abs_dist = np.sqrt(np.sum((blk - guess) ** 2, axis=1))
         beta = np.arcsin(dz / abs_dist) * 180 / np.pi
 
-        # lookup & bias
         block_esv = find_esv(beta, dz, dz_array, angle_array, esv_matrix)
-        esv[left:right] = block_esv + esv_biases[n]
-        times[left:right] = abs_dist / esv[left:right]
+        esv[start:end] = block_esv + esv_biases[n]
+        times[start:end] = abs_dist / esv[start:end]
+
+        start = end
+
     return times, esv
