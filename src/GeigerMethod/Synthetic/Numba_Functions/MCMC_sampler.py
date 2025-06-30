@@ -2,6 +2,8 @@
 
 import numpy as np
 import scipy.io as sio
+from numba import njit
+from numba.typed import List
 
 from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
     calculateTimesRayTracing_Bias_Real,
@@ -14,7 +16,7 @@ from GeigerMethod.Synthetic.Numba_Functions.ESV_bias_split import (
 from data import gps_data_path, gps_output_path
 
 
-# @njit
+@njit
 def compute_log_likelihood(
     lever_guess,
     gps1_grid_guess,
@@ -42,50 +44,45 @@ def compute_log_likelihood(
     for j in range(3):
         inv_guess = CDOG_guess + CDOG_augments[j]
         CDOG_data = CDOG_all_data[j]
-        try:
-            # Calculate the times either with the split ESV bias or the regular ESV bias
-            if split_esv:
-                times_guess, esv = calculateTimesRayTracing_split(
-                    inv_guess,
-                    trans_coords,
-                    esv_bias[j],
-                    dz_array,
-                    angle_array,
-                    esv_matrix,
-                )
-            else:
-                times_guess, esv = calculateTimesRayTracing_Bias_Real(
-                    inv_guess,
-                    trans_coords,
-                    esv_bias[j],
-                    dz_array,
-                    angle_array,
-                    esv_matrix,
-                )
+
+        if split_esv:
+            times_guess, esv = calculateTimesRayTracing_split(
+                inv_guess,
+                trans_coords,
+                esv_bias[j],
+                dz_array,
+                angle_array,
+                esv_matrix,
+            )
+        else:
+            times_guess, esv = calculateTimesRayTracing_Bias_Real(
+                inv_guess,
+                trans_coords,
+                esv_bias[j],
+                dz_array,
+                angle_array,
+                esv_matrix,
+            )
 
             """Note doing GPS_data - time_bias to
             include time_bias in offset when calculating travel times"""
-            (
-                CDOG_clock,
-                CDOG_full,
-                GPS_clock,
-                GPS_full,
-                transponder_coordinates_full,
-                esv_full,
-            ) = two_pointer_index(
-                offsets[j],
-                0.6,
-                CDOG_data,
-                GPS_data + time_bias[j],
-                times_guess,
-                trans_coords,
-                esv,
-                True,
-            )
-        except Exception as e:
-            # if inversion fails, give very low likelihood
-            print("Error: ", e)
-            return -np.inf
+        (
+            CDOG_clock,
+            CDOG_full,
+            GPS_clock,
+            GPS_full,
+            transponder_coordinates_full,
+            esv_full,
+        ) = two_pointer_index(
+            offsets[j],
+            0.6,
+            CDOG_data,
+            GPS_data + time_bias[j],
+            times_guess,
+            trans_coords,
+            esv,
+            True,
+        )
         resid = (CDOG_full - GPS_full) * 1515 * 100
         total_ssq += np.sqrt(np.nansum(resid**2) / len(resid))
     # assume Gaussian errors with unit variance:
@@ -156,6 +153,13 @@ def mcmc_sampler(
     if initial_esv_bias.ndim == 2:
         split_esv = True
         num_splits = initial_esv_bias.shape[1]
+
+    # ensure CDOG_all_data is a numba typed list
+    if not isinstance(CDOG_all_data, List):
+        typed_list = List()
+        for arr in CDOG_all_data:
+            typed_list.append(arr)
+        CDOG_all_data = typed_list
 
     # initialize chain
     lever_chain = np.zeros((n_iters, 3))
