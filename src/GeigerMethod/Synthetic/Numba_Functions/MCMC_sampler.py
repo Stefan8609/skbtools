@@ -4,6 +4,7 @@ import numpy as np
 import scipy.io as sio
 from numba import njit
 from numba.typed import List
+import math
 
 from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
     calculateTimesRayTracing_Bias_Real,
@@ -16,7 +17,7 @@ from GeigerMethod.Synthetic.Numba_Functions.ESV_bias_split import (
 from data import gps_data_path, gps_output_path
 
 
-@njit
+@njit(cache=True, fastmath=True)
 def compute_log_likelihood(
     lever_guess,
     gps1_grid_guess,
@@ -84,7 +85,15 @@ def compute_log_likelihood(
             True,
         )
         resid = (CDOG_full - GPS_full) * 1515 * 100
-        total_ssq += np.sqrt(np.nansum(resid**2) / len(resid))
+        # manual nanmean of squared residuals to avoid temporary arrays
+        sum_sq = 0.0
+        count = 0
+        for r in resid:
+            if not math.isnan(r):
+                sum_sq += r * r
+                count += 1
+        if count > 0:
+            total_ssq += math.sqrt(sum_sq / count)
     # assume Gaussian errors with unit variance:
     return -0.5 * total_ssq
 

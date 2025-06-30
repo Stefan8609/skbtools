@@ -4,7 +4,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import find_esv
 from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
 
 
-@njit
+@njit(cache=True, fastmath=True)
 def calculateTimesRayTracing_split(
     guess, transponder_coordinates, esv_biases, dz_array, angle_array, esv_matrix
 ):
