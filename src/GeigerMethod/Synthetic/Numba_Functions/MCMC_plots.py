@@ -26,7 +26,20 @@ def trace_plot(chain, initial_params=None, downsample=1):
     axes[1].set_ylabel("lever y")
     axes[2].plot(chain["lever"][::downsample, 2])
     axes[2].set_ylabel("lever z")
-    axes[3].plot(chain["esv_bias"][::downsample])
+    esv_bias = chain["esv_bias"][::downsample]
+    if esv_bias.ndim == 2:
+        axes[3].plot(esv_bias)
+    else:
+        n_dogs = esv_bias.shape[1]
+        n_split = esv_bias.shape[2]
+        for j in range(n_dogs):
+            for k in range(n_split):
+                axes[3].plot(
+                    esv_bias[:, j, k],
+                    label=f"DOG{j + 1} split {k + 1}",
+                    linewidth=0.8,
+                )
+        axes[3].legend(fontsize="x-small")
     axes[3].set_ylabel("ESV bias")
     axes[4].plot(chain["time_bias"][::downsample])
     axes[4].set_ylabel("time bias")
@@ -43,17 +56,33 @@ def trace_plot(chain, initial_params=None, downsample=1):
         axes[2].axhline(
             initial_params["lever"][2], color="red", linestyle="--", label="Initial z"
         )
-        for i in range(3):
-            axes[3].axhline(
-                initial_params["esv_bias"][i],
-                linestyle="--",
-                label=f"Initial GPS grid x{i}",
-            )
-            axes[4].axhline(
-                initial_params["time_bias"][i],
-                linestyle="--",
-                label=f"Initial GPS grid x{i}",
-            )
+        ebias_init = np.asarray(initial_params.get("esv_bias"))
+        if ebias_init.ndim == 1:
+            for i in range(ebias_init.shape[0]):
+                axes[3].axhline(
+                    ebias_init[i],
+                    linestyle="--",
+                    label=f"Initial bias {i}",
+                )
+                axes[4].axhline(
+                    initial_params["time_bias"][i],
+                    linestyle="--",
+                    label=f"Initial time {i}",
+                )
+        else:
+            n_dogs, n_split = ebias_init.shape
+            for j in range(n_dogs):
+                for k in range(n_split):
+                    axes[3].axhline(
+                        ebias_init[j, k],
+                        linestyle="--",
+                        label=f"Init DOG{j + 1} split {k + 1}",
+                    )
+                    axes[4].axhline(
+                        initial_params["time_bias"][j],
+                        linestyle="--",
+                        label=f"Initial time {j}",
+                    )
 
     plt.xlabel("Iteration")
     plt.show()
@@ -199,7 +228,10 @@ def acf_plots(chain, initial_params=None):
     fig, axes = plt.subplots(3, 2, figsize=(12, 10))
     axes = axes.flatten()
     for i, key in enumerate(["lever", "esv_bias", "time_bias"]):
-        plot_acf(chain[key], lags=50, ax=axes[i])
+        series = chain[key]
+        if series.ndim > 2:
+            series = series.reshape(series.shape[0], -1)
+        plot_acf(series, lags=50, ax=axes[i])
         axes[i].set_title(f"ACF of {key}")
     plt.tight_layout()
     plt.show()
@@ -236,6 +268,7 @@ if __name__ == "__main__":
 
     chain = np.load(gps_output_path("mcmc_chain_constant_grid.npz"))
 
+    # Works for chains saved with either a single or split ESV bias term
     trace_plot(chain, initial_params=initial_params, downsample=100)
     marginal_hists(chain, initial_params=initial_params)
     corner_plot(chain, initial_params=initial_params, downsample=500)
