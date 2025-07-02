@@ -154,7 +154,7 @@ def mcmc_sampler(
             "lever": np.array([0.01, 0.01, 0.1]),
             "gps_grid": 0.0,
             "CDOG_aug": 0.1,
-            "esv_bias": 0.001,
+            "esv_bias": 0.01,
             "time_bias": 0.000001,
         }
 
@@ -271,8 +271,6 @@ def mcmc_sampler(
 
 # Example usage:
 if __name__ == "__main__":
-    # — load your data once —
-
     esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_normal.mat"))
     dz_array = esv["distance"].flatten()
     angle_array = esv["angle"].flatten()
@@ -312,13 +310,9 @@ if __name__ == "__main__":
         ]
     )
     # init_ebias = np.array([-0.4775, -0.3199, 0.1122])
-    init_ebias = np.array(
-        [
-            [-0.4775, -0.4775, -0.4775, -0.4775],
-            [-0.3199, -0.3199, -0.3199, -0.3199],
-            [0.1122, 0.1122, 0.1122, 0.1122],
-        ]
-    )
+    values = np.array([-0.4775, -0.3199, 0.1122])
+    n = 5  # number of splits for ESV bias
+    init_ebias = np.tile(values.reshape(-1, 1), (1, n))
 
     init_tbias = np.array([0.01518602, 0.015779, 0.018898])
 

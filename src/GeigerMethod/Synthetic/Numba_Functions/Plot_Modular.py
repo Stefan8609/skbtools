@@ -102,13 +102,16 @@ def time_series_plot(
     axes[0, 2].legend(loc="upper right")
 
     # Histogram and normal distributions
+    data_ms = difference_data * 1000
+    mask = np.abs(data_ms - mu) <= 3 * std
     n, bins, patches = axes[1, 0].hist(
-        difference_data * 1000,
+        data_ms[mask],
         orientation="horizontal",
         bins=40,
         alpha=0.5,
         density=True,
     )
+
     x = np.linspace(mu - 3 * std, mu + 3 * std, 100)
     axes[1, 0].set_xlim([n.min() * 1.4, n.max() * 1.4])
     axes[1, 0].set_ylim([mu - 3 * std, mu + 3 * std])
@@ -178,14 +181,16 @@ def time_series_plot(
     axes[1, 2].yaxis.tick_right()
 
     # Histogram and normal distributions
-
+    data_zoom_ms = difference_data[zoom_idx : zoom_idx + zoom_length] * 1000
+    mask_zoom = np.abs(data_zoom_ms - mu_zoom) <= 3 * std_zoom
     n_zoom, bins_zoom, patches_zoom = axes[1, 3].hist(
-        difference_data[zoom_idx : zoom_idx + zoom_length] * 1000,
+        data_zoom_ms[mask_zoom],
         orientation="horizontal",
         bins=40,
         alpha=0.5,
         density=True,
     )
+
     x_zoom = np.linspace(mu_zoom - 3 * std_zoom, mu_zoom + 3 * std_zoom, 100)
     axes[1, 3].set_xlim([n_zoom.min() * 1.4, n_zoom.max() * 1.4])
     axes[1, 3].set_ylim([mu_zoom - 3 * std_zoom, mu_zoom + 3 * std_zoom])
@@ -299,8 +304,9 @@ def range_residual(transponder_coordinates, ESV, CDOG, CDOG_full, GPS_full, GPS_
     axes[0].set_ylim([mu_rr - 3 * std_rr, mu_rr + 3 * std_rr])
 
     # Histogram subplot with normal curve
+    mask_r = np.abs(range_residuals - mu_rr) <= 3 * std_rr
     n, bins, patches = axes[1].hist(
-        range_residuals,
+        range_residuals[mask_r],
         bins=40,
         density=True,
         alpha=0.5,
