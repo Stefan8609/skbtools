@@ -100,20 +100,30 @@ def trace_plot(chain, initial_params=None, downsample=1, save=False, timestamp=N
         for i, _ in enumerate(["x", "y", "z"]):
             axes[i].axhline(initial_params["lever"][i], color="r", ls="--")
 
-        # ESV init
         eb0 = initial_params.get("esv_bias", None)
         if eb0 is not None:
-            eb0 = np.asarray(eb0)
-            # reshape to (n_dogs, n_splits)
-            if eb0.ndim == 1:
-                eb0 = eb0.reshape(1, eb0.shape[0])
-            elif eb0.ndim == 2 and eb0.shape != (n_dogs, n_splits):
-                eb0 = eb0.reshape(n_dogs, n_splits)
-            eb0_centered = eb0 - esv_mean
+            eb0 = np.asarray(eb0).ravel()
+
+            # compute a single value per DOG by averaging across splits if needed
+            if eb0.size == n_dogs * n_splits:
+                eb0 = eb0.reshape(n_dogs, n_splits).mean(axis=1)
+            elif eb0.size == n_dogs:
+                # already one per dog
+                eb0 = eb0
+            else:
+                raise ValueError(
+                    f"initial esv_bias has {eb0.size} entries; "
+                    f"expected {n_dogs * n_splits} or {n_dogs}"
+                )
+
+            # center against the mean ESV per dog
+            esv_mean_per_dog = esv_mean.mean(axis=1)
+            eb0_centered = eb0 - esv_mean_per_dog
+
+            # draw one line per DOG
             for j in range(n_dogs):
                 ax = axes[3 + j]
-                for k in range(n_splits):
-                    ax.axhline(eb0_centered[j, k], color="r", ls="--", linewidth=0.7)
+                ax.axhline(eb0_centered[j], color="r", ls="--", linewidth=0.7)
 
         # time_bias init
         tb0 = initial_params.get("time_bias", None)
@@ -123,6 +133,8 @@ def trace_plot(chain, initial_params=None, downsample=1, save=False, timestamp=N
             for j in range(n_tb):
                 ax_tb.axhline(tb0_centered[j], color="r", ls="--", linewidth=0.7)
 
+    for ax in axes:
+        ax.margins(x=0)
     axes[-1].set_xlabel("Iteration")
     fig.tight_layout()
 
@@ -301,7 +313,7 @@ if __name__ == "__main__":
         "time_bias": init_tbias,
     }
 
-    chain = np.load(gps_output_path("mcmc_chain_largest.npz"))
+    chain = np.load(gps_output_path("mcmc_chain_constant_grid.npz"))
 
     # Works for chains saved with either a single or split ESV bias term
     trace_plot(

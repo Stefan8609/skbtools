@@ -188,7 +188,7 @@ if __name__ == "__main__":
 
     offsets = np.array([1866.0, 3175.0, 1939.0])
     plot_best_sample(
-        gps_output_path("mcmc_chain.npz"),
+        gps_output_path("mcmc_chain_constant_grid.npz"),
         GPS_Coordinates,
         GPS_data,
         CDOG_guess,
@@ -197,6 +197,6 @@ if __name__ == "__main__":
         dz_array,
         angle_array,
         esv_matrix,
-        CDOG_num=4,
+        CDOG_num=3,
         timestamp=timestamp,
     )
