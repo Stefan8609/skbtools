@@ -27,8 +27,8 @@ def gps_output_path(*paths: str | Path) -> Path:
 
     The path is created if it does not already exist. Example usage::
 
-        gps_output_path("mcmc_chain.npz")
-        gps_output_path("Chains", "mcmc_chain.npz")
+        gps_output_path("mcmc_chain_good.npz")
+        gps_output_path("Chains", "mcmc_chain_good.npz")
     """
 
     path = GPS_DATA_PATH.joinpath("Output", *map(str, paths))

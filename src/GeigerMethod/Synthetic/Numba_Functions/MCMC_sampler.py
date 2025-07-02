@@ -155,7 +155,7 @@ def mcmc_sampler(
             "gps_grid": 0.0,
             "CDOG_aug": 0.1,
             "esv_bias": 0.01,
-            "time_bias": 0.000001,
+            "time_bias": 0.000005,
         }
 
     split_esv = False
@@ -310,14 +310,15 @@ if __name__ == "__main__":
         ]
     )
     # init_ebias = np.array([-0.4775, -0.3199, 0.1122])
-    values = np.array([-0.4775, -0.3199, 0.1122])
+    # values = np.array([-0.4775, -0.3199, 0.1122])
+    values = np.array([0, 0, 0])
     n = 5  # number of splits for ESV bias
     init_ebias = np.tile(values.reshape(-1, 1), (1, n))
 
     init_tbias = np.array([0.01518602, 0.015779, 0.018898])
 
     chain = mcmc_sampler(
-        n_iters=20000,
+        n_iters=100000,
         initial_lever_base=init_lever,
         initial_gps_grid=init_gps_grid,
         initial_CDOG_augments=init_aug,

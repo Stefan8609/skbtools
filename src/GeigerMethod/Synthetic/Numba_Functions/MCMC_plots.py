@@ -6,84 +6,89 @@ import itertools
 
 
 def trace_plot(chain, initial_params=None, downsample=1):
-    """Plot traces of MCMC parameters.
+    """Plot traces of MCMC parameters, with per-DOG ESV bias
+    and time_bias mean-centered, including units."""
+    DOG_index_num = {0: 1, 1: 3, 2: 4}
+    # Downsample
+    lever = chain["lever"][::downsample]  # (n_iter, 3), units: meters
+    esv = chain["esv_bias"][::downsample]  # (n_iter, n_dogs, n_splits), units: m/s
+    tb = chain["time_bias"][
+        ::downsample
+    ]  # (n_iter,) or (n_iter, n_dogs), units: seconds
+    rmse = chain["logpost"][::downsample] * -2  # units: ms
 
-    Parameters
-    ----------
-    chain : dict of ndarray
-        Output chain from ``mcmc_sampler``.
-    initial_params : dict, optional
-        Starting parameter values to plot as references.
-    downsample : int, optional
-        Step used when plotting chain values.
-    """
-    # Trace Plots
-    fig, axes = plt.subplots(nrows=6, ncols=1, figsize=(8, 10), sharex=True)
-    axes[0].plot(chain["lever"][::downsample, 0])
-    axes[0].set_ylabel("lever x")
-    axes[1].plot(chain["lever"][::downsample, 1])
-    axes[1].set_ylabel("lever y")
-    axes[2].plot(chain["lever"][::downsample, 2])
-    axes[2].set_ylabel("lever z")
-    esv_bias = chain["esv_bias"][::downsample]
-    if esv_bias.ndim == 2:
-        axes[3].plot(esv_bias)
-    else:
-        n_dogs = esv_bias.shape[1]
-        n_split = esv_bias.shape[2]
-        for j in range(n_dogs):
-            for k in range(n_split):
-                axes[3].plot(
-                    esv_bias[:, j, k],
-                    label=f"DOG{j + 1} split {k + 1}",
-                    linewidth=0.8,
-                )
-        axes[3].legend(fontsize="x-small")
-    axes[3].set_ylabel("ESV bias")
-    axes[4].plot(chain["time_bias"][::downsample])
-    axes[4].set_ylabel("time bias")
-    axes[5].plot(chain["logpost"][::downsample] * -2)
-    axes[5].set_ylabel("RMSE")
+    # Ensure tb is 2D
+    n_iter = esv.shape[0]
+    tb = tb.reshape(n_iter, -1)
+    n_tb = tb.shape[1]
+    n_dogs, n_splits = esv.shape[1], esv.shape[2]
 
+    # Mean-center ESV and time_bias
+    esv_mean = esv.mean(axis=0)
+    esv_centered = esv - esv_mean[np.newaxis, :, :]
+
+    tb_mean = tb.mean(axis=0)
+    tb_centered = tb - tb_mean[np.newaxis, :]
+
+    # Build subplots
+    n_rows = 3 + n_dogs + 1 + 1
+    fig, axes = plt.subplots(n_rows, 1, figsize=(16, 1 * n_rows), sharex=True)
+
+    # --- Lever-arm (meters) ---
+    axes[0].plot(lever[:, 0])
+    axes[0].set_ylabel("lever x (m)")
+    axes[1].plot(lever[:, 1])
+    axes[1].set_ylabel("lever y (m)")
+    axes[2].plot(lever[:, 2])
+    axes[2].set_ylabel("lever z (m)")
+
+    # --- ESV bias per DOG (mean-centered, m/s) ---
+    for j in range(n_dogs):
+        DOG_num = DOG_index_num[j]
+        ax = axes[3 + j]
+        for k in range(n_splits):
+            ax.plot(esv_centered[:, j, k], linewidth=0.8, label=f"split {k + 1}")
+        ax.set_ylabel(f"ESV {DOG_num} (m/s)")
+        ax.legend(fontsize="x-small", ncol=min(n_splits, 3), loc="upper right")
+
+    # --- time_bias (mean-centered) ---
+    ax_tb = axes[3 + n_dogs]
+    for j in range(n_tb):
+        DOG_num = DOG_index_num[j]
+        ax_tb.plot(tb_centered[:, j], linewidth=0.8, label=f"Time bias {DOG_num}")
+    ax_tb.set_ylabel("time bias (s)")
+    ax_tb.legend(fontsize="x-small", ncol=min(n_tb, 3), loc="upper right")
+
+    # --- RMSE (cm) ---
+    axes[4 + n_dogs].plot(rmse)
+    axes[4 + n_dogs].set_ylabel("RMSE (cs)")
+
+    # Optional initial params (also mean-centered)
     if initial_params:
-        axes[0].axhline(
-            initial_params["lever"][0], color="red", linestyle="--", label="Initial x"
-        )
-        axes[1].axhline(
-            initial_params["lever"][1], color="red", linestyle="--", label="Initial y"
-        )
-        axes[2].axhline(
-            initial_params["lever"][2], color="red", linestyle="--", label="Initial z"
-        )
-        ebias_init = np.asarray(initial_params.get("esv_bias"))
-        if ebias_init.ndim == 1:
-            for i in range(ebias_init.shape[0]):
-                axes[3].axhline(
-                    ebias_init[i],
-                    linestyle="--",
-                    label=f"Initial bias {i}",
-                )
-                axes[4].axhline(
-                    initial_params["time_bias"][i],
-                    linestyle="--",
-                    label=f"Initial time {i}",
-                )
-        else:
-            n_dogs, n_split = ebias_init.shape
-            for j in range(n_dogs):
-                for k in range(n_split):
-                    axes[3].axhline(
-                        ebias_init[j, k],
-                        linestyle="--",
-                        label=f"Init DOG{j + 1} split {k + 1}",
-                    )
-                    axes[4].axhline(
-                        initial_params["time_bias"][j],
-                        linestyle="--",
-                        label=f"Initial time {j}",
-                    )
+        # lever
+        axes[0].axhline(initial_params["lever"][0], color="r", ls="--")
+        axes[1].axhline(initial_params["lever"][1], color="r", ls="--")
+        axes[2].axhline(initial_params["lever"][2], color="r", ls="--")
 
-    plt.xlabel("Iteration")
+        # ESV init
+        eb0 = np.asarray(initial_params.get("esv_bias"))
+        if eb0 is not None and eb0.ndim == 3:
+            eb0_centered = eb0 - esv_mean
+            for j in range(n_dogs):
+                ax = axes[3 + j]
+                for k in range(n_splits):
+                    ax.axhline(eb0_centered[j, k], color="r", ls="--", linewidth=0.7)
+
+        # time_bias init
+        tb0 = np.asarray(initial_params.get("time_bias"))
+        if tb0 is not None:
+            tb0 = tb0.reshape(-1)[:n_tb]
+            tb0_centered = tb0 - tb_mean
+            for j in range(n_tb):
+                ax_tb.axhline(tb0_centered[j], color="r", ls="--", linewidth=0.7)
+
+    axes[-1].set_xlabel("Iteration")
+    fig.tight_layout()
     plt.show()
 
 
@@ -250,9 +255,9 @@ if __name__ == "__main__":
         "time_bias": init_tbias,
     }
 
-    chain = np.load(gps_output_path("mcmc_chain.npz"))
+    chain = np.load(gps_output_path("mcmc_chain_good.npz"))
 
     # Works for chains saved with either a single or split ESV bias term
-    trace_plot(chain, initial_params=initial_params, downsample=100)
+    trace_plot(chain, initial_params=initial_params, downsample=1)
     marginal_hists(chain, initial_params=initial_params)
-    corner_plot(chain, initial_params=initial_params, downsample=500)
+    corner_plot(chain, initial_params=initial_params, downsample=1)

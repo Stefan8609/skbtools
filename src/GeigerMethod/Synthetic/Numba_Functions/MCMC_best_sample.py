@@ -24,7 +24,7 @@ def load_min_logpost_params(npz_path):
     Parameters
     ----------
     npz_path : str
-        Path to the .npz file (e.g. gps_output_path("mcmc_chain.npz")).
+        Path to the .npz file (e.g. gps_output_path("mcmc_chain_good.npz")).
 
     Returns
     -------
@@ -81,7 +81,13 @@ def plot_best_sample(
     time_bias = best["time_bias"]
     logpost = best["logpost"]
 
-    print(logpost)
+    print("Best parameters:")
+    print("Lever guess:", lever_guess)
+    print("GPS1 grid guess:", gps1_grid_guess)
+    print("CDOG augment:", CDOG_augments[CDOG_index])
+    print("ESV bias:", esv_bias)
+    print("Time bias:", time_bias)
+    print("Log posterior:", logpost)
 
     split_esv = False
     if esv_bias.ndim == 2:
