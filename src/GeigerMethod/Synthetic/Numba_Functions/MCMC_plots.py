@@ -1,47 +1,68 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from data import gps_output_path, gps_data_path
-from datetime import datetime
 import itertools
 
 
-def _save_fig(fig, save, tag, ext="pdf"):
-    """Helper to save `fig` under Figs/ with timestamp and optional tag."""
+def _save_fig(fig, save, tag, timestamp, ext="pdf"):
+    """Helper to save `fig` under Figs/MCMC/<timestamp>/ with timestamped filename."""
     if not save:
         return
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # 1) build timestamp and filename
     fname = f"{tag}_{timestamp}.{ext}"
-    fig.savefig(gps_data_path(f"Figs/MCMC/{fname}"), format=ext, bbox_inches="tight")
+
+    # 2) build the directory path and ensure it exists
+    #    gps_data_path should return the root data directory, e.g. '/Users/…/Data'
+    dirpath = gps_data_path(f"Figs/MCMC/{timestamp}")
+    os.makedirs(dirpath, exist_ok=True)
+
+    # 3) save into that directory
+    fullpath = os.path.join(dirpath, fname)
+    fig.savefig(fullpath, format=ext, bbox_inches="tight")
 
 
-def trace_plot(chain, initial_params=None, downsample=1, save=False):
+def trace_plot(chain, initial_params=None, downsample=1, save=False, timestamp=None):
     """Plot traces of MCMC parameters, with per-DOG ESV bias
     and time_bias mean-centered, including units."""
     DOG_index_num = {0: 1, 1: 3, 2: 4}
+
     # Downsample
     lever = chain["lever"][::downsample]  # (n_iter, 3), units: meters
-    esv = chain["esv_bias"][::downsample]  # (n_iter, n_dogs, n_splits), units: m/s
+    esv = chain["esv_bias"][
+        ::downsample
+    ]  # could be (n_iter,), (n_iter, n_splits) or (n_iter, n_dogs, n_splits)
     tb = chain["time_bias"][
         ::downsample
     ]  # (n_iter,) or (n_iter, n_dogs), units: seconds
     rmse = chain["logpost"][::downsample] * -2  # units: ms
 
-    # Ensure tb is 2D
+    # --- ensure esv is 3D: (n_iter, n_dogs, n_splits) ---
     n_iter = esv.shape[0]
+    if esv.ndim == 1:
+        # single DOG, single split
+        esv = esv.reshape(n_iter, 1, 1)
+    elif esv.ndim == 2:
+        # assume shape (n_iter, n_splits) → single DOG
+        esv = esv.reshape(n_iter, 1, esv.shape[1])
+    elif esv.ndim != 3:
+        raise ValueError(f"esv_bias must be 1-, 2- or 3-D; got shape {esv.shape}")
+    n_dogs, n_splits = esv.shape[1], esv.shape[2]
+
+    # --- ensure tb is 2D: (n_iter, n_tb) ---
     tb = tb.reshape(n_iter, -1)
     n_tb = tb.shape[1]
-    n_dogs, n_splits = esv.shape[1], esv.shape[2]
 
     # Mean-center ESV and time_bias
     esv_mean = esv.mean(axis=0)
-    esv_centered = esv - esv_mean[np.newaxis, :, :]
-
+    esv_centered = esv - esv_mean[np.newaxis, ...]
     tb_mean = tb.mean(axis=0)
     tb_centered = tb - tb_mean[np.newaxis, :]
 
     # Build subplots
-    n_rows = 3 + n_dogs + 1 + 1
+    n_rows = 3 + n_dogs + 1 + 1  # lever(3) + esv + time bias + rmse
     fig, axes = plt.subplots(n_rows, 1, figsize=(16, 1.5 * n_rows), sharex=True)
 
     # --- Lever-arm (meters) ---
@@ -54,35 +75,40 @@ def trace_plot(chain, initial_params=None, downsample=1, save=False):
 
     # --- ESV bias per DOG (mean-centered, m/s) ---
     for j in range(n_dogs):
-        DOG_num = DOG_index_num[j]
         ax = axes[3 + j]
+        DOG_num = DOG_index_num.get(j, j + 1)
         for k in range(n_splits):
             ax.plot(esv_centered[:, j, k], linewidth=0.8, label=f"split {k + 1}")
         ax.set_ylabel(f"ESV {DOG_num} (m/s)")
         ax.legend(fontsize="x-small", ncol=min(n_splits, 3), loc="upper right")
 
-    # --- time_bias (mean-centered) ---
+    # --- time_bias (mean-centered, s) ---
     ax_tb = axes[3 + n_dogs]
     for j in range(n_tb):
-        DOG_num = DOG_index_num[j]
+        DOG_num = DOG_index_num.get(j, j + 1)
         ax_tb.plot(tb_centered[:, j], linewidth=0.8, label=f"Time bias {DOG_num}")
     ax_tb.set_ylabel("time bias (s)")
     ax_tb.legend(fontsize="x-small", ncol=min(n_tb, 3), loc="upper right")
 
-    # --- RMSE (cm) ---
+    # --- RMSE (ms → shown in cs?) ---
     axes[4 + n_dogs].plot(rmse)
-    axes[4 + n_dogs].set_ylabel("RMSE (cs)")
+    axes[4 + n_dogs].set_ylabel("RMSE (ms)")
 
     # Optional initial params (also mean-centered)
     if initial_params:
-        # lever
-        axes[0].axhline(initial_params["lever"][0], color="r", ls="--")
-        axes[1].axhline(initial_params["lever"][1], color="r", ls="--")
-        axes[2].axhline(initial_params["lever"][2], color="r", ls="--")
+        # lever horiz lines
+        for i, _ in enumerate(["x", "y", "z"]):
+            axes[i].axhline(initial_params["lever"][i], color="r", ls="--")
 
         # ESV init
-        eb0 = np.asarray(initial_params.get("esv_bias"))
-        if eb0 is not None and eb0.ndim == 3:
+        eb0 = initial_params.get("esv_bias", None)
+        if eb0 is not None:
+            eb0 = np.asarray(eb0)
+            # reshape to (n_dogs, n_splits)
+            if eb0.ndim == 1:
+                eb0 = eb0.reshape(1, eb0.shape[0])
+            elif eb0.ndim == 2 and eb0.shape != (n_dogs, n_splits):
+                eb0 = eb0.reshape(n_dogs, n_splits)
             eb0_centered = eb0 - esv_mean
             for j in range(n_dogs):
                 ax = axes[3 + j]
@@ -90,9 +116,9 @@ def trace_plot(chain, initial_params=None, downsample=1, save=False):
                     ax.axhline(eb0_centered[j, k], color="r", ls="--", linewidth=0.7)
 
         # time_bias init
-        tb0 = np.asarray(initial_params.get("time_bias"))
+        tb0 = initial_params.get("time_bias", None)
         if tb0 is not None:
-            tb0 = tb0.reshape(-1)[:n_tb]
+            tb0 = np.asarray(tb0).reshape(-1)[:n_tb]
             tb0_centered = tb0 - tb_mean
             for j in range(n_tb):
                 ax_tb.axhline(tb0_centered[j], color="r", ls="--", linewidth=0.7)
@@ -100,12 +126,11 @@ def trace_plot(chain, initial_params=None, downsample=1, save=False):
     axes[-1].set_xlabel("Iteration")
     fig.tight_layout()
 
-    _save_fig(fig, save=save, tag="traceplot")
-
+    _save_fig(fig, save=save, tag="traceplot", timestamp=timestamp)
     plt.show()
 
 
-def marginal_hists(chain, initial_params=None, save=False):
+def marginal_hists(chain, initial_params=None, save=False, timestamp=None):
     """Plot marginal histograms of the MCMC parameters."""
     # Marginal Histograms
     fig, axes = plt.subplots(2, 3, figsize=(12, 8))
@@ -155,12 +180,12 @@ def marginal_hists(chain, initial_params=None, save=False):
             label="Initial CDOG_aug z",
         )
 
-    _save_fig(fig, save=save, tag="marginalhists")
+    _save_fig(fig, save=save, tag="marginalhists", timestamp=timestamp)
 
     plt.show()
 
 
-def corner_plot(chain, initial_params=None, downsample=1, save=False):
+def corner_plot(chain, initial_params=None, downsample=1, save=False, timestamp=None):
     """Plot a corner plot of the posterior samples."""
     # Extract parameter arrays
     pars = {
@@ -189,7 +214,7 @@ def corner_plot(chain, initial_params=None, downsample=1, save=False):
 
     # Normalize log-posterior for color mapping
     logpost = chain["logpost"][::downsample]
-    norm = mpl.colors.Normalize(vmin=logpost.min(), vmax=logpost.max())
+    norm = mpl.colors.Normalize(vmin=-80, vmax=logpost.max())
     cmap = plt.get_cmap("viridis")
 
     # Loop over panels
@@ -238,13 +263,17 @@ def corner_plot(chain, initial_params=None, downsample=1, save=False):
     cbar = fig.colorbar(sc, ax=axes[:, :], location="right", shrink=0.9)
     cbar.set_label("log posterior")
 
-    _save_fig(fig, save=save, tag="cornerplot")
+    _save_fig(fig, save=save, tag="cornerplot", timestamp=timestamp)
 
     plt.show()
 
 
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
+    from datetime import datetime
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
     init_lever = np.array([-12.4659, 9.6021, -13.2993])
     init_gps_grid = np.array(
         [
@@ -272,9 +301,21 @@ if __name__ == "__main__":
         "time_bias": init_tbias,
     }
 
-    chain = np.load(gps_output_path("mcmc_chain_good.npz"))
+    chain = np.load(gps_output_path("mcmc_chain_largest.npz"))
 
     # Works for chains saved with either a single or split ESV bias term
-    trace_plot(chain, initial_params=initial_params, downsample=1, save=True)
-    marginal_hists(chain, initial_params=initial_params, save=True)
-    corner_plot(chain, initial_params=initial_params, downsample=1, save=True)
+    trace_plot(
+        chain,
+        initial_params=initial_params,
+        downsample=100,
+        save=True,
+        timestamp=timestamp,
+    )
+    marginal_hists(chain, initial_params=initial_params, save=True, timestamp=timestamp)
+    corner_plot(
+        chain,
+        initial_params=initial_params,
+        downsample=500,
+        save=True,
+        timestamp=timestamp,
+    )

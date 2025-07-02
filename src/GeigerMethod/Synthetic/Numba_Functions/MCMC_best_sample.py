@@ -58,6 +58,7 @@ def plot_best_sample(
     angle_array,
     esv_matrix,
     CDOG_num=3,
+    timestamp=None,
 ):
     """
     Plot the best sample from an MCMC chain based on minimum logpost.
@@ -145,6 +146,7 @@ def plot_best_sample(
         block=True,
         save=True,
         path="Figs/MCMC",
+        timestamp=timestamp,
     )
     range_residual(
         transponder_coordinates_full,
@@ -155,11 +157,16 @@ def plot_best_sample(
         GPS_clock,
         save=True,
         path="Figs/MCMC",
+        timestamp=timestamp,
     )
 
 
 # Example usage:
 if __name__ == "__main__":
+    from datetime import datetime
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
     esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_normal.mat"))
     dz_array = esv["distance"].flatten()
     angle_array = esv["angle"].flatten()
@@ -181,7 +188,7 @@ if __name__ == "__main__":
 
     offsets = np.array([1866.0, 3175.0, 1939.0])
     plot_best_sample(
-        gps_output_path("mcmc_chain_reverse_esv.npz"),
+        gps_output_path("mcmc_chain.npz"),
         GPS_Coordinates,
         GPS_data,
         CDOG_guess,
@@ -191,4 +198,5 @@ if __name__ == "__main__":
         angle_array,
         esv_matrix,
         CDOG_num=4,
+        timestamp=timestamp,
     )

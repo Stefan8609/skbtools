@@ -312,7 +312,7 @@ if __name__ == "__main__":
     # init_ebias = np.array([-0.4775, -0.3199, 0.1122])
     # values = np.array([-0.4775, -0.3199, 0.1122])
     values = np.array([0.4775, 0.3199, -0.1122])
-    n = 5  # number of splits for ESV bias
+    n = 3  # number of splits for ESV bias
     init_ebias = np.tile(values.reshape(-1, 1), (1, n))
 
     init_tbias = np.array([0.01518602, 0.015779, 0.018898])

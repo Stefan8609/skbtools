@@ -1,9 +1,9 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
 from data import gps_data_path
-from datetime import datetime
 
 """Enable this for paper plots"""
 plt.rcParams.update(
@@ -19,13 +19,20 @@ plt.rcParams.update(
 )
 
 
-def _save_fig(fig, save, tag, path, ext="pdf"):
+def _save_fig(fig, save, tag, path, timestamp=None, ext="pdf"):
     """Helper to save `fig` under Figs/ with timestamp and optional tag."""
     if not save:
         return
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # 1) build timestamp and filename
     fname = f"{tag}_{timestamp}.{ext}"
-    fig.savefig(gps_data_path(f"{path}/{fname}"), format=ext, bbox_inches="tight")
+
+    # 2) build the directory path and ensure it exists
+    #    gps_data_path should return the root data directory, e.g. '/Users/…/Data'
+    dirpath = gps_data_path(f"Figs/Residual/{timestamp}")
+    os.makedirs(dirpath, exist_ok=True)
+
+    fullpath = os.path.join(dirpath, fname)
+    fig.savefig(fullpath, format=ext, bbox_inches="tight")
 
 
 def time_series_plot(
@@ -38,6 +45,7 @@ def time_series_plot(
     block=True,
     save=False,
     path="Figs",
+    timestamp=None,
 ):
     """Plot DOG and GPS time series with residuals."""
     difference_data = CDOG_full - GPS_full
@@ -254,7 +262,7 @@ def time_series_plot(
     # Adjust spacing between subplots
     plt.tight_layout()
 
-    _save_fig(fig, save=save, tag="timeseries", path=path)
+    _save_fig(fig, save=save, tag="timeseries", path=path, timestamp=timestamp)
 
     plt.show(block=block)
 
@@ -303,6 +311,7 @@ def range_residual(
     GPS_clock,
     save=False,
     path="Figs",
+    timestamp=None,
 ):
     """Plot residual range errors along the track."""
     times_hours = GPS_clock / 3600  # Convert seconds to hours
@@ -348,7 +357,7 @@ def range_residual(
     axes[1].set_ylabel("Slant Range Residuals (cm)")
     axes[1].legend()
 
-    _save_fig(fig, save=save, tag="rangeresidual", path=path)
+    _save_fig(fig, save=save, tag="rangeresidual", path=path, timestamp=timestamp)
 
     plt.tight_layout()
     plt.show()
