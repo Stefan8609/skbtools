@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from data import gps_output_path
-from statsmodels.graphics.tsaplots import plot_acf
 import itertools
 
 
@@ -222,21 +221,6 @@ def corner_plot(chain, initial_params=None, downsample=1):
     plt.show()
 
 
-def acf_plots(chain, initial_params=None):
-    """Plot autocorrelation functions for key parameters."""
-    # ACF Plots
-    fig, axes = plt.subplots(3, 2, figsize=(12, 10))
-    axes = axes.flatten()
-    for i, key in enumerate(["lever", "esv_bias", "time_bias"]):
-        series = chain[key]
-        if series.ndim > 2:
-            series = series.reshape(series.shape[0], -1)
-        plot_acf(series, lags=50, ax=axes[i])
-        axes[i].set_title(f"ACF of {key}")
-    plt.tight_layout()
-    plt.show()
-
-
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
     init_lever = np.array([-12.4659, 9.6021, -13.2993])
@@ -266,7 +250,7 @@ if __name__ == "__main__":
         "time_bias": init_tbias,
     }
 
-    chain = np.load(gps_output_path("mcmc_chain_constant_grid.npz"))
+    chain = np.load(gps_output_path("mcmc_chain.npz"))
 
     # Works for chains saved with either a single or split ESV bias term
     trace_plot(chain, initial_params=initial_params, downsample=100)
