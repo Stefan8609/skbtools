@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import norm
 from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
 from data import gps_data_path
+from datetime import datetime
 
 """Enable this for paper plots"""
 plt.rcParams.update(
@@ -18,6 +19,15 @@ plt.rcParams.update(
 )
 
 
+def _save_fig(fig, save, tag, path, ext="pdf"):
+    """Helper to save `fig` under Figs/ with timestamp and optional tag."""
+    if not save:
+        return
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    fname = f"{tag}_{timestamp}.{ext}"
+    fig.savefig(gps_data_path(f"{path}/{fname}"), format=ext, bbox_inches="tight")
+
+
 def time_series_plot(
     CDOG_clock,
     CDOG_full,
@@ -26,6 +36,8 @@ def time_series_plot(
     position_noise=0,
     time_noise=0,
     block=True,
+    save=False,
+    path="Figs",
 ):
     """Plot DOG and GPS time series with residuals."""
     difference_data = CDOG_full - GPS_full
@@ -242,6 +254,8 @@ def time_series_plot(
     # Adjust spacing between subplots
     plt.tight_layout()
 
+    _save_fig(fig, save=save, tag="timeseries", path=path)
+
     plt.show(block=block)
 
 
@@ -280,7 +294,16 @@ def trajectory_plot(coordinates, GPS_clock, CDOGs, block=True):
     plt.show(block=block)
 
 
-def range_residual(transponder_coordinates, ESV, CDOG, CDOG_full, GPS_full, GPS_clock):
+def range_residual(
+    transponder_coordinates,
+    ESV,
+    CDOG,
+    CDOG_full,
+    GPS_full,
+    GPS_clock,
+    save=False,
+    path="Figs",
+):
     """Plot residual range errors along the track."""
     times_hours = GPS_clock / 3600  # Convert seconds to hours
     range_residuals = (CDOG_full - GPS_full) * ESV * 100  # Convert to cm
@@ -324,6 +347,8 @@ def range_residual(transponder_coordinates, ESV, CDOG, CDOG_full, GPS_full, GPS_
     axes[1].set_xlabel("Density")
     axes[1].set_ylabel("Slant Range Residuals (cm)")
     axes[1].legend()
+
+    _save_fig(fig, save=save, tag="rangeresidual", path=path)
 
     plt.tight_layout()
     plt.show()

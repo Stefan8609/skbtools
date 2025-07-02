@@ -22,7 +22,7 @@ wheels/
 # Project specific
 Data/
 ecco_access/
-Figs/
+Data/Figs/
 
 
 # IDE

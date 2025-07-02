@@ -1,11 +1,21 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from data import gps_output_path
+from data import gps_output_path, gps_data_path
+from datetime import datetime
 import itertools
 
 
-def trace_plot(chain, initial_params=None, downsample=1):
+def _save_fig(fig, save, tag, ext="pdf"):
+    """Helper to save `fig` under Figs/ with timestamp and optional tag."""
+    if not save:
+        return
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    fname = f"{tag}_{timestamp}.{ext}"
+    fig.savefig(gps_data_path(f"Figs/MCMC/{fname}"), format=ext, bbox_inches="tight")
+
+
+def trace_plot(chain, initial_params=None, downsample=1, save=False):
     """Plot traces of MCMC parameters, with per-DOG ESV bias
     and time_bias mean-centered, including units."""
     DOG_index_num = {0: 1, 1: 3, 2: 4}
@@ -32,7 +42,7 @@ def trace_plot(chain, initial_params=None, downsample=1):
 
     # Build subplots
     n_rows = 3 + n_dogs + 1 + 1
-    fig, axes = plt.subplots(n_rows, 1, figsize=(16, 1 * n_rows), sharex=True)
+    fig, axes = plt.subplots(n_rows, 1, figsize=(16, 1.5 * n_rows), sharex=True)
 
     # --- Lever-arm (meters) ---
     axes[0].plot(lever[:, 0])
@@ -89,10 +99,13 @@ def trace_plot(chain, initial_params=None, downsample=1):
 
     axes[-1].set_xlabel("Iteration")
     fig.tight_layout()
+
+    _save_fig(fig, save=save, tag="traceplot")
+
     plt.show()
 
 
-def marginal_hists(chain, initial_params=None):
+def marginal_hists(chain, initial_params=None, save=False):
     """Plot marginal histograms of the MCMC parameters."""
     # Marginal Histograms
     fig, axes = plt.subplots(2, 3, figsize=(12, 8))
@@ -142,10 +155,12 @@ def marginal_hists(chain, initial_params=None):
             label="Initial CDOG_aug z",
         )
 
+    _save_fig(fig, save=save, tag="marginalhists")
+
     plt.show()
 
 
-def corner_plot(chain, initial_params=None, downsample=1):
+def corner_plot(chain, initial_params=None, downsample=1, save=False):
     """Plot a corner plot of the posterior samples."""
     # Extract parameter arrays
     pars = {
@@ -223,6 +238,8 @@ def corner_plot(chain, initial_params=None, downsample=1):
     cbar = fig.colorbar(sc, ax=axes[:, :], location="right", shrink=0.9)
     cbar.set_label("log posterior")
 
+    _save_fig(fig, save=save, tag="cornerplot")
+
     plt.show()
 
 
@@ -258,6 +275,6 @@ if __name__ == "__main__":
     chain = np.load(gps_output_path("mcmc_chain_good.npz"))
 
     # Works for chains saved with either a single or split ESV bias term
-    trace_plot(chain, initial_params=initial_params, downsample=1)
-    marginal_hists(chain, initial_params=initial_params)
-    corner_plot(chain, initial_params=initial_params, downsample=1)
+    trace_plot(chain, initial_params=initial_params, downsample=1, save=True)
+    marginal_hists(chain, initial_params=initial_params, save=True)
+    corner_plot(chain, initial_params=initial_params, downsample=1, save=True)

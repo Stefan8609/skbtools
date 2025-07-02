@@ -13,7 +13,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
 )
 from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
 from numba import njit
-from GeigerMethod.Synthetic.Numba_Functions.Plot_Modular import time_series_plot
+from plotting.Plot_Modular import time_series_plot
 from data import gps_data_path
 
 

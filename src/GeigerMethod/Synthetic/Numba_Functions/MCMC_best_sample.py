@@ -2,7 +2,7 @@ import numpy as np
 from data import gps_output_path, gps_data_path
 import scipy.io as sio
 
-from GeigerMethod.Synthetic.Numba_Functions.Plot_Modular import (
+from plotting.Plot_Modular import (
     time_series_plot,
     range_residual,
 )
@@ -143,6 +143,8 @@ def plot_best_sample(
         position_noise=0,
         time_noise=0,
         block=True,
+        save=True,
+        path="Figs/MCMC",
     )
     range_residual(
         transponder_coordinates_full,
@@ -151,6 +153,8 @@ def plot_best_sample(
         CDOG_full,
         GPS_full,
         GPS_clock,
+        save=True,
+        path="Figs/MCMC",
     )
 
 
@@ -177,7 +181,7 @@ if __name__ == "__main__":
 
     offsets = np.array([1866.0, 3175.0, 1939.0])
     plot_best_sample(
-        gps_output_path("mcmc_chain.npz"),
+        gps_output_path("mcmc_chain_reverse_esv.npz"),
         GPS_Coordinates,
         GPS_data,
         CDOG_guess,
@@ -186,5 +190,5 @@ if __name__ == "__main__":
         dz_array,
         angle_array,
         esv_matrix,
-        CDOG_num=1,
+        CDOG_num=4,
     )

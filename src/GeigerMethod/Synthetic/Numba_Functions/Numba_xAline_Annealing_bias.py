@@ -13,7 +13,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import (
     final_bias_geiger,
     calculateTimesRayTracing_Bias_Real,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Plot_Modular import time_series_plot
+from plotting.Plot_Modular import time_series_plot
 from data import gps_data_path
 
 """

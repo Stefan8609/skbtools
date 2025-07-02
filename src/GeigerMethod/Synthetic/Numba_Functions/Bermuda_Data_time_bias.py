@@ -11,7 +11,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index
-from GeigerMethod.Synthetic.Numba_Functions.Plot_Modular import (
+from plotting.Plot_Modular import (
     time_series_plot,
     range_residual,
 )
