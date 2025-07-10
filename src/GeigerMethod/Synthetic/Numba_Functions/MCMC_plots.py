@@ -313,13 +313,13 @@ if __name__ == "__main__":
         "time_bias": init_tbias,
     }
 
-    chain = np.load(gps_output_path("mcmc_chain_constant_grid.npz"))
+    chain = np.load(gps_output_path("mcmc_chain_reverse_esv.npz"))
 
     # Works for chains saved with either a single or split ESV bias term
     trace_plot(
         chain,
         initial_params=initial_params,
-        downsample=100,
+        downsample=1,
         save=True,
         timestamp=timestamp,
     )
@@ -327,7 +327,7 @@ if __name__ == "__main__":
     corner_plot(
         chain,
         initial_params=initial_params,
-        downsample=500,
+        downsample=25,
         save=True,
         timestamp=timestamp,
     )

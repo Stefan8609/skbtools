@@ -98,7 +98,34 @@ def compute_log_likelihood(
     return -0.5 * total_ssq
 
 
-# @njit
+@njit(cache=True, fastmath=True)
+def compute_log_prior(
+    lever_guess,
+    gps1_grid_guess,
+    CDOG_augments,
+    esv_bias,
+    time_bias,
+    initial_lever_base,
+    initial_gps_grid,
+    initial_CDOG_augments,
+    initial_esv_bias,
+    initial_time_bias,
+    lever_scale,
+    gps_grid_scale,
+    CDOG_aug_scale,
+    esv_bias_scale,
+    time_bias_scale,
+):
+    lp = 0.0
+    lp += -0.5 * np.sum(((lever_guess - initial_lever_base) / lever_scale) ** 2)
+    lp += -0.5 * np.sum(((gps1_grid_guess - initial_gps_grid) / gps_grid_scale) ** 2)
+    lp += -0.5 * np.sum(((CDOG_augments - initial_CDOG_augments) / CDOG_aug_scale) ** 2)
+    lp += -0.5 * np.sum(((esv_bias - initial_esv_bias) / esv_bias_scale) ** 2)
+    lp += -0.5 * np.sum(((time_bias - initial_time_bias) / time_bias_scale) ** 2)
+    return lp
+
+
+@njit(cache=True, fastmath=True)
 def mcmc_sampler(
     n_iters,
     initial_lever_base,
@@ -114,7 +141,6 @@ def mcmc_sampler(
     CDOG_guess,
     CDOG_all_data,
     offsets,
-    proposal_scales=None,
 ):
     """Run a simple Metropolis-Hastings sampler over several parameters.
 
@@ -140,54 +166,55 @@ def mcmc_sampler(
         Raw DOG arrival times for each unit.
     offsets : ndarray
         Offset guesses for each DOG.
-    proposal_scales : dict, optional
-        Dictionary of proposal standard deviations.
 
     Returns
     -------
     dict
         Dictionary containing arrays for all sampled parameters.
     """
+
     # default proposal stds
-    if proposal_scales is None:
-        proposal_scales = {
-            "lever": np.array([0.01, 0.01, 0.1]),
-            "gps_grid": 0.0,
-            "CDOG_aug": 0.1,
-            "esv_bias": 0.01,
-            "time_bias": 0.000005,
-        }
+    proposal_scales = {
+        "lever": np.array([0.01, 0.01, 0.1]),
+        "gps_grid": 0.0,
+        "CDOG_aug": 0.1,
+        "esv_bias": 0.01,
+        "time_bias": 0.000005,
+    }
 
-    split_esv = False
-    if initial_esv_bias.ndim == 2:
-        split_esv = True
+    # default prior stds
+    prior_scales = {
+        "lever": np.array([1.0, 1.0, 4.0]),
+        "gps_grid": 0.2,
+        "CDOG_aug": 25.0,
+        "esv_bias": 1.0,
+        "time_bias": 0.5,
+    }
+
+    # reshape initial_esv_bias into a (3, num_splits) array for Numba compatibility
+    if initial_esv_bias.ndim == 1:
+        num_splits = 1
+        ebias_curr = initial_esv_bias.reshape(3, 1)
+    else:
         num_splits = initial_esv_bias.shape[1]
+        ebias_curr = initial_esv_bias
 
-    # ensure CDOG_all_data is a numba typed list
-    if not isinstance(CDOG_all_data, List):
-        typed_list = List()
-        for arr in CDOG_all_data:
-            typed_list.append(arr)
-        CDOG_all_data = typed_list
-
-    # initialize chain
+    # initialize chains (always 3D for ebias_chain)
     lever_chain = np.zeros((n_iters, 3))
     gps_chain = np.zeros((n_iters, 4, 3))
     cdog_aug_chain = np.zeros((n_iters, 3, 3))
-    if split_esv:
-        ebias_chain = np.zeros((n_iters, 3, num_splits))
-    else:
-        ebias_chain = np.zeros((n_iters, 3))
+    ebias_chain = np.zeros((n_iters, 3, num_splits))
     tbias_chain = np.zeros((n_iters, 3))
+    loglike_chain = np.zeros(n_iters)
     logpost_chain = np.zeros(n_iters)
 
     # set initial state
     lever_curr = initial_lever_base.copy()
     gps_curr = initial_gps_grid.copy()
     cdog_aug_curr = initial_CDOG_augments.copy()
-    ebias_curr = initial_esv_bias.copy()
     tbias_curr = initial_time_bias.copy()
 
+    # compute initial likelihood & prior
     ll_curr = compute_log_likelihood(
         lever_curr,
         gps_curr,
@@ -203,21 +230,53 @@ def mcmc_sampler(
         angle_array,
         esv_matrix,
     )
+    lpr_curr = compute_log_prior(
+        lever_curr,
+        gps_curr,
+        cdog_aug_curr,
+        ebias_curr,
+        tbias_curr,
+        initial_lever_base,
+        initial_gps_grid,
+        initial_CDOG_augments,
+        initial_esv_bias,
+        initial_time_bias,
+        prior_scales["lever"],
+        prior_scales["gps_grid"],
+        prior_scales["CDOG_aug"],
+        prior_scales["esv_bias"],
+        prior_scales["time_bias"],
+    )
+    lpo_curr = ll_curr + lpr_curr
 
     for it in range(n_iters):
         # propose new state
-        lever_prop = lever_curr + np.random.normal(0, proposal_scales["lever"], 3)
+        # — lever (elementwise) —
+        lever_prop = lever_curr.copy()
+        for i in range(3):
+            lever_prop[i] = lever_curr[i] + np.random.normal(
+                0.0, proposal_scales["lever"][i]
+            )
+
+        # — gps_grid & CDOG_aug (vector draws) —
         gps_prop = gps_curr + np.random.normal(
-            0, proposal_scales["gps_grid"], gps_curr.shape
+            0.0, proposal_scales["gps_grid"], gps_curr.shape
         )
         cdog_aug_prop = cdog_aug_curr + np.random.normal(
-            0, proposal_scales["CDOG_aug"], cdog_aug_curr.shape
+            0.0, proposal_scales["CDOG_aug"], cdog_aug_curr.shape
         )
-        ebias_prop = ebias_curr + np.random.normal(
-            0, proposal_scales["esv_bias"], ebias_curr.shape
-        )
-        tbias_prop = tbias_curr + np.random.normal(0, proposal_scales["time_bias"], 3)
 
+        # — esv_bias (matching shape) —
+        ebias_prop = ebias_curr + np.random.normal(
+            0.0, proposal_scales["esv_bias"], ebias_curr.shape
+        )
+
+        # — time_bias —
+        tbias_prop = tbias_curr + np.random.normal(
+            0.0, proposal_scales["time_bias"], tbias_curr.shape
+        )
+
+        # evaluate
         ll_prop = compute_log_likelihood(
             lever_prop,
             gps_prop,
@@ -233,10 +292,27 @@ def mcmc_sampler(
             angle_array,
             esv_matrix,
         )
+        lpr_prop = compute_log_prior(
+            lever_prop,
+            gps_prop,
+            cdog_aug_prop,
+            ebias_prop,
+            tbias_prop,
+            initial_lever_base,
+            initial_gps_grid,
+            initial_CDOG_augments,
+            initial_esv_bias,
+            initial_time_bias,
+            prior_scales["lever"],
+            prior_scales["gps_grid"],
+            prior_scales["CDOG_aug"],
+            prior_scales["esv_bias"],
+            prior_scales["time_bias"],
+        )
+        lpo_prop = ll_prop + lpr_prop
 
-        delta = ll_prop - ll_curr
-
-        # accept‐reject
+        # acceptance
+        delta = lpo_prop - lpo_curr
         if delta >= 0 or np.log(np.random.rand()) < delta:
             lever_curr, gps_curr, cdog_aug_curr, ebias_curr, tbias_curr = (
                 lever_prop,
@@ -246,18 +322,20 @@ def mcmc_sampler(
                 tbias_prop,
             )
             ll_curr = ll_prop
+            lpr_curr = lpr_prop
+            lpo_curr = lpo_prop
 
         # record
-        lever_chain[it] = lever_curr
-        gps_chain[it] = gps_curr
-        cdog_aug_chain[it] = cdog_aug_curr
-        ebias_chain[it] = ebias_curr
-        tbias_chain[it] = tbias_curr
-        logpost_chain[it] = ll_curr
+        lever_chain[it, :] = lever_curr
+        gps_chain[it, :, :] = gps_curr
+        cdog_aug_chain[it, :, :] = cdog_aug_curr
+        ebias_chain[it, :, :] = ebias_curr
+        tbias_chain[it, :] = tbias_curr
+        loglike_chain[it] = ll_curr
+        logpost_chain[it] = lpo_curr
 
         if it % 100 == 0:
-            ll_rounded = float(int(ll_curr * 100) / 100.0)  # round to 2 decimal places
-            print("Iter", it, ": logpost =", ll_rounded)
+            print("Iter", it, ": logpost =", float(int(lpo_curr * 100) / 100.0))
 
     return {
         "lever": lever_chain,
@@ -266,6 +344,7 @@ def mcmc_sampler(
         "esv_bias": ebias_chain,
         "time_bias": tbias_chain,
         "logpost": logpost_chain,
+        "loglike": loglike_chain,
     }
 
 
@@ -289,6 +368,10 @@ if __name__ == "__main__":
         )
         tmp[:, 1] /= 1e9
         CDOG_all_data.append(tmp)
+
+    typed_CDOG_all_data = List()
+    for arr in CDOG_all_data:
+        typed_CDOG_all_data.append(arr)
 
     offsets = np.array([1866.0, 3175.0, 1939.0])
 
@@ -330,7 +413,7 @@ if __name__ == "__main__":
         GPS_Coordinates=GPS_Coordinates,
         GPS_data=GPS_data,
         CDOG_guess=CDOG_guess,
-        CDOG_all_data=CDOG_all_data,
+        CDOG_all_data=typed_CDOG_all_data,
         offsets=offsets,
     )
 
@@ -343,4 +426,24 @@ if __name__ == "__main__":
         esv_bias=chain["esv_bias"],
         time_bias=chain["time_bias"],
         logpost=chain["logpost"],
+        loglike=chain["loglike"],
     )
+
+"""
+Ideas to do
+
+    Add the plot of the boat and lever arms in
+    Add the sections of diff ESV bias to trajectory plot
+    Make a plot of the difference between each consecutive CDOG arrival
+     time to see anything weird
+
+"Examine the residuals: systematic trends in
+residual vs. time or vs. ship’s position may indicate
+unmodeled sound-speed changes or a bias. For example,
+if residuals are +50 µs on one side of the site and
+-50 µs on the opposite side, that suggestsa lateral
+sound-speed gradient or a misestimated depth. Also
+check if residuals correlate withtransmit angle (grazing angle)
+ – which could indicate an SSP scale error (making deeper-angle rays
+consistently fast or slow)."
+"""
