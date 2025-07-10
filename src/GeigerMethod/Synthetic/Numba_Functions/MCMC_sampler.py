@@ -337,15 +337,15 @@ def mcmc_sampler(
         if it % 100 == 0:
             print("Iter", it, ": logpost =", float(int(lpo_curr * 100) / 100.0))
 
-    return {
-        "lever": lever_chain,
-        "gps1_grid": gps_chain,
-        "CDOG_aug": cdog_aug_chain,
-        "esv_bias": ebias_chain,
-        "time_bias": tbias_chain,
-        "logpost": logpost_chain,
-        "loglike": loglike_chain,
-    }
+    return (
+        lever_chain,
+        gps_chain,
+        cdog_aug_chain,
+        ebias_chain,
+        tbias_chain,
+        loglike_chain,
+        logpost_chain,
+    )
 
 
 # Example usage:
@@ -400,8 +400,16 @@ if __name__ == "__main__":
 
     init_tbias = np.array([0.01518602, 0.015779, 0.018898])
 
-    chain = mcmc_sampler(
-        n_iters=100000,
+    (
+        lever_chain,
+        gps_chain,
+        cdog_aug_chain,
+        ebias_chain,
+        tbias_chain,
+        loglike_chain,
+        logpost_chain,
+    ) = mcmc_sampler(
+        n_iters=1000,
         initial_lever_base=init_lever,
         initial_gps_grid=init_gps_grid,
         initial_CDOG_augments=init_aug,
@@ -417,17 +425,17 @@ if __name__ == "__main__":
         offsets=offsets,
     )
 
-    """Saving and plotting the chain"""
-    np.savez(
-        gps_output_path("mcmc_chain.npz"),
-        lever=chain["lever"],
-        gps1_grid=chain["gps1_grid"],
-        CDOG_aug=chain["CDOG_aug"],
-        esv_bias=chain["esv_bias"],
-        time_bias=chain["time_bias"],
-        logpost=chain["logpost"],
-        loglike=chain["loglike"],
-    )
+    # now you can repackage as a dict in normal Python:
+    chain = {
+        "lever": lever_chain,
+        "gps1_grid": gps_chain,
+        "CDOG_aug": cdog_aug_chain,
+        "esv_bias": ebias_chain,
+        "time_bias": tbias_chain,
+        "loglike": loglike_chain,
+        "logpost": logpost_chain,
+    }
+    np.savez(gps_output_path("mcmc_chain.npz"), **chain)
 
 """
 Ideas to do
