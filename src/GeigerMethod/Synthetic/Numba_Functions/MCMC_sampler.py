@@ -441,6 +441,10 @@ if __name__ == "__main__":
 Ideas to do
 
     Add the plot of the boat and lever arms in
+        Issue is that the GPS_grid is not oriented
+        with respect to the vessel
+
+
     Add the sections of diff ESV bias to trajectory plot
     Make a plot of the difference between each consecutive CDOG arrival
      time to see anything weird

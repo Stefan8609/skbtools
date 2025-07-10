@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from geometry.fit_plane import fitPlane
 from geometry.project_to_plane import projectToPlane
 from data import gps_data_path
@@ -20,6 +21,7 @@ def GPS_Lever_arms(GPS_Coordinates):
         Array of lever arm vectors with shape ``(4, N, 3)``.
     """
     all_arms = np.zeros((4, len(GPS_Coordinates), 3))
+    xaxes = []
     for i in range(len(GPS_Coordinates)):
         xs, ys, zs = GPS_Coordinates[i].T
         points = np.array([xs, ys, zs]).T
@@ -39,6 +41,8 @@ def GPS_Lever_arms(GPS_Coordinates):
         xaxis = projectToPlane(xaxis, normVect)[0]
         xaxis /= np.linalg.norm(xaxis)
 
+        xaxes.append(xaxis)
+
         # Get y-axis defined by cross product
         # of x-axis and plane normal vector
         yaxis = np.cross(normVect, xaxis)
@@ -57,14 +61,40 @@ def GPS_Lever_arms(GPS_Coordinates):
             lever_arm = np.array([xdist, ydist, zdist])
             all_arms[j, i] = lever_arm
 
-    print(all_arms)
+    grid = np.zeros((4, 3))
     for i in range(4):
-        arm = np.mean(all_arms[i], axis=0, keepdims=True)[0]
-        print(arm)
-        print(np.linalg.norm(arm))
+        grid[i] = np.mean(all_arms[i], axis=0, keepdims=True)[0]
+        plt.scatter(grid[i, 0], grid[i, 1], label=f"GPS{i + 1}")
+    print(grid)
+
+    v12 = grid[1] - grid[0]
+    n12 = np.array([-v12[1], v12[0], 0.0])
+    n12 /= np.linalg.norm(n12)
+
+    # Print angle between [1,0] and normal vector between GPS1 and GPS2
+    x_unit = np.array([1.0, 0.0, 0.0])
+    cos_theta = np.clip(np.dot(x_unit, n12), -1.0, 1.0)
+    angle_rad = np.arccos(cos_theta)
+    angle_deg = np.degrees(angle_rad)
+    print(f"Angle between [1,0] and normal: {angle_deg:.2f}°")
+
+    midpoint = (grid[0] + grid[1]) / 2
+    plt.arrow(
+        midpoint[0],
+        midpoint[1],
+        n12[0],
+        n12[1],
+        head_width=0.1,
+        length_includes_head=True,
+        color="k",
+        label="Normal(1→2)",
+    )
+    plt.legend()
+    plt.axis("equal")
+    plt.show()
 
 
 if __name__ == "__main__":
-    data = np.load(gps_data_path("Processed_GPS_Receivers_DOG_1.npz"))
+    data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
     GPS_Coordinates = data["GPS_Coordinates"]
     GPS_Lever_arms(GPS_Coordinates)
