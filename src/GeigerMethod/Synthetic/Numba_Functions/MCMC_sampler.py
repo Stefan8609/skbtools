@@ -376,7 +376,7 @@ if __name__ == "__main__":
     offsets = np.array([1866.0, 3175.0, 1939.0])
 
     # initial parameters
-    init_lever = np.array([-12.4659, 9.6021, -13.2993])
+    init_lever = np.array([-12.4659, 9.6021, -16.2993])
     init_gps_grid = np.array(
         [
             [0.0, 0.0, 0.0],
