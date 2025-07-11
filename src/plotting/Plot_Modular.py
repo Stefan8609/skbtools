@@ -267,7 +267,15 @@ def time_series_plot(
     plt.show(block=block)
 
 
-def trajectory_plot(coordinates, GPS_clock, CDOGs, block=True):
+def trajectory_plot(
+    coordinates,
+    GPS_clock,
+    CDOGs,
+    block=True,
+    save=False,
+    path="Figs",
+    timestamp=None,
+):
     """Plot the surface vessel trajectory in the horizontal plane."""
     # Calculate time values in hours for proper colorbar range
     times_hours = GPS_clock / 3600  # Convert seconds to hours
@@ -300,6 +308,76 @@ def trajectory_plot(coordinates, GPS_clock, CDOGs, block=True):
     plt.legend()
 
     plt.show(block=block)
+
+
+def split_trajectory_plot(
+    coordinates, GPS_clock, CDOGs, numsplit, save=False, path="Figs", timestamp=None
+):
+    """
+    Plot a 2D trajectory split into `numsplit` contiguous blocks,
+    marking CDOG locations, and optionally save the figure.
+
+    Parameters
+    ----------
+    coordinates : (N,2) array-like
+        X,Y coordinates to plot.
+    GPS_clock : array-like, unused here but retained for signature.
+    CDOGs : (M,2) array-like
+        M CDOG X,Y positions.
+    numsplit : int
+        Number of blocks to split the trajectory into.
+    save : bool, optional
+        If True, save the figure via `_save_fig`.
+    path : str, optional
+        Directory under which to save (passed to `_save_fig`).
+    timestamp : str or None, optional
+        Timestamp string to tag the filename. If None, uses current time.
+    """
+    # create figure & axis
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    N = coordinates.shape[0]
+    base = N // numsplit
+    remainder = N % numsplit
+    start = 0
+
+    cmap = plt.get_cmap("tab10")
+    for n in range(numsplit):
+        size = base + 1 if n < remainder else base
+        end = start + size
+        blk = coordinates[start:end]
+        ax.scatter(
+            blk[:, 0], blk[:, 1], color=cmap(n % cmap.N), label=f"Block {n + 1}", s=1
+        )
+        start = end
+
+    # plot CDOGs
+    nums = {0: "1", 1: "3", 2: "4"}
+    for i in range(len(CDOGs)):
+        ax.scatter(
+            CDOGs[i, 0],
+            CDOGs[i, 1],
+            marker="x",
+            s=20,
+            label=f"CDOG {nums[i]}",
+            color="k",
+        )
+
+    ax.set_title("Trajectory Split into Blocks with CDOG Locations")
+    ax.set_xlabel("Longitude")
+    ax.set_ylabel("Latitude")
+    ax.axis("equal")
+    ax.legend()
+
+    _save_fig(
+        fig,
+        save=save,
+        tag=f"split_trajectory_{numsplit}",
+        path=path,
+        timestamp=timestamp,
+    )
+
+    plt.show()
 
 
 def range_residual(
@@ -381,8 +459,15 @@ if __name__ == "__main__":
     GPS_data = data["GPS_data"]
 
     GPS_lat, GPS_lon, GPS_height = ECEF_Geodetic(GPS_Coordinates[:, 0, :])
-    trajectory_plot(
+    # trajectory_plot(
+    #     np.array([GPS_lon, GPS_lat, GPS_height]).T,
+    #     GPS_data,
+    #     np.array([CDOGs_lon, CDOGs_lat, CDOGs_height]).T,
+    # )
+    split_trajectory_plot(
         np.array([GPS_lon, GPS_lat, GPS_height]).T,
         GPS_data,
         np.array([CDOGs_lon, CDOGs_lat, CDOGs_height]).T,
+        5,
+        save=True,
     )

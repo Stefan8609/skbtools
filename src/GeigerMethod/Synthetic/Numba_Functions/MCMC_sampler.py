@@ -438,14 +438,6 @@ if __name__ == "__main__":
     np.savez(gps_output_path("mcmc_chain.npz"), **chain)
 
 """
-Ideas to do
-
-    Add the plot of the boat and lever arms in
-        Issue is that the GPS_grid is not oriented
-        with respect to the vessel
-
-
-    Add the sections of diff ESV bias to trajectory plot
     Make a plot of the difference between each consecutive CDOG arrival
      time to see anything weird
 
