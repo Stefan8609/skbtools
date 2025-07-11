@@ -441,6 +441,47 @@ def range_residual(
     plt.show()
 
 
+def grazing_angle_residual(
+    angles, CDOG_full, GPS_full, save=False, path="Figs", timestamp=None
+):
+    """
+    Compute residuals (CDOG_full – GPS_full) and plot them versus grazing angle.
+
+    Parameters
+    ----------
+    angles : array-like, shape (N,)
+        Grazing angles (e.g., in degrees) for each measurement.
+    CDOG_full : array-like, shape (N,)
+        Observed values (e.g., CDOG‐derived times or angles).
+    GPS_full : array-like, shape (N,)
+        Predicted values (e.g., GPS‐derived times or angles).
+    save : bool, default False
+        If True, save the figure to disk.
+    path : str, default "Figs"
+        Directory in which to save the figure.
+    timestamp : str or None, default None
+        Timestamp string to include in the filename; if None, current time is used.
+    """
+    # Compute residuals
+    residuals = CDOG_full - GPS_full
+
+    # Create figure & axis
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    # Plot
+    ax.scatter(angles, residuals, s=10, alpha=0.7)
+    ax.axhline(0, linestyle="--", linewidth=1)
+    ax.set_xlabel("Grazing Angle (°)")
+    ax.set_ylabel("Residual (CDOG – GPS)")
+    ax.set_title("Residuals vs. Grazing Angle")
+    ax.grid(True)
+
+    _save_fig(fig, save=save, tag="angleresidual", path=path, timestamp=timestamp)
+
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == "__main__":
     CDOG_guess_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
     CDOGs = np.array(
