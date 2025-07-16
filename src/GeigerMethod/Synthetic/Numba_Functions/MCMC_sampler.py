@@ -26,7 +26,7 @@ def compute_log_likelihood(
     time_bias,
     GPS_Coordinates,
     GPS_data,
-    CDOG_guess,
+    CDOG_reference,
     CDOG_all_data,
     offsets,
     dz_array,
@@ -43,7 +43,7 @@ def compute_log_likelihood(
     total_ssq = 0.0
     # loop each DOG
     for j in range(3):
-        inv_guess = CDOG_guess + CDOG_augments[j]
+        inv_guess = CDOG_reference + CDOG_augments[j]
         CDOG_data = CDOG_all_data[j]
 
         if split_esv:
@@ -138,9 +138,14 @@ def mcmc_sampler(
     esv_matrix,
     GPS_Coordinates,
     GPS_data,
-    CDOG_guess,
+    CDOG_reference,
     CDOG_all_data,
     offsets,
+    proposal_lever=None,
+    proposal_gps_grid=0.0,
+    proposal_CDOG_aug=0.1,
+    proposal_esv_bias=0.01,
+    proposal_time_bias=0.000005,
 ):
     """Run a simple Metropolis-Hastings sampler over several parameters.
 
@@ -160,7 +165,7 @@ def mcmc_sampler(
         ESV lookup table used during the likelihood evaluation.
     GPS_Coordinates, GPS_data : ndarray
         Observed GPS positions and times.
-    CDOG_guess : ndarray
+    CDOG_reference : ndarray
         Base DOG position.
     CDOG_all_data : list
         Raw DOG arrival times for each unit.
@@ -173,19 +178,22 @@ def mcmc_sampler(
         Dictionary containing arrays for all sampled parameters.
     """
 
+    if proposal_lever is None:
+        proposal_lever = np.array([0.01, 0.01, 0.05])
+
     # default proposal stds
     proposal_scales = {
-        "lever": np.array([0.01, 0.01, 0.1]),
-        "gps_grid": 0.0,
-        "CDOG_aug": 0.1,
-        "esv_bias": 0.01,
-        "time_bias": 0.000005,
+        "lever": proposal_lever,
+        "gps_grid": proposal_gps_grid,
+        "CDOG_aug": proposal_CDOG_aug,
+        "esv_bias": proposal_esv_bias,
+        "time_bias": proposal_time_bias,
     }
 
     # default prior stds
     prior_scales = {
-        "lever": np.array([1.0, 1.0, 4.0]),
-        "gps_grid": 0.2,
+        "lever": np.array([0.5, 0.5, 1.0]),
+        "gps_grid": 0.1,
         "CDOG_aug": 25.0,
         "esv_bias": 1.0,
         "time_bias": 0.5,
@@ -223,7 +231,7 @@ def mcmc_sampler(
         tbias_curr,
         GPS_Coordinates,
         GPS_data,
-        CDOG_guess,
+        CDOG_reference,
         CDOG_all_data,
         offsets,
         dz_array,
@@ -285,7 +293,7 @@ def mcmc_sampler(
             tbias_prop,
             GPS_Coordinates,
             GPS_data,
-            CDOG_guess,
+            CDOG_reference,
             CDOG_all_data,
             offsets,
             dz_array,
@@ -359,7 +367,7 @@ if __name__ == "__main__":
     data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
     GPS_Coordinates = data["GPS_Coordinates"][::downsample]
     GPS_data = data["GPS_data"][::downsample]
-    CDOG_guess = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
+    CDOG_reference = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
 
     CDOG_all_data = []
     for i in (1, 3, 4):
@@ -393,11 +401,10 @@ if __name__ == "__main__":
         ]
     )
     # init_ebias = np.array([-0.4775, -0.3199, 0.1122])
-    # values = np.array([-0.4775, -0.3199, 0.1122])
-    values = np.array([0.4775, 0.3199, -0.1122])
+    values = np.array([-0.4775, -0.3199, 0.1122])
+    # values = np.array([0.4775, 0.3199, -0.1122])
     n = 3  # number of splits for ESV bias
     init_ebias = np.tile(values.reshape(-1, 1), (1, n))
-
     init_tbias = np.array([0.01518602, 0.015779, 0.018898])
 
     (
@@ -420,7 +427,7 @@ if __name__ == "__main__":
         esv_matrix=esv_matrix,
         GPS_Coordinates=GPS_Coordinates,
         GPS_data=GPS_data,
-        CDOG_guess=CDOG_guess,
+        CDOG_reference=CDOG_reference,
         CDOG_all_data=typed_CDOG_all_data,
         offsets=offsets,
     )

@@ -572,7 +572,7 @@ if __name__ == "__main__":
     # Example lever arms in ship-fixed coordinates
     from data import gps_output_path
 
-    chain = np.load(gps_output_path("mcmc_chain_adroit_4.npz"))
+    chain = np.load(gps_output_path("mcmc_chain_adroit_5_test_xy_lever.npz"))
 
     levers = chain["lever"][::5000]
 
