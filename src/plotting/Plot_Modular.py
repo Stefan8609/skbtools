@@ -441,7 +441,7 @@ def range_residual(
     plt.show()
 
 
-def grazing_angle_residual(
+def elevation_angle_residual(
     angles, CDOG_full, GPS_full, save=False, path="Figs", timestamp=None
 ):
     """
@@ -473,7 +473,7 @@ def grazing_angle_residual(
     ax.axhline(0, linestyle="--", linewidth=1)
     ax.set_xlabel("Grazing Angle (°)")
     ax.set_ylabel("Residual (CDOG – GPS)")
-    ax.set_title("Residuals vs. Grazing Angle")
+    ax.set_title("Residuals vs. Elevation Angle")
     ax.grid(True)
 
     _save_fig(fig, save=save, tag="angleresidual", path=path, timestamp=timestamp)

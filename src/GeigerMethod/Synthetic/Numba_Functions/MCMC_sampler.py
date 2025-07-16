@@ -441,6 +441,9 @@ if __name__ == "__main__":
     Make a plot of the difference between each consecutive CDOG arrival
      time to see anything weird
 
+    Make residual plot where residuals are colored by angle from
+    transducer to surface vessel in 360
+
 "Examine the residuals: systematic trends in
 residual vs. time or vs. ship’s position may indicate
 unmodeled sound-speed changes or a bias. For example,

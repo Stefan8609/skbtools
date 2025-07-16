@@ -8,7 +8,8 @@ np.set_printoptions(suppress=True)
 
 
 def GPS_Lever_arms(GPS_Coordinates):
-    """Compute lever arms between GPS receivers.
+    """Compute lever arms between GPS receivers. and give the average orientation
+     and angle with respect to vessel
 
     Parameters
     ----------
@@ -18,7 +19,7 @@ def GPS_Lever_arms(GPS_Coordinates):
     Returns
     -------
     numpy.ndarray
-        Array of lever arm vectors with shape ``(4, N, 3)``.
+        Array of GPS Grid vectors with shape ``(4, N, 3)``.
     """
     all_arms = np.zeros((4, len(GPS_Coordinates), 3))
     xaxes = []
@@ -60,11 +61,11 @@ def GPS_Lever_arms(GPS_Coordinates):
 
             lever_arm = np.array([xdist, ydist, zdist])
             all_arms[j, i] = lever_arm
-
     grid = np.zeros((4, 3))
     for i in range(4):
         grid[i] = np.mean(all_arms[i], axis=0, keepdims=True)[0]
         plt.scatter(grid[i, 0], grid[i, 1], label=f"GPS{i + 1}")
+    print(np.mean(grid, axis=0))
     print(grid)
 
     v12 = grid[1] - grid[0]
@@ -92,6 +93,7 @@ def GPS_Lever_arms(GPS_Coordinates):
     plt.legend()
     plt.axis("equal")
     plt.show()
+    np.savez(gps_data_path("GPS_Data/GPS_grid_all.npz"), GPS_grid=all_arms)
 
 
 if __name__ == "__main__":

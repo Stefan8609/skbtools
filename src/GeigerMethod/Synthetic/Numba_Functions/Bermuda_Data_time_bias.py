@@ -14,7 +14,9 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import two_pointer_inde
 from plotting.Plot_Modular import (
     time_series_plot,
     range_residual,
+    elevation_angle_residual,
 )
+from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
 
 
 # esv_table = sio.loadmat('../../../Data/global_table_esv.mat')
@@ -26,7 +28,7 @@ dz_array = esv_table["distance"].flatten()
 angle_array = esv_table["angle"].flatten()
 esv_matrix = esv_table["matrice"]
 
-DOG_num = 4
+DOG_num = 3
 
 data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
 GPS_Coordinates = data["GPS_Coordinates"]
@@ -170,5 +172,17 @@ range_residual(
     GPS_full,
     GPS_clock,
 )
+
+depth_arr = ECEF_Geodetic(transponder_coordinates_full)[2]
+inversion_guess = inversion_guess[np.newaxis, :]
+lat, lon, depth = ECEF_Geodetic(inversion_guess)
+
+dz = depth_arr - depth
+abs_dist = np.sqrt(
+    np.sum((transponder_coordinates_full - inversion_guess) ** 2, axis=1)
+)
+beta = np.arcsin(dz / abs_dist) * 180 / np.pi
+
+elevation_angle_residual(beta, CDOG_full, GPS_full, save=True)
 
 print(best_offset, inversion_result[3])
