@@ -76,6 +76,11 @@ def individual_splits_esv(
             CDOG_reference=CDOG_reference,
             CDOG_all_data=CDOG_all_data,
             offsets=offsets,
+            proposal_lever=np.array([0.005, 0.005, 0.01]),
+            proposal_gps_grid=0.0,
+            proposal_CDOG_aug=0.01,
+            proposal_esv_bias=0.05,
+            proposal_time_bias=0.000005,
         )
 
         # Save results for the current split
@@ -148,7 +153,7 @@ if __name__ == "__main__":
 
     individual_splits_esv(
         4,
-        1000,
+        50000,
         initial_params,
         dz_array,
         angle_array,
