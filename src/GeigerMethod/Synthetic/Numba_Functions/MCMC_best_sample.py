@@ -1,6 +1,6 @@
 import numpy as np
-from data import gps_output_path, gps_data_path
-import scipy.io as sio
+from data import gps_output_path
+import matplotlib.pyplot as plt
 
 from plotting.Plot_Modular import (
     time_series_plot,
@@ -45,6 +45,54 @@ def load_min_logpost_params(npz_path):
         "time_bias": data["time_bias"][idx_min],
         "logpost": logpost[idx_min],
     }
+
+
+def split_samples(path, n_splits):
+    """
+    Split the MCMC chain into multiple parts for parallel processing.
+
+    Parameters
+    ----------
+    path : str
+        Path to the .npz file containing the MCMC chain.
+    n_splits : int, optional
+        Number of splits to create (default is 5).
+    """
+    dir = gps_output_path(path)
+    esv_biases = np.zeros((n_splits, 3))
+    for i in range(n_splits):
+        # Load the MCMC chain
+        data = np.load(f"{dir}/split_{i}.npz")
+        logpost = data["logpost"]
+        idx_min = np.argmax(logpost)
+
+        # print(f"Best parameters for split {i} \n",
+        #       f"Lever guess: {data['lever'][idx_min]}\n",
+        #       f"GPS1 grid guess: {data['gps1_grid'][idx_min]}\n",
+        #       f"CDOG augment: {data['CDOG_aug'][idx_min]}\n",
+        #       f"ESV bias: {data['esv_bias'][idx_min]}\n",
+        #       f"Time bias: {data['time_bias'][idx_min]}\n",)
+        esv_biases[i, :] = data["esv_bias"][idx_min].T
+
+        print(f"ESV bias for split {i}: {data['esv_bias'][idx_min].T}")
+    print(esv_biases[:, 0], esv_biases[:, 1], esv_biases[:, 2])
+    print(esv_biases)
+
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4), sharey=True)
+    splits = np.arange(n_splits)
+    for dog in range(3):
+        ax = axes[dog]
+        ax.plot(splits, esv_biases[:, dog], marker="o", linestyle="-")
+        ax.set_title(f"DOG {dog + 1}")
+        ax.set_xlabel("Split index")
+        if dog == 0:
+            ax.set_ylabel("ESV bias (m)")
+        ax.set_xticks(splits)
+        ax.grid(True, linestyle="--", alpha=0.5)
+
+    fig.suptitle("ESV Bias Across Splits for Each DOG")
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.show()
 
 
 def plot_best_sample(
@@ -163,40 +211,42 @@ def plot_best_sample(
 
 # Example usage:
 if __name__ == "__main__":
-    from datetime import datetime
+    split_samples("individual_splits_esv_20250716_112512", 10)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_normal.mat"))
-    dz_array = esv["distance"].flatten()
-    angle_array = esv["angle"].flatten()
-    esv_matrix = esv["matrice"]
-
-    downsample = 1
-    data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
-    GPS_Coordinates = data["GPS_Coordinates"][::downsample]
-    GPS_data = data["GPS_data"][::downsample]
-    CDOG_guess = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
-
-    CDOG_all_data = []
-    for i in (1, 3, 4):
-        tmp = sio.loadmat(gps_data_path(f"CDOG_Data/DOG{i}-camp.mat"))["tags"].astype(
-            float
-        )
-        tmp[:, 1] /= 1e9
-        CDOG_all_data.append(tmp)
-
-    offsets = np.array([1866.0, 3175.0, 1939.0])
-    plot_best_sample(
-        gps_output_path("mcmc_chain_adroit_5_test_xy_lever.npz"),
-        GPS_Coordinates,
-        GPS_data,
-        CDOG_guess,
-        CDOG_all_data,
-        offsets,
-        dz_array,
-        angle_array,
-        esv_matrix,
-        CDOG_num=4,
-        timestamp=timestamp,
-    )
+    # from datetime import datetime
+    #
+    # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    #
+    # esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_normal.mat"))
+    # dz_array = esv["distance"].flatten()
+    # angle_array = esv["angle"].flatten()
+    # esv_matrix = esv["matrice"]
+    #
+    # downsample = 1
+    # data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
+    # GPS_Coordinates = data["GPS_Coordinates"][::downsample]
+    # GPS_data = data["GPS_data"][::downsample]
+    # CDOG_guess = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
+    #
+    # CDOG_all_data = []
+    # for i in (1, 3, 4):
+    #     tmp = sio.loadmat(gps_data_path(f"CDOG_Data/DOG{i}-camp.mat"))["tags"].astype(
+    #         float
+    #     )
+    #     tmp[:, 1] /= 1e9
+    #     CDOG_all_data.append(tmp)
+    #
+    # offsets = np.array([1866.0, 3175.0, 1939.0])
+    # plot_best_sample(
+    #     gps_output_path("mcmc_chain_adroit_6_test_xy_lever.npz"),
+    #     GPS_Coordinates,
+    #     GPS_data,
+    #     CDOG_guess,
+    #     CDOG_all_data,
+    #     offsets,
+    #     dz_array,
+    #     angle_array,
+    #     esv_matrix,
+    #     CDOG_num=4,
+    #     timestamp=timestamp,
+    # )

@@ -162,7 +162,7 @@ def plot_2d_projection_side(
         ax.text(
             1,
             32 - 2 * i,
-            f"Points within GPS {i} ellipse percentage: {pct:.1f}%",
+            f"Points within GPS {i + 1} ellipse percentage: {pct:.1f}%",
             color="black",
             fontsize=10,
             ha="center",
@@ -377,7 +377,7 @@ def plot_2d_projection_topdown(
         ax.text(
             1,
             32 - 2 * i,
-            f"Points within GPS {i} ellipse percentage: {pct:.1f}%",
+            f"Points within GPS {i + 1} ellipse percentage: {pct:.1f}%",
             color="black",
             fontsize=10,
             ha="center",
