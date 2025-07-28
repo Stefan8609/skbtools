@@ -581,10 +581,3 @@ if __name__ == "__main__":
     fig, ax = plot_2d_projection_topdown(levers)
     fig, ax = plot_2d_projection_side(levers)
     plt.show()
-
-
-"""
-Report the number of points that fall within the confidence interval of the
-    error ellipse (if 68% confidence, then 68% of the
-    points should fall within the ellipse)
-"""
