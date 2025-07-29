@@ -114,6 +114,10 @@ def _shift_segments(segments, y_shift=0, x_shift=0):
 
 
 if __name__ == "__main__":
+    """
+    image from
+    https://bios.asu.edu/sites/g/files/litvpz726/files/
+    imported-bios/Atlantic_Explorer_General_Arrangement_Drawings_Rev_02-Jun-2014.pdf"""
     image_name = "Side_View"
     image_path = f"Figs/Images/Atlantic_Explorer_Schematic/{image_name}.png"
 

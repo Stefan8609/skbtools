@@ -394,7 +394,7 @@ def plot_2d_projection_side(
     order = vals_l.argsort()[::-1]
     vals_l, vecs_l = vals_l[order], vecs_l[:, order]
     angle_l = np.degrees(np.arctan2(vecs_l[1, 0], vecs_l[0, 0]))
-    width_l, height_l = 2 * np.sqrt(vals_l * chi2.ppf(0.95, 2))
+    width_l, height_l = 2 * np.sqrt(vals_l * chi2.ppf(0.68, 2))
     ellipse_l = Ellipse(
         xy=mean_l,
         width=width_l,
@@ -596,3 +596,65 @@ if __name__ == "__main__":
 
     fig, ax = plot_2d_projection_side(segments, levers)
     plt.show()
+
+
+"""
+Verify that the error ellipse works for normally distributed variables
+
+Generate pairs of poitns with known covariance
+and count the number within the ellipse
+
+Make the ellipse calculation modular for DRY
+programming and to make it easier to plot multiple ellipses
+
+chagne order so data are on top
+
+Put the prior onto the plots to show the MCMC comparison
+
+Run MCMC with tight prior around the area we are sure
+about the moonpool and transducer location
+    +/- a foot or so from the moonpool location and keel of ship
+
+Ratio between the posterior and the prior (resolution)
+How much information we can add to our prior belief
+
+Plot the C-DOG augments as KDE in 3D space
+    Also compare to the prior
+    See screenshot for relevant plot
+    Using principal axis compared to z (to get a sense of the scale)
+
+    Sort the points by posterior then plot to get yellow on top
+
+If we don't control the prior for the z-lever we can get
+unrealistic results (that's why we need to constrain)
+
+Ask Olivia for a copy of paper
+   Figure 9
+
+Render the likelihood
+    Here are the points that let me predict the time
+    measurement to within x times the prior times time uncertainty
+
+What are we able to predict of this data at the end of the dat?
+Absolute travel time difference (ratio of this to time uncertainty)
+    RMSE compared to our known time uncertainty surface plot
+    Prior the CDOGs
+
+Plot all of the samples that are within some threshold of the maximum posterior
+
+Print the number of points in each segment for each DOG to compare (DOG 4 may be weird)
+
+With segments marked how do the time residual plots adjust
+(add bars marking each segment) make a residual plot
+    appending each segment
+
+Make the plot from the screenshot (x,y and chi,z) for combined
+ESV and for each ESV segment individually (compare these plots)
+    We can overlay the segment plots to see where the CDOG lies in each
+
+Key question: where in 3D space are the DOGS compared to our prior
+
+Do you by segmenting it improve the bias of the residual travel
+time measurements, but do we also improve the variance
+    I.E. do we take out swings in the residuals in addition to demeaning them.
+"""
