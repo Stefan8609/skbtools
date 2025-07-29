@@ -578,6 +578,6 @@ if __name__ == "__main__":
 
     # Plot the lever arms
     # fig, ax = plot_lever_arms_3d(levers)
-    fig, ax = plot_2d_projection_topdown(levers)
-    fig, ax = plot_2d_projection_side(levers)
+    # fig, ax = plot_2d_projection_topdown(levers)
+    # fig, ax = plot_2d_projection_side(levers)
     plt.show()
