@@ -211,7 +211,7 @@ def plot_best_sample(
 
 # Example usage:
 if __name__ == "__main__":
-    split_samples("individual_splits_esv_20250716_112512", 10)
+    split_samples("individual_splits_esv_20250717_115727", 10)
 
     # from datetime import datetime
     #

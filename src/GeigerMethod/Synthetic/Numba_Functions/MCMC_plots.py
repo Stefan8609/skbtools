@@ -313,13 +313,15 @@ if __name__ == "__main__":
         "time_bias": init_tbias,
     }
 
-    chain = np.load(gps_output_path("mcmc_chain_adroit_6_test_xy_lever.npz"))
+    chain = np.load(
+        gps_output_path("individual_splits_esv_20250717_115727/split_5.npz")
+    )
 
     # Works for chains saved with either a single or split ESV bias term
     trace_plot(
         chain,
         initial_params=initial_params,
-        downsample=1000,
+        downsample=1,
         save=True,
         timestamp=timestamp,
     )
@@ -327,7 +329,7 @@ if __name__ == "__main__":
     corner_plot(
         chain,
         initial_params=initial_params,
-        downsample=5000,
+        downsample=50,
         save=True,
         timestamp=timestamp,
     )
