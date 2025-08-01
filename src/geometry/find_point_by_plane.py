@@ -3,8 +3,8 @@ from geometry.fit_plane import fitPlane
 from geometry.project_to_plane import projectToPlane
 from geometry.rodrigues import rotationMatrix
 import matplotlib.pyplot as plt
-from plotting.plot_plane import plotPlane
-from plotting.print_table import printTable
+from plotting.Misc.plot_plane import plotPlane
+from plotting.Misc.print_table import printTable
 
 
 def findTheta(barycenter, xyzt, normVect):

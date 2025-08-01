@@ -13,7 +13,7 @@ Output:
 
 import numpy as np
 import matplotlib.pyplot as plt
-from plotting.plot_plane import plotPlane
+from plotting.Misc.plot_plane import plotPlane
 
 
 def fitPlane(xs, ys, zs):

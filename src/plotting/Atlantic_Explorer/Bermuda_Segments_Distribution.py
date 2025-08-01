@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.stats import gaussian_kde
-from plotting.Error_Ellipse import compute_error_ellipse
+from plotting.Ellipses.Error_Ellipse import compute_error_ellipse
 
 from geometry.rigid_body import findRotationAndDisplacement
 from data import gps_output_path, gps_data_path
@@ -513,22 +513,8 @@ if __name__ == "__main__":
 
 
 """
-Run MCMC with tight prior around the area we are sure
-about the moonpool and transducer location
-    +/- a foot or so from the moonpool location and keel of ship
-
 Ratio between the posterior and the prior (resolution)
 How much information we can add to our prior belief
-
-Plot the C-DOG augments as KDE in 3D space
-    Also compare to the prior
-    See screenshot for relevant plot
-    Using principal axis compared to z (to get a sense of the scale)
-
-    Sort the points by posterior then plot to get yellow on top
-
-If we don't control the prior for the z-lever we can get
-unrealistic results (that's why we need to constrain)
 
 Ask Olivia for a copy of paper
    Figure 9
@@ -537,7 +523,7 @@ Render the likelihood
     Here are the points that let me predict the time
     measurement to within x times the prior times time uncertainty
 
-What are we able to predict of this data at the end of the dat?
+What are we able to predict of this data at the end of the day?
 Absolute travel time difference (ratio of this to time uncertainty)
     RMSE compared to our known time uncertainty surface plot
     Prior the CDOGs
@@ -565,4 +551,6 @@ Transdimensional MCMC for the ESV bias (in each segment)
     Piecewise updates
 
 Azimuthal view for the ESV bias segments...
+
+Fix labeling of DOGS in split esv plot (and indexing of segments)
 """

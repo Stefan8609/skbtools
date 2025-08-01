@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from data import gps_output_path, gps_data_path
 from scipy.stats import norm
+from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
 import itertools
 
 
@@ -301,25 +302,20 @@ def corner_plot(
                 alpha=0.7,
             )
             if flat_prior:
-                # overlay 2D Gaussian prior contours in ascending level order
+                # build 2×2 prior covariance
                 sx = flat_prior[key_j]
                 sy = flat_prior[key_i]
                 mx = flat_init.get(key_j, 0)
                 my = flat_init.get(key_i, 0)
-                x0, x1 = ax.get_xlim()
-                y0, y1 = ax.get_ylim()
-                xx = np.linspace(x0, x1, 100)
-                yy = np.linspace(y0, y1, 100)
-                X, Y = np.meshgrid(xx, yy)
-                Z = (1 / (2 * np.pi * sx * sy)) * np.exp(
-                    -0.5 * ((X - mx) ** 2 / sx**2 + (Y - my) ** 2 / sy**2)
-                )
-                pdf_max = 1 / (2 * np.pi * sx * sy)
-                lvl_low = pdf_max * np.exp(-1)
-                lvl_high = pdf_max * np.exp(-0.5)
-                ax.contour(
-                    X, Y, Z, levels=[lvl_low, lvl_high], colors="blue", linewidths=1
-                )
+                cov = np.array([[sx**2, 0], [0, sy**2]])
+
+                # draw two confidence ellipses (e.g. 68% and 95%)
+                for conf in [0.68, 0.95]:
+                    ellipse = plot_prior_ellipse(
+                        mean=(mx, my), cov=cov, confidence=conf, zorder=3
+                    )
+                    ax.add_patch(ellipse)
+
             if key_j in flat_init and key_i in flat_init:
                 ax.scatter(
                     flat_init[key_j],
@@ -355,7 +351,7 @@ if __name__ == "__main__":
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    init_lever = np.array([-12.4659, 9.6021, -16.2993])
+    init_lever = np.array([-12.8, 9.2, -15.9])
     init_gps_grid = np.array(
         [
             [0.0, 0.0, 0.0],
@@ -383,28 +379,29 @@ if __name__ == "__main__":
     }
 
     prior_scales = {
-        "lever": np.array([0.5, 0.5, 1.0]),
+        "lever": np.array([0.3, 0.3, 0.3]),
         "gps_grid": 0.1,
-        "CDOG_aug": 5.0,
+        "CDOG_aug": 3.0,
         "esv_bias": 1.0,
         "time_bias": 0.5,
     }
 
     chain = np.load(gps_output_path("mcmc_chain_adroit_5_test_xy_lever.npz"))
+    save = False
 
     # Works for chains saved with either a single or split ESV bias term
     trace_plot(
         chain,
         initial_params=initial_params,
         downsample=1000,
-        save=True,
+        save=save,
         timestamp=timestamp,
     )
     marginal_hists(
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        save=True,
+        save=save,
         timestamp=timestamp,
     )
     corner_plot(
@@ -412,6 +409,6 @@ if __name__ == "__main__":
         initial_params=initial_params,
         prior_scales=prior_scales,
         downsample=5000,
-        save=True,
+        save=save,
         timestamp=timestamp,
     )
