@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from data import gps_output_path, gps_data_path
+from scipy.stats import norm
 import itertools
 
 
@@ -142,74 +143,100 @@ def trace_plot(chain, initial_params=None, downsample=1, save=False, timestamp=N
     plt.show()
 
 
-def marginal_hists(chain, initial_params=None, save=False, timestamp=None):
-    """Plot marginal histograms of the MCMC parameters."""
-    # Marginal Histograms
+def marginal_hists(
+    chain, initial_params=None, prior_scales=None, save=False, timestamp=None
+):
+    """Plot marginal histograms of the MCMC parameters with optional prior overlays."""
+    # Define keys and data arrays
+    keys = ["lever_x", "lever_y", "lever_z", "CDOG_aug_x", "CDOG_aug_y", "CDOG_aug_z"]
+    data = [
+        chain["lever"][:, 0],
+        chain["lever"][:, 1],
+        chain["lever"][:, 2],
+        chain["CDOG_aug"][:, 0, 0],
+        chain["CDOG_aug"][:, 0, 1],
+        chain["CDOG_aug"][:, 0, 2],
+    ]
+
+    # Flatten initial parameters for centering priors
+    flat_init = {}
+    if initial_params is not None:
+        flat_init = {
+            "lever_x": initial_params["lever"][0],
+            "lever_y": initial_params["lever"][1],
+            "lever_z": initial_params["lever"][2],
+            "CDOG_aug_x": initial_params["CDOG_aug"][0, 0],
+            "CDOG_aug_y": initial_params["CDOG_aug"][0, 1],
+            "CDOG_aug_z": initial_params["CDOG_aug"][0, 2],
+        }
+
+    # Flatten prior scales for easy lookup using direct indexing
+    flat_prior = {}
+    if prior_scales is not None:
+        flat_prior = {
+            "lever_x": prior_scales["lever"][0],
+            "lever_y": prior_scales["lever"][1],
+            "lever_z": prior_scales["lever"][2],
+            "CDOG_aug_x": prior_scales["CDOG_aug"],
+            "CDOG_aug_y": prior_scales["CDOG_aug"],
+            "CDOG_aug_z": prior_scales["CDOG_aug"],
+        }
+
     fig, axes = plt.subplots(2, 3, figsize=(12, 8))
     axes = axes.flatten()
-    axes[0].hist(chain["lever"][:, 0], bins=30)
-    axes[0].set_title("lever x")
-    axes[1].hist(chain["lever"][:, 1], bins=30)
-    axes[1].set_title("lever y")
-    axes[2].hist(chain["lever"][:, 2], bins=30)
-    axes[2].set_title("lever z")
-    axes[3].hist(chain["CDOG_aug"][:, 0, 0], bins=30)
-    axes[3].set_title("CDOG_aug x")
-    axes[3].set_xlabel("CDOG Location Augment x (m)")
-    axes[4].hist(chain["CDOG_aug"][:, 0, 1], bins=30)
-    axes[4].set_title("CDOG_aug y")
-    axes[4].set_xlabel("CDOG Location Augment y (m)")
-    axes[5].hist(chain["CDOG_aug"][:, 0, 2], bins=30)
-    axes[5].set_title("CDOG_aug z")
-    axes[5].set_xlabel("CDOG Location Augment z (m)")
 
-    if initial_params:
-        axes[0].axvline(
-            initial_params["lever"][0], color="red", linestyle="--", label="Initial x"
-        )
-        axes[1].axvline(
-            initial_params["lever"][1], color="red", linestyle="--", label="Initial y"
-        )
-        axes[2].axvline(
-            initial_params["lever"][2], color="red", linestyle="--", label="Initial z"
-        )
-        axes[3].axvline(
-            initial_params["CDOG_aug"][0, 0],
-            color="red",
-            linestyle="--",
-            label="Initial CDOG_aug x",
-        )
-        axes[4].axvline(
-            initial_params["CDOG_aug"][0, 1],
-            color="red",
-            linestyle="--",
-            label="Initial CDOG_aug y",
-        )
-        axes[5].axvline(
-            initial_params["CDOG_aug"][0, 2],
-            color="red",
-            linestyle="--",
-            label="Initial CDOG_aug z",
-        )
+    for key, arr, ax in zip(keys, data, axes):
+        # Plot normalized histogram
+        counts, bins, _ = ax.hist(arr, bins=30, density=True, color="gray", alpha=0.6)
+        ax.set_title(key.replace("_", " "))
+
+        # Overlay prior distribution if provided
+        if flat_prior:
+            scale = flat_prior[key]
+            mean = flat_init.get(key, 0)
+            xgrid = np.linspace(bins.min(), bins.max(), 200)
+            prior_pdf = norm.pdf(xgrid, loc=mean, scale=scale)
+            ax.plot(xgrid, prior_pdf, color="blue", lw=1.5, label="Prior")
+
+        # Overlay initial parameter
+        if key in flat_init:
+            ax.axvline(flat_init[key], color="red", linestyle="--", label="Initial")
+
+        if flat_prior or key in flat_init:
+            ax.legend(fontsize="small")
 
     _save_fig(fig, save=save, tag="marginalhists", timestamp=timestamp)
-
+    plt.tight_layout()
     plt.show()
 
 
-def corner_plot(chain, initial_params=None, downsample=1, save=False, timestamp=None):
-    """Plot a corner plot of the posterior samples."""
-    # Extract parameter arrays
+def corner_plot(
+    chain,
+    initial_params=None,
+    prior_scales=None,
+    downsample=1,
+    save=False,
+    timestamp=None,
+):
+    """Plot a corner plot of the posterior samples with
+    ubest-fit points on top and 2D prior contours."""
+    # Extract and sort by log-posterior ascending so best (highest) are plotted last
+    raw_logpost = chain["logpost"][::downsample]
+    order = np.argsort(raw_logpost)
+    logpost = raw_logpost[order]
+
     pars = {
-        "lx": chain["lever"][::downsample, 0],
-        "ly": chain["lever"][::downsample, 1],
-        "lz": chain["lever"][::downsample, 2],
-        "augx": chain["CDOG_aug"][::downsample, 0, 0],
-        "augy": chain["CDOG_aug"][::downsample, 0, 1],
-        "augz": chain["CDOG_aug"][::downsample, 0, 2],
+        "lx": chain["lever"][::downsample, 0][order],
+        "ly": chain["lever"][::downsample, 1][order],
+        "lz": chain["lever"][::downsample, 2][order],
+        "augx": chain["CDOG_aug"][::downsample, 0, 0][order],
+        "augy": chain["CDOG_aug"][::downsample, 0, 1][order],
+        "augz": chain["CDOG_aug"][::downsample, 0, 2][order],
     }
-    if initial_params:
-        initial_params = {
+
+    flat_init = {}
+    if initial_params is not None:
+        flat_init = {
             "lx": initial_params["lever"][0],
             "ly": initial_params["lever"][1],
             "lz": initial_params["lever"][2],
@@ -218,65 +245,107 @@ def corner_plot(chain, initial_params=None, downsample=1, save=False, timestamp=
             "augz": initial_params["CDOG_aug"][0, 2],
         }
 
-    keys = list(pars)
-    n = len(keys)
+    flat_prior = {}
+    if prior_scales is not None:
+        flat_prior = {
+            "lx": prior_scales["lever"][0],
+            "ly": prior_scales["lever"][1],
+            "lz": prior_scales["lever"][2],
+            "augx": prior_scales["CDOG_aug"],
+            "augy": prior_scales["CDOG_aug"],
+            "augz": prior_scales["CDOG_aug"],
+        }
 
-    # Set up figure and axes
+    keys = list(pars.keys())
+    n = len(keys)
     fig, axes = plt.subplots(n, n, figsize=(12, 8))
 
-    # Normalize log-posterior for color mapping
-    logpost = chain["logpost"][::downsample]
-    norm = mpl.colors.Normalize(vmin=-80, vmax=logpost.max())
+    # Cap the colorbar at 80
+    min_val = -65
+    norm_cmap = mpl.colors.Normalize(vmin=min_val, vmax=logpost.max())
     cmap = plt.get_cmap("viridis")
 
-    # Loop over panels
     for i, j in itertools.product(range(n), range(n)):
         ax = axes[i, j]
+        key_i, key_j = keys[i], keys[j]
         if i == j:
-            ax.hist(pars[keys[i]], bins=30, color="gray")
-            if initial_params:
+            arr = pars[key_i]
+            ax.hist(arr, bins=30, density=True, color="gray", alpha=0.6)
+            if flat_prior:
+                sx = flat_prior[key_i]
+                mx = flat_init.get(key_i, 0)
+                x0, x1 = ax.get_xlim()
+                xg = np.linspace(x0, x1, 200)
+                ax.plot(
+                    xg,
+                    norm.pdf(xg, loc=mx, scale=sx),
+                    color="blue",
+                    lw=1.5,
+                    label="Prior",
+                )
+            if key_i in flat_init:
                 ax.axvline(
-                    initial_params[keys[i]],
+                    flat_init[key_i], color="red", ls="--", lw=1.2, label="Initial"
+                )
+            if i == 0 and (flat_prior or key_i in flat_init):
+                ax.legend(fontsize="x-small")
+        elif j < i:
+            # scatter with best-fit on top (cap color)
+            sc = ax.scatter(
+                pars[key_j],
+                pars[key_i],
+                c=logpost,
+                cmap=cmap,
+                norm=norm_cmap,
+                s=1,
+                alpha=0.7,
+            )
+            if flat_prior:
+                # overlay 2D Gaussian prior contours in ascending level order
+                sx = flat_prior[key_j]
+                sy = flat_prior[key_i]
+                mx = flat_init.get(key_j, 0)
+                my = flat_init.get(key_i, 0)
+                x0, x1 = ax.get_xlim()
+                y0, y1 = ax.get_ylim()
+                xx = np.linspace(x0, x1, 100)
+                yy = np.linspace(y0, y1, 100)
+                X, Y = np.meshgrid(xx, yy)
+                Z = (1 / (2 * np.pi * sx * sy)) * np.exp(
+                    -0.5 * ((X - mx) ** 2 / sx**2 + (Y - my) ** 2 / sy**2)
+                )
+                pdf_max = 1 / (2 * np.pi * sx * sy)
+                lvl_low = pdf_max * np.exp(-1)
+                lvl_high = pdf_max * np.exp(-0.5)
+                ax.contour(
+                    X, Y, Z, levels=[lvl_low, lvl_high], colors="blue", linewidths=1
+                )
+            if key_j in flat_init and key_i in flat_init:
+                ax.scatter(
+                    flat_init[key_j],
+                    flat_init[key_i],
                     color="red",
-                    linestyle="--",
+                    marker="x",
+                    s=40,
                     label="Initial",
                 )
         else:
-            sc = ax.scatter(
-                pars[keys[j]],
-                pars[keys[i]],
-                c=logpost,
-                cmap=cmap,
-                norm=norm,
-                s=1,
-                alpha=0.8,
-            )
-            if initial_params:
-                ax.scatter(
-                    initial_params[keys[j]],
-                    initial_params[keys[i]],
-                    color="red",
-                    marker="x",
-                    s=50,
-                    label="Initial",
-                )
-        # Labeling
-        if i == n - 1:
-            ax.set_xlabel(keys[j])
-        if j == 0:
-            ax.set_ylabel(keys[i])
-        # Turn off upper triangle if you only want the lower
-        if j > i:
             ax.set_visible(False)
+        if i == n - 1:
+            ax.set_xlabel(key_j)
+        if j == 0:
+            ax.set_ylabel(key_i)
 
-    # Adjust layout and add colorbar
-    plt.tight_layout()
-    # place colorbar on the right spanning all rows
-    cbar = fig.colorbar(sc, ax=axes[:, :], location="right", shrink=0.9)
-    cbar.set_label("log posterior")
+    fig.colorbar(
+        sc,
+        ax=axes[:, :],
+        label="log posterior",
+        location="right",
+        shrink=0.9,
+        extend="max",
+    )
 
     _save_fig(fig, save=save, tag="cornerplot", timestamp=timestamp)
-
     plt.show()
 
 
@@ -313,23 +382,36 @@ if __name__ == "__main__":
         "time_bias": init_tbias,
     }
 
-    chain = np.load(
-        gps_output_path("individual_splits_esv_20250717_115727/split_5.npz")
-    )
+    prior_scales = {
+        "lever": np.array([0.5, 0.5, 1.0]),
+        "gps_grid": 0.1,
+        "CDOG_aug": 5.0,
+        "esv_bias": 1.0,
+        "time_bias": 0.5,
+    }
+
+    chain = np.load(gps_output_path("mcmc_chain_adroit_5_test_xy_lever.npz"))
 
     # Works for chains saved with either a single or split ESV bias term
     trace_plot(
         chain,
         initial_params=initial_params,
-        downsample=1,
+        downsample=1000,
         save=True,
         timestamp=timestamp,
     )
-    marginal_hists(chain, initial_params=initial_params, save=True, timestamp=timestamp)
+    marginal_hists(
+        chain,
+        initial_params=initial_params,
+        prior_scales=prior_scales,
+        save=True,
+        timestamp=timestamp,
+    )
     corner_plot(
         chain,
         initial_params=initial_params,
-        downsample=50,
+        prior_scales=prior_scales,
+        downsample=5000,
         save=True,
         timestamp=timestamp,
     )

@@ -146,6 +146,11 @@ def mcmc_sampler(
     proposal_CDOG_aug=0.1,
     proposal_esv_bias=0.01,
     proposal_time_bias=0.000005,
+    prior_lever=None,
+    prior_gps_grid=0.1,
+    prior_CDOG_aug=25.0,
+    prior_esv_bias=1.0,
+    prior_time_bias=0.5,
 ):
     """Run a simple Metropolis-Hastings sampler over several parameters.
 
@@ -181,6 +186,9 @@ def mcmc_sampler(
     if proposal_lever is None:
         proposal_lever = np.array([0.01, 0.01, 0.05])
 
+    if prior_lever is None:
+        prior_lever = np.array([0.5, 0.5, 1.0])
+
     # default proposal stds
     proposal_scales = {
         "lever": proposal_lever,
@@ -192,11 +200,11 @@ def mcmc_sampler(
 
     # default prior stds
     prior_scales = {
-        "lever": np.array([0.5, 0.5, 1.0]),
-        "gps_grid": 0.1,
-        "CDOG_aug": 25.0,
-        "esv_bias": 1.0,
-        "time_bias": 0.5,
+        "lever": prior_lever,
+        "gps_grid": prior_gps_grid,
+        "CDOG_aug": prior_CDOG_aug,
+        "esv_bias": prior_esv_bias,
+        "time_bias": prior_time_bias,
     }
 
     # reshape initial_esv_bias into a (3, num_splits) array for Numba compatibility

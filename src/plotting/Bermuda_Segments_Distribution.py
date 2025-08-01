@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Ellipse
 from matplotlib.colors import LinearSegmentedColormap
-from scipy.stats import chi2, gaussian_kde
+from scipy.stats import gaussian_kde
+from plotting.Error_Ellipse import compute_error_ellipse
 
 from geometry.rigid_body import findRotationAndDisplacement
 from data import gps_output_path, gps_data_path
@@ -93,7 +93,7 @@ def plot_2d_projection_topdown(
 
     for (x1, y1), (x2, y2) in segments:
         # Draw the line segment
-        plt.plot([x1, x2], [y1, y2], color="k", linewidth=2)
+        plt.plot([x1, x2], [y1, y2], color="k", linewidth=2, zorder=2)
 
     # Build rotation matrix about Z
     theta = np.deg2rad(rotation_deg)
@@ -134,6 +134,7 @@ def plot_2d_projection_topdown(
             levels=50,
             cmap=white_blue_cmap,
             alpha=1,
+            zorder=1,
         )
 
     # 2D KDE of lever arms
@@ -154,39 +155,14 @@ def plot_2d_projection_topdown(
         levels=50,
         cmap=white_red_cmap,
         alpha=1,
+        zorder=1,
     )
 
     # 68% error ellipse for GPS distributions
     for i in range(4):
-        gps_i = GPS_Vessel_rot[:, i, :]  # (n_samples, 3)
-        gps_xy = gps_i[:, :2] + GPS1[:2]  # (n_samples, 2)
-
-        cov = np.cov(gps_xy, rowvar=False)
-        mean = gps_xy.mean(axis=0)
-
-        vals, vecs = np.linalg.eigh(cov)
-        order = vals.argsort()[::-1]
-        vals, vecs = vals[order], vecs[:, order]
-        angle = np.degrees(np.arctan2(vecs[1, 0], vecs[0, 0]))
-        width, height = 2 * np.sqrt(vals * chi2.ppf(0.68, 2))
-
-        ellipse = Ellipse(
-            xy=mean,
-            width=width,
-            height=height,
-            angle=angle,
-            edgecolor="black",
-            fc="none",
-            lw=1,
-        )
+        gps_i = GPS_Vessel_rot[:, i, :2] + GPS1[:2]  # (n_samples, 2)
+        ellipse, pct = compute_error_ellipse(gps_i, confidence=0.68, zorder=3)
         ax.add_patch(ellipse)
-
-        # Mahalanobis distance for coverage
-        inv_cov = np.linalg.inv(cov)
-        diffs = gps_xy - mean
-        d2 = np.einsum("nj,jk,nk->n", diffs, inv_cov, diffs)
-        pct = np.mean(d2 <= chi2.ppf(0.68, 2)) * 100
-
         ax.text(
             6,
             20 - 2 * i,
@@ -199,28 +175,8 @@ def plot_2d_projection_topdown(
 
     # 68% error ellipse for lever-arm cloud
     lever_xy = np.column_stack((levers_rot[:, 0] + GPS1[0], levers_rot[:, 1] + GPS1[1]))
-    cov_l = np.cov(lever_xy, rowvar=False)
-    mean_l = lever_xy.mean(axis=0)
-    vals_l, vecs_l = np.linalg.eigh(cov_l)
-    order = vals_l.argsort()[::-1]
-    vals_l, vecs_l = vals_l[order], vecs_l[:, order]
-    angle_l = np.degrees(np.arctan2(vecs_l[1, 0], vecs_l[0, 0]))
-    width_l, height_l = 2 * np.sqrt(vals_l * chi2.ppf(0.95, 2))
-    ellipse_l = Ellipse(
-        xy=mean_l,
-        width=width_l,
-        height=height_l,
-        angle=angle_l,
-        edgecolor="black",
-        fc="none",
-        lw=1,
-    )
-    ax.add_patch(ellipse_l)
-    inv_cov_l = np.linalg.inv(cov_l)
-    diffs = lever_xy - mean_l
-    d2 = np.einsum("nj,jk,nk->n", diffs, inv_cov_l, diffs)
-    pct = np.mean(d2 <= chi2.ppf(0.68, 2)) * 100
-    # annotate percentage
+    ellipse, pct = compute_error_ellipse(lever_xy, confidence=0.68, zorder=3)
+    ax.add_patch(ellipse)
     ax.text(
         9.13,
         12,
@@ -282,7 +238,7 @@ def plot_2d_projection_side(
 
     for (x1, y1), (x2, y2) in segments:
         # Draw the line segment
-        plt.plot([x1, x2], [y1, y2], color="k", linewidth=2)
+        plt.plot([x1, x2], [y1, y2], color="k", linewidth=2, zorder=2)
 
     # Build rotation matrix about Z
     theta = np.deg2rad(rotation_deg)
@@ -323,6 +279,7 @@ def plot_2d_projection_side(
             levels=50,
             cmap=white_blue_cmap,
             alpha=1,
+            zorder=1,
         )
 
     # 2D KDE of lever arms
@@ -343,39 +300,15 @@ def plot_2d_projection_side(
         levels=50,
         cmap=white_red_cmap,
         alpha=1,
+        zorder=1,
     )
 
     # 68% error ellipse for GPS distributions
     for i in range(4):
         gps_i = GPS_Vessel_rot[:, i, :]  # (n_samples, 3)
         gps_xz = gps_i[:, [0, 2]] + GPS1[[0, 2]]  # (n_samples, 2)
-
-        cov = np.cov(gps_xz, rowvar=False)
-        mean = gps_xz.mean(axis=0)
-
-        vals, vecs = np.linalg.eigh(cov)
-        order = vals.argsort()[::-1]
-        vals, vecs = vals[order], vecs[:, order]
-        angle = np.degrees(np.arctan2(vecs[1, 0], vecs[0, 0]))
-        width, height = 2 * np.sqrt(vals * chi2.ppf(0.68, 2))
-
-        ellipse = Ellipse(
-            xy=mean,
-            width=width,
-            height=height,
-            angle=angle,
-            edgecolor="black",
-            fc="none",
-            lw=1,
-        )
+        ellipse, pct = compute_error_ellipse(gps_xz, confidence=0.68, zorder=3)
         ax.add_patch(ellipse)
-
-        # Mahalanobis distance for coverage
-        inv_cov = np.linalg.inv(cov)
-        diffs = gps_xz - mean
-        d2 = np.einsum("nj,jk,nk->n", diffs, inv_cov, diffs)
-        pct = np.mean(d2 <= chi2.ppf(0.68, 2)) * 100
-
         ax.text(
             6,
             30 - 2 * i,
@@ -388,27 +321,8 @@ def plot_2d_projection_side(
 
     # 68% error ellipse for lever-arm cloud
     levers_xz = levers_rot[:, [0, 2]] + GPS1[[0, 2]]
-    cov_l = np.cov(levers_xz, rowvar=False)
-    mean_l = levers_xz.mean(axis=0)
-    vals_l, vecs_l = np.linalg.eigh(cov_l)
-    order = vals_l.argsort()[::-1]
-    vals_l, vecs_l = vals_l[order], vecs_l[:, order]
-    angle_l = np.degrees(np.arctan2(vecs_l[1, 0], vecs_l[0, 0]))
-    width_l, height_l = 2 * np.sqrt(vals_l * chi2.ppf(0.68, 2))
-    ellipse_l = Ellipse(
-        xy=mean_l,
-        width=width_l,
-        height=height_l,
-        angle=angle_l,
-        edgecolor="black",
-        fc="none",
-        lw=1,
-    )
-    ax.add_patch(ellipse_l)
-    inv_cov_l = np.linalg.inv(cov_l)
-    diffs = levers_xz - mean_l
-    d2 = np.einsum("nj,jk,nk->n", diffs, inv_cov_l, diffs)
-    pct = np.mean(d2 <= chi2.ppf(0.68, 2)) * 100
+    ellipse, pct = compute_error_ellipse(levers_xz, confidence=0.68, zorder=3)
+    ax.add_patch(ellipse)
     # annotate percentage
     ax.text(
         9.13,
@@ -511,14 +425,14 @@ if __name__ == "__main__":
         view="top",
         flip_y=True,
     )
-    # segments = np.concatenate([segments_bridge, segments_ship, segments_moonpool])
-    # fig, ax = plot_2d_projection_topdown(segments, levers)
-    # plt.show()
-    #
-    # fig, ax = plot_2d_projection_topdown(segments, levers)
-    # ax.set_xlim(22, 41)
-    # ax.set_ylim(-5.5, 5.5)
-    # plt.show()
+    segments = np.concatenate([segments_bridge, segments_ship, segments_moonpool])
+    fig, ax = plot_2d_projection_topdown(segments, levers)
+    plt.show()
+
+    fig, ax = plot_2d_projection_topdown(segments, levers)
+    ax.set_xlim(22, 41)
+    ax.set_ylim(-5.5, 5.5)
+    plt.show()
 
     """Side View"""
     side_view_segments = [
@@ -599,18 +513,6 @@ if __name__ == "__main__":
 
 
 """
-Verify that the error ellipse works for normally distributed variables
-
-Generate pairs of poitns with known covariance
-and count the number within the ellipse
-
-Make the ellipse calculation modular for DRY
-programming and to make it easier to plot multiple ellipses
-
-chagne order so data are on top
-
-Put the prior onto the plots to show the MCMC comparison
-
 Run MCMC with tight prior around the area we are sure
 about the moonpool and transducer location
     +/- a foot or so from the moonpool location and keel of ship
@@ -657,4 +559,10 @@ Key question: where in 3D space are the DOGS compared to our prior
 Do you by segmenting it improve the bias of the residual travel
 time measurements, but do we also improve the variance
     I.E. do we take out swings in the residuals in addition to demeaning them.
+
+Transdimensional MCMC for the ESV bias (in each segment)
+    Updates are dependent on depth (2 or 3 diff updates)
+    Piecewise updates
+
+Azimuthal view for the ESV bias segments...
 """

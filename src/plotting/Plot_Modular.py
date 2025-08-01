@@ -509,6 +509,6 @@ if __name__ == "__main__":
         np.array([GPS_lon, GPS_lat, GPS_height]).T,
         GPS_data,
         np.array([CDOGs_lon, CDOGs_lat, CDOGs_height]).T,
-        5,
+        10,
         save=True,
     )
