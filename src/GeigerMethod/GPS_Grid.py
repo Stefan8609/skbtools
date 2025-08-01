@@ -93,7 +93,9 @@ def GPS_Lever_arms(GPS_Coordinates):
     plt.legend()
     plt.axis("equal")
     plt.show()
-    np.savez(gps_data_path("GPS_Data/GPS_grid_all.npz"), GPS_grid=all_arms)
+    save_path = gps_data_path("GPS_Data/GPS_grid_all.npz")
+    if save_path.parent.exists():
+        np.savez(save_path, GPS_grid=all_arms)
 
 
 if __name__ == "__main__":
