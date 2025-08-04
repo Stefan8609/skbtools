@@ -516,9 +516,6 @@ if __name__ == "__main__":
 Ratio between the posterior and the prior (resolution)
 How much information we can add to our prior belief
 
-Ask Olivia for a copy of paper
-   Figure 9
-
 Render the likelihood
     Here are the points that let me predict the time
     measurement to within x times the prior times time uncertainty
