@@ -392,7 +392,8 @@ if __name__ == "__main__":
     offsets = np.array([1866.0, 3175.0, 1939.0])
 
     # initial parameters
-    init_lever = np.array([-12.8, 9.2, -15.9])
+    init_lever = np.array([-13.12, 9.72, -15.9])
+
     init_gps_grid = np.array(
         [
             [0.0, 0.0, 0.0],
@@ -423,7 +424,7 @@ if __name__ == "__main__":
     proposal_time_bias = 0.000005
 
     # prior scales
-    prior_lever = np.array([0.3, 0.3, 0.3])
+    prior_lever = np.array([0.5, 0.5, 0.5])
     prior_gps_grid = 0.1
     prior_CDOG_aug = 3.0
     prior_esv_bias = 1.0

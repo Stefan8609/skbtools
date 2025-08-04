@@ -351,9 +351,44 @@ if __name__ == "__main__":
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    chain = np.load(gps_output_path("mcmc_chain_adroit_5_test_xy_lever.npz"))
-    prior_scales = chain["prior"]
-    initial_params = chain["initial"]
+    init_lever = np.array([-13.12, 9.72, -15.9])
+    init_gps_grid = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [-2.393414, -4.223503, 0.029415],
+            [-12.095685, -0.945685, 0.004397],
+            [-8.686741, 5.169188, -0.024993],
+        ]
+    )
+    init_aug = np.array(
+        [
+            [-397.63809, 371.47355, 773.26347],
+            [825.31541, -110.93683, -734.15039],
+            [236.27742, -1307.44426, -2189.59746],
+        ]
+    )
+    init_ebias = np.array([-0.4775, -0.3199, 0.1122])
+    init_tbias = np.array([0.01518602, 0.015779, 0.018898])
+
+    initial_params = {
+        "lever": init_lever,
+        "gps_grid": init_gps_grid,
+        "CDOG_aug": init_aug,
+        "esv_bias": init_ebias,
+        "time_bias": init_tbias,
+    }
+
+    prior_scales = {
+        "lever": np.array([0.3, 0.3, 0.3]),
+        "gps_grid": 0.1,
+        "CDOG_aug": 3.0,
+        "esv_bias": 1.0,
+        "time_bias": 0.5,
+    }
+
+    chain = np.load(gps_output_path("mcmc_chain_moonpool_prior.npz"))
+    # prior_scales = chain["prior"]
+    # initial_params = chain["initial"]
     save = False
 
     # Works for chains saved with either a single or split ESV bias term

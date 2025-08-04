@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.stats import gaussian_kde
 from plotting.Ellipses.Error_Ellipse import compute_error_ellipse
+from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
 
 from geometry.rigid_body import findRotationAndDisplacement
 from data import gps_output_path, gps_data_path
@@ -54,7 +55,12 @@ def px_to_world_segments(
 
 
 def plot_2d_projection_topdown(
-    segments, lever_arms, rotation_deg=29.5, gps1_offset=(39.5, 2.2, 15.0)
+    segments,
+    lever_arms,
+    lever_prior,
+    lever_init,
+    rotation_deg=29.5,
+    gps1_offset=(39.5, 2.2, 15.0),
 ):
     """
     Plot 2D top-down projection of lever‐arms and GPS distributions against an
@@ -106,6 +112,7 @@ def plot_2d_projection_topdown(
     )
 
     # Rotate & translate lever arms
+    lever_init_rot = lever_init @ Rz.T
     levers_rot = np.asarray(lever_arms) @ Rz.T
     lever_xy = levers_rot[:, :2] + GPS1[:2]
 
@@ -176,7 +183,14 @@ def plot_2d_projection_topdown(
     # 68% error ellipse for lever-arm cloud
     lever_xy = np.column_stack((levers_rot[:, 0] + GPS1[0], levers_rot[:, 1] + GPS1[1]))
     ellipse, pct = compute_error_ellipse(lever_xy, confidence=0.68, zorder=3)
+    prior_ellipse = plot_prior_ellipse(
+        mean=lever_init_rot[:2] + GPS1[:2],
+        cov=np.diag(lever_prior[:2] ** 2),
+        confidence=0.68,
+        zorder=3,
+    )
     ax.add_patch(ellipse)
+    ax.add_patch(prior_ellipse)
     ax.text(
         9.13,
         12,
@@ -199,7 +213,12 @@ def plot_2d_projection_topdown(
 
 
 def plot_2d_projection_side(
-    segments, lever_arms, rotation_deg=29.5, gps1_offset=(44.55, 2.2, 15.4)
+    segments,
+    lever_arms,
+    lever_prior,
+    lever_init,
+    rotation_deg=29.5,
+    gps1_offset=(44.55, 2.2, 15.4),
 ):
     """
     Plot 2D top-down projection of lever‐arms and GPS distributions against an
@@ -251,6 +270,7 @@ def plot_2d_projection_side(
     )
 
     # Rotate & translate lever arms
+    lever_init_rot = lever_init @ Rz.T
     levers_rot = np.asarray(lever_arms) @ Rz.T
     levers_xz = levers_rot[:, [0, 2]] + GPS1[[0, 2]]
 
@@ -322,7 +342,14 @@ def plot_2d_projection_side(
     # 68% error ellipse for lever-arm cloud
     levers_xz = levers_rot[:, [0, 2]] + GPS1[[0, 2]]
     ellipse, pct = compute_error_ellipse(levers_xz, confidence=0.68, zorder=3)
+    prior_ellipse = plot_prior_ellipse(
+        mean=lever_init_rot[[0, 2]] + GPS1[[0, 2]],
+        cov=np.diag(lever_prior[[0, 2]] ** 2),
+        confidence=0.68,
+        zorder=3,
+    )
     ax.add_patch(ellipse)
+    ax.add_patch(prior_ellipse)
     # annotate percentage
     ax.text(
         9.13,
@@ -395,8 +422,15 @@ if __name__ == "__main__":
 
     top_down_scale = 0.054715
 
-    chain = np.load(gps_output_path("mcmc_chain_adroit_5_test_xy_lever.npz"))
+    chain = np.load(gps_output_path("mcmc_chain_moonpool_prior.npz"))
     levers = chain["lever"][::5000]
+    lever_prior = None
+    try:
+        lever_init = chain["initial"]["lever"]
+        lever_prior = chain["prior"]["lever"]
+    except KeyError:
+        lever_init = np.array([-12.8, 9.2, -15.9])
+        lever_prior = np.array([0.3, 0.3, 0.3])
 
     segments_bridge = px_to_world_segments(
         bridge_segments,
@@ -426,10 +460,10 @@ if __name__ == "__main__":
         flip_y=True,
     )
     segments = np.concatenate([segments_bridge, segments_ship, segments_moonpool])
-    fig, ax = plot_2d_projection_topdown(segments, levers)
+    fig, ax = plot_2d_projection_topdown(segments, levers, lever_init, lever_prior)
     plt.show()
 
-    fig, ax = plot_2d_projection_topdown(segments, levers)
+    fig, ax = plot_2d_projection_topdown(segments, levers, lever_init, lever_prior)
     ax.set_xlim(22, 41)
     ax.set_ylim(-5.5, 5.5)
     plt.show()
@@ -508,11 +542,13 @@ if __name__ == "__main__":
     )
     segments = np.concatenate([side_view_segments, railing_segments, moonpool_segments])
 
-    fig, ax = plot_2d_projection_side(segments, levers)
+    fig, ax = plot_2d_projection_side(segments, levers, lever_init, lever_prior)
     plt.show()
 
 
 """
+FIX PRIOR ELLIPSE IN DISTRIBUTION PLOT
+
 Ratio between the posterior and the prior (resolution)
 How much information we can add to our prior belief
 
