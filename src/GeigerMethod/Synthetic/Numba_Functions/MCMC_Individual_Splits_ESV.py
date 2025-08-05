@@ -63,6 +63,7 @@ def individual_splits_esv(
             logpost_chain,
         ) = mcmc_sampler(
             n_iters=n_iters,
+            burn_in=2500,
             initial_lever_base=init_lever,
             initial_gps_grid=init_gps_grid,
             initial_CDOG_augments=init_aug,

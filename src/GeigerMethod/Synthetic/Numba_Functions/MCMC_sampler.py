@@ -128,6 +128,7 @@ def compute_log_prior(
 @njit(cache=True, fastmath=True)
 def mcmc_sampler(
     n_iters,
+    burn_in,
     initial_lever_base,
     initial_gps_grid,
     initial_CDOG_augments,
@@ -353,6 +354,16 @@ def mcmc_sampler(
         if it % 100 == 0:
             print("Iter", it, ": logpost =", float(int(lpo_curr * 100) / 100.0))
 
+    if burn_in <= n_iters:
+        # discard burn-in samples
+        lever_chain = lever_chain[burn_in:]
+        gps_chain = gps_chain[burn_in:]
+        cdog_aug_chain = cdog_aug_chain[burn_in:]
+        ebias_chain = ebias_chain[burn_in:]
+        tbias_chain = tbias_chain[burn_in:]
+        loglike_chain = loglike_chain[burn_in:]
+        logpost_chain = logpost_chain[burn_in:]
+
     return (
         lever_chain,
         gps_chain,
@@ -440,6 +451,7 @@ if __name__ == "__main__":
         logpost_chain,
     ) = mcmc_sampler(
         n_iters=1000,
+        burn_in=500,
         initial_lever_base=init_lever,
         initial_gps_grid=init_gps_grid,
         initial_CDOG_augments=init_aug,
@@ -494,21 +506,3 @@ if __name__ == "__main__":
         "prior": prior_dict,
     }
     np.savez(gps_output_path("mcmc_chain_test.npz"), **chain)
-
-"""
-    Make a plot of the difference between each consecutive CDOG arrival
-     time to see anything weird
-
-    Make residual plot where residuals are colored by angle from
-    transducer to surface vessel in 360
-
-"Examine the residuals: systematic trends in
-residual vs. time or vs. ship’s position may indicate
-unmodeled sound-speed changes or a bias. For example,
-if residuals are +50 µs on one side of the site and
--50 µs on the opposite side, that suggestsa lateral
-sound-speed gradient or a misestimated depth. Also
-check if residuals correlate withtransmit angle (grazing angle)
- – which could indicate an SSP scale error (making deeper-angle rays
-consistently fast or slow)."
-"""

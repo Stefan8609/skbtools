@@ -61,6 +61,7 @@ def plot_2d_projection_topdown(
     lever_init,
     rotation_deg=29.5,
     gps1_offset=(39.5, 2.2, 15.0),
+    downsample=1,
 ):
     """
     Plot 2D top-down projection of lever‐arms and GPS distributions against an
@@ -124,7 +125,7 @@ def plot_2d_projection_topdown(
     for i in range(4):
         # Compute KDE for this GPS unit
         gps_xy = GPS_Vessel_rot[:, i, :2] + GPS1[:2]  # Apply GPS1 shift
-
+        gps_xy = gps_xy[::downsample]  # Downsample for performance
         # KDE
         kde = gaussian_kde(gps_xy.T)
         xgrid, ygrid = np.meshgrid(
@@ -146,6 +147,7 @@ def plot_2d_projection_topdown(
 
     # 2D KDE of lever arms
     white_red_cmap = LinearSegmentedColormap.from_list("white_red", ["white", "red"])
+    lever_xy = lever_xy[::downsample]
     kde = gaussian_kde(lever_xy.T)
     xgrid, ygrid = np.meshgrid(
         np.linspace(lever_xy[:, 0].min(), lever_xy[:, 0].max(), 200),
@@ -219,6 +221,7 @@ def plot_2d_projection_side(
     lever_init,
     rotation_deg=29.5,
     gps1_offset=(44.55, 2.2, 15.4),
+    downsample=1,
 ):
     """
     Plot 2D top-down projection of lever‐arms and GPS distributions against an
@@ -282,6 +285,7 @@ def plot_2d_projection_side(
     for i in range(4):
         # Compute KDE for this GPS unit
         gps_xz = GPS_Vessel_rot[:, i, [0, 2]] + GPS1[[0, 2]]
+        gps_xz = gps_xz[::downsample]  # Downsample for performance
 
         # KDE
         kde = gaussian_kde(gps_xz.T)
@@ -341,6 +345,8 @@ def plot_2d_projection_side(
 
     # 68% error ellipse for lever-arm cloud
     levers_xz = levers_rot[:, [0, 2]] + GPS1[[0, 2]]
+    levers_xz = levers_xz[::downsample]
+
     ellipse, pct = compute_error_ellipse(levers_xz, confidence=0.68, zorder=3)
     prior_ellipse = plot_prior_ellipse(
         mean=lever_init_rot[[0, 2]] + GPS1[[0, 2]],
@@ -422,14 +428,16 @@ if __name__ == "__main__":
 
     top_down_scale = 0.054715
 
-    chain = np.load(gps_output_path("mcmc_chain_moonpool_prior.npz"))
+    downsample = 50
+    chain = np.load(gps_output_path("mcmc_chain_moonpool_2.npz"))
     levers = chain["lever"][::5000]
     lever_prior = None
     try:
         lever_init = chain["initial"]["lever"]
         lever_prior = chain["prior"]["lever"]
-    except KeyError:
-        lever_init = np.array([-12.8, 9.2, -15.9])
+    except Exception:
+        print("Chain has no initial/prior info, using defaults")
+        lever_init = np.array([-13.12, 9.7, -15.9])
         lever_prior = np.array([0.3, 0.3, 0.3])
 
     segments_bridge = px_to_world_segments(
@@ -460,10 +468,14 @@ if __name__ == "__main__":
         flip_y=True,
     )
     segments = np.concatenate([segments_bridge, segments_ship, segments_moonpool])
-    fig, ax = plot_2d_projection_topdown(segments, levers, lever_init, lever_prior)
+    fig, ax = plot_2d_projection_topdown(
+        segments, levers, lever_prior, lever_init, downsample=downsample
+    )
     plt.show()
 
-    fig, ax = plot_2d_projection_topdown(segments, levers, lever_init, lever_prior)
+    fig, ax = plot_2d_projection_topdown(
+        segments, levers, lever_prior, lever_init, downsample=downsample
+    )
     ax.set_xlim(22, 41)
     ax.set_ylim(-5.5, 5.5)
     plt.show()
@@ -542,13 +554,13 @@ if __name__ == "__main__":
     )
     segments = np.concatenate([side_view_segments, railing_segments, moonpool_segments])
 
-    fig, ax = plot_2d_projection_side(segments, levers, lever_init, lever_prior)
+    fig, ax = plot_2d_projection_side(
+        segments, levers, lever_prior, lever_init, downsample=downsample
+    )
     plt.show()
 
 
 """
-FIX PRIOR ELLIPSE IN DISTRIBUTION PLOT
-
 Ratio between the posterior and the prior (resolution)
 How much information we can add to our prior belief
 
