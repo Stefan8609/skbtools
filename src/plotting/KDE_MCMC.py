@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
 from data import gps_output_path
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
+from plotting.MCMC_plots import get_init_params_and_prior
 
 
 def plot_kde_mcmc(
@@ -88,19 +89,9 @@ if __name__ == "__main__":
     DOG_num = 0
     sample = chain["CDOG_aug"][::25, DOG_num]
 
-    try:
-        init_aug = chain["init_CDOG_aug"]
-        prior_aug = chain["prior_CDOG_aug"]
-    except KeyError:
-        print("Using default initial and prior values for CDOG_aug")
-        init_aug = np.array(
-            [
-                [-397.63809, 371.47355, 773.26347],
-                [825.31541, -110.93683, -734.15039],
-                [236.27742, -1307.44426, -2189.59746],
-            ]
-        )
-        prior_aug = 0.5
+    initial_params, prior_scales = get_init_params_and_prior(chain)
+    init_aug = initial_params["CDOG_aug"]
+    prior_aug = prior_scales["CDOG_aug"]
 
     plot_kde_mcmc(
         sample,

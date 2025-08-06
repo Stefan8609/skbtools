@@ -8,7 +8,7 @@ from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
 import itertools
 
 
-def _save_fig(fig, save, tag, timestamp, ext="pdf"):
+def _save_fig(fig, save, tag, timestamp=None, ext="pdf"):
     """Helper to save `fig` under Figs/MCMC/<timestamp>/ with timestamped filename."""
     if not save:
         return
@@ -24,6 +24,82 @@ def _save_fig(fig, save, tag, timestamp, ext="pdf"):
     # 3) save into that directory
     fullpath = os.path.join(dirpath, fname)
     fig.savefig(fullpath, format=ext, bbox_inches="tight")
+
+
+def get_init_params_and_prior(chain):
+    """
+    Extract prior and initial parameters from the MCMC chain.
+
+    Parameters
+    ----------
+    chain : dict
+        Dictionary containing MCMC chain data.
+
+    Returns
+    -------
+    tuple
+        Initial parameters and prior scales.
+    """
+    try:
+        init_lever = chain["init_lever"]
+        init_gps_grid = chain["init_gps_grid"]
+        init_aug = chain["init_CDOG_aug"]
+        init_ebias = chain["init_esv_bias"]
+        init_tbias = chain["init_time_bias"]
+
+        prior_lever = chain["prior_lever"]
+        prior_gps_grid = chain["prior_gps_grid"]
+        prior_aug = chain["prior_CDOG_aug"]
+        prior_esv_bias = chain["prior_esv_bias"]
+        prior_time_bias = chain["prior_time_bias"]
+
+    except KeyError:
+        print(
+            "Using default initial values for lever, GPS grid, "
+            "CDOG_aug, ESV bias, and time bias"
+        )
+        init_lever = np.array([-13.12, 9.72, -15.9])
+        init_gps_grid = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [-2.393414, -4.223503, 0.029415],
+                [-12.095685, -0.945685, 0.004397],
+                [-8.686741, 5.169188, -0.024993],
+            ]
+        )
+        init_aug = np.array(
+            [
+                [-397.63809, 371.47355, 773.26347],
+                [825.31541, -110.93683, -734.15039],
+                [236.27742, -1307.44426, -2189.59746],
+            ]
+        )
+        init_ebias = np.array([-0.4775, -0.3199, 0.1122])
+        init_tbias = np.array([0.01518602, 0.015779, 0.018898])
+
+        prior_lever = np.array([0.3, 0.3, 0.3])
+        prior_gps_grid = 0.1
+        prior_aug = 0.5
+        prior_esv_bias = 1.0
+        prior_time_bias = 0.5
+
+    initial_params = {
+        "lever": init_lever,
+        "gps_grid": init_gps_grid,
+        "CDOG_aug": init_aug,
+        "esv_bias": init_ebias,
+        "time_bias": init_tbias,
+    }
+
+    prior_scales = {
+        "lever": prior_lever,
+        "gps_grid": prior_gps_grid,
+        "CDOG_aug": prior_aug,
+        "esv_bias": prior_esv_bias,
+        "time_bias": prior_time_bias,
+    }
+
+    return initial_params, prior_scales
 
 
 def trace_plot(chain, initial_params=None, downsample=1, save=False, timestamp=None):
@@ -336,10 +412,11 @@ def corner_plot(
         if j == 0:
             ax.set_ylabel(key_i)
 
+    label = "log likelihood" if loglike else "log posterior"
     fig.colorbar(
         sc,
         ax=axes[:, :],
-        label="log posterior",
+        label=label,
         location="right",
         shrink=0.9,
         extend="max",
@@ -351,74 +428,19 @@ def corner_plot(
 
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
-    from datetime import datetime
-
     file_name = "mcmc_chain_moonpool_small_aug.npz"
+    loglike = True
+    save = True
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S" + "_loglike_" + file_name)
+    if loglike:
+        timestamp = "loglike_" + file_name
+    else:
+        timestamp = "logpost_" + file_name
 
     chain = np.load(gps_output_path(file_name))
 
-    try:
-        init_lever = chain["init_lever"]
-        init_gps_grid = chain["init_gps_grid"]
-        init_aug = chain["init_CDOG_aug"]
-        init_ebias = chain["init_esv_bias"]
-        init_tbias = chain["init_time_bias"]
+    initial_params, prior_scales = get_init_params_and_prior(chain)
 
-        prior_lever = chain["prior_lever"]
-        prior_gps_grid = chain["prior_gps_grid"]
-        prior_aug = chain["prior_CDOG_aug"]
-        prior_esv_bias = chain["prior_esv_bias"]
-        prior_time_bias = chain["prior_time_bias"]
-
-    except KeyError:
-        print(
-            "Using default initial values for lever, GPS grid, "
-            "CDOG_aug, ESV bias, and time bias"
-        )
-        init_lever = np.array([-13.12, 9.72, -15.9])
-        init_gps_grid = np.array(
-            [
-                [0.0, 0.0, 0.0],
-                [-2.393414, -4.223503, 0.029415],
-                [-12.095685, -0.945685, 0.004397],
-                [-8.686741, 5.169188, -0.024993],
-            ]
-        )
-        init_aug = np.array(
-            [
-                [-397.63809, 371.47355, 773.26347],
-                [825.31541, -110.93683, -734.15039],
-                [236.27742, -1307.44426, -2189.59746],
-            ]
-        )
-        init_ebias = np.array([-0.4775, -0.3199, 0.1122])
-        init_tbias = np.array([0.01518602, 0.015779, 0.018898])
-
-        prior_lever = np.array([0.3, 0.3, 0.3])
-        prior_gps_grid = 0.1
-        prior_aug = 0.5
-        prior_esv_bias = 1.0
-        prior_time_bias = 0.5
-
-    initial_params = {
-        "lever": init_lever,
-        "gps_grid": init_gps_grid,
-        "CDOG_aug": init_aug,
-        "esv_bias": init_ebias,
-        "time_bias": init_tbias,
-    }
-
-    prior_scales = {
-        "lever": prior_lever,
-        "gps_grid": prior_gps_grid,
-        "CDOG_aug": prior_aug,
-        "esv_bias": prior_esv_bias,
-        "time_bias": prior_time_bias,
-    }
-
-    save = True
     trace_plot(
         chain,
         initial_params=initial_params,
@@ -440,5 +462,5 @@ if __name__ == "__main__":
         downsample=50,
         save=save,
         timestamp=timestamp,
-        loglike=True,
+        loglike=loglike,
     )

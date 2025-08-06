@@ -564,16 +564,10 @@ if __name__ == "__main__":
 Ratio between the posterior and the prior (resolution)
 How much information we can add to our prior belief
 
-Render the likelihood
-    Here are the points that let me predict the time
-    measurement to within x times the prior times time uncertainty
-
 What are we able to predict of this data at the end of the day?
 Absolute travel time difference (ratio of this to time uncertainty)
     RMSE compared to our known time uncertainty surface plot
     Prior the CDOGs
-
-Plot all of the samples that are within some threshold of the maximum posterior
 
 Print the number of points in each segment for each DOG to compare (DOG 4 may be weird)
 
@@ -584,8 +578,6 @@ With segments marked how do the time residual plots adjust
 Make the plot from the screenshot (x,y and chi,z) for combined
 ESV and for each ESV segment individually (compare these plots)
     We can overlay the segment plots to see where the CDOG lies in each
-
-Key question: where in 3D space are the DOGS compared to our prior
 
 Do you by segmenting it improve the bias of the residual travel
 time measurements, but do we also improve the variance

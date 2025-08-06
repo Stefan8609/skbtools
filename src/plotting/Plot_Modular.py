@@ -311,7 +311,7 @@ def trajectory_plot(
 
 
 def split_trajectory_plot(
-    coordinates, GPS_clock, CDOGs, numsplit, save=False, path="Figs", timestamp=None
+    coordinates, CDOGs, numsplit, save=False, path="Figs", timestamp=None
 ):
     """
     Plot a 2D trajectory split into `numsplit` contiguous blocks,
@@ -321,7 +321,6 @@ def split_trajectory_plot(
     ----------
     coordinates : (N,2) array-like
         X,Y coordinates to plot.
-    GPS_clock : array-like, unused here but retained for signature.
     CDOGs : (M,2) array-like
         M CDOG X,Y positions.
     numsplit : int
@@ -507,7 +506,6 @@ if __name__ == "__main__":
     # )
     split_trajectory_plot(
         np.array([GPS_lon, GPS_lat, GPS_height]).T,
-        GPS_data,
         np.array([CDOGs_lon, CDOGs_lat, CDOGs_height]).T,
         10,
         save=True,
