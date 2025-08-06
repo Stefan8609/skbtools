@@ -561,9 +561,6 @@ if __name__ == "__main__":
 
 
 """
-Fix how prior is grabbed from npz chain
-    Fix side view plot so that x prior centers in it
-
 Ratio between the posterior and the prior (resolution)
 How much information we can add to our prior belief
 

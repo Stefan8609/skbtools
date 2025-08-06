@@ -7,15 +7,10 @@ from MCMC_sampler import mcmc_sampler
 from data import gps_data_path, gps_output_path
 
 
-"""Function that will take only the GPS points in the
-    individual splits and calculate a reasonable ESV bias for each split.
-
-    Will use MCMC with reasonable priors on levers and DOG position"""
-
-
 def individual_splits_esv(
     n_splits,
     n_iters,
+    burn_in,
     initial_params,
     dz_array,
     angle_array,
@@ -25,14 +20,30 @@ def individual_splits_esv(
     CDOG_reference,
     CDOG_all_data,
     offsets,
+    proposal_lever=None,
+    proposal_gps_grid=0.0,
+    proposal_CDOG_aug=0.1,
+    proposal_esv_bias=0.01,
+    proposal_time_bias=0.000005,
+    prior_lever=None,
+    prior_gps_grid=0.1,
+    prior_CDOG_aug=25.0,
+    prior_esv_bias=1.0,
+    prior_time_bias=0.5,
 ):
+    if proposal_lever is None:
+        proposal_lever = np.array([0.01, 0.01, 0.05])
+
+    if prior_lever is None:
+        prior_lever = np.array([0.5, 0.5, 1.0])
+
     # Get split GPS coordinates
     split_GPS_Coordinates = np.array_split(GPS_Coordinates, n_splits)
     split_GPS_data = np.array_split(GPS_data, n_splits)
 
     # Current time for output file
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    path = gps_output_path(f"individual_splits_esv_{timestamp}")
+    path = gps_output_path(f"{n_splits}_individual_splits_esv_{timestamp}")
     os.makedirs(path, exist_ok=True)
 
     init_lever = initial_params["lever"]
@@ -63,7 +74,7 @@ def individual_splits_esv(
             logpost_chain,
         ) = mcmc_sampler(
             n_iters=n_iters,
-            burn_in=2500,
+            burn_in=burn_in,
             initial_lever_base=init_lever,
             initial_gps_grid=init_gps_grid,
             initial_CDOG_augments=init_aug,
@@ -77,24 +88,40 @@ def individual_splits_esv(
             CDOG_reference=CDOG_reference,
             CDOG_all_data=CDOG_all_data,
             offsets=offsets,
-            proposal_lever=np.array([0.005, 0.005, 0.01]),
-            proposal_gps_grid=0.0,
-            proposal_CDOG_aug=0.01,
-            proposal_esv_bias=0.05,
-            proposal_time_bias=0.000005,
+            proposal_lever=proposal_lever,
+            proposal_gps_grid=proposal_gps_grid,
+            proposal_CDOG_aug=proposal_CDOG_aug,
+            proposal_esv_bias=proposal_esv_bias,
+            proposal_time_bias=proposal_time_bias,
+            prior_lever=prior_lever,
+            prior_gps_grid=prior_gps_grid,
+            prior_CDOG_aug=prior_CDOG_aug,
+            prior_esv_bias=prior_esv_bias,
+            prior_time_bias=prior_time_bias,
         )
 
-        # Save results for the current split
-        chain = {
-            "lever": lever_chain,
-            "gps1_grid": gps_chain,
-            "CDOG_aug": cdog_aug_chain,
-            "esv_bias": ebias_chain,
-            "time_bias": tbias_chain,
-            "loglike": loglike_chain,
-            "logpost": logpost_chain,
-        }
-        np.savez(f"{path}/split_{i}", **chain)
+        np.savez(
+            f"{path}/split_{i}",  # posterior chains
+            lever=lever_chain,
+            gps1_grid=gps_chain,
+            CDOG_aug=cdog_aug_chain,
+            esv_bias=ebias_chain,
+            time_bias=tbias_chain,
+            loglike=loglike_chain,
+            logpost=logpost_chain,
+            # initial values
+            init_lever=init_lever,
+            init_gps_grid=init_gps_grid,
+            init_CDOG_aug=init_aug,
+            init_esv_bias=init_ebias,
+            init_time_bias=init_tbias,
+            # priors
+            prior_lever=prior_lever,
+            prior_gps_grid=prior_gps_grid,
+            prior_CDOG_aug=prior_CDOG_aug,
+            prior_esv_bias=prior_esv_bias,
+            prior_time_bias=prior_time_bias,
+        )
     return
 
 
@@ -125,7 +152,7 @@ if __name__ == "__main__":
     offsets = np.array([1866.0, 3175.0, 1939.0])
 
     # initial parameters
-    init_lever = np.array([-12.4659, 9.6021, -16.2993])
+    init_lever = np.array([-13.12, 9.72, -15.9])
     init_gps_grid = np.array(
         [
             [0.0, 0.0, 0.0],
@@ -152,16 +179,41 @@ if __name__ == "__main__":
         "time_bias": init_tbias,
     }
 
+    # proposal scales
+    proposal_lever = np.array([0.01, 0.01, 0.05])
+    proposal_gps_grid = 0.0
+    proposal_CDOG_aug = 0.1
+    proposal_esv_bias = 0.01
+    proposal_time_bias = 0.000005
+
+    # prior scales
+    prior_lever = np.array([0.5, 0.5, 0.5])
+    prior_gps_grid = 0.1
+    prior_CDOG_aug = 0.5
+    prior_esv_bias = 1.0
+    prior_time_bias = 0.5
+
     individual_splits_esv(
-        4,
-        50000,
-        initial_params,
-        dz_array,
-        angle_array,
-        esv_matrix,
-        GPS_Coordinates,
-        GPS_data,
-        CDOG_reference,
-        typed_CDOG_all_data,
-        offsets,
+        n_splits=4,
+        n_iters=2000,
+        burn_in=1000,
+        initial_params=initial_params,
+        dz_array=dz_array,
+        angle_array=angle_array,
+        esv_matrix=esv_matrix,
+        GPS_Coordinates=GPS_Coordinates,
+        GPS_data=GPS_data,
+        CDOG_reference=CDOG_reference,
+        CDOG_all_data=typed_CDOG_all_data,
+        offsets=offsets,
+        proposal_lever=proposal_lever,
+        proposal_gps_grid=proposal_gps_grid,
+        proposal_CDOG_aug=proposal_CDOG_aug,
+        proposal_esv_bias=proposal_esv_bias,
+        proposal_time_bias=proposal_time_bias,
+        prior_lever=prior_lever,
+        prior_gps_grid=prior_gps_grid,
+        prior_CDOG_aug=prior_CDOG_aug,
+        prior_esv_bias=prior_esv_bias,
+        prior_time_bias=prior_time_bias,
     )
