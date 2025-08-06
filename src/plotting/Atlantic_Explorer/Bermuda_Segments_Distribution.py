@@ -428,10 +428,10 @@ if __name__ == "__main__":
 
     top_down_scale = 0.054715
 
-    downsample = 50
-    chain = np.load(gps_output_path("mcmc_chain_moonpool_2.npz"))
+    downsample = 1
+
+    chain = np.load(gps_output_path("mcmc_chain_moonpool_better.npz"))
     levers = chain["lever"][::5000]
-    lever_prior = None
     try:
         lever_init = chain["initial"]["lever"]
         lever_prior = chain["prior"]["lever"]
@@ -561,6 +561,9 @@ if __name__ == "__main__":
 
 
 """
+Fix how prior is grabbed from npz chain
+    Fix side view plot so that x prior centers in it
+
 Ratio between the posterior and the prior (resolution)
 How much information we can add to our prior belief
 

@@ -349,7 +349,9 @@ if __name__ == "__main__":
     # Initial Parameters for adding to plot
     from datetime import datetime
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_name = "mcmc_chain_moonpool_better.npz"
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S" + file_name)
 
     init_lever = np.array([-13.12, 9.72, -15.9])
     init_gps_grid = np.array(
@@ -381,15 +383,15 @@ if __name__ == "__main__":
     prior_scales = {
         "lever": np.array([0.3, 0.3, 0.3]),
         "gps_grid": 0.1,
-        "CDOG_aug": 3.0,
+        "CDOG_aug": 0.5,
         "esv_bias": 1.0,
         "time_bias": 0.5,
     }
 
-    chain = np.load(gps_output_path("mcmc_chain_moonpool_prior.npz"))
+    chain = np.load(gps_output_path(file_name))
     # prior_scales = chain["prior"]
     # initial_params = chain["initial"]
-    save = False
+    save = True
 
     # Works for chains saved with either a single or split ESV bias term
     trace_plot(
@@ -410,7 +412,7 @@ if __name__ == "__main__":
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        downsample=5000,
+        downsample=50,
         save=save,
         timestamp=timestamp,
     )

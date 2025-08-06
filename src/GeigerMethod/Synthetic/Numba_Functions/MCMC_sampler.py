@@ -437,7 +437,7 @@ if __name__ == "__main__":
     # prior scales
     prior_lever = np.array([0.5, 0.5, 0.5])
     prior_gps_grid = 0.1
-    prior_CDOG_aug = 3.0
+    prior_CDOG_aug = 0.5
     prior_esv_bias = 1.0
     prior_time_bias = 0.5
 
