@@ -131,7 +131,7 @@ if __name__ == "__main__":
     angle_array = esv["angle"].flatten()
     esv_matrix = esv["matrice"]
 
-    downsample = 50
+    downsample = 10
     data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
     GPS_Coordinates = data["GPS_Coordinates"][::downsample]
     GPS_data = data["GPS_data"][::downsample]

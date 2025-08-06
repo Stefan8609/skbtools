@@ -564,13 +564,6 @@ if __name__ == "__main__":
 Ratio between the posterior and the prior (resolution)
 How much information we can add to our prior belief
 
-What are we able to predict of this data at the end of the day?
-Absolute travel time difference (ratio of this to time uncertainty)
-    RMSE compared to our known time uncertainty surface plot
-    Prior the CDOGs
-
-Print the number of points in each segment for each DOG to compare (DOG 4 may be weird)
-
 With segments marked how do the time residual plots adjust
 (add bars marking each segment) make a residual plot
     appending each segment
@@ -582,6 +575,8 @@ ESV and for each ESV segment individually (compare these plots)
 Do you by segmenting it improve the bias of the residual travel
 time measurements, but do we also improve the variance
     I.E. do we take out swings in the residuals in addition to demeaning them.
+
+
 
 Transdimensional MCMC for the ESV bias (in each segment)
     Updates are dependent on depth (2 or 3 diff updates)

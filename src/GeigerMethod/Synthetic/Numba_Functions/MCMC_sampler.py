@@ -267,15 +267,12 @@ def mcmc_sampler(
     lpo_curr = ll_curr + lpr_curr
 
     for it in range(n_iters):
-        # propose new state
-        # — lever (elementwise) —
         lever_prop = lever_curr.copy()
         for i in range(3):
             lever_prop[i] = lever_curr[i] + np.random.normal(
                 0.0, proposal_scales["lever"][i]
             )
 
-        # — gps_grid & CDOG_aug (vector draws) —
         gps_prop = gps_curr + np.random.normal(
             0.0, proposal_scales["gps_grid"], gps_curr.shape
         )
@@ -283,12 +280,10 @@ def mcmc_sampler(
             0.0, proposal_scales["CDOG_aug"], cdog_aug_curr.shape
         )
 
-        # — esv_bias (matching shape) —
         ebias_prop = ebias_curr + np.random.normal(
             0.0, proposal_scales["esv_bias"], ebias_curr.shape
         )
 
-        # — time_bias —
         tbias_prop = tbias_curr + np.random.normal(
             0.0, proposal_scales["time_bias"], tbias_curr.shape
         )
