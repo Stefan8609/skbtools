@@ -433,8 +433,8 @@ if __name__ == "__main__":
     chain = np.load(gps_output_path("mcmc_chain_moonpool_better.npz"))
     levers = chain["lever"][::5000]
     try:
-        lever_init = chain["initial"]["lever"]
-        lever_prior = chain["prior"]["lever"]
+        lever_init = chain["init_lever"]
+        lever_prior = chain["prior_lever"]
     except Exception:
         print("Chain has no initial/prior info, using defaults")
         lever_init = np.array([-13.12, 9.7, -15.9])

@@ -84,18 +84,23 @@ def plot_kde_mcmc(
 
 
 if __name__ == "__main__":
-    chain = np.load(gps_output_path("mcmc_chain_adroit_5_test_xy_lever.npz"))
+    chain = np.load(gps_output_path("mcmc_chain_moonpool_small_aug.npz"))
     DOG_num = 0
-    sample = chain["CDOG_aug"][::100, DOG_num]
+    sample = chain["CDOG_aug"][::25, DOG_num]
 
-    init_aug = np.array(
-        [
-            [-397.63809, 371.47355, 773.26347],
-            [825.31541, -110.93683, -734.15039],
-            [236.27742, -1307.44426, -2189.59746],
-        ]
-    )
-    prior_aug = 3.0
+    try:
+        init_aug = chain["init_CDOG_aug"]
+        prior_aug = chain["prior_CDOG_aug"]
+    except KeyError:
+        print("Using default initial and prior values for CDOG_aug")
+        init_aug = np.array(
+            [
+                [-397.63809, 371.47355, 773.26347],
+                [825.31541, -110.93683, -734.15039],
+                [236.27742, -1307.44426, -2189.59746],
+            ]
+        )
+        prior_aug = 0.5
 
     plot_kde_mcmc(
         sample,

@@ -477,32 +477,26 @@ if __name__ == "__main__":
         prior_time_bias=prior_time_bias,
     )
 
-    # Save the chain to a .npz file
-    inital_dict = {
-        "lever": init_lever,
-        "gps_grid": init_gps_grid,
-        "CDOG_aug": init_aug,
-        "esv_bias": init_ebias,
-        "time_bias": init_tbias,
-    }
-
-    prior_dict = {
-        "lever": prior_lever,
-        "gps_grid": prior_gps_grid,
-        "CDOG_aug": prior_CDOG_aug,
-        "esv_bias": prior_esv_bias,
-        "time_bias": prior_time_bias,
-    }
-
-    chain = {
-        "lever": lever_chain,
-        "gps1_grid": gps_chain,
-        "CDOG_aug": cdog_aug_chain,
-        "esv_bias": ebias_chain,
-        "time_bias": tbias_chain,
-        "loglike": loglike_chain,
-        "logpost": logpost_chain,
-        "initial": inital_dict,
-        "prior": prior_dict,
-    }
-    np.savez(gps_output_path("mcmc_chain_test.npz"), **chain)
+    np.savez(
+        gps_output_path("mcmc_chain_test.npz"),
+        # posterior chains
+        lever=lever_chain,
+        gps1_grid=gps_chain,
+        CDOG_aug=cdog_aug_chain,
+        esv_bias=ebias_chain,
+        time_bias=tbias_chain,
+        loglike=loglike_chain,
+        logpost=logpost_chain,
+        # initial values
+        init_lever=init_lever,
+        init_gps_grid=init_gps_grid,
+        init_CDOG_aug=init_aug,
+        init_esv_bias=init_ebias,
+        init_time_bias=init_tbias,
+        # priors
+        prior_lever=prior_lever,
+        prior_gps_grid=prior_gps_grid,
+        prior_CDOG_aug=prior_CDOG_aug,
+        prior_esv_bias=prior_esv_bias,
+        prior_time_bias=prior_time_bias,
+    )
