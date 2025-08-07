@@ -1,3 +1,5 @@
+from scipy import io as sio
+from data import gps_data_path
 import numpy as np
 from data import gps_output_path
 import matplotlib.pyplot as plt
@@ -211,42 +213,42 @@ def plot_best_sample(
 
 # Example usage:
 if __name__ == "__main__":
-    split_samples("individual_splits_esv_20250717_115727", 10)
+    # split_samples("7_individual_splits_esv_20250806_165630", 7)
 
-    # from datetime import datetime
-    #
-    # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    #
-    # esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_normal.mat"))
-    # dz_array = esv["distance"].flatten()
-    # angle_array = esv["angle"].flatten()
-    # esv_matrix = esv["matrice"]
-    #
-    # downsample = 1
-    # data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
-    # GPS_Coordinates = data["GPS_Coordinates"][::downsample]
-    # GPS_data = data["GPS_data"][::downsample]
-    # CDOG_guess = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
-    #
-    # CDOG_all_data = []
-    # for i in (1, 3, 4):
-    #     tmp = sio.loadmat(gps_data_path(f"CDOG_Data/DOG{i}-camp.mat"))["tags"].astype(
-    #         float
-    #     )
-    #     tmp[:, 1] /= 1e9
-    #     CDOG_all_data.append(tmp)
-    #
-    # offsets = np.array([1866.0, 3175.0, 1939.0])
-    # plot_best_sample(
-    #     gps_output_path("mcmc_chain_adroit_6_test_xy_lever.npz"),
-    #     GPS_Coordinates,
-    #     GPS_data,
-    #     CDOG_guess,
-    #     CDOG_all_data,
-    #     offsets,
-    #     dz_array,
-    #     angle_array,
-    #     esv_matrix,
-    #     CDOG_num=4,
-    #     timestamp=timestamp,
-    # )
+    file_name = "mcmc_chain_moonpool_small_aug.npz"
+    DOG_num = 1
+    timestamp = f"{file_name[:-4]}_best_DOG_{DOG_num}"
+
+    esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_normal.mat"))
+    dz_array = esv["distance"].flatten()
+    angle_array = esv["angle"].flatten()
+    esv_matrix = esv["matrice"]
+
+    downsample = 1
+    data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
+    GPS_Coordinates = data["GPS_Coordinates"][::downsample]
+    GPS_data = data["GPS_data"][::downsample]
+    CDOG_guess = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
+
+    CDOG_all_data = []
+    for i in (1, 3, 4):
+        tmp = sio.loadmat(gps_data_path(f"CDOG_Data/DOG{i}-camp.mat"))["tags"].astype(
+            float
+        )
+        tmp[:, 1] /= 1e9
+        CDOG_all_data.append(tmp)
+
+    offsets = np.array([1866.0, 3175.0, 1939.0])
+    plot_best_sample(
+        gps_output_path(file_name),
+        GPS_Coordinates,
+        GPS_data,
+        CDOG_guess,
+        CDOG_all_data,
+        offsets,
+        dz_array,
+        angle_array,
+        esv_matrix,
+        CDOG_num=1,
+        timestamp=timestamp,
+    )

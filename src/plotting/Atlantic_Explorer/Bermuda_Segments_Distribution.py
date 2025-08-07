@@ -564,19 +564,12 @@ if __name__ == "__main__":
 Ratio between the posterior and the prior (resolution)
 How much information we can add to our prior belief
 
-With segments marked how do the time residual plots adjust
-(add bars marking each segment) make a residual plot
-    appending each segment
-
 Make the plot from the screenshot (x,y and chi,z) for combined
 ESV and for each ESV segment individually (compare these plots)
     We can overlay the segment plots to see where the CDOG lies in each
 
-Do you by segmenting it improve the bias of the residual travel
-time measurements, but do we also improve the variance
-    I.E. do we take out swings in the residuals in addition to demeaning them.
 
-
+FIX ELLIPSES IN KDE_MCMC
 
 Transdimensional MCMC for the ESV bias (in each segment)
     Updates are dependent on depth (2 or 3 diff updates)

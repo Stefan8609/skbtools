@@ -5,6 +5,7 @@ from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
 from scipy.stats import gaussian_kde
 from data import gps_output_path
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
+from plotting.Ellipses.Error_Ellipse import compute_error_ellipse
 from plotting.MCMC_plots import get_init_params_and_prior
 
 
@@ -16,13 +17,14 @@ def plot_kde_mcmc(
     prior_sd=None,
     confidences=(0.68, 0.95),
     CDOG_reference=None,
+    ellipses=0,
 ):
     if CDOG_reference is None:
         CDOG_reference = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
 
     CDOG_loc = prior_mean + CDOG_reference
     CDOG_lat, CDOG_lon, CDOG_height = ECEF_Geodetic(np.array([CDOG_loc]))
-    samples_lat, samples_lon, samples_height = ECEF_Geodetic(sample + CDOG_reference)
+    samples_lat, samples_lon, samples_height = ECEF_Geodetic(samples + CDOG_reference)
 
     # Convert to ENU coordinates
     num_points = samples.shape[0]
@@ -95,6 +97,30 @@ def plot_kde_mcmc(
     ax2.set_title("KDE of (PC1, Up)")
     fig.colorbar(cf2, ax=ax2, label="Density")
 
+    # if ellipses > 0:
+    #     segment_xy_splits = np.array_split(xy, ellipses, axis=1)
+    #     segment_pcz_splits = np.array_split(pcz, ellipses, axis=1)
+    #
+    #     for i in range(ellipses):
+    #         print(i)
+    #         segment_xy = segment_xy_splits[i]
+    #         segment_pcz = segment_pcz_splits[i]
+    #
+    #         print(segment_pcz)
+    #
+    #         # Compute error ellipse for xy
+    #         cov_xy = np.cov(segment_xy)
+    #         print(segment_xy.shape,cov_xy.shape)
+    #         e_xy, _ = compute_error_ellipse(cov_xy, confidence=0.68, zorder=2)
+    #         ax1.add_patch(e_xy)
+    #
+    #         print("PCZ shape", segment_pcz.shape)
+    #         # Compute error ellipse for pcz
+    #         cov_pcz = np.cov(segment_pcz)
+    #         print(segment_pcz.shape, cov_pcz.shape)
+    #         e_pcz, _ = compute_error_ellipse(cov_pcz, confidence=0.68, zorder=2)
+    #         ax2.add_patch(e_pcz)
+
     # Set limits
     ax1.set_xlim(-lim_xy, lim_xy)
     ax1.set_ylim(-lim_xy, lim_xy)
@@ -106,18 +132,44 @@ def plot_kde_mcmc(
 
 
 if __name__ == "__main__":
-    chain = np.load(gps_output_path("mcmc_chain_moonpool_small_aug.npz"))
-    DOG_num = 0
-    sample = chain["CDOG_aug"][::100, DOG_num]
+    # chain = np.load(gps_output_path("mcmc_chain_moonpool_small_aug.npz"))
+    # DOG_num = 0
+    # sample = chain["CDOG_aug"][::100, DOG_num]
+    #
+    # initial_params, prior_scales = get_init_params_and_prior(chain)
+    # init_aug = initial_params["CDOG_aug"]
+    # prior_aug = prior_scales["CDOG_aug"]
+    #
+    # plot_kde_mcmc(
+    #     sample,
+    #     nbins=100,
+    #     cmap="viridis",
+    #     prior_mean=init_aug[DOG_num],
+    #     prior_sd=prior_aug,
+    # )
+
+    for i in range(7):
+        chain = np.load(
+            gps_output_path(f"7_individual_splits_esv_20250806_165630/split_{i}.npz")
+        )
+        DOG_num = 0
+        segment_samples = chain["CDOG_aug"][::1, DOG_num]
+        if i == 0:
+            samples = segment_samples
+        else:
+            # Stack samples from each segment
+            samples = np.vstack((samples, segment_samples))
 
     initial_params, prior_scales = get_init_params_and_prior(chain)
     init_aug = initial_params["CDOG_aug"]
     prior_aug = prior_scales["CDOG_aug"]
+    print(samples)
 
     plot_kde_mcmc(
-        sample,
+        samples,
         nbins=100,
         cmap="viridis",
         prior_mean=init_aug[DOG_num],
         prior_sd=prior_aug,
+        ellipses=0,
     )

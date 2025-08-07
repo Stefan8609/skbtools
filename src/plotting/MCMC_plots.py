@@ -428,9 +428,9 @@ def corner_plot(
 
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
-    file_name = "mcmc_chain_moonpool_small_aug.npz"
+    file_name = "7_individual_splits_esv_20250806_165630/split_4.npz"
     loglike = True
-    save = True
+    save = False
 
     if loglike:
         timestamp = "loglike_" + file_name
@@ -444,7 +444,7 @@ if __name__ == "__main__":
     trace_plot(
         chain,
         initial_params=initial_params,
-        downsample=1000,
+        downsample=1,
         save=save,
         timestamp=timestamp,
     )
@@ -459,7 +459,7 @@ if __name__ == "__main__":
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        downsample=50,
+        downsample=10,
         save=save,
         timestamp=timestamp,
         loglike=loglike,

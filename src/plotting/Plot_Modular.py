@@ -6,17 +6,17 @@ from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
 from data import gps_data_path
 
 """Enable this for paper plots"""
-plt.rcParams.update(
-    {
-        "text.usetex": True,
-        "font.family": "serif",
-        "font.serif": ["Computer Modern"],
-        "mathtext.fontset": "cm",
-        "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
-        "\n"
-        r"\usepackage{textcomp}",
-    }
-)
+# plt.rcParams.update(
+#     {
+#         "text.usetex": True,
+#         "font.family": "serif",
+#         "font.serif": ["Computer Modern"],
+#         "mathtext.fontset": "cm",
+#         "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
+#         "\n"
+#         r"\usepackage{textcomp}",
+#     }
+# )
 
 
 def _save_fig(fig, save, tag, path, timestamp=None, ext="pdf"):
@@ -46,6 +46,7 @@ def time_series_plot(
     save=False,
     path="Figs",
     timestamp=None,
+    segments=0,
 ):
     """Plot DOG and GPS time series with residuals."""
     difference_data = CDOG_full - GPS_full
@@ -180,6 +181,13 @@ def time_series_plot(
     axes[1, 1].set_xlim(min(CDOG_clock), max(CDOG_clock))
     axes[1, 1].axhline(-std, color="r", label="Observed Noise")
     axes[1, 1].axhline(std, color="r")
+
+    if segments > 0:
+        for seg in range(1, segments):
+            seg_time = (
+                min(CDOG_clock) + seg * (max(CDOG_clock) - min(CDOG_clock)) / segments
+            )
+            axes[1, 1].axvline(seg_time, color="k", linestyle="--", alpha=0.5)
 
     # Zoom difference plot
     mu_zoom, std_zoom = norm.fit(
