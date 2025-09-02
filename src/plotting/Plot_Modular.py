@@ -1,9 +1,9 @@
-import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
 from data import gps_data_path
+from .save import save_plot
 
 """Enable this for paper plots"""
 # plt.rcParams.update(
@@ -19,22 +19,6 @@ from data import gps_data_path
 # )
 
 
-def _save_fig(fig, save, tag, path, timestamp=None, ext="pdf"):
-    """Helper to save `fig` under Figs/ with timestamp and optional tag."""
-    if not save:
-        return
-    # 1) build timestamp and filename
-    fname = f"{tag}_{timestamp}.{ext}"
-
-    # 2) build the directory path and ensure it exists
-    #    gps_data_path should return the root data directory, e.g. '/Users/…/Data'
-    dirpath = gps_data_path(f"Figs/Residual/{timestamp}")
-    os.makedirs(dirpath, exist_ok=True)
-
-    fullpath = os.path.join(dirpath, fname)
-    fig.savefig(fullpath, format=ext, bbox_inches="tight")
-
-
 def time_series_plot(
     CDOG_clock,
     CDOG_full,
@@ -45,7 +29,7 @@ def time_series_plot(
     block=True,
     save=False,
     path="Figs",
-    timestamp=None,
+    chain_name=None,
     segments=0,
 ):
     """Plot DOG and GPS time series with residuals."""
@@ -270,7 +254,8 @@ def time_series_plot(
     # Adjust spacing between subplots
     plt.tight_layout()
 
-    _save_fig(fig, save=save, tag="timeseries", path=path, timestamp=timestamp)
+    if save:
+        save_plot(fig, chain_name, "time_series_plot", subdir=path)
 
     plt.show(block=block)
 
@@ -282,7 +267,7 @@ def trajectory_plot(
     block=True,
     save=False,
     path="Figs",
-    timestamp=None,
+    chain_name=None,
 ):
     """Plot the surface vessel trajectory in the horizontal plane."""
     # Calculate time values in hours for proper colorbar range
@@ -315,11 +300,14 @@ def trajectory_plot(
     plt.ylabel("Latitude")
     plt.legend()
 
+    if save:
+        save_plot(plt.gcf(), chain_name, "trajectory_plot", subdir=path)
+
     plt.show(block=block)
 
 
 def split_trajectory_plot(
-    coordinates, CDOGs, numsplit, save=False, path="Figs", timestamp=None
+    coordinates, CDOGs, numsplit, save=False, path="Figs", chain_name=None
 ):
     """
     Plot a 2D trajectory split into `numsplit` contiguous blocks,
@@ -334,11 +322,11 @@ def split_trajectory_plot(
     numsplit : int
         Number of blocks to split the trajectory into.
     save : bool, optional
-        If True, save the figure via `_save_fig`.
+        If True, save the figure via `save_plot`.
     path : str, optional
-        Directory under which to save (passed to `_save_fig`).
-    timestamp : str or None, optional
-        Timestamp string to tag the filename. If None, uses current time.
+        Directory under which to save.
+    chain_name : str or None, optional
+        Name of the chain used for naming the saved figure.
     """
     # create figure & axis
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -376,13 +364,8 @@ def split_trajectory_plot(
     ax.axis("equal")
     ax.legend()
 
-    _save_fig(
-        fig,
-        save=save,
-        tag=f"split_trajectory_{numsplit}",
-        path=path,
-        timestamp=timestamp,
-    )
+    if save:
+        save_plot(fig, chain_name, f"split_trajectory_{numsplit}", subdir=path)
 
     plt.show()
 
@@ -396,7 +379,7 @@ def range_residual(
     GPS_clock,
     save=False,
     path="Figs",
-    timestamp=None,
+    chain_name=None,
 ):
     """Plot residual range errors along the track."""
     times_hours = GPS_clock / 3600  # Convert seconds to hours
@@ -442,14 +425,15 @@ def range_residual(
     axes[1].set_ylabel("Slant Range Residuals (cm)")
     axes[1].legend()
 
-    _save_fig(fig, save=save, tag="rangeresidual", path=path, timestamp=timestamp)
+    if save:
+        save_plot(fig, chain_name, "range_residual", subdir=path)
 
     plt.tight_layout()
     plt.show()
 
 
 def elevation_angle_residual(
-    angles, CDOG_full, GPS_full, save=False, path="Figs", timestamp=None
+    angles, CDOG_full, GPS_full, save=False, path="Figs", chain_name=None
 ):
     """
     Compute residuals (CDOG_full – GPS_full) and plot them versus grazing angle.
@@ -466,8 +450,8 @@ def elevation_angle_residual(
         If True, save the figure to disk.
     path : str, default "Figs"
         Directory in which to save the figure.
-    timestamp : str or None, default None
-        Timestamp string to include in the filename; if None, current time is used.
+    chain_name : str or None, default None
+        Name of the chain used for naming the output file.
     """
     # Compute residuals
     residuals = CDOG_full - GPS_full
@@ -483,7 +467,8 @@ def elevation_angle_residual(
     ax.set_title("Residuals vs. Elevation Angle")
     ax.grid(True)
 
-    _save_fig(fig, save=save, tag="angleresidual", path=path, timestamp=timestamp)
+    if save:
+        save_plot(fig, chain_name, "elevation_angle_residual", subdir=path)
 
     plt.tight_layout()
     plt.show()

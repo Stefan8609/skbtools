@@ -104,7 +104,7 @@ def plot_combined_segments(n_splits, path, DOG_num=0):
         block=True,
         save=True,
         path="Figs",
-        timestamp="7_individual_splits_esv_20250806_143356",
+        chain_name="7_individual_splits_esv_20250806_143356",
         segments=n_splits,
     )
 

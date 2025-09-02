@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde, norm
+from .save import save_plot
 
 
 def plot_marginal_density_ratio(
@@ -11,6 +12,9 @@ def plot_marginal_density_ratio(
     pct_trim=(1, 99),
     min_prior_pdf=1e-8,
     show_densities=False,
+    save=False,
+    chain_name=None,
+    path="Figs",
 ):
     """
     Plot the ratio of posterior to prior marginal densities for a single parameter,
@@ -61,6 +65,8 @@ def plot_marginal_density_ratio(
         ax2.legend(loc="upper right")
 
     plt.tight_layout()
+    if save:
+        save_plot(fig, chain_name, "plot_marginal_density_ratio", subdir=path)
     plt.show()
 
     return grid, ratio

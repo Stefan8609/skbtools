@@ -4,7 +4,7 @@ from MCMC_plots import corner_plot, get_init_params_and_prior
 from data import gps_output_path
 
 
-def threshold_posterior(chain, threshold=-50, save=False, timestamp=None):
+def threshold_posterior(chain, threshold=-50, save=False, chain_name=None):
     initial_params, prior_scales = get_init_params_and_prior(chain)
 
     mask = chain["logpost"] > threshold
@@ -20,13 +20,14 @@ def threshold_posterior(chain, threshold=-50, save=False, timestamp=None):
         f" {len(reduced_chain['logpost'])} with threshold {threshold}"
     )
 
+    name = f"threshold_{threshold}_{chain_name}" if chain_name else f"threshold_{threshold}"
     corner_plot(
         reduced_chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
         downsample=1,
         save=save,
-        timestamp=f"threshold_{threshold}_" + timestamp,
+        chain_name=name,
         loglike=loglike,
     )
     return
@@ -38,10 +39,7 @@ if __name__ == "__main__":
     loglike = True
     save = True
 
-    if loglike:
-        timestamp = file_name
-    else:
-        timestamp = file_name
+    chain_name = file_name
     chain = np.load(gps_output_path(file_name))
 
-    threshold_posterior(chain, threshold=-45, save=save, timestamp=timestamp)
+    threshold_posterior(chain, threshold=-45, save=save, chain_name=chain_name)
