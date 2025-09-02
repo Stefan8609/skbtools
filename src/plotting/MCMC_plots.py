@@ -712,21 +712,21 @@ if __name__ == "__main__":
 
     initial_params, prior_scales = get_init_params_and_prior(chain)
 
-    # trace_plot(
-    #     chain,
-    #     initial_params=initial_params,
-    #     downsample=1000,
-    #     save=save,
-    #     chain_name=chain_name,
-    # )
-    # marginal_hists(
-    #     chain,
-    #     initial_params=initial_params,
-    #     prior_scales=prior_scales,
-    #     downsample=100,
-    #     save=save,
-    #     chain_name=chain_name,
-    # )
+    trace_plot(
+        chain,
+        initial_params=initial_params,
+        downsample=1000,
+        save=save,
+        chain_name=chain_name,
+    )
+    marginal_hists(
+        chain,
+        initial_params=initial_params,
+        prior_scales=prior_scales,
+        downsample=100,
+        save=save,
+        chain_name=chain_name,
+    )
     corner_plot(
         chain,
         initial_params=initial_params,
@@ -736,12 +736,6 @@ if __name__ == "__main__":
         chain_name=chain_name,
         loglike=loglike,
     )
-
-
-# Plot the sampling distribution (also add labels)
-#   Complete annotation of prior, sampling, and posterior in the plot
-#   Make the mode the center of the plot (0) and count the standard deviations
-# Make extent the same on all plots
 
 
 # Compare locations of the plot_segments lever and receiver location

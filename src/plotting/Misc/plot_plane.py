@@ -5,7 +5,9 @@ import matplotlib.pyplot as plt
 from plotting.save import save_plot
 
 
-def plotPlane(point, normVect, xrange, yrange, save=False, chain_name=None, path="Figs"):
+def plotPlane(
+    point, normVect, xrange, yrange, save=False, chain_name=None, path="Figs"
+):
     """Plot a plane defined by a point and its normal vector.
 
     Parameters

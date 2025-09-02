@@ -20,7 +20,11 @@ def threshold_posterior(chain, threshold=-50, save=False, chain_name=None):
         f" {len(reduced_chain['logpost'])} with threshold {threshold}"
     )
 
-    name = f"threshold_{threshold}_{chain_name}" if chain_name else f"threshold_{threshold}"
+    name = (
+        f"threshold_{threshold}_{chain_name}"
+        if chain_name
+        else f"threshold_{threshold}"
+    )
     corner_plot(
         reduced_chain,
         initial_params=initial_params,

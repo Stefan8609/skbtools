@@ -2,7 +2,14 @@ import os
 from typing import Optional
 from data import gps_data_path
 
-def save_plot(fig, chain_name: Optional[str], func_name: str, subdir: str = "Figs", ext: str = "pdf"):
+
+def save_plot(
+    fig,
+    chain_name: Optional[str],
+    func_name: str,
+    subdir: str = "Figs",
+    ext: str = "pdf",
+):
     """Save ``fig`` to ``subdir`` inside the Data directory.
 
     The file name is built from ``chain_name`` and ``func_name`` and the figure
