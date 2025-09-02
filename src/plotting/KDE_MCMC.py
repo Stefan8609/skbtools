@@ -5,7 +5,6 @@ from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
 from scipy.stats import gaussian_kde
 from data import gps_output_path
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
-from plotting.Ellipses.Error_Ellipse import compute_error_ellipse
 from plotting.MCMC_plots import get_init_params_and_prior
 
 
@@ -132,44 +131,44 @@ def plot_kde_mcmc(
 
 
 if __name__ == "__main__":
-    # chain = np.load(gps_output_path("mcmc_chain_moonpool_small_aug.npz"))
-    # DOG_num = 0
-    # sample = chain["CDOG_aug"][::100, DOG_num]
-    #
-    # initial_params, prior_scales = get_init_params_and_prior(chain)
-    # init_aug = initial_params["CDOG_aug"]
-    # prior_aug = prior_scales["CDOG_aug"]
-    #
-    # plot_kde_mcmc(
-    #     sample,
-    #     nbins=100,
-    #     cmap="viridis",
-    #     prior_mean=init_aug[DOG_num],
-    #     prior_sd=prior_aug,
-    # )
-
-    for i in range(7):
-        chain = np.load(
-            gps_output_path(f"7_individual_splits_esv_20250806_165630/split_{i}.npz")
-        )
-        DOG_num = 0
-        segment_samples = chain["CDOG_aug"][::1, DOG_num]
-        if i == 0:
-            samples = segment_samples
-        else:
-            # Stack samples from each segment
-            samples = np.vstack((samples, segment_samples))
+    chain = np.load(gps_output_path("mcmc_chain_8-7.npz"))
+    DOG_num = 0
+    sample = chain["CDOG_aug"][::100, DOG_num]
 
     initial_params, prior_scales = get_init_params_and_prior(chain)
     init_aug = initial_params["CDOG_aug"]
     prior_aug = prior_scales["CDOG_aug"]
-    print(samples)
 
     plot_kde_mcmc(
-        samples,
+        sample,
         nbins=100,
         cmap="viridis",
         prior_mean=init_aug[DOG_num],
         prior_sd=prior_aug,
-        ellipses=0,
     )
+
+    # for i in range(7):
+    #     chain = np.load(
+    #         gps_output_path(f"7_individual_splits_esv_20250806_165630/split_{i}.npz")
+    #     )
+    #     DOG_num = 0
+    #     segment_samples = chain["CDOG_aug"][::1, DOG_num]
+    #     if i == 0:
+    #         samples = segment_samples
+    #     else:
+    #         # Stack samples from each segment
+    #         samples = np.vstack((samples, segment_samples))
+    #
+    # initial_params, prior_scales = get_init_params_and_prior(chain)
+    # init_aug = initial_params["CDOG_aug"]
+    # prior_aug = prior_scales["CDOG_aug"]
+    # print(samples)
+    #
+    # plot_kde_mcmc(
+    #     samples,
+    #     nbins=100,
+    #     cmap="viridis",
+    #     prior_mean=init_aug[DOG_num],
+    #     prior_sd=prior_aug,
+    #     ellipses=0,
+    # )

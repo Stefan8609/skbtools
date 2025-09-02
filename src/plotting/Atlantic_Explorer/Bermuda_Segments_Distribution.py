@@ -428,9 +428,9 @@ if __name__ == "__main__":
 
     top_down_scale = 0.054715
 
-    downsample = 1
+    downsample = 5
 
-    chain = np.load(gps_output_path("mcmc_chain_moonpool_better.npz"))
+    chain = np.load(gps_output_path("mcmc_chain_8-7.npz"))
     levers = chain["lever"][::5000]
     try:
         lever_init = chain["init_lever"]

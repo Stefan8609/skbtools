@@ -428,9 +428,9 @@ def corner_plot(
 
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
-    file_name = "7_individual_splits_esv_20250806_165630/split_4.npz"
-    loglike = True
-    save = False
+    file_name = "mcmc_chain_8-7.npz"
+    loglike = False
+    save = True
 
     if loglike:
         timestamp = "loglike_" + file_name
@@ -444,7 +444,7 @@ if __name__ == "__main__":
     trace_plot(
         chain,
         initial_params=initial_params,
-        downsample=1,
+        downsample=1000,
         save=save,
         timestamp=timestamp,
     )
@@ -459,8 +459,21 @@ if __name__ == "__main__":
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        downsample=10,
+        downsample=5000,
         save=save,
         timestamp=timestamp,
         loglike=loglike,
     )
+
+
+# Plot the sampling distribution (also add labels)
+#   Complete annotation of prior, sampling, and posterior in the plot
+#   Does the gray add up to 100? Check
+#   Change axes to cm and have scaling centered around initial points
+#   Make the mode the center of the plot (0) and count the standard deviations
+# Make extent the same on all plots
+
+# Plot the principal component in KDE_MCMC plots
+# Same scales between plots
+# Added ellipse for posterior in KDE
+# Add mode to the plot
