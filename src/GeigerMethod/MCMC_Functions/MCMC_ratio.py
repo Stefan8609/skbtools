@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde, norm
-from .save import save_plot
+from plotting.save import save_plot
 
 
 def plot_marginal_density_ratio(
