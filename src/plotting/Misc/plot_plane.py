@@ -2,9 +2,10 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from plotting.save import save_plot
 
 
-def plotPlane(point, normVect, xrange, yrange):
+def plotPlane(point, normVect, xrange, yrange, save=False, chain_name=None, path="Figs"):
     """Plot a plane defined by a point and its normal vector.
 
     Parameters
@@ -15,6 +16,12 @@ def plotPlane(point, normVect, xrange, yrange):
         Normal vector of the plane.
     xrange, yrange : sequence of float
         ``[min, max]`` bounds describing the extent of the mesh grid.
+    save : bool, optional
+        If True, save the figure to disk.
+    chain_name : str, optional
+        Identifier used in the saved filename.
+    path : str, optional
+        Subdirectory under the Data directory in which to save.
 
     Returns
     -------
@@ -39,6 +46,9 @@ def plotPlane(point, normVect, xrange, yrange):
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("z")
+
+    if save:
+        save_plot(fig, chain_name, "plot_plane", subdir=path)
 
     return ax
 

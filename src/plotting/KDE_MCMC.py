@@ -6,6 +6,7 @@ from scipy.stats import gaussian_kde
 from data import gps_output_path
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
 from plotting.MCMC_plots import get_init_params_and_prior
+from .save import save_plot
 
 
 def plot_kde_mcmc(
@@ -17,6 +18,9 @@ def plot_kde_mcmc(
     confidences=(0.68, 0.95),
     CDOG_reference=None,
     ellipses=0,
+    save=False,
+    chain_name=None,
+    path="Figs",
 ):
     if CDOG_reference is None:
         CDOG_reference = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
@@ -127,6 +131,8 @@ def plot_kde_mcmc(
     ax2.set_ylim(-lim_pcz, lim_pcz)
 
     plt.tight_layout()
+    if save:
+        save_plot(fig, chain_name, "plot_kde_mcmc", subdir=path)
     plt.show()
 
 

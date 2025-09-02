@@ -1,29 +1,13 @@
-import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from data import gps_output_path, gps_data_path
+from data import gps_output_path
 from scipy.stats import norm
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
+from .save import save_plot
 import itertools
 
 
-def _save_fig(fig, save, tag, timestamp=None, ext="pdf"):
-    """Helper to save `fig` under Figs/MCMC/<timestamp>/ with timestamped filename."""
-    if not save:
-        return
-
-    # 1) build timestamp and filename
-    fname = f"{tag}_{timestamp}.{ext}"
-
-    # 2) build the directory path and ensure it exists
-    #    gps_data_path should return the root data directory, e.g. '/Users/…/Data'
-    dirpath = gps_data_path(f"Figs/MCMC/{timestamp}")
-    os.makedirs(dirpath, exist_ok=True)
-
-    # 3) save into that directory
-    fullpath = os.path.join(dirpath, fname)
-    fig.savefig(fullpath, format=ext, bbox_inches="tight")
 
 
 def get_init_params_and_prior(chain):
@@ -102,7 +86,7 @@ def get_init_params_and_prior(chain):
     return initial_params, prior_scales
 
 
-def trace_plot(chain, initial_params=None, downsample=1, save=False, timestamp=None):
+def trace_plot(chain, initial_params=None, downsample=1, save=False, chain_name=None):
     """Plot traces of MCMC parameters, with per-DOG ESV bias
     and time_bias mean-centered, including units."""
     DOG_index_num = {0: 1, 1: 3, 2: 4}
@@ -216,12 +200,13 @@ def trace_plot(chain, initial_params=None, downsample=1, save=False, timestamp=N
     axes[-1].set_xlabel("Iteration")
     fig.tight_layout()
 
-    _save_fig(fig, save=save, tag="traceplot", timestamp=timestamp)
+    if save:
+        save_plot(fig, chain_name, "trace_plot", subdir="Figs/MCMC")
     plt.show()
 
 
 def marginal_hists(
-    chain, initial_params=None, prior_scales=None, save=False, timestamp=None
+    chain, initial_params=None, prior_scales=None, save=False, chain_name=None
 ):
     """Plot marginal histograms of the MCMC parameters with optional prior overlays."""
     # Define keys and data arrays
@@ -282,7 +267,8 @@ def marginal_hists(
         if flat_prior or key in flat_init:
             ax.legend(fontsize="small")
 
-    _save_fig(fig, save=save, tag="marginalhists", timestamp=timestamp)
+    if save:
+        save_plot(fig, chain_name, "marginal_hists", subdir="Figs/MCMC")
     plt.tight_layout()
     plt.show()
 
@@ -293,7 +279,7 @@ def corner_plot(
     prior_scales=None,
     downsample=1,
     save=False,
-    timestamp=None,
+    chain_name=None,
     loglike=False,
 ):
     """Plot a corner plot of the posterior samples with
@@ -422,7 +408,8 @@ def corner_plot(
         extend="max",
     )
 
-    _save_fig(fig, save=save, tag="cornerplot", timestamp=timestamp)
+    if save:
+        save_plot(fig, chain_name, "corner_plot", subdir="Figs/MCMC")
     plt.show()
 
 
@@ -432,10 +419,7 @@ if __name__ == "__main__":
     loglike = False
     save = True
 
-    if loglike:
-        timestamp = "loglike_" + file_name
-    else:
-        timestamp = "logpost_" + file_name
+    chain_name = ("loglike_" if loglike else "logpost_") + file_name
 
     chain = np.load(gps_output_path(file_name))
 
@@ -446,14 +430,14 @@ if __name__ == "__main__":
         initial_params=initial_params,
         downsample=1000,
         save=save,
-        timestamp=timestamp,
+        chain_name=chain_name,
     )
     marginal_hists(
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
         save=save,
-        timestamp=timestamp,
+        chain_name=chain_name,
     )
     corner_plot(
         chain,
@@ -461,7 +445,7 @@ if __name__ == "__main__":
         prior_scales=prior_scales,
         downsample=5000,
         save=save,
-        timestamp=timestamp,
+        chain_name=chain_name,
         loglike=loglike,
     )
 
