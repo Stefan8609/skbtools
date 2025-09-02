@@ -2,20 +2,15 @@ import numpy as np
 import scipy.io as sio
 import itertools
 
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
+from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     final_bias_geiger,
     initial_bias_geiger,
 )
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from Inversion_Workflow.Synthetic.Numba_Functions.Real_Annealing import (
+from Inversion_Workflow.Inversion.Numba_Geiger import findTransponder
+from Inversion_Workflow.Inversion.Real_Annealing import (
     simulated_annealing_real,
 )
 from data import gps_data_path, gps_output_path
-
-"""Plot all of the Seafloor guesses from the grid search and find the correlation
-
-Add GPS grid search to the plot (that'll add a lot of complexity)
-"""
 
 
 def grid_search_annealing(

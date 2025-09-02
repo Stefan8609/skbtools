@@ -1,10 +1,10 @@
 import numpy as np
 import scipy.io as sio
 
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
+from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     final_bias_geiger,
 )
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
+from Inversion_Workflow.Inversion.Numba_Geiger import findTransponder
 from data import gps_data_path, gps_output_path
 
 

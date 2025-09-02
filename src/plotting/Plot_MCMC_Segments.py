@@ -1,11 +1,11 @@
 import numpy as np
 import scipy.io as sio
 from data import gps_output_path, gps_data_path
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger_bias import (
+from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
     calculateTimesRayTracing_Bias_Real,
 )
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
+from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
+from Inversion_Workflow.Inversion.Numba_Geiger import findTransponder
 from Inversion_Workflow.MCMC_Functions.MCMC_best_sample import (
     load_min_logpost_params,
 )

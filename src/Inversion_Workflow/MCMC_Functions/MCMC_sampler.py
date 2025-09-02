@@ -6,12 +6,12 @@ from numba import njit
 from numba.typed import List
 import math
 
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger_bias import (
+from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
     calculateTimesRayTracing_Bias_Real,
 )
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from Inversion_Workflow.Synthetic.Numba_Functions.ESV_bias_split import (
+from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
+from Inversion_Workflow.Inversion.Numba_Geiger import findTransponder
+from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
     calculateTimesRayTracing_split,
 )
 from data import gps_data_path, gps_output_path

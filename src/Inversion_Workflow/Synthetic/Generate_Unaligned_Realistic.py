@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import generateRealistic
+from Inversion_Workflow.Synthetic.Generate_Trajectories import generateRealistic
 
 
 def find_esv_generate(beta, dz, dz_array, angle_array, esv_matrix):

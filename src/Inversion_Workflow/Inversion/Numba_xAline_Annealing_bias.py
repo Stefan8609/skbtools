@@ -1,15 +1,15 @@
 import numpy as np
 import scipy.io as sio
 
-from Inversion_Workflow.Synthetic.Numba_Functions.Bermuda_Trajectory import (
+from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
     bermuda_trajectory,
 )
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger_bias import (
+from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
+from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
     calculateTimesRayTracing_Bias,
 )
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
+from Inversion_Workflow.Inversion.Numba_Geiger import findTransponder
+from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     initial_bias_geiger,
     transition_bias_geiger,
     final_bias_geiger,

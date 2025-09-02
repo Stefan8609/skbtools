@@ -1,17 +1,17 @@
 import numpy as np
 from numba import njit
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import (
+from Inversion_Workflow.Inversion.Numba_Geiger import (
     computeJacobianRayTracing,
     findTransponder,
     calculateTimesRayTracing,
     calculateTimesRayTracingReal,
 )
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline import (
+from Inversion_Workflow.Inversion.Numba_xAline import (
     two_pointer_index,
     find_subint_offset,
     find_int_offset,
 )
-from Inversion_Workflow.Synthetic.Numba_Functions.Generate_Unaligned_Realistic import (
+from Inversion_Workflow.Synthetic.Generate_Unaligned_Realistic import (
     generateUnalignedRealistic,
 )
 import scipy.io as sio

@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 
-from Inversion_Workflow.Synthetic.Numba_Functions.Modular_Synthetic import (
+from Inversion_Workflow.Synthetic.Modular_Synthetic import (
     modular_synthetic,
 )
 from geometry.ECEF_Geodetic import ECEF_Geodetic

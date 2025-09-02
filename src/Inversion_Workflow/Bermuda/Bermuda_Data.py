@@ -1,15 +1,15 @@
 import numpy as np
 import scipy.io as sio
 
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import (
+from Inversion_Workflow.Inversion.Numba_Geiger import (
     findTransponder,
 )
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline_Geiger import (
+from Inversion_Workflow.Inversion.Numba_xAline_Geiger import (
     initial_geiger,
     transition_geiger,
     final_geiger,
 )
-from Inversion_Workflow.Synthetic.Numba_Functions.Initialize_Bermuda_Data import (
+from Inversion_Workflow.Bermuda.Initialize_Bermuda_Data import (
     initialize_bermuda,
 )
 

@@ -1,19 +1,19 @@
 import numpy as np
 import scipy.io as sio
 
-from Inversion_Workflow.Synthetic.Numba_Functions.Generate_Unaligned_Realistic import (
+from Inversion_Workflow.Synthetic.Generate_Unaligned_Realistic import (
     generateUnalignedRealistic,
 )
-from Inversion_Workflow.Synthetic.Numba_Functions.Bermuda_Trajectory import (
+from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
     bermuda_trajectory,
 )
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
+from Inversion_Workflow.Inversion.Numba_Geiger import findTransponder
+from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     initial_bias_geiger,
     transition_bias_geiger,
     final_bias_geiger,
 )
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline_Annealing_bias import (
+from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
     simulated_annealing_bias,
 )
 from plotting.Plot_Modular import time_series_plot

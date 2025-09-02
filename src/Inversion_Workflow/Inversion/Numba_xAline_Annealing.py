@@ -1,10 +1,10 @@
 import numpy as np
 
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline import (
+from Inversion_Workflow.Inversion.Numba_xAline import (
     two_pointer_index,
     find_subint_offset,
 )
-from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline_Geiger import (
+from Inversion_Workflow.Inversion.Numba_xAline_Geiger import (
     initial_geiger,
     transition_geiger,
     final_geiger,
@@ -12,7 +12,7 @@ from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline_Geiger import (
     findTransponder,
     calculateTimesRayTracingReal,
 )
-from Inversion_Workflow.Synthetic.Numba_Functions.Generate_Unaligned_Realistic import (
+from Inversion_Workflow.Synthetic.Generate_Unaligned_Realistic import (
     generateUnalignedRealistic,
 )
 
