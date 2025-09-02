@@ -196,7 +196,7 @@ def plot_best_sample(
         block=True,
         save=True,
         path="Figs/MCMC",
-        timestamp=timestamp,
+        chain_name=timestamp,
     )
     range_residual(
         transponder_coordinates_full,
@@ -207,7 +207,7 @@ def plot_best_sample(
         GPS_clock,
         save=True,
         path="Figs/MCMC",
-        timestamp=timestamp,
+        chain_name=timestamp,
     )
 
 

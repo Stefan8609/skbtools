@@ -6,7 +6,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
 )
 from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index
 from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from GeigerMethod.Synthetic.Numba_Functions.MCMC_best_sample import (
+from plotting.MCMC_best_sample import (
     load_min_logpost_params,
 )
 from plotting.Plot_Modular import time_series_plot
