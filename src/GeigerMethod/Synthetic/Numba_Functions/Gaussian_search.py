@@ -1,7 +1,9 @@
 import numpy as np
 import scipy.io as sio
 
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import final_bias_geiger
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
+    final_bias_geiger,
+)
 from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
 from data import gps_data_path, gps_output_path
 

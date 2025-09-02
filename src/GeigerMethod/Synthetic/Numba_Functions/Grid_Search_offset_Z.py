@@ -2,7 +2,7 @@ import numpy as np
 import scipy.io as sio
 import itertools
 
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import (
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
     final_bias_geiger,
     initial_bias_geiger,
 )

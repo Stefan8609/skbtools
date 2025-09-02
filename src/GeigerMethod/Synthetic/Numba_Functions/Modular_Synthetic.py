@@ -6,7 +6,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Generate_Unaligned_Realistic import 
 )
 from GeigerMethod.Synthetic.Numba_Functions.Bermuda_Trajectory import bermuda_trajectory
 from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import (
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
     initial_bias_geiger,
     transition_bias_geiger,
     final_bias_geiger,

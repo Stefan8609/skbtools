@@ -7,7 +7,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
     calculateTimesRayTracing_Bias,
 )
 from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import (
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
     initial_bias_geiger,
     transition_bias_geiger,
     final_bias_geiger,

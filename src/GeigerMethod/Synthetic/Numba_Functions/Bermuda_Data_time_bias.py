@@ -2,7 +2,7 @@ import numpy as np
 import scipy.io as sio
 
 from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_bias import (
+from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
     initial_bias_geiger,
     transition_bias_geiger,
     final_bias_geiger,
