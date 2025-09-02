@@ -1,11 +1,11 @@
 import numpy as np
 import scipy.io as sio
 import random
-from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger_bias import (
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger_bias import (
     numba_bias_geiger,
     find_esv,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import (
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import (
     generateRealistic,
     findTransponder,
 )

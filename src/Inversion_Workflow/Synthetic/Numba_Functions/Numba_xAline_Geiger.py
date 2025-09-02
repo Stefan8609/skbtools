@@ -1,17 +1,17 @@
 import numpy as np
 from numba import njit
-from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import (
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import (
     computeJacobianRayTracing,
     findTransponder,
     calculateTimesRayTracing,
     calculateTimesRayTracingReal,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import (
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline import (
     two_pointer_index,
     find_subint_offset,
     find_int_offset,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Generate_Unaligned_Realistic import (
+from Inversion_Workflow.Synthetic.Numba_Functions.Generate_Unaligned_Realistic import (
     generateUnalignedRealistic,
 )
 import scipy.io as sio
@@ -62,7 +62,7 @@ def initial_geiger(
         inversion_guess += delta
         k += 1
         if np.linalg.norm(inversion_guess - guess) > 1000:
-            print("ERROR: Inversion too far from starting value")
+            print("ERROR: Inversion_Workflow too far from starting value")
             return inversion_guess, offset
 
     return inversion_guess, offset
@@ -122,7 +122,7 @@ def transition_geiger(
         k += 1
 
         if np.linalg.norm(inversion_guess - guess) > 1000:
-            print("ERROR: Inversion too far from starting value")
+            print("ERROR: Inversion_Workflow too far from starting value")
             return inversion_guess, offset
 
     return inversion_guess, offset
@@ -263,7 +263,7 @@ if __name__ == "__main__":
     )
     print("INT Offset: ", offset, "DIFF:", offset - true_offset)
     print("CDOG:", CDOG)
-    print("Inversion:", inversion_result)
+    print("Inversion_Workflow:", inversion_result)
     print("Distance:", np.linalg.norm(inversion_result - CDOG) * 100, "cm")
     print("\n")
 
@@ -273,7 +273,7 @@ if __name__ == "__main__":
 
     print("SUB-INT Offset: ", offset, "DIFF", offset - true_offset)
     print("CDOG:", CDOG)
-    print("Inversion:", inversion_result)
+    print("Inversion_Workflow:", inversion_result)
     print("Distance:", np.linalg.norm(inversion_result - CDOG) * 100, "cm")
     print("\n")
 
@@ -284,5 +284,5 @@ if __name__ == "__main__":
         inversion_result, CDOG_data, GPS_data, transponder_coordinates, offset
     )
     print("CDOG:", CDOG)
-    print("Inversion:", inversion_result)
+    print("Inversion_Workflow:", inversion_result)
     print("Distance:", np.linalg.norm(inversion_result - CDOG) * 100, "cm")

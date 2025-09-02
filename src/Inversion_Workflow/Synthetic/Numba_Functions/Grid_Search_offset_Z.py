@@ -2,12 +2,12 @@ import numpy as np
 import scipy.io as sio
 import itertools
 
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
     final_bias_geiger,
     initial_bias_geiger,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from GeigerMethod.Synthetic.Numba_Functions.Real_Annealing import (
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
+from Inversion_Workflow.Synthetic.Numba_Functions.Real_Annealing import (
     simulated_annealing_real,
 )
 from data import gps_data_path, gps_output_path

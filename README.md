@@ -20,7 +20,7 @@ This will also install the numerical dependencies defined in
 
 If working straight from the source you can alternatively add the `src`
 directory to your `PYTHONPATH`. This is necessary when launching the
-individual scripts directly, e.g. `python src/GeigerMethod/.../MCMC_sampler.py`,
+individual scripts directly, e.g. `python src/Inversion_Workflow/.../MCMC_sampler.py`,
 so that the package imports resolve correctly.
 
 ## Package overview
@@ -60,12 +60,12 @@ Convenience helpers for visualising results.
   plane.
 - **printTable(headers, data)** – render a simple text table.
 
-### examples and GeigerMethod
+### examples and Inversion_Workflow
 
-The `examples` and `GeigerMethod` directories contain scripts and
+The `examples` and `Inversion_Workflow` directories contain scripts and
 notebooks used during development. They illustrate typical workflows for
 processing GPS data and analysing transducer positions. See the
-[GeigerMethod README](src/GeigerMethod/README.md) for an overview of
+[Inversion_Workflow README](src/Inversion_Workflow/README.md) for an overview of
 these helper modules.
 
 ## Usage

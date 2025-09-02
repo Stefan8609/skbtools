@@ -7,7 +7,7 @@ from geometry.ECEF_Geodetic import (
 from geometry.Numba_RigidBodyMovementProblem import (
     findRotationAndDisplacement,
 )
-from GeigerMethod.Synthetic.Numba_Functions import Numba_Geiger as ng
+from Inversion_Workflow.Synthetic.Numba_Functions import Numba_Geiger as ng
 
 
 def test_ecef_geodetic_against_pymap3d():

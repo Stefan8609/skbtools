@@ -1,17 +1,19 @@
 import numpy as np
 import scipy.io as sio
 
-from GeigerMethod.Synthetic.Numba_Functions.Bermuda_Trajectory import bermuda_trajectory
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import (
+from Inversion_Workflow.Synthetic.Numba_Functions.Bermuda_Trajectory import (
+    bermuda_trajectory,
+)
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline import (
     two_pointer_index,
     find_int_offset,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger_bias import (
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger_bias import (
     calculateTimesRayTracing_Bias,
     calculateTimesRayTracing_Bias_Real,
     compute_Jacobian_biased,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
 from numba import njit
 from plotting.Plot_Modular import time_series_plot
 from data import gps_data_path
@@ -315,7 +317,7 @@ if __name__ == "__main__":
         "INT Offset: {:.4f}".format(offset), "DIFF: {:.4f}".format(offset - true_offset)
     )
     print("CDOG:", np.around(CDOG, 2))
-    print("Inversion:", np.around(inversion_result, 2))
+    print("Inversion_Workflow:", np.around(inversion_result, 2))
     print("Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100))
     print("\n")
 
@@ -339,7 +341,7 @@ if __name__ == "__main__":
         "DIFF: {:.4f}".format(offset - true_offset),
     )
     print("CDOG:", np.around(CDOG, 2))
-    print("Inversion:", np.around(inversion_result, 2))
+    print("Inversion_Workflow:", np.around(inversion_result, 2))
     print("Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100))
     print("\n")
 
@@ -359,7 +361,7 @@ if __name__ == "__main__":
     time_bias = inversion_result[3]
     esv_bias = inversion_result[4]
     print("CDOG:", np.around(CDOG, 2))
-    print("Inversion:", np.around(inversion_result, 2))
+    print("Inversion_Workflow:", np.around(inversion_result, 2))
     print("Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100))
 
     # Plot the results

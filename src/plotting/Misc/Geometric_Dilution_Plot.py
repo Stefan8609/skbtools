@@ -2,11 +2,13 @@ import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
 
-from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger_bias import (
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger_bias import (
     compute_Jacobian_biased,
     calculateTimesRayTracing_Bias,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Modular_Synthetic import modular_synthetic
+from Inversion_Workflow.Synthetic.Numba_Functions.Modular_Synthetic import (
+    modular_synthetic,
+)
 from data import gps_data_path
 
 

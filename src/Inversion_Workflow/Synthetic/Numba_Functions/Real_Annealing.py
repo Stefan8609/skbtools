@@ -2,12 +2,14 @@ import numpy as np
 import scipy.io as sio
 from numba import njit
 
-from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
     final_bias_geiger,
     initial_bias_geiger,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Bermuda_Trajectory import bermuda_trajectory
+from Inversion_Workflow.Synthetic.Numba_Functions.Bermuda_Trajectory import (
+    bermuda_trajectory,
+)
 from data import gps_data_path
 
 
@@ -236,7 +238,7 @@ if __name__ == "__main__":
         print("Input Offset: ", np.round(offset + off_adj, 4))
         print("Lever :", np.round(best_lever, 3))
         print("CDOG:", np.around(CDOG, 2))
-        print("Inversion:", np.round(inversion_result, 2))
+        print("Inversion_Workflow:", np.round(inversion_result, 2))
         print(
             "Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100),
             "RMSE: ",

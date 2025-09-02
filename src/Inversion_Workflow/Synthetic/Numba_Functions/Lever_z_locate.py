@@ -1,13 +1,15 @@
 import numpy as np
 import scipy.io as sio
 
-from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
     initial_bias_geiger,
     transition_bias_geiger,
     final_bias_geiger,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Bermuda_Trajectory import bermuda_trajectory
+from Inversion_Workflow.Synthetic.Numba_Functions.Bermuda_Trajectory import (
+    bermuda_trajectory,
+)
 from data import gps_data_path
 
 esv_table_generate = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
@@ -106,6 +108,6 @@ for dz in np.linspace(-5.0, 2.0, 15):
     esv_bias = inversion_result[4]
     print("Offset: {:.4f}".format(offset), "DIFF: {:.4f}".format(offset - true_offset))
     print("CDOG:", np.around(CDOG, 2))
-    print("Inversion:", np.round(inversion_result, 3))
+    print("Inversion_Workflow:", np.round(inversion_result, 3))
     print("Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100))
     print("\n")

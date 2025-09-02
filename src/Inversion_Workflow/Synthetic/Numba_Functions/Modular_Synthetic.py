@@ -1,17 +1,19 @@
 import numpy as np
 import scipy.io as sio
 
-from GeigerMethod.Synthetic.Numba_Functions.Generate_Unaligned_Realistic import (
+from Inversion_Workflow.Synthetic.Numba_Functions.Generate_Unaligned_Realistic import (
     generateUnalignedRealistic,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Bermuda_Trajectory import bermuda_trajectory
-from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
+from Inversion_Workflow.Synthetic.Numba_Functions.Bermuda_Trajectory import (
+    bermuda_trajectory,
+)
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
     initial_bias_geiger,
     transition_bias_geiger,
     final_bias_geiger,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Annealing_bias import (
+from Inversion_Workflow.Synthetic.Numba_Functions.Numba_xAline_Annealing_bias import (
     simulated_annealing_bias,
 )
 from plotting.Plot_Modular import time_series_plot
@@ -112,7 +114,7 @@ def modular_synthetic(
         true_transponder_coordinates = true_transponder_coordinates[::downsample]
         z_sample = True
 
-    # Choose Inversion Type
+    # Choose Inversion_Workflow Type
     #   0: Just xAline Geiger
     #   1: xAline Geiger with Simulated Annealing
     real_data = True if generate_type == 1 else False
@@ -151,7 +153,7 @@ def modular_synthetic(
             "DIFF: {:.4f}".format(offset - true_offset),
         )
         print("CDOG:", np.around(CDOG, 2))
-        print("Inversion:", np.round(inversion_result, 3))
+        print("Inversion_Workflow:", np.round(inversion_result, 3))
         print(
             "Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100)
         )
@@ -177,7 +179,7 @@ def modular_synthetic(
             "DIFF: {:.4f}".format(offset - true_offset),
         )
         print("CDOG:", np.around(CDOG, 2))
-        print("Inversion:", np.round(inversion_result, 3))
+        print("Inversion_Workflow:", np.round(inversion_result, 3))
         print(
             "Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100)
         )
@@ -206,7 +208,7 @@ def modular_synthetic(
         time_bias = inversion_result[3]
         esv_bias = inversion_result[4]
         print("CDOG:", np.around(CDOG, 2))
-        print("Inversion:", np.round(inversion_result, 3))
+        print("Inversion_Workflow:", np.round(inversion_result, 3))
         print(
             "Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100)
         )
@@ -242,7 +244,7 @@ def modular_synthetic(
         time_bias = inversion_result[3]
         esv_bias = inversion_result[4]
         print("CDOG:", np.around(CDOG, 2))
-        print("Inversion:", np.round(inversion_result, 3))
+        print("Inversion_Workflow:", np.round(inversion_result, 3))
         print(
             "Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100)
         )

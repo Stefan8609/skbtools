@@ -3,7 +3,7 @@ import scipy.io as sio
 from datetime import datetime
 import os
 from numba.typed import List
-from GeigerMethod.MCMC_Functions.MCMC_sampler import mcmc_sampler
+from Inversion_Workflow.MCMC_Functions.MCMC_sampler import mcmc_sampler
 from data import gps_data_path, gps_output_path
 
 

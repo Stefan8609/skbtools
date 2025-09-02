@@ -19,6 +19,16 @@ from data import gps_data_path
 
 esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
 
+"""
+Process:
+    Load the data in the form of CDOG_data, GPS_data, GPS_coordinates
+    Need to figure out how to find the depth and angle for ray-tracing
+
+    Need to configure what the coordinate systems are for each different type of data
+        GET absolute distance using ECEF, and vertical distance from geodetic
+
+    Need to get elevation of transducer (how?) Convert ecef to geodetic for transducer?
+"""
 
 CDOG_guess_augment = np.array([974.12667502, -80.98121315, -805.07870249])
 # initial_lever_guess = np.array([-30.22391079,  -0.22850613, -21.97254162])
@@ -91,3 +101,19 @@ axes[1].set_xlabel("Time (s)")
 axes[1].set_ylabel("Residual (ms)")
 plt.tight_layout()
 plt.show()
+
+"""
+Adjust sound speed with a constant
+Make some minimal inversion
+
+Run on three hours of the data that is continuous in the residual
+
+Isolate a geometric effect from the part that nearly fits
+    Adjust the sound speed by a constant because its not constant
+        Need to rewrite Thalia's code to do this
+
+    If no way I can make this better than it has to be the sound speed
+
+
+Make Synthetic with the incorrect sound speed profile to see the variation
+"""
