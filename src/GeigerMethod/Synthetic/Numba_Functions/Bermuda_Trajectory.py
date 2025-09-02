@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import scipy.io as sio
 from pymap3d import ecef2geodetic
 from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger import findTransponder
-from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
+from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger_bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from data import gps_data_path

@@ -6,7 +6,7 @@ from numba import njit
 from numba.typed import List
 import math
 
-from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
+from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger_bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index

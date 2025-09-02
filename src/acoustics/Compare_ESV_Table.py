@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.io as sio
 import random
-from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
+from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger_bias import (
     numba_bias_geiger,
     find_esv,
 )

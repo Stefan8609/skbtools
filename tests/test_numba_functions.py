@@ -1,10 +1,10 @@
 import numpy as np
 from pymap3d import ecef2geodetic
 
-from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import (
+from geometry.ECEF_Geodetic import (
     ECEF_Geodetic,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Numba_RigidBodyMovementProblem import (
+from geometry.Numba_RigidBodyMovementProblem import (
     findRotationAndDisplacement,
 )
 from GeigerMethod.Synthetic.Numba_Functions import Numba_Geiger as ng

@@ -5,7 +5,7 @@ from matplotlib.patches import Ellipse
 from GeigerMethod.Synthetic.Numba_Functions.Modular_Synthetic import (
     modular_synthetic,
 )
-from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
+from geometry.ECEF_Geodetic import ECEF_Geodetic
 
 from pymap3d import geodetic2enu
 
@@ -309,7 +309,7 @@ def error_ellipse(num_points, time_noise, position_noise):
 
 
 if __name__ == "__main__":
-    num_points = 2000
+    num_points = 100
     time_noise = 2 * 10**-5
     position_noise = 2 * 10**-2
     error_ellipse(num_points, time_noise, position_noise)

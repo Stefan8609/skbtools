@@ -7,7 +7,7 @@ from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline_Geiger_bias import (
     transition_bias_geiger,
     final_bias_geiger,
 )
-from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
+from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger_bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index
@@ -16,7 +16,7 @@ from plotting.Plot_Modular import (
     range_residual,
     elevation_angle_residual,
 )
-from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
+from geometry.ECEF_Geodetic import ECEF_Geodetic
 
 
 # esv_table = sio.loadmat('../../../Data/global_table_esv.mat')

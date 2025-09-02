@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.io as sio
 from data import gps_data_path
-from GeigerMethod.Synthetic.Numba_Functions.Numba_time_bias import (
+from GeigerMethod.Synthetic.Numba_Functions.Numba_Geiger_bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from GeigerMethod.Synthetic.Numba_Functions.Numba_xAline import two_pointer_index

@@ -4,7 +4,7 @@ import matplotlib as mpl
 from matplotlib import patches as mpatches
 from matplotlib import lines as mlines
 from pymap3d import geodetic2enu
-from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
+from geometry.ECEF_Geodetic import ECEF_Geodetic
 from data import gps_output_path
 from scipy.stats import norm
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
