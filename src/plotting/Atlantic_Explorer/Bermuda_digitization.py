@@ -232,5 +232,3 @@ if __name__ == "__main__":
     # ]
     #
     # plot_segments(side_view_segments, railing_segments)
-
-# Email about how far the transducer is lowered

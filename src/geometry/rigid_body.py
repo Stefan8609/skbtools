@@ -1,12 +1,11 @@
-"""
-Inspiration from Inge Soderkvist "Using SVD for Some Fitting Problems"
-"""
-
 import numpy as np
 
 
 def findRotationAndDisplacement(xyzs_init, xyzs_final):
-    """Estimate the rigid body rotation and translation between two point clouds.
+    """
+    Inspiration from Inge Soderkvist "Using SVD for Some Fitting Problems"
+
+    Estimate the rigid body rotation and translation between two point clouds.
 
     Parameters
     ----------

@@ -229,16 +229,3 @@ def geigersMethod(guess, times_known, transponder_coordinates_Found):
         guess = guess + delta
         k += 1
     return guess
-
-
-# XYZ in ECEF does not coordinate with z being depth and xy corresponding to horizontal!
-# Need to account for this when getting the dz and horizontal distance.
-
-# What is the best way to calculate horizontal distance?
-# There is a considerable (8m) curvature of the earth of 10 km
-# Could I project out the depth to be the same? Then get horizontal dist?
-
-# Important to consider curvature effects. Make sure ray-tracing is correct
-# Implement Bud's algorithm for ray-tracing Gauss-Newton
-
-# Vectorize everything -- Should make code a decent amount faster (too slow as is)

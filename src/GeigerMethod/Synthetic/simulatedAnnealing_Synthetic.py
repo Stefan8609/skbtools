@@ -185,26 +185,3 @@ def simulatedAnnealing(
 
 if __name__ == "__main__":
     simulatedAnnealing(5000, 300, 2 * 10**-5, 2 * 10**-2)
-
-# at each time step keep the cdog location and then calculate a bunch of deviations
-#   and keep the best one at each time step --Could speed up
-#   Also scale with RMSE (see if this works for temperature)
-#   Genetic algorithm, Neighborhood algorithm
-#   Plot the ones I keep on the plot
-#   Markov Chain Monte Carlo - https://agupubs.onlinelibrary.wiley.com/doi/10.1029/94JB03097
-#   Base off barycenter rather then GPS1
-#   Solve for all 4 gps offsets and see if position matches
-#   Derben-Watson test
-
-#   Normalize histogram by normalizing area of bins to be 1
-#   See what histogram noise looks like with no time noise
-#   Then do the same with no gps noise with time noise to see how histograms change
-#   Variance Reduction
-
-# Add panel to time plot giving a zoomed window of points explaining the trajectory and
-# On same axis show the same thing
-
-# See what pathing I get if I have straight cross in x-y and no perturbation in z
-# Break down the error
-
-# Testing for github authentication
