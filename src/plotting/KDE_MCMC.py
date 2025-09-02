@@ -5,8 +5,9 @@ from GeigerMethod.Synthetic.Numba_Functions.ECEF_Geodetic import ECEF_Geodetic
 from scipy.stats import gaussian_kde
 from data import gps_output_path
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
+from plotting.Ellipses.Error_Ellipse import compute_error_ellipse
 from plotting.MCMC_plots import get_init_params_and_prior
-from .save import save_plot
+from plotting.save import save_plot
 
 
 def plot_kde_mcmc(
@@ -15,7 +16,7 @@ def plot_kde_mcmc(
     cmap="viridis",
     prior_mean=None,
     prior_sd=None,
-    confidences=(0.68, 0.95),
+    conf_level=0.68,
     CDOG_reference=None,
     ellipses=0,
     save=False,
@@ -43,6 +44,8 @@ def plot_kde_mcmc(
         )
         samples_converted[i] = np.squeeze(enu)
 
+    samples_converted = samples_converted * 100.0  # m -> cm
+
     x, y, z = samples_converted.T
 
     # KDE in x,y
@@ -60,75 +63,189 @@ def plot_kde_mcmc(
     cov = np.cov(xy_cent)
     eigvals, eigvecs = np.linalg.eigh(cov)
     pc1_vec = eigvecs[:, np.argmax(eigvals)]
-    pc1 = pc1_vec.dot(xy_cent)
+    # Principal component line endpoints for plotting
+    t = np.linspace(-lim_xy, lim_xy, 2)
+    line_x = xy_mean[0] + t * pc1_vec[0]
+    line_y = xy_mean[1] + t * pc1_vec[1]
 
     # KDE in Principal Component and z
-    pcz = np.vstack([pc1, z])
+    pcz = np.vstack([pc1_vec.dot(xy_cent), z])
     kde_pcz = gaussian_kde(pcz)
-    lim_pcz = max(np.max(np.abs(pc1)), np.max(np.abs(z)))
+    lim_pcz = max(np.max(np.abs(pcz[0])), np.max(np.abs(pcz[1])))
     pi = np.linspace(-lim_pcz, lim_pcz, nbins)
     zi = np.linspace(-lim_pcz, lim_pcz, nbins)
     P, Z = np.meshgrid(pi, zi)
     Z_pcz = kde_pcz(np.vstack([P.ravel(), Z.ravel()])).reshape(nbins, nbins)
 
+    # === Posterior mode (argmax of KDE) ===
+    max_idx_xy = np.unravel_index(np.argmax(Z_xy), Z_xy.shape)
+    mode_x_cm = X[max_idx_xy]
+    mode_y_cm = Y[max_idx_xy]
+
+    max_idx_pcz = np.unravel_index(np.argmax(Z_pcz), Z_pcz.shape)
+    mode_xi_cm = P[max_idx_pcz]
+    mode_up_cm = Z[max_idx_pcz]
+
+    # === Posterior standard deviations along axes (in cm) ===
+    # Left plot axes: East (x), North (y)
+    sigma_E_cm = float(np.std(x, ddof=1))
+    sigma_N_cm = float(np.std(y, ddof=1))
+    # Right plot axes: PC1 (xi), Up (z)
+    sigma_xi_cm = float(np.std(pcz[0], ddof=1))
+    sigma_U_cm = float(np.std(z, ddof=1))
+
     # Plotting
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
-    cf1 = ax1.contourf(X, Y, Z_xy, levels=20, cmap=cmap, extend="both")
-    ax1.set_xlabel("East (m)")
-    ax1.set_ylabel("North (m)")
+    ax1.set_aspect("equal", "box")
+    ax2.set_aspect("equal", "box")
+
+    levels_xy = np.linspace(Z_xy.min(), Z_xy.max(), 21)
+    cf1 = ax1.contourf(X, Y, Z_xy, levels=levels_xy, cmap=cmap, antialiased=True)
+    ax1.set_facecolor(plt.get_cmap(cmap)(0))
+    ax1.plot(line_x, line_y, color="red", linestyle="--", linewidth=2, label="PC1")
+    ax1.legend()
+    # Posterior mode and std (left plot)
+    ax1.plot(
+        mode_x_cm,
+        mode_y_cm,
+        marker="x",
+        linestyle="None",
+        color="red",
+        markersize=8,
+        markeredgewidth=2,
+    )
+    ax1.text(
+        0.02,
+        0.98,
+        f"$\\sigma_E$ = {sigma_E_cm:.1f} cm\n$\\sigma_N$ = {sigma_N_cm:.1f} cm",
+        transform=ax1.transAxes,
+        ha="left",
+        va="top",
+        color="red",
+    )
+    ax1.set_xlabel("East (cm)")
+    ax1.set_ylabel("North (cm)")
     ax1.set_title("KDE of (East, North)")
     fig.colorbar(cf1, ax=ax1, label="Density")
 
     if prior_sd is not None and prior_mean is not None:
-        prior_cov = np.diag([prior_sd**2, prior_sd**2])
+        prior_sd_cm = prior_sd * 100.0
+        prior_cov = np.diag([prior_sd_cm**2, prior_sd_cm**2])
+        e_xy = plot_prior_ellipse(
+            mean=np.array([0, 0]), cov=prior_cov, confidence=conf_level, zorder=3
+        )
+        e_pcz = plot_prior_ellipse(
+            mean=np.array([0, 0]), cov=prior_cov, confidence=conf_level, zorder=3
+        )
+        ax1.add_patch(e_xy)
+        ax2.add_patch(e_pcz)
 
-        # draw 68% then 95% so the smaller sits on top
-        for conf in confidences:
-            e_xy = plot_prior_ellipse(
-                mean=np.array([0, 0]), cov=prior_cov, confidence=conf, zorder=3
-            )
-            e_pcz = plot_prior_ellipse(
-                mean=np.array([0, 0]), cov=prior_cov, confidence=conf, zorder=3
-            )
-            ax1.add_patch(e_xy)
-            ax2.add_patch(e_pcz)
-
-    cf2 = ax2.contourf(P, Z, Z_pcz, levels=20, cmap=cmap, extend="both")
-    ax2.set_xlabel(r"$\xi$ (m)")
-    ax2.set_ylabel("Up (m)")
+    levels_pcz = np.linspace(Z_pcz.min(), Z_pcz.max(), 21)
+    cf2 = ax2.contourf(P, Z, Z_pcz, levels=levels_pcz, cmap=cmap, antialiased=True)
+    ax2.set_facecolor(plt.get_cmap(cmap)(0))
+    ax2.set_xlabel(r"$\xi$ (cm)")
+    ax2.set_ylabel("Up (cm)")
     ax2.set_title("KDE of (PC1, Up)")
     fig.colorbar(cf2, ax=ax2, label="Density")
+    # Posterior mode and std (right plot)
+    ax2.plot(
+        mode_xi_cm,
+        mode_up_cm,
+        marker="x",
+        linestyle="None",
+        color="red",
+        markersize=8,
+        markeredgewidth=2,
+    )
+    ax2.text(
+        0.02,
+        0.98,
+        f"$\\sigma_\\xi$ = {sigma_xi_cm:.1f} cm\n$\\sigma_U$ = {sigma_U_cm:.1f} cm",
+        transform=ax2.transAxes,
+        ha="left",
+        va="top",
+        color="red",
+    )
 
-    # if ellipses > 0:
-    #     segment_xy_splits = np.array_split(xy, ellipses, axis=1)
-    #     segment_pcz_splits = np.array_split(pcz, ellipses, axis=1)
-    #
-    #     for i in range(ellipses):
-    #         print(i)
-    #         segment_xy = segment_xy_splits[i]
-    #         segment_pcz = segment_pcz_splits[i]
-    #
-    #         print(segment_pcz)
-    #
-    #         # Compute error ellipse for xy
-    #         cov_xy = np.cov(segment_xy)
-    #         print(segment_xy.shape,cov_xy.shape)
-    #         e_xy, _ = compute_error_ellipse(cov_xy, confidence=0.68, zorder=2)
-    #         ax1.add_patch(e_xy)
-    #
-    #         print("PCZ shape", segment_pcz.shape)
-    #         # Compute error ellipse for pcz
-    #         cov_pcz = np.cov(segment_pcz)
-    #         print(segment_pcz.shape, cov_pcz.shape)
-    #         e_pcz, _ = compute_error_ellipse(cov_pcz, confidence=0.68, zorder=2)
-    #         ax2.add_patch(e_pcz)
+    # Draw error ellipses for segmented subsets, if requested
+    if isinstance(ellipses, int) and ellipses > 0:
+        # Configuration for stability/visibility
+        min_segment_size = 20  # require at least this many points per segment
 
-    # Set limits
-    ax1.set_xlim(-lim_xy, lim_xy)
-    ax1.set_ylim(-lim_xy, lim_xy)
-    ax2.set_xlim(-lim_pcz, lim_pcz)
-    ax2.set_ylim(-lim_pcz, lim_pcz)
+        # split indices so both XY and PCZ use identical segments
+        idx_splits = np.array_split(np.arange(num_points), ellipses)
+
+        seg_cmap = plt.get_cmap("tab10")
+
+        for i, idx in enumerate(idx_splits):
+            # Guard against tiny segments
+            if idx.size < min_segment_size:
+                # If too small, try to borrow neighbors by expanding the slice bounds
+                # to reach ~min_segment_size where possible
+                # Compute a contiguous window around the segment mid-point
+                mid = int(idx.mean())
+                half = max(min_segment_size // 2, 1)
+                lo = max(0, mid - half)
+                hi = min(num_points, mid + half)
+                idx = np.arange(lo, hi)
+                if idx.size < min_segment_size:
+                    # Still too small; skip this one
+                    continue
+
+            # === (East, North) plane ===
+            # xy has shape (2, N); we need data as (n_i, 2) for compute_error_ellipse
+            segment_xy = xy[:, idx].T  # shape (n_i, 2)
+            if segment_xy.shape[0] < min_segment_size:
+                continue
+
+            e_xy, _ = compute_error_ellipse(
+                segment_xy, confidence=conf_level, zorder=10
+            )
+            e_xy.set_fill(False)
+            e_xy.set_linewidth(1.5)
+            e_xy.set_alpha(0.95)
+            edge_col = (
+                "red"
+                if (isinstance(ellipses, int) and ellipses == 1)
+                else seg_cmap(i % 10)
+            )
+            e_xy.set_edgecolor(edge_col)
+            if isinstance(ellipses, int) and ellipses == 1:
+                e_xy.set_linewidth(2.0)
+            ax1.add_patch(e_xy)
+
+            # === (PC1, Up) plane ===
+            segment_pcz = pcz[:, idx].T  # shape (n_i, 2)
+            if segment_pcz.shape[0] < min_segment_size:
+                continue
+
+            e_pcz, _ = compute_error_ellipse(
+                segment_pcz, confidence=conf_level, zorder=10
+            )
+            e_pcz.set_fill(False)
+            e_pcz.set_linewidth(1.5)
+            e_pcz.set_alpha(0.95)
+            edge_col = (
+                "red"
+                if (isinstance(ellipses, int) and ellipses == 1)
+                else seg_cmap(i % 10)
+            )
+            e_pcz.set_edgecolor(edge_col)
+            if isinstance(ellipses, int) and ellipses == 1:
+                e_pcz.set_linewidth(2.0)
+            ax2.add_patch(e_pcz)
+
+    # Set symmetric limits for both subplots
+    lim_all = max(lim_xy, lim_pcz)
+    ax1.set_xlim(-lim_all, lim_all)
+    ax1.set_ylim(-lim_all, lim_all)
+    ax2.set_xlim(-lim_all, lim_all)
+    ax2.set_ylim(-lim_all, lim_all)
+
+    fig.suptitle(
+        "Red X = posterior mode; Red ellipse = posterior (when 1 ellipse)", fontsize=10
+    )
 
     plt.tight_layout()
     if save:
@@ -137,7 +254,8 @@ def plot_kde_mcmc(
 
 
 if __name__ == "__main__":
-    chain = np.load(gps_output_path("mcmc_chain_8-7.npz"))
+    file = "mcmc_chain_8-7"
+    chain = np.load(gps_output_path(f"{file}.npz"))
     DOG_num = 0
     sample = chain["CDOG_aug"][::100, DOG_num]
 
@@ -151,6 +269,9 @@ if __name__ == "__main__":
         cmap="viridis",
         prior_mean=init_aug[DOG_num],
         prior_sd=prior_aug,
+        ellipses=1,
+        save=True,
+        chain_name=file,
     )
 
     # for i in range(7):
@@ -164,17 +285,22 @@ if __name__ == "__main__":
     #     else:
     #         # Stack samples from each segment
     #         samples = np.vstack((samples, segment_samples))
-    #
+
     # initial_params, prior_scales = get_init_params_and_prior(chain)
     # init_aug = initial_params["CDOG_aug"]
     # prior_aug = prior_scales["CDOG_aug"]
     # print(samples)
-    #
+
+    # downsample = 10
+    # samples = samples[::downsample]
+
     # plot_kde_mcmc(
     #     samples,
     #     nbins=100,
     #     cmap="viridis",
     #     prior_mean=init_aug[DOG_num],
     #     prior_sd=prior_aug,
-    #     ellipses=0,
+    #     ellipses=7,
+    #     save=True,
+    #     chain_name = "7_splits_combined",
     # )

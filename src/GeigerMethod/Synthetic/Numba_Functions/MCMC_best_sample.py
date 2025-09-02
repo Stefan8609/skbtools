@@ -21,7 +21,7 @@ from GeigerMethod.Synthetic.Numba_Functions.ESV_bias_split import (
 def load_min_logpost_params(npz_path):
     """
     Load an MCMC chain saved with np.savez and return the parameter set
-    corresponding to the minimum logpost.
+    corresponding to the maximum logpost.
 
     Parameters
     ----------

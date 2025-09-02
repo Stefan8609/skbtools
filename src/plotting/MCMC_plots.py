@@ -8,8 +8,6 @@ from .save import save_plot
 import itertools
 
 
-
-
 def get_init_params_and_prior(chain):
     """
     Extract prior and initial parameters from the MCMC chain.
@@ -461,3 +459,5 @@ if __name__ == "__main__":
 # Same scales between plots
 # Added ellipse for posterior in KDE
 # Add mode to the plot
+
+# Compare locations of the plot_segments lever and receiver location
