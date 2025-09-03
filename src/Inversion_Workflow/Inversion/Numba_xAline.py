@@ -219,7 +219,12 @@ def find_int_offset(
 
 
 if __name__ == "__main__":
+    """Make a test on the Bermuda Synthetic Data"""
+
     from Inversion_Workflow.Synthetic.Generate_Unaligned import generateUnaligned
+    from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
+        bermuda_trajectory,
+    )
     from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
     from Inversion_Workflow.Forward_Model.Calculate_Times import (
         calculateTimesRayTracing,
@@ -251,22 +256,36 @@ if __name__ == "__main__":
     gps1_to_transponder = np.array([-12.4659, 9.6021, -13.2993])
 
     # Generate synthetic data
-    (
-        CDOG_data,
-        CDOG,
-        GPS_Coordinates,
-        GPS_data,
-        true_transponder_coordinates,
-    ) = generateUnaligned(
-        n,
-        time_noise,
-        true_offset,
-        0.0,
-        0.0,
-        dz_array,
-        angle_array,
-        esv_matrix,
-    )
+    type = "bermuda"
+    if type == "bermuda":
+        (
+            CDOG_data,
+            CDOG,
+            GPS_Coordinates,
+            GPS_data,
+            true_transponder_coordinates,
+        ) = bermuda_trajectory(
+            time_noise, position_noise, dz_array, angle_array, esv_matrix, true_offset
+        )
+
+        """Need to add in bias terms to the generated data"""
+    else:
+        (
+            CDOG_data,
+            CDOG,
+            GPS_Coordinates,
+            GPS_data,
+            true_transponder_coordinates,
+        ) = generateUnaligned(
+            n,
+            time_noise,
+            true_offset,
+            0.0,
+            0.0,
+            dz_array,
+            angle_array,
+            esv_matrix,
+        )
 
     # Add noise to GPS Coordinates
     position_noise = 2 * 10**-2
