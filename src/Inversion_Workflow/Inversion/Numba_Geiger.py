@@ -3,7 +3,6 @@ import numpy as np
 import scipy.io as sio
 from numba import njit
 
-from Inversion_Workflow.Forward_Model.Calculate_Times import calculateTimesRayTracing
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from data import gps_data_path
 import timeit
@@ -63,6 +62,10 @@ def geigersMethod(
     tuple of ndarray
         ``(estimate, times_known)`` final position and noisy arrival times.
     """
+    from Inversion_Workflow.Forward_Model.Calculate_Times import (
+        calculateTimesRayTracing,
+    )
+
     # Define threshold
     epsilon = 10**-5
     times_known, esv = calculateTimesRayTracing(CDog, transponder_coordinates_Actual)
