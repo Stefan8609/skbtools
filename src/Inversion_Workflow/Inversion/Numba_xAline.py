@@ -219,9 +219,77 @@ def find_int_offset(
 
 
 if __name__ == "__main__":
+    from Inversion_Workflow.Synthetic.Generate_Unaligned import generateUnaligned
+    from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
+    from Inversion_Workflow.Forward_Model.Calculate_Times import (
+        calculateTimesRayTracing,
+    )
+    import scipy.io as sio
+    from data import gps_data_path
+
+    esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
+    dz_array = esv_table["distance"].flatten()
+    angle_array = esv_table["angle"].flatten()
+    esv_matrix = esv_table["matrice"]
+
+    # Parameters
     n = 10000
     true_offset = np.random.rand() * 10000
     position_noise = 2 * 10**-2
     time_noise = 2 * 10**-5
 
-    """Write some code to test"""
+    print("True Offset: ", true_offset)
+
+    gps1_to_others = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [-2.39341409, -4.22350344, 0.02941493],
+            [-12.09568416, -0.94568462, 0.0043972],
+            [-8.68674054, 5.16918806, 0.02499322],
+        ]
+    )
+    gps1_to_transponder = np.array([-12.4659, 9.6021, -13.2993])
+
+    # Generate synthetic data
+    (
+        CDOG_data,
+        CDOG,
+        GPS_Coordinates,
+        GPS_data,
+        true_transponder_coordinates,
+    ) = generateUnaligned(
+        n,
+        time_noise,
+        true_offset,
+        0.0,
+        0.0,
+        dz_array,
+        angle_array,
+        esv_matrix,
+    )
+
+    # Add noise to GPS Coordinates
+    position_noise = 2 * 10**-2
+    GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
+
+    # Find transponder coordinates from noisy GPS data
+    transponder_coordinates = findTransponder(
+        GPS_Coordinates, gps1_to_others, gps1_to_transponder
+    )
+    travel_times, esv = calculateTimesRayTracing(
+        CDOG, transponder_coordinates, dz_array, angle_array, esv_matrix
+    )
+
+    # Find integer offset
+    offset = find_int_offset(
+        CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
+    )
+
+    print("Integer Offset: ", offset)
+
+    # Refine to sub-integer offset
+    offset = find_subint_offset(
+        offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
+    )
+    print("Final Offset: ", offset)
+    print("Offset Error: ", abs(true_offset - offset))
