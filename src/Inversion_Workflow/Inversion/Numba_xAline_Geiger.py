@@ -21,7 +21,14 @@ from data import gps_data_path
 
 
 def initial_geiger(
-    guess, CDOG_data, GPS_data, transponder_coordinates, real_data=False
+    guess,
+    CDOG_data,
+    GPS_data,
+    transponder_coordinates,
+    dz_array,
+    angle_array,
+    esv_matrix,
+    real_data=False,
 ):
     """Initial Geiger solver used with integer offset search."""
     epsilon = 10**-5
@@ -32,11 +39,19 @@ def initial_geiger(
         # Find the best offset
         if not real_data:
             times_guess, esv = calculateTimesRayTracing(
-                inversion_guess, transponder_coordinates
+                inversion_guess,
+                transponder_coordinates,
+                dz_array,
+                angle_array,
+                esv_matrix,
             )
         else:
             times_guess, esv = calculateTimesRayTracingReal(
-                inversion_guess, transponder_coordinates
+                inversion_guess,
+                transponder_coordinates,
+                dz_array,
+                angle_array,
+                esv_matrix,
             )
         offset = find_int_offset(
             CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
@@ -72,7 +87,15 @@ def initial_geiger(
 
 @njit
 def transition_geiger(
-    guess, CDOG_data, GPS_data, transponder_coordinates, offset, real_data=False
+    guess,
+    CDOG_data,
+    GPS_data,
+    transponder_coordinates,
+    offset,
+    dz_array,
+    angle_array,
+    esv_matrix,
+    real_data=False,
 ):
     """Refine position using sub-integer offset adjustments."""
     epsilon = 10**-5
@@ -84,11 +107,19 @@ def transition_geiger(
         # Find the best offset
         if not real_data:
             times_guess, esv = calculateTimesRayTracing(
-                inversion_guess, transponder_coordinates
+                inversion_guess,
+                transponder_coordinates,
+                dz_array,
+                angle_array,
+                esv_matrix,
             )
         else:
             times_guess, esv = calculateTimesRayTracingReal(
-                inversion_guess, transponder_coordinates
+                inversion_guess,
+                transponder_coordinates,
+                dz_array,
+                angle_array,
+                esv_matrix,
             )
         offset = find_subint_offset(
             offset, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
@@ -132,7 +163,15 @@ def transition_geiger(
 
 @njit
 def final_geiger(
-    guess, CDOG_data, GPS_data, transponder_coordinates, offset, real_data=False
+    guess,
+    CDOG_data,
+    GPS_data,
+    transponder_coordinates,
+    offset,
+    dz_array,
+    angle_array,
+    esv_matrix,
+    real_data=False,
 ):
     """Final refinement assuming the offset is accurately known."""
     epsilon = 10**-5
@@ -142,11 +181,19 @@ def final_geiger(
 
     if not real_data:
         times_guess, esv = calculateTimesRayTracing(
-            inversion_guess, transponder_coordinates
+            inversion_guess,
+            transponder_coordinates,
+            dz_array,
+            angle_array,
+            esv_matrix,
         )
     else:
         times_guess, esv = calculateTimesRayTracingReal(
-            inversion_guess, transponder_coordinates
+            inversion_guess,
+            transponder_coordinates,
+            dz_array,
+            angle_array,
+            esv_matrix,
         )
     (
         CDOG_clock,
@@ -169,11 +216,19 @@ def final_geiger(
     while np.linalg.norm(delta) > epsilon and k < 10:
         if not real_data:
             GPS_full, esv = calculateTimesRayTracing(
-                inversion_guess, transponder_coordinates_full
+                inversion_guess,
+                transponder_coordinates_full,
+                dz_array,
+                angle_array,
+                esv_matrix,
             )
         else:
             GPS_full, esv = calculateTimesRayTracingReal(
-                inversion_guess, transponder_coordinates_full
+                inversion_guess,
+                transponder_coordinates_full,
+                dz_array,
+                angle_array,
+                esv_matrix,
             )
 
         jacobian = computeJacobianRayTracing(
@@ -190,11 +245,19 @@ def final_geiger(
 
     if not real_data:
         times_guess, esv = calculateTimesRayTracing(
-            inversion_guess, transponder_coordinates
+            inversion_guess,
+            transponder_coordinates,
+            dz_array,
+            angle_array,
+            esv_matrix,
         )
     else:
         times_guess, esv = calculateTimesRayTracingReal(
-            inversion_guess, transponder_coordinates
+            inversion_guess,
+            transponder_coordinates,
+            dz_array,
+            angle_array,
+            esv_matrix,
         )
     (
         CDOG_clock,
@@ -261,7 +324,13 @@ if __name__ == "__main__":
     guess = CDOG + [200, 200, 400]
 
     inversion_result, offset = initial_geiger(
-        guess, CDOG_data, GPS_data, transponder_coordinates
+        guess,
+        CDOG_data,
+        GPS_data,
+        transponder_coordinates,
+        dz_array,
+        angle_array,
+        esv_matrix,
     )
     print("INT Offset: ", offset, "DIFF:", offset - true_offset)
     print("CDOG:", CDOG)
@@ -270,7 +339,14 @@ if __name__ == "__main__":
     print("\n")
 
     inversion_result, offset = transition_geiger(
-        inversion_result, CDOG_data, GPS_data, transponder_coordinates, offset
+        inversion_result,
+        CDOG_data,
+        GPS_data,
+        transponder_coordinates,
+        offset,
+        dz_array,
+        angle_array,
+        esv_matrix,
     )
 
     print("SUB-INT Offset: ", offset, "DIFF", offset - true_offset)
@@ -280,10 +356,17 @@ if __name__ == "__main__":
     print("\n")
 
     times_guess, esv = calculateTimesRayTracing(
-        inversion_result, transponder_coordinates
+        inversion_result, transponder_coordinates, dz_array, angle_array, esv_matrix
     )
     inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_geiger(
-        inversion_result, CDOG_data, GPS_data, transponder_coordinates, offset
+        inversion_result,
+        CDOG_data,
+        GPS_data,
+        transponder_coordinates,
+        offset,
+        dz_array,
+        angle_array,
+        esv_matrix,
     )
     print("CDOG:", CDOG)
     print("Inversion_Workflow:", inversion_result)

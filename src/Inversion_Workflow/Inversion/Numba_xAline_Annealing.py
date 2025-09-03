@@ -17,6 +17,8 @@ from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from src.Inversion_Workflow.Synthetic.Generate_Unaligned import (
     generateUnalignedRealistic,
 )
+import scipy.io as sio
+from data import gps_data_path
 
 """
 Maybe try to implement the more complicated schematic
@@ -31,6 +33,9 @@ def simulated_annealing(
     gps1_to_others,
     initial_guess,
     initial_lever,
+    dz_array,
+    angle_array,
+    esv_matrix,
     initial_offset=0,
     real_data=False,
 ):
@@ -46,11 +51,19 @@ def simulated_annealing(
     )
     if not real_data:
         times_guess, esv = calculateTimesRayTracing(
-            inversion_guess, transponder_coordinates_found
+            inversion_guess,
+            transponder_coordinates_found,
+            dz_array,
+            angle_array,
+            esv_matrix,
         )
     else:
         times_guess, esv = calculateTimesRayTracingReal(
-            inversion_guess, transponder_coordinates_found
+            inversion_guess,
+            transponder_coordinates_found,
+            dz_array,
+            angle_array,
+            esv_matrix,
         )
     (
         CDOG_clock,
@@ -87,6 +100,9 @@ def simulated_annealing(
                 CDOG_data,
                 GPS_data,
                 transponder_coordinates_found,
+                dz_array,
+                angle_array,
+                esv_matrix,
                 real_data,
             )
             if offset == old_offset:
@@ -98,6 +114,9 @@ def simulated_annealing(
                 GPS_data,
                 transponder_coordinates_found,
                 offset,
+                dz_array,
+                angle_array,
+                esv_matrix,
                 real_data,
             )
             status = "constant"
@@ -112,6 +131,9 @@ def simulated_annealing(
                     GPS_data,
                     transponder_coordinates_found,
                     offset,
+                    dz_array,
+                    angle_array,
+                    esv_matrix,
                     real_data,
                 )
             else:
@@ -127,16 +149,27 @@ def simulated_annealing(
                     GPS_data,
                     transponder_coordinates_found,
                     offset,
+                    dz_array,
+                    angle_array,
+                    esv_matrix,
                     real_data,
                 )
 
         if not real_data:
             times_guess, esv = calculateTimesRayTracing(
-                inversion_guess, transponder_coordinates_found
+                inversion_guess,
+                transponder_coordinates_found,
+                dz_array,
+                angle_array,
+                esv_matrix,
             )
         else:
             times_guess, esv = calculateTimesRayTracingReal(
-                inversion_guess, transponder_coordinates_found
+                inversion_guess,
+                transponder_coordinates_found,
+                dz_array,
+                angle_array,
+                esv_matrix,
             )
         (
             CDOG_clock,
@@ -174,13 +207,27 @@ if __name__ == "__main__":
     position_noise = 2 * 10**-2
     time_noise = 2 * 10**-5
 
+    esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
+    dz_array = esv_table["distance"].flatten()
+    angle_array = esv_table["angle"].flatten()
+    esv_matrix = esv_table["matrice"]
+
     (
         CDOG_data,
         CDOG,
         GPS_Coordinates,
         GPS_data,
         true_transponder_coordinates,
-    ) = generateUnalignedRealistic(10000, time_noise, true_offset)
+    ) = generateUnalignedRealistic(
+        10000,
+        time_noise,
+        true_offset,
+        0.0,
+        0.0,
+        dz_array,
+        angle_array,
+        esv_matrix,
+    )
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 
     gps1_to_others = np.array(
@@ -199,6 +246,9 @@ if __name__ == "__main__":
         gps1_to_others,
         initial_guess,
         initial_lever,
+        dz_array,
+        angle_array,
+        esv_matrix,
     )
 
     lever, offset, inversion_guess = simulated_annealing(
@@ -209,6 +259,9 @@ if __name__ == "__main__":
         gps1_to_others,
         inversion_guess,
         lever,
+        dz_array,
+        angle_array,
+        esv_matrix,
         offset,
     )
 
@@ -216,7 +269,11 @@ if __name__ == "__main__":
         GPS_Coordinates, gps1_to_others, lever
     )
     times_found, esv = calculateTimesRayTracing(
-        inversion_guess, transponder_coordinates_found
+        inversion_guess,
+        transponder_coordinates_found,
+        dz_array,
+        angle_array,
+        esv_matrix,
     )
 
     offset = find_subint_offset(
@@ -224,7 +281,14 @@ if __name__ == "__main__":
     )
 
     inversion_guess, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_geiger(
-        inversion_guess, CDOG_data, GPS_data, transponder_coordinates_found, offset
+        inversion_guess,
+        CDOG_data,
+        GPS_data,
+        transponder_coordinates_found,
+        offset,
+        dz_array,
+        angle_array,
+        esv_matrix,
     )
 
     print(np.linalg.norm(inversion_guess - CDOG) * 100, "cm")

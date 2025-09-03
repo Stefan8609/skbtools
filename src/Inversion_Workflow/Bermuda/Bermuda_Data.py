@@ -16,6 +16,9 @@ import matplotlib.pyplot as plt
 from data import gps_data_path
 
 esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
+dz_array = esv_table["distance"].flatten()
+angle_array = esv_table["angle"].flatten()
+esv_matrix = esv_table["matrice"]
 
 """
 Process:
@@ -46,7 +49,14 @@ transponder_coordinates = findTransponder(
     GPS_Coordinates, gps1_to_others, initial_lever_guess
 )
 inversion_guess, best_offset = initial_geiger(
-    CDOG_guess, CDOG_data, GPS_data, transponder_coordinates, real_data=True
+    CDOG_guess,
+    CDOG_data,
+    GPS_data,
+    transponder_coordinates,
+    dz_array,
+    angle_array,
+    esv_matrix,
+    real_data=True,
 )
 print("Initial Complete:", best_offset)
 inversion_guess, best_offset = transition_geiger(
@@ -55,6 +65,9 @@ inversion_guess, best_offset = transition_geiger(
     GPS_data,
     transponder_coordinates,
     best_offset,
+    dz_array,
+    angle_array,
+    esv_matrix,
     real_data=True,
 )
 print("Transition Complete:", best_offset)
@@ -67,6 +80,9 @@ inversion_guess, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_geiger(
     GPS_data,
     transponder_coordinates,
     best_offset,
+    dz_array,
+    angle_array,
+    esv_matrix,
     real_data=True,
 )
 print("Final Complete")
