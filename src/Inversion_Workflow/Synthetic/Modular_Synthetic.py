@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.io as sio
 
-from Inversion_Workflow.Synthetic.Generate_Unaligned_Realistic import (
+from src.Inversion_Workflow.Synthetic.Generate_Unaligned import (
     generateUnalignedRealistic,
 )
 from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (

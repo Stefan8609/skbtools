@@ -13,7 +13,7 @@ from Inversion_Workflow.Inversion.Numba_xAline import (
     find_subint_offset,
     find_int_offset,
 )
-from Inversion_Workflow.Synthetic.Generate_Unaligned_Realistic import (
+from src.Inversion_Workflow.Synthetic.Generate_Unaligned import (
     generateUnalignedRealistic,
 )
 import scipy.io as sio

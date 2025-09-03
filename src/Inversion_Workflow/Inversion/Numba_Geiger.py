@@ -2,13 +2,11 @@ import random
 import numpy as np
 import scipy.io as sio
 from numba import njit
-
+import timeit
 
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Forward_Model.Calculate_Times import calculateTimesRayTracing
-
 from data import gps_data_path
-import timeit
 
 
 @njit

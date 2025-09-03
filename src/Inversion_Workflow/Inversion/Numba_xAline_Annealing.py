@@ -14,7 +14,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Times import (
     calculateTimesRayTracing,
 )
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-from Inversion_Workflow.Synthetic.Generate_Unaligned_Realistic import (
+from src.Inversion_Workflow.Synthetic.Generate_Unaligned import (
     generateUnalignedRealistic,
 )
 
