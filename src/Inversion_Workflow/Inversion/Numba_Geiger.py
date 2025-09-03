@@ -41,6 +41,9 @@ def geigersMethod(
     CDog,
     transponder_coordinates_Actual,
     transponder_coordinates_Found,
+    dz_array,
+    angle_array,
+    esv_matrix,
     time_noise=0,
 ):
     """Iteratively refine a CDOG position using Geiger's algorithm.
@@ -66,7 +69,9 @@ def geigersMethod(
 
     # Define threshold
     epsilon = 10**-5
-    times_known, esv = calculateTimesRayTracing(CDog, transponder_coordinates_Actual)
+    times_known, esv = calculateTimesRayTracing(
+        CDog, transponder_coordinates_Actual, dz_array, angle_array, esv_matrix
+    )
 
     # Apply noise to known times
     times_known += np.random.normal(0, time_noise, len(transponder_coordinates_Actual))
@@ -76,7 +81,7 @@ def geigersMethod(
     # Loop until change in guess is less than the threshold
     while np.linalg.norm(delta) > epsilon and k < 100:
         times_guess, esv = calculateTimesRayTracing(
-            guess, transponder_coordinates_Found
+            guess, transponder_coordinates_Found, dz_array, angle_array, esv_matrix
         )
         jacobian = computeJacobianRayTracing(
             guess, transponder_coordinates_Found, times_guess, esv
@@ -133,6 +138,9 @@ if __name__ == "__main__":
             CDog,
             transponder_coordinates_Actual,
             transponder_coordinates_Found,
+            dz_array,
+            angle_array,
+            esv_matrix,
             time_noise,
         )
     stop = timeit.default_timer()
