@@ -13,8 +13,8 @@ from Inversion_Workflow.Inversion.Numba_xAline import (
     find_subint_offset,
     find_int_offset,
 )
-from src.Inversion_Workflow.Synthetic.Generate_Unaligned import (
-    generateUnalignedRealistic,
+from Inversion_Workflow.Synthetic.Generate_Unaligned import (
+    generateUnaligned,
 )
 import scipy.io as sio
 from data import gps_data_path
@@ -300,7 +300,7 @@ if __name__ == "__main__":
         GPS_Coordinates,
         GPS_data,
         true_transponder_coordinates,
-    ) = generateUnalignedRealistic(
+    ) = generateUnaligned(
         20000,
         time_noise,
         true_offset,
@@ -309,7 +309,6 @@ if __name__ == "__main__":
         dz_array,
         angle_array,
         esv_matrix,
-        main=False,
     )
     GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 

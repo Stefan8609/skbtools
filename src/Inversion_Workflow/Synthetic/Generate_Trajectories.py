@@ -66,9 +66,7 @@ def _apply_rot(mat: np.ndarray, vec: np.ndarray) -> np.ndarray:
 
 # Trajectory generators (Numba-compatible, no Python random)
 @njit(cache=True, fastmath=True)
-def generateRandomData(
-    n: int, gps1_to_others: np.ndarray, gps1_to_transponder: np.ndarray
-):
+def generateRandomData(n, gps1_to_others=None, gps1_to_transponder=None):
     """Generate a fully random synthetic trajectory.
 
     Returns
@@ -77,6 +75,18 @@ def generateRandomData(
         (CDog, GPS_Coordinates, transponder_coordinates, gps1_to_others,
         gps1_to_transponder)
     """
+    if gps1_to_others is None:
+        gps1_to_others = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [-2.39341409, -4.22350344, 0.02941493],
+                [-12.09568416, -0.94568462, 0.0043972],
+                [-8.68674054, 5.16918806, 0.02499322],
+            ]
+        )
+    if gps1_to_transponder is None:
+        gps1_to_transponder = np.array([-12.4659, 9.6021, -13.2993])
+
     # CDOG position
     CDog = np.empty(3, dtype=np.float64)
     CDog[0] = np.random.uniform(-1000.0, 1000.0)
@@ -131,8 +141,20 @@ def generateRandomData(
 
 
 @njit(cache=True, fastmath=True)
-def generateLine(n: int, gps1_to_others: np.ndarray, gps1_to_transponder: np.ndarray):
+def generateLine(n, gps1_to_others=None, gps1_to_transponder=None):
     """Generate a roughly linear track with small lateral/vertical variation."""
+    if gps1_to_others is None:
+        gps1_to_others = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [-2.39341409, -4.22350344, 0.02941493],
+                [-12.09568416, -0.94568462, 0.0043972],
+                [-8.68674054, 5.16918806, 0.02499322],
+            ]
+        )
+    if gps1_to_transponder is None:
+        gps1_to_transponder = np.array([-12.4659, 9.6021, -13.2993])
+
     # CDOG
     CDog = np.empty(3, dtype=np.float64)
     CDog[0] = np.random.uniform(-1000.0, 1000.0)
@@ -183,8 +205,20 @@ def generateLine(n: int, gps1_to_others: np.ndarray, gps1_to_transponder: np.nda
 
 
 @njit(cache=True, fastmath=True)
-def generateCross(n: int, gps1_to_others: np.ndarray, gps1_to_transponder: np.ndarray):
+def generateCross(n, gps1_to_others=None, gps1_to_transponder=None):
     """Two perpendicular passes (a simple cross)."""
+    if gps1_to_others is None:
+        gps1_to_others = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [-2.39341409, -4.22350344, 0.02941493],
+                [-12.09568416, -0.94568462, 0.0043972],
+                [-8.68674054, 5.16918806, 0.02499322],
+            ]
+        )
+    if gps1_to_transponder is None:
+        gps1_to_transponder = np.array([-12.4659, 9.6021, -13.2993])
+
     # CDOG
     CDog = np.empty(3, dtype=np.float64)
     CDog[0] = np.random.uniform(-1000.0, 1000.0)
@@ -241,13 +275,23 @@ def generateCross(n: int, gps1_to_others: np.ndarray, gps1_to_transponder: np.nd
 
 
 @njit(cache=True, fastmath=True)
-def generateRealistic(
-    n: int, gps1_to_others: np.ndarray, gps1_to_transponder: np.ndarray
-):
+def generateRealistic(n, gps1_to_others=None, gps1_to_transponder=None):
     """Create a synthetic survey with four legs and random boat motion.
 
     The path length is truncated to a multiple of 4 to form a box pattern.
     """
+    if gps1_to_others is None:
+        gps1_to_others = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [-2.39341409, -4.22350344, 0.02941493],
+                [-12.09568416, -0.94568462, 0.0043972],
+                [-8.68674054, 5.16918806, 0.02499322],
+            ]
+        )
+    if gps1_to_transponder is None:
+        gps1_to_transponder = np.array([-12.4659, 9.6021, -13.2993])
+
     # number of usable samples (multiple of 4)
     m = (n // 4) * 4
 

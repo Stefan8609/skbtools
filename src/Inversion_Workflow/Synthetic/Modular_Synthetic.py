@@ -2,7 +2,7 @@ import numpy as np
 import scipy.io as sio
 
 from src.Inversion_Workflow.Synthetic.Generate_Unaligned import (
-    generateUnalignedRealistic,
+    generateUnaligned,
 )
 from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
     bermuda_trajectory,
@@ -65,7 +65,7 @@ def modular_synthetic(
             GPS_Coordinates,
             GPS_data,
             true_transponder_coordinates,
-        ) = generateUnalignedRealistic(
+        ) = generateUnaligned(
             20000,
             time_noise,
             true_offset,

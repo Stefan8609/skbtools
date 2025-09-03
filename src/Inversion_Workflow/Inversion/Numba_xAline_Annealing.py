@@ -15,7 +15,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Times import (
 )
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from src.Inversion_Workflow.Synthetic.Generate_Unaligned import (
-    generateUnalignedRealistic,
+    generateUnaligned,
 )
 import scipy.io as sio
 from data import gps_data_path
@@ -218,7 +218,7 @@ if __name__ == "__main__":
         GPS_Coordinates,
         GPS_data,
         true_transponder_coordinates,
-    ) = generateUnalignedRealistic(
+    ) = generateUnaligned(
         10000,
         time_noise,
         true_offset,

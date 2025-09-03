@@ -1,7 +1,12 @@
 import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
-from Inversion_Workflow.Synthetic.Generate_Trajectories import generateRealistic
+from Inversion_Workflow.Synthetic.Generate_Trajectories import (
+    generateRealistic,
+    generateRandomData,
+    generateLine,
+    generateCross,
+)
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias,
 )
@@ -9,9 +14,8 @@ from data import gps_data_path
 from numba import njit
 
 
-# Function to generate the unaligned time series for a realistic trajectory
 @njit
-def generateUnalignedRealistic(
+def generateUnaligned(
     n,
     time_noise,
     offset,
@@ -22,6 +26,7 @@ def generateUnalignedRealistic(
     esv_matrix,
     gps1_to_others=None,
     gps1_to_transponder=None,
+    trajectory="realistic",
 ):
     """Generate noisy travel times and corrupted CDOG tags for a realistic trajectory.
 
@@ -59,13 +64,42 @@ def generateUnalignedRealistic(
     if gps1_to_transponder is None:
         gps1_to_transponder = np.array([-12.4659, 9.6021, -13.2993])
 
-    (
-        CDOG,
-        GPS_Coordinates,
-        transponder_coordinates,
-        gps1_to_others,
-        gps1_to_transponder,
-    ) = generateRealistic(n, gps1_to_others, gps1_to_transponder)
+    if trajectory == "random":
+        print("Generating random trajectory")
+        (
+            CDOG,
+            GPS_Coordinates,
+            transponder_coordinates,
+            gps1_to_others,
+            gps1_to_transponder,
+        ) = generateRandomData(n, gps1_to_others, gps1_to_transponder)
+    elif trajectory == "line":
+        print("Generating line trajectory")
+        (
+            CDOG,
+            GPS_Coordinates,
+            transponder_coordinates,
+            gps1_to_others,
+            gps1_to_transponder,
+        ) = generateLine(n, gps1_to_others, gps1_to_transponder)
+    elif trajectory == "cross":
+        print("Generating cross trajectory")
+        (
+            CDOG,
+            GPS_Coordinates,
+            transponder_coordinates,
+            gps1_to_others,
+            gps1_to_transponder,
+        ) = generateCross(n, gps1_to_others, gps1_to_transponder)
+    else:
+        print("Generating realistic trajectory")
+        (
+            CDOG,
+            GPS_Coordinates,
+            transponder_coordinates,
+            gps1_to_others,
+            gps1_to_transponder,
+        ) = generateRealistic(n, gps1_to_others, gps1_to_transponder)
 
     # GPS time index
     GPS_time = np.arange(len(GPS_Coordinates))
@@ -130,7 +164,7 @@ if __name__ == "__main__":
     time_noise = 2 * 10**-5
 
     CDOG_mat, CDOG, GPS_Coordinates, GPS_time, transponder_coordinates = (
-        generateUnalignedRealistic(
+        generateUnaligned(
             20000,
             time_noise,
             offset,
@@ -139,6 +173,7 @@ if __name__ == "__main__":
             dz_array,
             angle_array,
             esv_matrix,
+            trajectory="realistic",
         )
     )
 
