@@ -2,7 +2,7 @@ import numpy as np
 import scipy.io as sio
 from numba import njit
 
-from Inversion_Workflow.Inversion.Numba_Geiger import findTransponder
+from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     final_bias_geiger,
     initial_bias_geiger,

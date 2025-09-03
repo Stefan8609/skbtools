@@ -1,9 +1,7 @@
 import numpy as np
 import scipy.io as sio
 
-from Inversion_Workflow.Inversion.Numba_Geiger import (
-    findTransponder,
-)
+from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger import (
     initial_geiger,
     transition_geiger,

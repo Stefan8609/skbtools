@@ -2,10 +2,12 @@ import numpy as np
 from numba import njit
 from Inversion_Workflow.Inversion.Numba_Geiger import (
     computeJacobianRayTracing,
-    findTransponder,
-    calculateTimesRayTracing,
-    calculateTimesRayTracingReal,
 )
+from Inversion_Workflow.Forward_Model.Calculate_Times import (
+    calculateTimesRayTracingReal,
+    calculateTimesRayTracing,
+)
+from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline import (
     two_pointer_index,
     find_subint_offset,

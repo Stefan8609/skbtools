@@ -8,7 +8,7 @@ from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
 from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
     calculateTimesRayTracing_Bias,
 )
-from Inversion_Workflow.Inversion.Numba_Geiger import findTransponder
+from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     initial_bias_geiger,
     transition_bias_geiger,

@@ -7,8 +7,8 @@ from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
 )
 from Inversion_Workflow.Inversion.Numba_Geiger import (
     generateRealistic,
-    findTransponder,
 )
+from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from data import gps_data_path
 
 

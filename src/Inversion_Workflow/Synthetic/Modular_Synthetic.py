@@ -7,7 +7,7 @@ from Inversion_Workflow.Synthetic.Generate_Unaligned_Realistic import (
 from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
     bermuda_trajectory,
 )
-from Inversion_Workflow.Inversion.Numba_Geiger import findTransponder
+from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     initial_bias_geiger,
     transition_bias_geiger,

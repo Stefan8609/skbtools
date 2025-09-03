@@ -13,7 +13,7 @@ from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
     calculateTimesRayTracing_Bias_Real,
     compute_Jacobian_biased,
 )
-from Inversion_Workflow.Inversion.Numba_Geiger import findTransponder
+from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from numba import njit
 from plotting.Plot_Modular import time_series_plot
 from data import gps_data_path

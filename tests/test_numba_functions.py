@@ -1,6 +1,7 @@
 import numpy as np
 from pymap3d import ecef2geodetic
 
+import Inversion_Workflow.Forward_Model.Find_Transponder
 from geometry.ECEF_Geodetic import (
     ECEF_Geodetic,
 )
@@ -70,7 +71,9 @@ def test_find_transponder_simple():
             GPS_Coordinates[i, j] = t + R @ gps1_to_others[j]
         expected[i] = t + R @ gps1_to_transponder
 
-    result = ng.findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder)
+    result = Inversion_Workflow.Forward_Model.Find_Transponder.findTransponder(
+        GPS_Coordinates, gps1_to_others, gps1_to_transponder
+    )
     assert np.allclose(result, expected, atol=1e-6)
 
 

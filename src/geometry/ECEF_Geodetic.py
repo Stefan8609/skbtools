@@ -52,9 +52,7 @@ def ECEF_Geodetic(coords):
 
 
 if __name__ == "__main__":
-    from Inversion_Workflow.Inversion.Numba_Geiger import (
-        findTransponder,
-    )
+    from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
     from data import gps_data_path
     import timeit
 

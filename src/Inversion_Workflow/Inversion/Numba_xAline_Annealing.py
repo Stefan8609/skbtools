@@ -8,10 +8,12 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger import (
     initial_geiger,
     transition_geiger,
     final_geiger,
-    calculateTimesRayTracing,
-    findTransponder,
-    calculateTimesRayTracingReal,
 )
+from Inversion_Workflow.Forward_Model.Calculate_Times import (
+    calculateTimesRayTracingReal,
+    calculateTimesRayTracing,
+)
+from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Synthetic.Generate_Unaligned_Realistic import (
     generateUnalignedRealistic,
 )
