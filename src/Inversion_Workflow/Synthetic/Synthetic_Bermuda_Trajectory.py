@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import scipy.io as sio
 from pymap3d import ecef2geodetic
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from data import gps_data_path

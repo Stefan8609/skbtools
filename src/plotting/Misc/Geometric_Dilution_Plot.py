@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 
 from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
     compute_Jacobian_biased,
+)
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias,
 )
 from Inversion_Workflow.Synthetic.Modular_Synthetic import (

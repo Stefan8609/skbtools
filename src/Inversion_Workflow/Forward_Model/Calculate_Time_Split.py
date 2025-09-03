@@ -1,6 +1,6 @@
 import numpy as np
 from numba import njit
-from Inversion_Workflow.Inversion.Numba_Geiger_bias import find_esv
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import find_esv
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 
 

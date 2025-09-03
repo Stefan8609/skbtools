@@ -9,9 +9,11 @@ from Inversion_Workflow.Inversion.Numba_xAline import (
     find_int_offset,
 )
 from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
+    compute_Jacobian_biased,
+)
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias,
     calculateTimesRayTracing_Bias_Real,
-    compute_Jacobian_biased,
 )
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from numba import njit

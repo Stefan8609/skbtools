@@ -3,8 +3,8 @@ import scipy.io as sio
 import random
 from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
     numba_bias_geiger,
-    find_esv,
 )
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import find_esv
 from Inversion_Workflow.Inversion.Numba_Geiger import (
     generateRealistic,
 )

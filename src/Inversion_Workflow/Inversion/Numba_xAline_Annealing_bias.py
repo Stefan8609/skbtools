@@ -5,15 +5,15 @@ from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
     bermuda_trajectory,
 )
 from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
-from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias,
+    calculateTimesRayTracing_Bias_Real,
 )
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     initial_bias_geiger,
     transition_bias_geiger,
     final_bias_geiger,
-    calculateTimesRayTracing_Bias_Real,
 )
 from plotting.Plot_Modular import time_series_plot
 from data import gps_data_path

@@ -6,7 +6,7 @@ from numba import njit
 from numba.typed import List
 import math
 
-from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index

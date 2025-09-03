@@ -7,7 +7,7 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     transition_bias_geiger,
     final_bias_geiger,
 )
-from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
