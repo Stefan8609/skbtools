@@ -110,7 +110,7 @@ def generateRandomData(
 
         # Other GPS antennas
         for j in range(1, 4):
-            disp = _apply_rot(R, gps1_to_others[j])
+            disp = _apply_rot(R, gps1_to_others[j, :])
             GPS_Coordinates[i, j, 0] = GPS_Coordinates[i, 0, 0] + disp[0]
             GPS_Coordinates[i, j, 1] = GPS_Coordinates[i, 0, 1] + disp[1]
             GPS_Coordinates[i, j, 2] = GPS_Coordinates[i, 0, 2] + disp[2]
@@ -164,7 +164,7 @@ def generateLine(n: int, gps1_to_others: np.ndarray, gps1_to_transponder: np.nda
     for i in range(n):
         R = _rot_matrix_xyz(rot[i, 0], rot[i, 1], rot[i, 2])
         for j in range(1, 4):
-            disp = _apply_rot(R, gps1_to_others[j])
+            disp = _apply_rot(R, gps1_to_others[j, :])
             GPS_Coordinates[i, j, 0] = GPS_Coordinates[i, 0, 0] + disp[0]
             GPS_Coordinates[i, j, 1] = GPS_Coordinates[i, 0, 1] + disp[1]
             GPS_Coordinates[i, j, 2] = GPS_Coordinates[i, 0, 2] + disp[2]
@@ -222,7 +222,7 @@ def generateCross(n: int, gps1_to_others: np.ndarray, gps1_to_transponder: np.nd
     for i in range(n):
         R = _rot_matrix_xyz(rot[i, 0], rot[i, 1], rot[i, 2])
         for j in range(1, 4):
-            disp = _apply_rot(R, gps1_to_others[j])
+            disp = _apply_rot(R, gps1_to_others[j, :])
             GPS_Coordinates[i, j, 0] = GPS_Coordinates[i, 0, 0] + disp[0]
             GPS_Coordinates[i, j, 1] = GPS_Coordinates[i, 0, 1] + disp[1]
             GPS_Coordinates[i, j, 2] = GPS_Coordinates[i, 0, 2] + disp[2]
@@ -267,7 +267,7 @@ def generateRealistic(
 
     y1 = x1 + (np.random.random(leg) * 50.0) - 25.0
     y2 = 7500.0 + (np.random.random(leg) * 50.0) - 25.0
-    y3 = -x1 + (np.random.random(leg) * 50.0) - 25.0
+    y3 = -x3 + (np.random.random(leg) * 50.0) - 25.0
     y4 = -7500.0 + (np.random.random(leg) * 50.0) - 25.0
 
     x = np.empty(m)
@@ -297,7 +297,7 @@ def generateRealistic(
     for i in range(m):
         R = _rot_matrix_xyz(rot[i, 0], rot[i, 1], rot[i, 2])
         for j in range(1, 4):
-            disp = _apply_rot(R, gps1_to_others[j])
+            disp = _apply_rot(R, gps1_to_others[j, :])
             GPS_Coordinates[i, j, 0] = GPS_Coordinates[i, 0, 0] + disp[0]
             GPS_Coordinates[i, j, 1] = GPS_Coordinates[i, 0, 1] + disp[1]
             GPS_Coordinates[i, j, 2] = GPS_Coordinates[i, 0, 2] + disp[2]
@@ -313,3 +313,75 @@ def generateRealistic(
         gps1_to_others,
         gps1_to_transponder,
     )
+
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
+    gps1_to_others = np.array(
+        [
+            [0.0, 0.0, 0.0],  # GPS1 reference
+            [5.0, 0.0, 0.0],  # GPS2 (east)
+            [0.0, 5.0, 0.0],  # GPS3 (north)
+            [-5.0, 0.0, 0.0],  # GPS4 (west)
+        ],
+        dtype=np.float64,
+    )
+    gps1_to_transponder = np.array([15.0, 0.0, -2.0], dtype=np.float64)
+
+    n = 400
+
+    CDog_rnd, GPS_rnd, TX_rnd, *_ = generateRandomData(
+        n, gps1_to_others, gps1_to_transponder
+    )
+    CDog_lin, GPS_lin, TX_lin, *_ = generateLine(n, gps1_to_others, gps1_to_transponder)
+    CDog_crs, GPS_crs, TX_crs, *_ = generateCross(
+        n, gps1_to_others, gps1_to_transponder
+    )
+    CDog_real, GPS_real, TX_real, *_ = generateRealistic(
+        n, gps1_to_others, gps1_to_transponder
+    )
+
+    def _plot(ax, GPS, TX, title):
+        # GPS1 path
+        ax.plot(GPS[:, 0, 0], GPS[:, 0, 1], lw=1.2, label="GPS1 path")
+        # Other antennas (lighter)
+        ax.plot(GPS[:, 1, 0], GPS[:, 1, 1], alpha=0.35, lw=0.8, label="GPS2")
+        ax.plot(GPS[:, 2, 0], GPS[:, 2, 1], alpha=0.35, lw=0.8, label="GPS3")
+        ax.plot(GPS[:, 3, 0], GPS[:, 3, 1], alpha=0.35, lw=0.8, label="GPS4")
+        # Transponder track
+        ax.plot(TX[:, 0], TX[:, 1], ".", ms=2, label="Transponder")
+        ax.set_title(title)
+        ax.set_xlabel("X (m)")
+        ax.set_ylabel("Y (m)")
+        ax.axis("equal")
+        # Make limits a touch padded
+        xmin = min(GPS[:, :, 0].min(), TX[:, 0].min())
+        xmax = max(GPS[:, :, 0].max(), TX[:, 0].max())
+        ymin = min(GPS[:, :, 1].min(), TX[:, 1].min())
+        ymax = max(GPS[:, :, 1].max(), TX[:, 1].max())
+        dx = xmax - xmin
+        dy = ymax - ymin
+        pad = 0.05 * max(dx, dy)
+        ax.set_xlim(xmin - pad, xmax + pad)
+        ax.set_ylim(ymin - pad, ymax + pad)
+        ax.grid(True, ls=":", lw=0.5)
+
+    fig, axs = plt.subplots(2, 2, figsize=(12, 10), constrained_layout=True)
+    _plot(axs[0, 0], GPS_rnd, TX_rnd, "Random trajectory")
+    _plot(axs[0, 1], GPS_lin, TX_lin, "Line trajectory")
+    _plot(axs[1, 0], GPS_crs, TX_crs, "Cross trajectory")
+    _plot(axs[1, 1], GPS_real, TX_real, "Realistic box trajectory")
+
+    # Create a single, out-of-the-way legend using artists from the first axes
+    handles, labels = axs[0, 0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=4, frameon=False)
+
+    plt.suptitle("Synthetic Trajectories: GPS Antennas and Transponder (XY view)")
+
+    from plotting.save import save_plot
+
+    out_name = "synthetic_trajectories_overview"
+    save_plot(fig, out_name, "generate_trajectories")
+
+    plt.show()
