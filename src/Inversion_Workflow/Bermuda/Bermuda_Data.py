@@ -7,9 +7,6 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger import (
     transition_geiger,
     final_geiger,
 )
-from Inversion_Workflow.Bermuda.Initialize_Bermuda_Data import (
-    initialize_bermuda,
-)
 
 import matplotlib.pyplot as plt
 
@@ -37,14 +34,42 @@ initial_lever_guess = np.array([-12.48862757, 0.22622633, -15.89601934])
 offset = 1991.01236648
 # offset = 2076.0242
 
-GNSS_start, GNSS_end = 25, 40.9
-# GNSS_start, GNSS_end = 31.9, 34.75
-# GNSS_start, GNSS_end = 35.3, 37.6
-GPS_Coordinates, GPS_data, CDOG_data, CDOG_guess, gps1_to_others = initialize_bermuda(
-    GNSS_start, GNSS_end, CDOG_guess_augment
+DOG_num = 3
+
+data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
+GPS_Coordinates = data["GPS_Coordinates"]
+GPS_data = data["GPS_data"]
+CDOG_data = data["CDOG_data"]
+# CDOG_guess = data['CDOG_guess']
+CDOG_guess_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
+# gps1_to_others = data['gps1_to_others']
+
+initial_lever_guess = np.array([-12.4659, 9.6021, -13.2993])
+
+
+gps1_to_others = np.array(
+    [
+        [0.0, 0.0, 0.0],
+        [-2.39341409, -4.22350344, 0.02941493],
+        [-12.09568416, -0.94568462, 0.0043972],
+        [-8.68674054, 5.16918806, 0.02499322],
+    ]
 )
 
+if DOG_num == 1:
+    CDOG_guess_augment = np.array([-398.16, 371.90, 773.02])
+    offset = 1866.0
+if DOG_num == 3:
+    CDOG_guess_augment = np.array([825.182985, -111.05670221, -734.10011698])
+    offset = 3175.0
+if DOG_num == 4:
+    CDOG_guess_augment = np.array([236.428385, -1307.98390221, -2189.21991698])
+    offset = 1939.0
+
+CDOG_guess = CDOG_guess_base + CDOG_guess_augment
+
 """Running Geiger"""
+print("Starting Geiger Method")
 transponder_coordinates = findTransponder(
     GPS_Coordinates, gps1_to_others, initial_lever_guess
 )

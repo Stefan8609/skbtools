@@ -98,15 +98,14 @@ def two_pointer_index(
 
 
 @njit(cache=True)
-def find_subint_offset(
+def refine_offset(
     offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
 ):
+    print("REFINING OFFSET")
     """Search for the fractional time offset with minimum RMSE."""
     # Initialize values for loop
-    lower, upper = offset - 0.5, offset + 0.5
-    intervals = np.array(
-        [0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001]
-    )
+    lower, upper = offset - 5, offset + 5
+    intervals = np.array([0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001])
     best_offset = offset
     best_RMSE = np.inf
 
@@ -146,7 +145,10 @@ def find_subint_offset(
     return best_offset
 
 
-def find_int_offset(
+"""DEPRECATED"""
+
+
+def find_int_offset1(
     CDOG_data,
     GPS_data,
     travel_times,
@@ -171,6 +173,7 @@ def find_int_offset(
         # Get fractional parts of the data
         GPS_fp = np.modf(GPS_full)[0]
         CDOG_fp = np.modf(CDOG_full)[0]
+
         # Find the cross-correlation between the fractional parts of the time series
         correlation = signal.correlate(
             CDOG_fp - np.mean(CDOG_fp),
@@ -218,6 +221,222 @@ def find_int_offset(
     return best
 
 
+"""END DEPRECATED"""
+
+"""
+TESTING
+"""
+
+
+@njit(cache=True)
+def find_int_offset(
+    CDOG_data,
+    GPS_data,
+    travel_times,
+    transponder_coordinates,
+    esv,
+    start=0,
+    best=0,
+    best_RMSE=np.inf,
+):
+    """
+    Robust integer-offset finder for real data with travel-time model error.
+
+    Score(lag): minimize robust dispersion of (GPS_clock - CDOG_clock)
+      - Use median (location) and MAD (scale) with 3*MAD trimming.
+      - Tie-break by larger inlier count, then smaller trimmed RMSE.
+    """
+    coarse_step = 50
+    coarse_span_hi = 20000
+    coarse_span_lo = 5000
+    coarse_thresh = 3.0
+
+    fine_window = 180
+    fine_step = 1
+    fine_thresh = 1.0
+
+    min_pairs_coarse = 5
+    eps_mad = 1e-3
+    trim_k = 3.0
+
+    s_int = int(start)
+    lower = s_int - coarse_span_lo
+    if lower < 0:
+        lower = 0
+    upper = s_int + coarse_span_hi
+    if upper < lower + coarse_step:
+        upper = lower + coarse_step
+
+    # Best trackers
+    best_lag = -1
+    best_mad = np.inf
+    best_inl = -1
+    best_trm = np.inf
+
+    lag = lower
+    while lag <= upper:
+        tup = two_pointer_index(
+            lag,
+            coarse_thresh,
+            CDOG_data,
+            GPS_data,
+            travel_times,
+            transponder_coordinates,
+            esv,
+            False,
+        )
+        CDOG_clock = tup[0]
+        GPS_clock = tup[2]
+        n = CDOG_clock.shape[0]
+
+        if n >= min_pairs_coarse:
+            d = np.empty(n)
+            for i in range(n):
+                d[i] = GPS_clock[i] - CDOG_clock[i]
+
+            ds = d.copy()
+            ds.sort()
+            if n % 2 == 1:
+                med = ds[n // 2]
+            else:
+                med = 0.5 * (ds[n // 2 - 1] + ds[n // 2])
+
+            absdev = np.empty(n)
+            for i in range(n):
+                v = d[i] - med
+                if v < 0.0:
+                    v = -v
+                absdev[i] = v
+            as_ = absdev.copy()
+            as_.sort()
+            if n % 2 == 1:
+                mad = as_[n // 2]
+            else:
+                mad = 0.5 * (as_[n // 2 - 1] + as_[n // 2])
+            if mad < eps_mad:
+                mad = eps_mad
+
+            thr = trim_k * mad
+            inliers = 0
+            sumsq = 0.0
+            for i in range(n):
+                if absdev[i] <= thr:
+                    inliers += 1
+                    r = d[i] - med
+                    sumsq += r * r
+            trm = np.inf
+            if inliers > 0:
+                trm = np.sqrt(sumsq / inliers)
+
+            better = False
+            if mad < best_mad:
+                better = True
+            elif mad == best_mad:
+                if inliers > best_inl:
+                    better = True
+                elif inliers == best_inl and trm < best_trm:
+                    better = True
+
+            if better:
+                best_mad = mad
+                best_inl = inliers
+                best_trm = trm
+                best_lag = lag
+
+        lag += coarse_step
+
+    # If coarse found nothing, fall back
+    if best_lag < 0:
+        return s_int
+
+    f_low = best_lag - fine_window
+    if f_low < 0:
+        f_low = 0
+    f_high = best_lag + fine_window
+
+    fine_best_lag = best_lag
+    fine_best_mad = best_mad
+    fine_best_inl = best_inl
+    fine_best_trm = best_trm
+
+    lag = f_low
+    while lag <= f_high:
+        tup = two_pointer_index(
+            lag,
+            fine_thresh,
+            CDOG_data,
+            GPS_data,
+            travel_times,
+            transponder_coordinates,
+            esv,
+            False,
+        )
+        CDOG_clock = tup[0]
+        GPS_clock = tup[2]
+        n = CDOG_clock.shape[0]
+
+        if n > 0:
+            d = np.empty(n)
+            for i in range(n):
+                d[i] = GPS_clock[i] - CDOG_clock[i]
+
+            ds = d.copy()
+            ds.sort()
+            if n % 2 == 1:
+                med = ds[n // 2]
+            else:
+                med = 0.5 * (ds[n // 2 - 1] + ds[n // 2])
+
+            absdev = np.empty(n)
+            for i in range(n):
+                v = d[i] - med
+                if v < 0.0:
+                    v = -v
+                absdev[i] = v
+            as_ = absdev.copy()
+            as_.sort()
+            if n % 2 == 1:
+                mad = as_[n // 2]
+            else:
+                mad = 0.5 * (as_[n // 2 - 1] + as_[n // 2])
+            if mad < eps_mad:
+                mad = eps_mad
+
+            thr = trim_k * mad
+            inliers = 0
+            sumsq = 0.0
+            for i in range(n):
+                if absdev[i] <= thr:
+                    inliers += 1
+                    r = d[i] - med
+                    sumsq += r * r
+            trm = np.inf
+            if inliers > 0:
+                trm = np.sqrt(sumsq / inliers)
+
+            better = False
+            if mad < fine_best_mad:
+                better = True
+            elif mad == fine_best_mad:
+                if inliers > fine_best_inl:
+                    better = True
+                elif inliers == fine_best_inl and trm < fine_best_trm:
+                    better = True
+
+            if better:
+                fine_best_mad = mad
+                fine_best_inl = inliers
+                fine_best_trm = trm
+                fine_best_lag = lag
+
+        lag += fine_step
+
+    return int(fine_best_lag)
+
+
+"""
+END TESTING
+"""
 if __name__ == "__main__":
     """Make a test on the Bermuda Synthetic Data"""
 
@@ -242,6 +461,8 @@ if __name__ == "__main__":
     true_offset = np.random.rand() * 10000
     position_noise = 2 * 10**-2
     time_noise = 2 * 10**-5
+    esv_bias = 1.0
+    time_bias = 0.0
 
     print("True Offset: ", true_offset)
 
@@ -265,7 +486,16 @@ if __name__ == "__main__":
             GPS_data,
             true_transponder_coordinates,
         ) = bermuda_trajectory(
-            time_noise, position_noise, dz_array, angle_array, esv_matrix, true_offset
+            time_noise,
+            position_noise,
+            esv_bias,
+            time_bias,
+            dz_array,
+            angle_array,
+            esv_matrix,
+            true_offset,
+            gps1_to_others,
+            gps1_to_transponder,
         )
 
         """Need to add in bias terms to the generated data"""
@@ -279,24 +509,27 @@ if __name__ == "__main__":
         ) = generateUnaligned(
             n,
             time_noise,
+            position_noise,
             true_offset,
-            0.0,
-            0.0,
+            esv_bias,
+            time_bias,
             dz_array,
             angle_array,
             esv_matrix,
+            gps1_to_others,
+            gps1_to_transponder,
         )
-
-    # Add noise to GPS Coordinates
-    position_noise = 2 * 10**-2
-    GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 
     # Find transponder coordinates from noisy GPS data
     transponder_coordinates = findTransponder(
         GPS_Coordinates, gps1_to_others, gps1_to_transponder
     )
     travel_times, esv = calculateTimesRayTracing(
-        CDOG, transponder_coordinates, dz_array, angle_array, esv_matrix
+        CDOG + np.array([1000.0, 1000.0, 50.0]),
+        transponder_coordinates,
+        dz_array,
+        angle_array,
+        esv_matrix,
     )
 
     # Find integer offset
@@ -307,7 +540,7 @@ if __name__ == "__main__":
     print("Integer Offset: ", offset)
 
     # Refine to sub-integer offset
-    offset = find_subint_offset(
+    offset = refine_offset(
         offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
     )
     print("Final Offset: ", offset)

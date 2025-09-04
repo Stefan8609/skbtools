@@ -10,7 +10,17 @@ from data import gps_data_path
 
 
 def bermuda_trajectory(
-    time_noise, position_noise, dz_array, angle_array, esv_matrix, DOG_num=3
+    time_noise,
+    position_noise,
+    esv_bias,
+    time_bias,
+    dz_array,
+    angle_array,
+    esv_matrix,
+    offset=1991.01236648,
+    gps1_to_others=None,
+    gps1_to_transponder=None,
+    DOG_num=3,
 ):
     """Generate synthetic Bermuda trajectory and travel times.
 
@@ -30,21 +40,34 @@ def bermuda_trajectory(
     tuple of numpy.ndarray
         ``(CDOG_data, CDOG, GPS_Coordinates, GPS_data, transponder_coordinates)``.
     """
+    if gps1_to_others is None:
+        gps1_to_others = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [-2.39341409, -4.22350344, 0.02941493],
+                [-12.09568416, -0.94568462, 0.0043972],
+                [-8.68674054, 5.16918806, 0.02499322],
+            ]
+        )
+    if gps1_to_transponder is None:
+        gps1_to_transponder = np.array([-12.4659, 9.6021, -13.2993])
+
     CDOG_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
     CDOG_augment = np.array([974.12667502, -80.98121315, -805.07870249])
     CDOG = CDOG_base + CDOG_augment
-    lever = np.array([-12.48862757, 0.22622633, -15.89601934])
-    offset = 1991.01236648
 
     data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
     GPS_Coordinates = data["GPS_Coordinates"]
     GPS_data = data["GPS_data"]
-    gps1_to_others = data["gps1_to_others"]
 
-    transponder_coordinates = findTransponder(GPS_Coordinates, gps1_to_others, lever)
-    synthetic_travel_times, esv = calculateTimesRayTracing_Bias_Real(
-        CDOG, transponder_coordinates, 0.0, dz_array, angle_array, esv_matrix
+    transponder_coordinates = findTransponder(
+        GPS_Coordinates, gps1_to_others, gps1_to_transponder
     )
+    synthetic_travel_times, esv = calculateTimesRayTracing_Bias_Real(
+        CDOG, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
+    )
+
+    synthetic_travel_times = synthetic_travel_times + time_bias
 
     CDOG_time = (
         GPS_data
@@ -77,7 +100,7 @@ if __name__ == "__main__":
         GPS_data,
         transponder_coordinates,
     ) = bermuda_trajectory(
-        time_noise, position_noise, dz_array, angle_array, esv_matrix
+        time_noise, position_noise, 0, 0, dz_array, angle_array, esv_matrix
     )
 
     lat = sio.loadmat(gps_data_path("GPS_Data/Unit1-camp_bis.mat"))["lat"].flatten()

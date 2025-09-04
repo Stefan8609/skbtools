@@ -28,7 +28,7 @@ dz_array = esv_table["distance"].flatten()
 angle_array = esv_table["angle"].flatten()
 esv_matrix = esv_table["matrice"]
 
-DOG_num = 3
+DOG_num = 4
 
 data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
 GPS_Coordinates = data["GPS_Coordinates"]
@@ -71,6 +71,7 @@ transponder_coordinates = findTransponder(
     GPS_Coordinates, gps1_to_others, initial_lever_guess
 )
 """No Simulated Annealing"""
+print("Starting Geiger Method with Time and ESV Bias")
 inversion_result, best_offset = initial_bias_geiger(
     CDOG_guess,
     CDOG_data,
@@ -84,7 +85,7 @@ inversion_result, best_offset = initial_bias_geiger(
 inversion_guess = inversion_result[:3]
 time_bias = inversion_result[3]
 esv_bias = inversion_result[4]
-print("Initial Complete:", best_offset)
+print("\n Initial Complete:", best_offset)
 
 inversion_result, best_offset = transition_bias_geiger(
     inversion_guess,
@@ -102,7 +103,7 @@ inversion_result, best_offset = transition_bias_geiger(
 inversion_guess = inversion_result[:3]
 time_bias = inversion_result[3]
 esv_bias = inversion_result[4]
-print("Transition Complete:", best_offset)
+print("\n Transition Complete:", best_offset)
 
 # inversion_result = CDOG_guess
 inversion_guess = inversion_result[:3]
@@ -112,7 +113,7 @@ esv_bias = inversion_result[4]
 print("offsets: ", best_offset, offset)
 
 """If we don't want offset found by our method"""
-best_offset = offset
+# best_offset = offset
 
 inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(
     inversion_guess,
@@ -131,7 +132,7 @@ inversion_guess = inversion_result[:3]
 time_bias = inversion_result[3]
 esv_bias = inversion_result[4]
 
-print("Final Complete")
+print("\n Final Complete")
 best_lever = initial_lever_guess
 """End No simulated annealing"""
 
@@ -159,10 +160,20 @@ times_guess, esv = calculateTimesRayTracing_Bias_Real(
     esv_matrix,
 )
 
-_, _, GPS_clock, _, transponder_coordinates_full, esv_full = two_pointer_index(
-    offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv, True
+_, CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full = (
+    two_pointer_index(
+        offset,
+        0.6,
+        CDOG_data,
+        GPS_data,
+        times_guess,
+        transponder_coordinates,
+        esv,
+        True,
+    )
 )
 
+"""FIX THE PLOTS BELOW HERE"""
 
 range_residual(
     transponder_coordinates_full,

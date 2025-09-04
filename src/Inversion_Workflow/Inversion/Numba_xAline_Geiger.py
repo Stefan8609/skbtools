@@ -10,7 +10,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Times import (
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline import (
     two_pointer_index,
-    find_subint_offset,
+    refine_offset,
     find_int_offset,
 )
 from Inversion_Workflow.Synthetic.Generate_Unaligned import (
@@ -121,7 +121,7 @@ def transition_geiger(
                 angle_array,
                 esv_matrix,
             )
-        offset = find_subint_offset(
+        offset = refine_offset(
             offset, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
         )
 
@@ -282,7 +282,7 @@ def final_geiger(
 
 if __name__ == "__main__":
     true_offset = np.random.rand() * 9000 + 1000
-    print(true_offset)
+    print("True Offset: ", true_offset)
 
     esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_normal.mat"))
     dz_array = esv_table["distance"].flatten()

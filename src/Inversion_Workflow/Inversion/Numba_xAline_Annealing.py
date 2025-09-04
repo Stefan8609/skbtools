@@ -2,7 +2,7 @@ import numpy as np
 
 from Inversion_Workflow.Inversion.Numba_xAline import (
     two_pointer_index,
-    find_subint_offset,
+    refine_offset,
 )
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger import (
     initial_geiger,
@@ -276,7 +276,7 @@ if __name__ == "__main__":
         esv_matrix,
     )
 
-    offset = find_subint_offset(
+    offset = refine_offset(
         offset, CDOG_data, GPS_data, times_found, transponder_coordinates_found, esv
     )
 

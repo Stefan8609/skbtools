@@ -18,6 +18,7 @@ from numba import njit
 def generateUnaligned(
     n,
     time_noise,
+    position_noise,
     offset,
     esv_bias,
     time_bias,
@@ -148,6 +149,9 @@ def generateUnaligned(
         mask = np.ones(len(CDOG_mat), dtype=np.bool_)
         mask[start_index : start_index + seg_len] = False
         CDOG_mat = CDOG_mat[mask]
+        GPS_Coordinates += np.random.normal(
+            0, position_noise, (len(GPS_Coordinates), 4, 3)
+        )
 
     return CDOG_mat, CDOG, GPS_Coordinates, GPS_time, transponder_coordinates
 
@@ -162,11 +166,13 @@ if __name__ == "__main__":
     time_bias = 0.0
     offset = 1200
     time_noise = 2 * 10**-5
+    position_noise = 2 * 10**-2
 
     CDOG_mat, CDOG, GPS_Coordinates, GPS_time, transponder_coordinates = (
         generateUnaligned(
             20000,
             time_noise,
+            position_noise,
             offset,
             esv_bias,
             time_bias,
