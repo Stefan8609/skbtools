@@ -22,6 +22,7 @@ from plotting.Plot_Modular import time_series_plot
 from data import gps_data_path
 
 
+@njit
 def initial_bias_geiger(
     guess,
     CDOG_data,
@@ -35,7 +36,7 @@ def initial_bias_geiger(
     """Initial inversion including time and ESV bias parameters."""
     epsilon = 10**-5
     k = 0
-    delta = 1
+    delta = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
     time_bias = 0.0
     esv_bias = 0.0
     estimate = np.array([guess[0], guess[1], guess[2], time_bias, esv_bias])

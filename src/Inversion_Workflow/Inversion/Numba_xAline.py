@@ -1,6 +1,5 @@
 import numpy as np
 from numba import njit
-from scipy import signal
 
 
 @njit(cache=True)
@@ -143,89 +142,6 @@ def refine_offset(
         # Narrow search bounds for the next iteration
         lower, upper = best_offset - interval, best_offset + interval
     return best_offset
-
-
-"""DEPRECATED"""
-
-
-def find_int_offset1(
-    CDOG_data,
-    GPS_data,
-    travel_times,
-    transponder_coordinates,
-    esv,
-    start=0,
-    best=0,
-    best_RMSE=np.inf,
-):
-    """Find the integer offset between two time series."""
-    # Set initial parameters
-    offset = start
-    err_int = 1000
-    k = 0
-    lag = np.inf
-
-    while lag != 0 and k < 10:
-        # Get indexed data according to offset
-        CDOG_full, GPS_clock, GPS_full = two_pointer_index(
-            offset, 0.5, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
-        )[1:4]
-        # Get fractional parts of the data
-        GPS_fp = np.modf(GPS_full)[0]
-        CDOG_fp = np.modf(CDOG_full)[0]
-
-        # Find the cross-correlation between the fractional parts of the time series
-        correlation = signal.correlate(
-            CDOG_fp - np.mean(CDOG_fp),
-            GPS_fp - np.mean(GPS_fp),
-            mode="full",
-            method="fft",
-        )
-        lags = signal.correlation_lags(len(CDOG_fp), len(GPS_fp), mode="full")
-        lag = lags[np.argmax(abs(correlation))]
-        # Adjust the offset by the optimal lag
-        offset += lag
-        k += 1
-        # Conditional check to prevent false positives
-        if offset < 0:
-            offset = err_int
-            err_int += 500
-            lag = np.inf
-
-    # Conditional check to ensure the resulting value
-    # is reasonable (and to prevent stack overflows)
-    if start > 10000:
-        print(f"Error - No true offset found: {offset}")
-        return best
-
-    # If RMSE is too high, rerun the algorithm to see if it can be improved
-    CDOG_full, GPS_clock, GPS_full = two_pointer_index(
-        offset, 0.5, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
-    )[1:4]
-    RMSE = np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100
-    if RMSE < best_RMSE:
-        best = offset
-        best_RMSE = RMSE
-    if RMSE > 10000:
-        start += 500
-        return find_int_offset(
-            CDOG_data,
-            GPS_data,
-            travel_times,
-            transponder_coordinates,
-            esv,
-            start,
-            best,
-            best_RMSE,
-        )
-    return best
-
-
-"""END DEPRECATED"""
-
-"""
-TESTING
-"""
 
 
 @njit(cache=True)
@@ -434,12 +350,7 @@ def find_int_offset(
     return int(fine_best_lag)
 
 
-"""
-END TESTING
-"""
 if __name__ == "__main__":
-    """Make a test on the Bermuda Synthetic Data"""
-
     from Inversion_Workflow.Synthetic.Generate_Unaligned import generateUnaligned
     from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
         bermuda_trajectory,
@@ -497,8 +408,6 @@ if __name__ == "__main__":
             gps1_to_others,
             gps1_to_transponder,
         )
-
-        """Need to add in bias terms to the generated data"""
     else:
         (
             CDOG_data,
