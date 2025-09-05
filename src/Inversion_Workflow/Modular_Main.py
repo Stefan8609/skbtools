@@ -26,6 +26,7 @@ from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 # ---------------------------------------------------------------------------
 # Utilities
 
+
 def load_esv_table(name: str):
     """Load an effective sound speed (ESV) lookup table.
 
@@ -85,7 +86,11 @@ def choose_inversion_functions(args: argparse.Namespace):
             final_bias_geiger,
         )
 
-        funcs["gauss_newton"] = (initial_bias_geiger, transition_bias_geiger, final_bias_geiger)
+        funcs["gauss_newton"] = (
+            initial_bias_geiger,
+            transition_bias_geiger,
+            final_bias_geiger,
+        )
 
         if args.annealing:
             from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
@@ -112,7 +117,9 @@ def choose_inversion_functions(args: argparse.Namespace):
 
     elif args.annealing:
         # Simulated annealing without Gauss–Newton (rare but allowed)
-        from Inversion_Workflow.Inversion.Numba_xAline_Annealing import simulated_annealing
+        from Inversion_Workflow.Inversion.Numba_xAline_Annealing import (
+            simulated_annealing,
+        )
 
         funcs["annealing"] = simulated_annealing
 
@@ -266,6 +273,7 @@ def run_inversion(
 # ---------------------------------------------------------------------------
 # Command line interface
 
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
 
@@ -294,7 +302,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--position-noise", type=float, default=0.0)
     parser.add_argument("--esv-bias", type=float, default=0.0)
     parser.add_argument("--time-bias", type=float, default=0.0)
-    parser.add_argument("--offset", type=float, default=0.0, help="Initial offset guess")
+    parser.add_argument(
+        "--offset", type=float, default=0.0, help="Initial offset guess"
+    )
 
     # Inversion choices
     parser.add_argument(
@@ -303,8 +313,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default="unbiased",
         help="Type of Gauss–Newton solver to apply",
     )
-    parser.add_argument("--alignment", action="store_true", help="Apply alignment steps")
-    parser.add_argument("--annealing", action="store_true", help="Use simulated annealing")
+    parser.add_argument(
+        "--alignment", action="store_true", help="Apply alignment steps"
+    )
+    parser.add_argument(
+        "--annealing", action="store_true", help="Use simulated annealing"
+    )
     parser.add_argument(
         "--anneal-iter", type=int, default=1000, help="Iterations for annealing"
     )
@@ -327,7 +341,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Save inversion result as a NumPy ``.npz`` file",
     )
-    parser.add_argument("--output-name", default="inversion_result", help="Base name for saved output")
+    parser.add_argument(
+        "--output-name", default="inversion_result", help="Base name for saved output"
+    )
 
     return parser
 
@@ -356,4 +372,3 @@ def main(argv: list[str] | None = None) -> None:
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point
     main()
-
