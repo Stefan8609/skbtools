@@ -236,7 +236,6 @@ def modular_synthetic(
             angle_array_inversion,
             esv_matrix_inversion,
             real_data=real_data,
-            enforce_offset=True,
             initial_offset=1991,
             z_sample=z_sample,
         )

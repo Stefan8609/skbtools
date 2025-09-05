@@ -4,7 +4,7 @@ import scipy.io as sio
 from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
     bermuda_trajectory,
 )
-from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
+from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index, refine_offset
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias,
     calculateTimesRayTracing_Bias_Real,
@@ -17,6 +17,7 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
 )
 from plotting.Plot_Modular import time_series_plot
 from data import gps_data_path
+from numba import njit
 
 """
 Incorporate simulated annealing to find
@@ -24,6 +25,7 @@ the transducer location in addition to the bias terms.
 """
 
 
+@njit(cache=True)
 def simulated_annealing_bias(
     iter,
     CDOG_data,
@@ -37,15 +39,12 @@ def simulated_annealing_bias(
     esv_matrix,
     initial_offset=0,
     real_data=False,
-    enforce_offset=False,
     z_sample=False,
 ):
     """Estimate lever arm and biases using simulated annealing."""
     # Initialize variables
     status = "int"
-    if enforce_offset:
-        status = "subint"
-        offset = initial_offset
+    offset = initial_offset
     old_offset = initial_offset
 
     inversion_guess = initial_guess
@@ -92,6 +91,56 @@ def simulated_annealing_bias(
         transponder_coordinates_found,
         esv,
     )
+
+    # --- One integer-offset pass, then refine to sub-integer ---
+    # Integer-offset estimate using current transponder guess
+    inversion_estimate, offset_int = initial_bias_geiger(
+        inversion_guess,
+        CDOG_data,
+        GPS_data,
+        transponder_coordinates_found,
+        dz_array,
+        angle_array,
+        esv_matrix,
+        real_data,
+    )
+
+    # Update the working inversion guess/biases
+    inversion_guess = inversion_estimate[:3]
+    time_bias = inversion_estimate[3]
+    esv_bias = inversion_estimate[4]
+
+    # Recompute travel times with the updated inversion guess
+    if not real_data:
+        times_guess, esv = calculateTimesRayTracing_Bias(
+            inversion_guess,
+            transponder_coordinates_found,
+            esv_bias,
+            dz_array,
+            angle_array,
+            esv_matrix,
+        )
+    else:
+        times_guess, esv = calculateTimesRayTracing_Bias_Real(
+            inversion_guess,
+            transponder_coordinates_found,
+            esv_bias,
+            dz_array,
+            angle_array,
+            esv_matrix,
+        )
+
+    # Fractional refinement around the integer offset
+    offset = refine_offset(
+        offset_int,
+        CDOG_data,
+        GPS_data,
+        times_guess,
+        transponder_coordinates_found,
+        esv,
+    )
+    status = "subint"
+    old_offset = offset
 
     best_rmse = np.sqrt(np.nanmean((GPS_full - CDOG_full) ** 2))
     best_lever = initial_lever
@@ -198,6 +247,7 @@ def simulated_annealing_bias(
                 np.round(RMSE * 100 * 1515, 2),
                 np.round(offset, 5),
                 np.round(lever, 3),
+                np.round(np.array([-12.4659, 9.6021, -13.2993]), 3),
             )
         old_offset = offset
         k += 1
@@ -265,11 +315,23 @@ if __name__ == "__main__":
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]
 
+    true_offset = np.random.rand() * 10000
     position_noise = 2 * 10**-2
     time_noise = 2 * 10**-5
+    esv_bias = 1.0
+    time_bias = 0.0
 
-    esv_bias = 0
-    time_bias = 0
+    gps1_to_others = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [-2.39341409, -4.22350344, 0.02941493],
+            [-12.09568416, -0.94568462, 0.0043972],
+            [-8.68674054, 5.16918806, 0.02499322],
+        ]
+    )
+    gps1_to_transponder = np.array([-12.4659, 9.6021, -13.2993])
+
+    print("True Offset: ", true_offset)
 
     (
         CDOG_data,
@@ -278,12 +340,21 @@ if __name__ == "__main__":
         GPS_data,
         true_transponder_coordinates,
     ) = bermuda_trajectory(
-        time_noise, position_noise, dz_array, angle_array, esv_matrix
+        time_noise,
+        position_noise,
+        esv_bias,
+        time_bias,
+        dz_array,
+        angle_array,
+        esv_matrix,
+        true_offset,
+        gps1_to_others,
+        gps1_to_transponder,
     )
+
     GPS_Coordinates = GPS_Coordinates[::20]
     GPS_data = GPS_data[::20]
 
-    true_offset = 1991.01236648
     gps1_to_others = np.array(
         [
             [0.0, 0.0, 0.0],
@@ -296,8 +367,8 @@ if __name__ == "__main__":
     """After Generating run through the analysis"""
 
     # initial_lever = np.array([-10.62639549,  -0.47739287, -11.5380207 ])
-    initial_lever = np.array([-13.0, 0.0, -14.0])
-    initial_guess = CDOG + [100, 100, 200]
+    initial_lever = np.array([-13.0, 7.0, -14.0])
+    initial_guess = CDOG + np.array([100, 100, 200])
 
     lever, offset, inversion_result = simulated_annealing_bias(
         300,
@@ -311,6 +382,7 @@ if __name__ == "__main__":
         angle_array,
         esv_matrix,
         real_data=True,
+        z_sample=True,
     )
 
     inversion_guess = inversion_result[:3]
@@ -333,6 +405,18 @@ if __name__ == "__main__":
         angle_array,
         esv_matrix,
     )
+
+    rmse_true = np.sqrt(np.nanmean((GPS_full - CDOG_full) ** 2))
+    print(
+        "Final Lever:",
+        np.round(lever, 3),
+        "True Lever:",
+        gps1_to_transponder,
+        "Diff:",
+        np.round(lever - gps1_to_transponder, 3),
+    )
+    print("Final RMSE:", rmse_true * 1515 * 100, "cm")
+    print("Offset Different: ", true_offset - offset)
 
     time_series_plot(
         CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise, time_noise

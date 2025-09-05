@@ -134,7 +134,6 @@ def refine_offset(
             # Compute RMSE
             diff_data = GPS_full - CDOG_full
             RMSE = np.sqrt(np.nanmean(diff_data**2))
-
             # Update best offset if RMSE is improved
             if RMSE < best_RMSE:
                 best_offset = lag
