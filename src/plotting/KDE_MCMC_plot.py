@@ -219,7 +219,7 @@ def plot_kde_mcmc(
             e_xy.set_fill(False)
             e_xy.set_linewidth(1.5)
             e_xy.set_alpha(0.95)
-            e_xy.set_label(f"Segment {i+1} Posterior")
+            e_xy.set_label(f"Segment {i + 1} Posterior")
             edge_col = (
                 "red"
                 if (isinstance(ellipses, int) and ellipses == 1)
@@ -241,7 +241,7 @@ def plot_kde_mcmc(
             e_pcz.set_fill(False)
             e_pcz.set_linewidth(1.5)
             e_pcz.set_alpha(0.95)
-            e_pcz.set_label(f"Segment {i+1} Posterior")
+            e_pcz.set_label(f"Segment {i + 1} Posterior")
             edge_col = (
                 "red"
                 if (isinstance(ellipses, int) and ellipses == 1)
