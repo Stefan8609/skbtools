@@ -333,15 +333,15 @@ def plot_2d_projection_side(
         gps_xz = gps_i[:, [0, 2]] + GPS1[[0, 2]]  # (n_samples, 2)
         ellipse, pct = compute_error_ellipse(gps_xz, confidence=0.68, zorder=3)
         ax.add_patch(ellipse)
-        ax.text(
-            6,
-            30 - 2 * i,
-            f"Points within GPS {i + 1} ellipse: {pct:.1f}%",
-            color="black",
-            fontsize=10,
-            ha="center",
-            va="center",
-        )
+        # ax.text(
+        #     6,
+        #     30 - 2 * i,
+        #     f"Points within GPS {i + 1} ellipse: {pct:.1f}%",
+        #     color="black",
+        #     fontsize=10,
+        #     ha="center",
+        #     va="center",
+        # )
 
     # 68% error ellipse for lever-arm cloud
     levers_xz = levers_rot[:, [0, 2]] + GPS1[[0, 2]]
@@ -357,15 +357,15 @@ def plot_2d_projection_side(
     ax.add_patch(ellipse)
     ax.add_patch(prior_ellipse)
     # annotate percentage
-    ax.text(
-        9.13,
-        22,
-        f"Points within lever ellipse percentage: {pct:.1f}%",
-        color="black",
-        fontsize=10,
-        ha="center",
-        va="center",
-    )
+    # ax.text(
+    #     9.13,
+    #     22,
+    #     f"Points within lever ellipse percentage: {pct:.1f}%",
+    #     color="black",
+    #     fontsize=10,
+    #     ha="center",
+    #     va="center",
+    # )
 
     # Labels & styling
     ax.set_xlabel("X (m) – forward")
@@ -557,20 +557,12 @@ if __name__ == "__main__":
     fig, ax = plot_2d_projection_side(
         segments, levers, lever_prior, lever_init, downsample=downsample
     )
+    ax.set_xlim(25, 47.5)
+    ax.set_ylim(-1.4, 15.7)
     plt.show()
 
 
 """
-Ratio between the posterior and the prior (resolution)
-How much information we can add to our prior belief
-
-Make the plot from the screenshot (x,y and chi,z) for combined
-ESV and for each ESV segment individually (compare these plots)
-    We can overlay the segment plots to see where the CDOG lies in each
-
-
-FIX ELLIPSES IN KDE_MCMC
-
 Transdimensional MCMC for the ESV bias (in each segment)
     Updates are dependent on depth (2 or 3 diff updates)
     Piecewise updates

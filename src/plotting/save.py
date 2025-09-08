@@ -31,9 +31,6 @@ def save_plot(
     """
     if chain_name is None:
         chain_name = "chain"
-    # Set a descriptive title if one isn't already present
-    if not fig._suptitle:
-        fig.suptitle(f"{chain_name}: {func_name}")
     safe_chain = _safe_filename(chain_name)
     fname = f"{safe_chain}_{func_name}.{ext}"
     dirpath = gps_data_path(subdir)
