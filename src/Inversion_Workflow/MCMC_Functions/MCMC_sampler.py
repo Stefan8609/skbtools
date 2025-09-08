@@ -494,4 +494,10 @@ if __name__ == "__main__":
         prior_CDOG_aug=prior_CDOG_aug,
         prior_esv_bias=prior_esv_bias,
         prior_time_bias=prior_time_bias,
+        # proposals
+        proposal_lever=proposal_lever,
+        proposal_gps_grid=proposal_gps_grid,
+        proposal_CDOG_aug=proposal_CDOG_aug,
+        proposal_esv_bias=proposal_esv_bias,
+        proposal_time_bias=proposal_time_bias,
     )

@@ -41,7 +41,7 @@ def get_init_params_and_prior(chain):
 
     except KeyError:
         print(
-            "Using default initial values for lever, GPS grid, "
+            "Using default initial and prior values for lever, GPS grid, "
             "CDOG_aug, ESV bias, and time bias"
         )
         init_lever = np.array([-13.12, 9.72, -15.9])
@@ -69,6 +69,20 @@ def get_init_params_and_prior(chain):
         prior_esv_bias = 1.0
         prior_time_bias = 0.5
 
+    try:
+        proposal_lever = chain["proposal_lever"]
+        proposal_gps_grid = chain["proposal_gps_grid"]
+        proposal_aug = chain["proposal_CDOG_aug"]
+        proposal_esv_bias = chain["proposal_esv_bias"]
+        proposal_time_bias = chain["proposal_time_bias"]
+    except KeyError:
+        print("Using default proposal scales")
+        proposal_lever = np.array([0.01, 0.01, 0.05])
+        proposal_gps_grid = 0.0
+        proposal_aug = 0.1
+        proposal_esv_bias = 0.01
+        proposal_time_bias = 0.000005
+
     initial_params = {
         "lever": init_lever,
         "gps_grid": init_gps_grid,
@@ -85,7 +99,15 @@ def get_init_params_and_prior(chain):
         "time_bias": prior_time_bias,
     }
 
-    return initial_params, prior_scales
+    proposal_scales = {
+        "lever": proposal_lever,
+        "gps_grid": proposal_gps_grid,
+        "CDOG_aug": proposal_aug,
+        "esv_bias": proposal_esv_bias,
+        "time_bias": proposal_time_bias,
+    }
+
+    return initial_params, prior_scales, proposal_scales
 
 
 # === Helper: Convert CDOG_aug samples from ECEF offsets to ENU coordinates ===
@@ -710,7 +732,7 @@ if __name__ == "__main__":
 
     chain = np.load(gps_output_path(f"{file_name}.npz"))
 
-    initial_params, prior_scales = get_init_params_and_prior(chain)
+    initial_params, prior_scales, proposal_scales = get_init_params_and_prior(chain)
 
     trace_plot(
         chain,
