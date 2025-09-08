@@ -65,6 +65,34 @@ def generate_synthetic(args: argparse.Namespace, dz, angle, esv):
     )
 
 
+def load_real_data(args: argparse.Namespace):
+    """Load processed real GPS/DOG data from disk.
+
+    Parameters
+    ----------
+    args:
+        Parsed command line arguments.  Only ``dog_num`` is used.
+
+    Returns
+    -------
+    tuple
+        ``(CDOG_data, CDOG_guess, GPS_Coordinates, GPS_data, transponder)``.
+        The ``transponder`` element is a placeholder since the true
+        transponder location is not known for real data sets.
+    """
+
+    path = gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{args.dog_num}.npz")
+    data = np.load(path)
+    GPS_Coordinates = data["GPS_Coordinates"]
+    GPS_data = data["GPS_data"]
+    CDOG_data = data["CDOG_data"]
+    CDOG_guess = data["CDOG_guess"]
+
+    # True transponder coordinates are unknown for real data; provide zeros
+    transponder = np.zeros(3)
+    return CDOG_data, CDOG_guess, GPS_Coordinates, GPS_data, transponder
+
+
 def choose_inversion_functions(args: argparse.Namespace):
     """Select inversion callables based on user options.
 
@@ -297,6 +325,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Number of samples when generating synthetic data",
     )
 
+    parser.add_argument(
+        "--dog-num",
+        type=int,
+        default=3,
+        help="DOG data set number when using real data",
+    )
+
     # Noise and bias parameters
     parser.add_argument("--time-noise", type=float, default=0.0)
     parser.add_argument("--position-noise", type=float, default=0.0)
@@ -352,13 +387,14 @@ def main(argv: list[str] | None = None) -> None:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
 
-    if args.data_type != "synthetic":
-        raise NotImplementedError("Real data ingestion is not implemented in this demo")
-
-    dz_gen, angle_gen, esv_gen = load_esv_table(args.gen_esv_table)
     dz_inv, angle_inv, esv_inv = load_esv_table(args.inv_esv_table)
 
-    data = generate_synthetic(args, dz_gen, angle_gen, esv_gen)
+    if args.data_type == "synthetic":
+        dz_gen, angle_gen, esv_gen = load_esv_table(args.gen_esv_table)
+        data = generate_synthetic(args, dz_gen, angle_gen, esv_gen)
+    else:
+        data = load_real_data(args)
+
     result, offset = run_inversion(args, data, dz_inv, angle_inv, esv_inv)
 
     print("Inversion estimate:", np.round(result, 3))
