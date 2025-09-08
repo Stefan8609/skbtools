@@ -3,7 +3,7 @@ from scipy.stats import chi2
 from matplotlib.patches import Ellipse
 
 
-def plot_prior_ellipse(mean=0, cov=None, confidence=0.68, zorder=1):
+def plot_prior_ellipse(mean=0, cov=None, confidence=0.68, zorder=1, label=None):
     if cov is None:
         cov = np.eye(2)
     # Eigen-decomposition
@@ -17,15 +17,28 @@ def plot_prior_ellipse(mean=0, cov=None, confidence=0.68, zorder=1):
     width, height = 2 * np.sqrt(vals * radius)
 
     # Create ellipse patch
-    ellipse = Ellipse(
-        xy=mean,
-        width=width,
-        height=height,
-        angle=angle,
-        edgecolor="blue",
-        fc="none",
-        lw=1,
-        zorder=zorder,
-    )
+    if label is not None:
+        ellipse = Ellipse(
+            xy=mean,
+            width=width,
+            height=height,
+            angle=angle,
+            edgecolor="blue",
+            fc="none",
+            lw=1,
+            label=label,
+            zorder=zorder,
+        )
+    else:
+        ellipse = Ellipse(
+            xy=mean,
+            width=width,
+            height=height,
+            angle=angle,
+            edgecolor="blue",
+            fc="none",
+            lw=1,
+            zorder=zorder,
+        )
 
     return ellipse

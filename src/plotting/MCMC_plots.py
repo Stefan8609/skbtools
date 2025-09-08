@@ -702,7 +702,7 @@ def corner_plot(
 
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
-    file_name = "mcmc_chain_8-7"
+    file_name = "7_individual_splits_esv_20250806_143356/split_3"
     loglike = False
     save = True
 

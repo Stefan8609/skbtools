@@ -3,6 +3,20 @@ from typing import Optional
 from data import gps_data_path
 
 
+def _safe_filename(name: str) -> str:
+    """Return a filesystem-safe version of *name* for use in filenames.
+
+    Replaces any path separators and backslashes with underscores and trims
+    surrounding whitespace. Leaves other characters intact to preserve
+    readability.
+    """
+    if name is None:
+        return ""
+    # Replace common path separators to avoid accidental subdirectories
+    safe = name.replace("/", "_").replace("\\", "_")
+    return safe.strip()
+
+
 def save_plot(
     fig,
     chain_name: Optional[str],
@@ -20,7 +34,8 @@ def save_plot(
     # Set a descriptive title if one isn't already present
     if not fig._suptitle:
         fig.suptitle(f"{chain_name}: {func_name}")
-    fname = f"{chain_name}_{func_name}.{ext}"
+    safe_chain = _safe_filename(chain_name)
+    fname = f"{safe_chain}_{func_name}.{ext}"
     dirpath = gps_data_path(subdir)
     os.makedirs(dirpath, exist_ok=True)
     fullpath = dirpath / fname

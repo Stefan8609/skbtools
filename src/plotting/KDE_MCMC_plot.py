@@ -104,7 +104,7 @@ def plot_kde_mcmc(
     cf1 = ax1.contourf(X, Y, Z_xy, levels=levels_xy, cmap=cmap, antialiased=True)
     ax1.set_facecolor(plt.get_cmap(cmap)(0))
     ax1.plot(line_x, line_y, color="red", linestyle="--", linewidth=2, label="PC1")
-    ax1.legend()
+    # ax1.legend()
     # Posterior mode and std (left plot)
     ax1.plot(
         mode_x_cm,
@@ -114,6 +114,8 @@ def plot_kde_mcmc(
         color="red",
         markersize=8,
         markeredgewidth=2,
+        label="Posterior Mode",
+        zorder=5,
     )
     ax1.text(
         0.02,
@@ -133,11 +135,21 @@ def plot_kde_mcmc(
         prior_sd_cm = prior_sd * 100.0
         prior_cov = np.diag([prior_sd_cm**2, prior_sd_cm**2])
         e_xy = plot_prior_ellipse(
-            mean=np.array([0, 0]), cov=prior_cov, confidence=conf_level, zorder=3
+            mean=np.array([0, 0]),
+            cov=prior_cov,
+            confidence=conf_level,
+            zorder=3,
+            label="Prior",
         )
+        e_xy.set_label("Prior 68%")
         e_pcz = plot_prior_ellipse(
-            mean=np.array([0, 0]), cov=prior_cov, confidence=conf_level, zorder=3
+            mean=np.array([0, 0]),
+            cov=prior_cov,
+            confidence=conf_level,
+            zorder=3,
+            label="Prior",
         )
+        e_pcz.set_label("Prior 68%")
         ax1.add_patch(e_xy)
         ax2.add_patch(e_pcz)
 
@@ -157,6 +169,8 @@ def plot_kde_mcmc(
         color="red",
         markersize=8,
         markeredgewidth=2,
+        label="Posterior Mode",
+        zorder=5,
     )
     ax2.text(
         0.02,
@@ -205,6 +219,7 @@ def plot_kde_mcmc(
             e_xy.set_fill(False)
             e_xy.set_linewidth(1.5)
             e_xy.set_alpha(0.95)
+            e_xy.set_label(f"Segment {i+1} Posterior")
             edge_col = (
                 "red"
                 if (isinstance(ellipses, int) and ellipses == 1)
@@ -226,6 +241,7 @@ def plot_kde_mcmc(
             e_pcz.set_fill(False)
             e_pcz.set_linewidth(1.5)
             e_pcz.set_alpha(0.95)
+            e_pcz.set_label(f"Segment {i+1} Posterior")
             edge_col = (
                 "red"
                 if (isinstance(ellipses, int) and ellipses == 1)
@@ -237,6 +253,26 @@ def plot_kde_mcmc(
             ax2.add_patch(e_pcz)
 
     # Set symmetric limits for both subplots
+    # ax1.legend()
+    # ax2.legend()
+    # Build ordered, compact legends
+    for ax in (ax1, ax2):
+        handles, labels = ax.get_legend_handles_labels()
+        priority = {"Prior 68%": 0, "Posterior Mode": 1, "PC1": 2}
+        order = sorted(
+            range(len(labels)), key=lambda i: (priority.get(labels[i], 3), labels[i])
+        )
+        ax.legend(
+            [handles[i] for i in order],
+            [labels[i] for i in order],
+            fontsize=8,
+            loc="upper right",
+            frameon=True,
+            framealpha=0.8,
+            handlelength=1.0,
+            borderpad=0.3,
+            labelspacing=0.3,
+        )
     lim_all = max(lim_xy, lim_pcz)
     ax1.set_xlim(-lim_all, lim_all)
     ax1.set_ylim(-lim_all, lim_all)
