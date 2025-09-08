@@ -166,28 +166,27 @@ def trace_plot(chain, initial_params=None, downsample=1, save=False, chain_name=
     DOG_index_num = {0: 1, 1: 3, 2: 4}
 
     # Downsample
-    lever = chain["lever"][::downsample]  # (n_iter, 3), units: meters
-    esv = chain["esv_bias"][
-        ::downsample
-    ]  # could be (n_iter,), (n_iter, n_splits) or (n_iter, n_dogs, n_splits)
-    tb = chain["time_bias"][
-        ::downsample
-    ]  # (n_iter,) or (n_iter, n_dogs), units: seconds
-    rmse = chain["logpost"][::downsample] * -2  # units: ms
+    lever = chain["lever"][::downsample]
+    esv = chain["esv_bias"][::downsample]
+    tb = chain["time_bias"][::downsample]
+    rmse = chain["logpost"][::downsample] * -2
 
-    # --- ensure esv is 3D: (n_iter, n_dogs, n_splits) ---
+    # Center lever by subtracting initial lever (if provided), then convert to cm
+    if initial_params is not None and "lever" in initial_params:
+        lever_centered = lever - np.asarray(initial_params["lever"])
+    else:
+        lever_centered = lever
+    lever_cm = lever_centered * 100.0
+
     n_iter = esv.shape[0]
     if esv.ndim == 1:
-        # single DOG, single split
         esv = esv.reshape(n_iter, 1, 1)
     elif esv.ndim == 2:
-        # assume shape (n_iter, n_splits) → single DOG
         esv = esv.reshape(n_iter, 1, esv.shape[1])
     elif esv.ndim != 3:
         raise ValueError(f"esv_bias must be 1-, 2- or 3-D; got shape {esv.shape}")
     n_dogs, n_splits = esv.shape[1], esv.shape[2]
 
-    # --- ensure tb is 2D: (n_iter, n_tb) ---
     tb = tb.reshape(n_iter, -1)
     n_tb = tb.shape[1]
 
@@ -198,18 +197,16 @@ def trace_plot(chain, initial_params=None, downsample=1, save=False, chain_name=
     tb_centered = tb - tb_mean[np.newaxis, :]
 
     # Build subplots
-    n_rows = 3 + n_dogs + 1 + 1  # lever(3) + esv + time bias + rmse
+    n_rows = 3 + n_dogs + 1 + 1
     fig, axes = plt.subplots(n_rows, 1, figsize=(16, 1.5 * n_rows), sharex=True)
 
-    # --- Lever-arm (meters) ---
-    axes[0].plot(lever[:, 0])
-    axes[0].set_ylabel("lever x (m)")
-    axes[1].plot(lever[:, 1])
-    axes[1].set_ylabel("lever y (m)")
-    axes[2].plot(lever[:, 2])
-    axes[2].set_ylabel("lever z (m)")
+    axes[0].plot(lever_cm[:, 0])
+    axes[0].set_ylabel("lever x (cm)")
+    axes[1].plot(lever_cm[:, 1])
+    axes[1].set_ylabel("lever y (cm)")
+    axes[2].plot(lever_cm[:, 2])
+    axes[2].set_ylabel("lever z (cm)")
 
-    # --- ESV bias per DOG (mean-centered, m/s) ---
     for j in range(n_dogs):
         ax = axes[3 + j]
         DOG_num = DOG_index_num.get(j, j + 1)
@@ -218,7 +215,6 @@ def trace_plot(chain, initial_params=None, downsample=1, save=False, chain_name=
         ax.set_ylabel(f"ESV {DOG_num} (m/s)")
         ax.legend(fontsize="x-small", ncol=min(n_splits, 3), loc="upper right")
 
-    # --- time_bias (mean-centered, s) ---
     ax_tb = axes[3 + n_dogs]
     for j in range(n_tb):
         DOG_num = DOG_index_num.get(j, j + 1)
@@ -226,25 +222,21 @@ def trace_plot(chain, initial_params=None, downsample=1, save=False, chain_name=
     ax_tb.set_ylabel("time bias (s)")
     ax_tb.legend(fontsize="x-small", ncol=min(n_tb, 3), loc="upper right")
 
-    # --- RMSE (ms → shown in cs?) ---
     axes[4 + n_dogs].plot(rmse)
     axes[4 + n_dogs].set_ylabel("RMSE (ms)")
 
-    # Optional initial params (also mean-centered)
     if initial_params:
-        # lever horiz lines
+        # After centering, the initial lever corresponds to 0 cm
         for i, _ in enumerate(["x", "y", "z"]):
-            axes[i].axhline(initial_params["lever"][i], color="r", ls="--")
+            axes[i].axhline(0.0, color="r", ls="--")
 
         eb0 = initial_params.get("esv_bias", None)
         if eb0 is not None:
             eb0 = np.asarray(eb0).ravel()
 
-            # compute a single value per DOG by averaging across splits if needed
             if eb0.size == n_dogs * n_splits:
                 eb0 = eb0.reshape(n_dogs, n_splits).mean(axis=1)
             elif eb0.size == n_dogs:
-                # already one per dog
                 eb0 = eb0
             else:
                 raise ValueError(
@@ -252,11 +244,9 @@ def trace_plot(chain, initial_params=None, downsample=1, save=False, chain_name=
                     f"expected {n_dogs * n_splits} or {n_dogs}"
                 )
 
-            # center against the mean ESV per dog
             esv_mean_per_dog = esv_mean.mean(axis=1)
             eb0_centered = eb0 - esv_mean_per_dog
 
-            # draw one line per DOG
             for j in range(n_dogs):
                 ax = axes[3 + j]
                 ax.axhline(eb0_centered[j], color="r", ls="--", linewidth=0.7)
@@ -724,7 +714,7 @@ def corner_plot(
 
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
-    file_name = "7_individual_splits_esv_20250806_143356/split_3"
+    file_name = "mcmc_chain_8-7"
     loglike = False
     save = True
 
