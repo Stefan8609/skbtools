@@ -57,6 +57,13 @@ def plot_kde_mcmc(
     X, Y = np.meshgrid(xi, yi)
     Z_xy = kde_xy(np.vstack([X.ravel(), Y.ravel()])).reshape(nbins, nbins)
 
+    # Convert 2D KDE density to expected counts per cell (XY)
+    N = num_points
+    dx = xi[1] - xi[0]
+    dy = yi[1] - yi[0]
+    cell_area_xy = dx * dy
+    Z_xy_counts = Z_xy * N * cell_area_xy
+
     # Find Principal Component of x,y
     xy_mean = xy.mean(axis=1, keepdims=True)
     xy_cent = xy - xy_mean
@@ -77,22 +84,29 @@ def plot_kde_mcmc(
     P, Z = np.meshgrid(pi, zi)
     Z_pcz = kde_pcz(np.vstack([P.ravel(), Z.ravel()])).reshape(nbins, nbins)
 
-    # === Posterior mode (argmax of KDE) ===
-    max_idx_xy = np.unravel_index(np.argmax(Z_xy), Z_xy.shape)
+    # Convert 2D KDE density to expected counts per cell (PC1–Up)
+    dpi = pi[1] - pi[0]
+    dzi = zi[1] - zi[0]
+    cell_area_pcz = dpi * dzi
+    Z_pcz_counts = Z_pcz * N * cell_area_pcz
+
+    max_idx_xy = np.unravel_index(np.argmax(Z_xy_counts), Z_xy_counts.shape)
     mode_x_cm = X[max_idx_xy]
     mode_y_cm = Y[max_idx_xy]
 
-    max_idx_pcz = np.unravel_index(np.argmax(Z_pcz), Z_pcz.shape)
+    max_idx_pcz = np.unravel_index(np.argmax(Z_pcz_counts), Z_pcz_counts.shape)
     mode_xi_cm = P[max_idx_pcz]
     mode_up_cm = Z[max_idx_pcz]
 
-    # === Posterior standard deviations along axes (in cm) ===
-    # Left plot axes: East (x), North (y)
     sigma_E_cm = float(np.std(x, ddof=1))
     sigma_N_cm = float(np.std(y, ddof=1))
-    # Right plot axes: PC1 (xi), Up (z)
     sigma_xi_cm = float(np.std(pcz[0], ddof=1))
     sigma_U_cm = float(np.std(z, ddof=1))
+
+    # Create a custom colormap from white to red
+    from matplotlib.colors import LinearSegmentedColormap
+
+    new_cmap = LinearSegmentedColormap.from_list("white_blue", ["white", "blue"])
 
     # Plotting
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
@@ -100,12 +114,12 @@ def plot_kde_mcmc(
     ax1.set_aspect("equal", "box")
     ax2.set_aspect("equal", "box")
 
-    levels_xy = np.linspace(Z_xy.min(), Z_xy.max(), 21)
-    cf1 = ax1.contourf(X, Y, Z_xy, levels=levels_xy, cmap=cmap, antialiased=True)
-    ax1.set_facecolor(plt.get_cmap(cmap)(0))
+    levels_xy = np.linspace(0, Z_xy_counts.max(), 21)
+    cf1 = ax1.contourf(
+        X, Y, Z_xy_counts, levels=levels_xy, cmap=new_cmap, antialiased=True
+    )
+    ax1.set_facecolor(new_cmap(0))
     ax1.plot(line_x, line_y, color="red", linestyle="--", linewidth=2, label="PC1")
-    # ax1.legend()
-    # Posterior mode and std (left plot)
     ax1.plot(
         mode_x_cm,
         mode_y_cm,
@@ -120,7 +134,7 @@ def plot_kde_mcmc(
     ax1.text(
         0.02,
         0.98,
-        f"$\\sigma_E$ = {sigma_E_cm:.1f} cm\n$\\sigma_N$ = {sigma_N_cm:.1f} cm",
+        f"$\\sigma_E$ = {sigma_E_cm:.2f} cm\n$\\sigma_N$ = {sigma_N_cm:.2f} cm",
         transform=ax1.transAxes,
         ha="left",
         va="top",
@@ -129,7 +143,7 @@ def plot_kde_mcmc(
     ax1.set_xlabel("East (cm)")
     ax1.set_ylabel("North (cm)")
     ax1.set_title("KDE of (East, North)")
-    fig.colorbar(cf1, ax=ax1, label="Density")
+    fig.colorbar(cf1, ax=ax1, label=f"Counts (Total Samples = {num_points})")
 
     if prior_sd is not None and prior_mean is not None:
         prior_sd_cm = prior_sd * 100.0
@@ -153,13 +167,15 @@ def plot_kde_mcmc(
         ax1.add_patch(e_xy)
         ax2.add_patch(e_pcz)
 
-    levels_pcz = np.linspace(Z_pcz.min(), Z_pcz.max(), 21)
-    cf2 = ax2.contourf(P, Z, Z_pcz, levels=levels_pcz, cmap=cmap, antialiased=True)
-    ax2.set_facecolor(plt.get_cmap(cmap)(0))
+    levels_pcz = np.linspace(0, Z_pcz_counts.max(), 21)
+    cf2 = ax2.contourf(
+        P, Z, Z_pcz_counts, levels=levels_pcz, cmap=new_cmap, antialiased=True
+    )
+    ax2.set_facecolor(new_cmap(0))
     ax2.set_xlabel(r"$\xi$ (cm)")
     ax2.set_ylabel("Up (cm)")
     ax2.set_title("KDE of (PC1, Up)")
-    fig.colorbar(cf2, ax=ax2, label="Density")
+    fig.colorbar(cf2, ax=ax2, label=f"Counts (Total Samples = {num_points})")
     # Posterior mode and std (right plot)
     ax2.plot(
         mode_xi_cm,
@@ -175,7 +191,7 @@ def plot_kde_mcmc(
     ax2.text(
         0.02,
         0.98,
-        f"$\\sigma_\\xi$ = {sigma_xi_cm:.1f} cm\n$\\sigma_U$ = {sigma_U_cm:.1f} cm",
+        f"$\\sigma_\\xi$ = {sigma_xi_cm:.2f} cm\n$\\sigma_U$ = {sigma_U_cm:.2f} cm",
         transform=ax2.transAxes,
         ha="left",
         va="top",
@@ -184,10 +200,8 @@ def plot_kde_mcmc(
 
     # Draw error ellipses for segmented subsets, if requested
     if isinstance(ellipses, int) and ellipses > 0:
-        # Configuration for stability/visibility
-        min_segment_size = 20  # require at least this many points per segment
+        min_segment_size = 20
 
-        # split indices so both XY and PCZ use identical segments
         idx_splits = np.array_split(np.arange(num_points), ellipses)
 
         seg_cmap = plt.get_cmap("tab10")
@@ -195,21 +209,15 @@ def plot_kde_mcmc(
         for i, idx in enumerate(idx_splits):
             # Guard against tiny segments
             if idx.size < min_segment_size:
-                # If too small, try to borrow neighbors by expanding the slice bounds
-                # to reach ~min_segment_size where possible
-                # Compute a contiguous window around the segment mid-point
                 mid = int(idx.mean())
                 half = max(min_segment_size // 2, 1)
                 lo = max(0, mid - half)
                 hi = min(num_points, mid + half)
                 idx = np.arange(lo, hi)
                 if idx.size < min_segment_size:
-                    # Still too small; skip this one
                     continue
 
-            # === (East, North) plane ===
-            # xy has shape (2, N); we need data as (n_i, 2) for compute_error_ellipse
-            segment_xy = xy[:, idx].T  # shape (n_i, 2)
+            segment_xy = xy[:, idx].T
             if segment_xy.shape[0] < min_segment_size:
                 continue
 
@@ -230,8 +238,7 @@ def plot_kde_mcmc(
                 e_xy.set_linewidth(2.0)
             ax1.add_patch(e_xy)
 
-            # === (PC1, Up) plane ===
-            segment_pcz = pcz[:, idx].T  # shape (n_i, 2)
+            segment_pcz = pcz[:, idx].T
             if segment_pcz.shape[0] < min_segment_size:
                 continue
 
@@ -252,10 +259,6 @@ def plot_kde_mcmc(
                 e_pcz.set_linewidth(2.0)
             ax2.add_patch(e_pcz)
 
-    # Set symmetric limits for both subplots
-    # ax1.legend()
-    # ax2.legend()
-    # Build ordered, compact legends
     for ax in (ax1, ax2):
         handles, labels = ax.get_legend_handles_labels()
         priority = {"Prior 68%": 0, "Posterior Mode": 1, "PC1": 2}
@@ -290,12 +293,12 @@ def plot_kde_mcmc(
 
 
 if __name__ == "__main__":
-    file = "mcmc_chain_8-7"
+    file = "mcmc_chain_9-9_large_aug_prior"
     chain = np.load(gps_output_path(f"{file}.npz"))
     DOG_num = 0
     sample = chain["CDOG_aug"][::100, DOG_num]
 
-    initial_params, prior_scales = get_init_params_and_prior(chain)
+    initial_params, prior_scales, _ = get_init_params_and_prior(chain)
     init_aug = initial_params["CDOG_aug"]
     prior_aug = prior_scales["CDOG_aug"]
 

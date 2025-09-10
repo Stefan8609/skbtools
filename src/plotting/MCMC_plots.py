@@ -269,6 +269,218 @@ def trace_plot(chain, initial_params=None, downsample=1, save=False, chain_name=
     plt.show()
 
 
+def esv_split_posteriors(
+    chain,
+    dog_index=0,
+    downsample=1,
+    bins=40,
+    save=False,
+    chain_name=None,
+    center=False,
+    initial_params=None,
+    center_mode="none",
+):
+    """
+    Plot posterior marginals for the split-ESV components of a given DOG.
+
+    Parameters
+    ----------
+    chain : dict-like
+        MCMC chain containing "esv_bias". Shapes supported:
+        - (T,) single value (broadcasted)
+        - (T, D) dog-wise (no splits)
+        - (T, D, S) dog x split
+    dog_index : int, default 0
+        Zero-based DOG index to plot (e.g., 0 for DOG #1, 1 for DOG #3, 2 for DOG #4).
+    downsample : int, default 1
+        Thin the chain by this stride before plotting.
+    bins : int, default 40
+        Number of histogram bins.
+    save : bool, default False
+        If True, save the figure using save_plot.
+    chain_name : str, optional
+        Name used when saving.
+    center : bool, default False
+        Back-compat: if True and center_mode == 'none', mean-center each split trace.
+    initial_params : dict, optional
+        Dict from `get_init_params_and_prior(chain)`. Used when `center_mode='init'`.
+    center_mode : {'none','mean','init'}, default 'none'
+        - 'none': plot raw values (no centering)
+        - 'mean': per-split mean-centering (same as old `center=True`)
+        - 'init': center **all splits** of the selected DOG on the **same
+        initial ESV bias**
+                  (DOG-level), computed from `initial_params['esv_bias']`.
+    """
+    # Downsample and normalize shape to (T, D, S)
+    esv = chain["esv_bias"][::downsample]
+    T = esv.shape[0]
+    if esv.ndim == 1:
+        esv = esv.reshape(T, 1, 1)
+    elif esv.ndim == 2:
+        esv = esv.reshape(T, esv.shape[1], 1)
+    elif esv.ndim != 3:
+        raise ValueError(f"esv_bias must be 1D, 2D, or 3D; got shape {esv.shape}")
+
+    D = esv.shape[1]
+    if dog_index < 0 or dog_index >= D:
+        raise IndexError(f"dog_index {dog_index} out of range [0, {D - 1}]")
+
+    # Extract selected DOG: (T, S)
+    esv_dog = esv[:, dog_index, :]
+
+    # Compute a unified DOG-level initial ESV reference if available
+    init_ref = None
+    if initial_params is not None and "esv_bias" in initial_params:
+        eb0_all = np.asarray(initial_params["esv_bias"])
+        if eb0_all.ndim == 0:
+            init_ref = float(eb0_all)
+        elif eb0_all.ndim == 1:
+            init_ref = (
+                float(eb0_all[dog_index])
+                if dog_index < eb0_all.size
+                else float(np.mean(eb0_all))
+            )
+        elif eb0_all.ndim == 2:
+            init_ref = (
+                float(np.mean(eb0_all[dog_index, :]))
+                if dog_index < eb0_all.shape[0]
+                else float(np.mean(eb0_all))
+            )
+        else:
+            init_ref = float(np.mean(eb0_all))
+
+    # Centering strategy
+    if center_mode == "mean" or (center and center_mode == "none"):
+        # Per-split mean-centering (previous behavior)
+        esv_dog = esv_dog - esv_dog.mean(axis=0, keepdims=True)
+        center_tag = " (centered: per-split mean)"
+    elif center_mode == "init":
+        # Center ALL splits on the SAME initial ESV for this DOG
+        if init_ref is None:
+            init_ref = 0.0  # fallback if not available
+        esv_dog = esv_dog - init_ref
+        center_tag = f" (centered: init={init_ref:.3g} m/s)"
+    else:
+        center_tag = ""
+
+    S = esv_dog.shape[1]
+
+    # Compute global x limits for uniform horizontal scale (in current axis coords)
+    x_min = float(np.min(esv_dog))
+    x_max = float(np.max(esv_dog))
+
+    # Plot the initial reference at its ABSOLUTE value, even if we centered the data.
+    # When center_mode=='init', data has been shifted by 'init_ref', so to draw the
+    # absolute initial reference on the current (shifted) axis, we still use 'init_ref'
+    # directly (and ensure the x-limits include it).
+    initial_x = init_ref  # may be None if not available
+
+    # Ensure x-limits include the initial reference if present
+    if initial_x is not None:
+        x_min = min(x_min, initial_x)
+        x_max = max(x_max, initial_x)
+
+    # Pad by 5% of range
+    x_pad = 0.05 * max(x_max - x_min, 1e-9)
+    x_lim = (x_min - x_pad, x_max + x_pad)
+
+    # Map internal index to human-readable DOG number (project-specific)
+    DOG_index_num = {0: 1, 1: 3, 2: 4}
+    dog_num = DOG_index_num.get(dog_index, dog_index + 1)
+
+    # Create subplots: one per split (row layout when many)
+    ncols = min(S, 3)
+    nrows = int(np.ceil(S / ncols))
+    fig, axes = plt.subplots(
+        nrows, ncols, figsize=(5 * ncols, 3.8 * nrows), sharey=True
+    )
+    if not isinstance(axes, np.ndarray):
+        axes = np.array([axes])
+    axes = axes.reshape(nrows, ncols)
+
+    # Track a global y-limit for uniform density scale across panels
+    global_ymax = 0.0
+
+    # First pass: plot and collect local ymax
+    for s in range(S):
+        r = s // ncols
+        c = s % ncols
+        ax = axes[r, c]
+
+        samples = np.asarray(esv_dog[:, s]).ravel()
+        # Histogram (posterior samples)
+        counts, bins_edges, _ = ax.hist(
+            samples,
+            bins=bins,
+            density=True,
+            alpha=0.5,
+            label="Posterior (samples)",
+        )
+        local_ymax = float(np.max(counts)) if len(counts) else 0.0
+
+        # Gaussian fit (posterior-only summary)
+        mu = float(np.mean(samples))
+        sd = float(np.std(samples))
+        if not np.isfinite(sd) or sd <= 0:
+            sd = 1e-12
+        xg = np.linspace(np.min(samples) - 3 * sd, np.max(samples) + 3 * sd, 600)
+        pdf_vals = norm.pdf(xg, loc=mu, scale=sd)
+        ax.plot(xg, pdf_vals, lw=1.6, label="Posterior (Gaussian)")
+
+        local_ymax = max(local_ymax, float(np.max(pdf_vals)))
+
+        # Posterior mean
+        ax.axvline(mu, ls="--", lw=1.0, label="Mean")
+
+        # Optionally add a thin zero-reference line when center_mode=='init'
+        if center_mode == "init":
+            ax.axvline(0.0, color="0.5", lw=0.8, ls=":", label="Centered origin")
+
+        ax.set_xlabel("ESV bias (m/s)")
+        ax.set_title(f"Split {s + 1}")
+        if c == 0:
+            ax.set_ylabel("Density")
+
+        # Mark the initial point (DOG-level)
+        if initial_x is not None:
+            ax.axvline(initial_x, color="red", lw=1.2, label="Initial (abs)")
+
+        ax.set_xlim(*x_lim)
+        ax.margins(x=0.02)
+        global_ymax = max(global_ymax, local_ymax)
+
+    # Hide any unused axes (when S is not a multiple of ncols)
+    total_axes = nrows * ncols
+    for idx in range(S, total_axes):
+        r = idx // ncols
+        c = idx % ncols
+        axes[r, c].set_visible(False)
+
+    # Apply uniform y-limits for consistent vertical scaling
+    if global_ymax > 0:
+        ylim = (0.0, global_ymax * 1.10)
+        for r in range(nrows):
+            for c in range(ncols):
+                if axes[r, c].get_visible():
+                    axes[r, c].set_ylim(*ylim)
+
+    # Single suptitle & a shared legend at the bottom
+    fig.suptitle(f"ESV posteriors for DOG {dog_num}" + center_tag, y=0.98, fontsize=12)
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=3, fontsize="small")
+    fig.tight_layout(rect=[0, 0.05, 1, 0.95])
+
+    if save:
+        suffix = f"esv_posteriors_DOG{dog_num}"
+        if center_mode == "mean" or (center and center_mode == "none"):
+            suffix += "_centered"
+        elif center_mode == "init":
+            suffix += "_initcentered"
+        save_plot(fig, chain_name, suffix, subdir=f"Figs/MCMC/{chain_name}")
+
+    plt.show()
+
+
 def marginal_hists(
     chain,
     initial_params=None,
@@ -659,7 +871,7 @@ def corner_plot(
             ax.set_visible(False)
         if i == n - 1:
             ax.set_xlabel(f"{key_j} (cm)")
-        if j == 0:
+        if j == 0 and not i == 0:
             ax.set_ylabel(f"{key_i} (cm)")
 
     # Only show tick numbers on outside boxes
@@ -670,6 +882,7 @@ def corner_plot(
                 ax_ij.set_xticklabels([])
             if jj != 0:
                 ax_ij.set_yticklabels([])
+    axes[0, 0].set_yticklabels([])
 
     # Build a single, unobtrusive figure-level legend with proxy artists (top-center)
     sample_h = mlines.Line2D(
@@ -714,7 +927,7 @@ def corner_plot(
 
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
-    file_name = "mcmc_chain_8-7"
+    file_name = "mcmc_chain_9-9_large_aug_prior"
     loglike = False
     save = True
 
@@ -749,5 +962,16 @@ if __name__ == "__main__":
         loglike=loglike,
     )
 
-
-# Compare locations of the plot_segments lever and receiver location
+    # esv_split_posteriors(
+    #     chain,
+    #     dog_index=0,        # 0→DOG 1, 1→DOG 3, 2→DOG 4
+    #     downsample=100,
+    #     bins=40,
+    #     save=True,
+    #     chain_name="logpost_mcmc_chain_esv_only",
+    #     center=False,        # kept for back-compat; ignored when center_mode
+    # != 'none'
+    #     initial_params=initial_params,
+    #     center_mode='init'   # <-- center all splits on the same initial ESV
+    # for this DOG
+    # )

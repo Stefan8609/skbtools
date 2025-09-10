@@ -160,7 +160,7 @@ def time_series_plot(
     axes[1, 1].scatter(CDOG_clock, difference_data * 1000, s=1)
     axes[1, 1].axvline(zoom_region, color="k")
     axes[1, 1].axvline(zoom_region + zoom_length, color="k")
-    axes[1, 1].set_xlabel("Time (ms)")
+    axes[1, 1].set_xlabel("Time (s)")
     axes[1, 1].set_ylim([mu - 3 * std, mu + 3 * std])
     axes[1, 1].set_xlim(min(CDOG_clock), max(CDOG_clock))
     axes[1, 1].axhline(-std, color="r", label="Observed Noise")
@@ -182,7 +182,7 @@ def time_series_plot(
         difference_data[zoom_idx : zoom_idx + zoom_length] * 1000,
         s=1,
     )
-    axes[1, 2].set_xlabel("Time (ms)")
+    axes[1, 2].set_xlabel("Time (s)")
     axes[1, 2].set_ylim([mu - 3 * std, mu + 3 * std])
     axes[1, 2].set_xlim(
         min(CDOG_clock[zoom_idx : zoom_idx + zoom_length]),
