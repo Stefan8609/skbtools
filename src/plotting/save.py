@@ -1,5 +1,4 @@
 import os
-from typing import Optional
 from data import gps_data_path
 
 
@@ -19,10 +18,10 @@ def _safe_filename(name: str) -> str:
 
 def save_plot(
     fig,
-    chain_name: Optional[str],
-    func_name: str,
-    subdir: str = "Figs",
-    ext: str = "pdf",
+    func_name,
+    chain_name=None,
+    subdir="Figs",
+    ext="pdf",
 ):
     """Save ``fig`` to ``subdir`` inside the Data directory.
 
@@ -32,7 +31,10 @@ def save_plot(
     if chain_name is None:
         chain_name = "chain"
     safe_chain = _safe_filename(chain_name)
-    fname = f"{safe_chain}_{func_name}.{ext}"
+    if not chain_name:
+        fname = f"{func_name}.{ext}"
+    else:
+        fname = f"{safe_chain}_{func_name}.{ext}"
     dirpath = gps_data_path(subdir)
     os.makedirs(dirpath, exist_ok=True)
     fullpath = dirpath / fname

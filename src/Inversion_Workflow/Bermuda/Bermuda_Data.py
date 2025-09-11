@@ -40,9 +40,7 @@ data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}.np
 GPS_Coordinates = data["GPS_Coordinates"]
 GPS_data = data["GPS_data"]
 CDOG_data = data["CDOG_data"]
-# CDOG_guess = data['CDOG_guess']
 CDOG_guess_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
-# gps1_to_others = data['gps1_to_others']
 
 initial_lever_guess = np.array([-12.4659, 9.6021, -13.2993])
 

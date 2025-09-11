@@ -135,7 +135,7 @@ def plot_best_sample(
     print("Best parameters:")
     print("Lever guess:", lever_guess)
     print("GPS1 grid guess:", gps1_grid_guess)
-    print("CDOG augment:", CDOG_augments[CDOG_index])
+    print("CDOG augment:", CDOG_augments)
     print("ESV bias:", esv_bias)
     print("Time bias:", time_bias)
     print("Log posterior:", logpost)
@@ -215,7 +215,7 @@ def plot_best_sample(
 if __name__ == "__main__":
     # split_samples("7_individual_splits_esv_20250806_165630", 7)
 
-    file_name = "mcmc_chain_8-7.npz"
+    file_name = "mcmc_chain_9-9_large_aug_prior.npz"
     DOG_num = 1
     timestamp = f"{file_name[:-4]}_best_DOG_{DOG_num}"
 
