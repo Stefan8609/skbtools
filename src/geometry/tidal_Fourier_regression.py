@@ -3,6 +3,7 @@ from data import gps_data_path
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 import matplotlib.pyplot as plt
 from plotting.save import save_plot
+from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 
 
 def fit_tides(elevations, GPS_data, tide_frequencies):
@@ -52,7 +53,9 @@ def fit_tides(elevations, GPS_data, tide_frequencies):
     return results
 
 
-def plot_fit(GPS_data, elevations, fitted_components, func_name="tidal_fit"):
+def plot_fit(
+    GPS_data, elevations, fitted_components, func_name="tidal_fit", save=False
+):
     """
     Plot observed elevations and fitted tidal regression.
     """
@@ -66,29 +69,46 @@ def plot_fit(GPS_data, elevations, fitted_components, func_name="tidal_fit"):
             )
 
     fig, ax = plt.subplots(figsize=(10, 5))
-
+    GPS_data = GPS_data * 24 * 3600 + 20001
     ax.scatter(GPS_data, elevations, color="blue", s=1, label="Observed")
     ax.plot(GPS_data, fitted_elev, color="r", linewidth=2, label="Fitted")
 
-    ax.set_xlabel("Time (days)")
+    ax.set_xlabel("Time (s)")
     ax.set_ylabel("Elevation (m)")
     ax.legend()
     ax.set_title("Tidal Regression Fit")
     plt.show()
 
     # Save figure
-    save_plot(fig, func_name)
+    if save:
+        save_plot(fig, func_name)
     return
 
 
 if __name__ == "__main__":
-    data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_full.npz"))
+    data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
+    # data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_full.npz"))
     GPS_Coordinates = data["GPS_Coordinates"]
+    GPS_barycenter = np.mean(GPS_Coordinates, axis=1)
     GPS_data = data["GPS_data"]
 
-    GPS_barycenter = np.mean(GPS_Coordinates, axis=1)
+    lever_arm = np.array([-12.69796149, 9.51739301, -15.0743129])
+    gps_grid = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [-2.393414, -4.223503, 0.029415],
+            [-12.095685, -0.945685, 0.004397],
+            [-8.686741, 5.169188, -0.024993],
+        ]
+    )
 
-    _, _, elev = ECEF_Geodetic(GPS_barycenter)
+    transponder_coordinates = findTransponder(GPS_Coordinates, gps_grid, lever_arm)
+
+    type = "transponder"
+    if type == "barycenter":
+        _, _, elev = ECEF_Geodetic(GPS_barycenter)
+    if type == "transponder":
+        _, _, elev = ECEF_Geodetic(transponder_coordinates)
 
     results = fit_tides(
         elev, GPS_data, tide_frequencies=np.array([1.9322736, 1.0027379])
@@ -96,8 +116,8 @@ if __name__ == "__main__":
     print(results)
 
     # [1.9322736, 2.0, 1.8959819, 1.0027379, 0.9295357, 2.0054759, 0.9972621]
-
+    print(GPS_data[0])
     GPS_data = GPS_data - GPS_data[0]
     GPS_data = GPS_data / 86400  # Convert to days
     # plot fit
-    plot_fit(GPS_data, elev, results, func_name="tidal_fit_full")
+    plot_fit(GPS_data, elev, results, func_name=f"tidal_fit_full_{type}", save=True)
