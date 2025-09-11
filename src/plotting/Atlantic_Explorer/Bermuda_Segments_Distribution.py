@@ -9,6 +9,34 @@ from geometry.rigid_body import findRotationAndDisplacement
 from data import gps_output_path, gps_data_path
 
 
+def _contour_kde2d(ax, pts2d, levels=50, gridsize=200, cmap=None, alpha=0.9):
+    """Plot a 2D gaussian_kde as filled contours on *ax*.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+    pts2d : (N, 2) ndarray
+        Points as columns [x, y].
+    levels : int
+        Number of contourf levels.
+    gridsize : int
+        Resolution of the grid along each axis.
+    cmap : Colormap
+        Colormap to use.
+    alpha : float
+        Alpha passed to contourf.
+    """
+    kde = gaussian_kde(pts2d.T)
+    xlin = np.linspace(pts2d[:, 0].min(), pts2d[:, 0].max(), gridsize)
+    ylin = np.linspace(pts2d[:, 1].min(), pts2d[:, 1].max(), gridsize)
+    xgrid, ygrid = np.meshgrid(xlin, ylin)
+    xy_coords = np.vstack([xgrid.ravel(), ygrid.ravel()])
+    density = kde(xy_coords).reshape(xgrid.shape)
+    return ax.contourf(
+        xgrid, ygrid, density, levels=levels, cmap=cmap, alpha=alpha, zorder=1
+    )
+
+
 def px_to_world_segments(
     segments_px,
     scale,
@@ -19,7 +47,7 @@ def px_to_world_segments(
     flip_y=False,
 ):
     """
-    Convert pixel‐coordinates to the same meter‐coordinates as your lever arms.
+    Convert pixel coordinates to ship-fixed meter coordinates (matching lever arms).
 
     - scale: m/pixel
     - x_shift_px, y_shift_px: the same center‐subtractions you used before
@@ -62,10 +90,14 @@ def plot_2d_projection_topdown(
     rotation_deg=29.5,
     gps1_offset=(39.5, 2.2, 15.0),
     downsample=1,
+    inset_size=2.0,
+    zoom_half_range=0.25,
+    tick_step_cm=25,
+    inset_label_fontsize=7,
 ):
     """
-    Plot 2D top-down projection of lever‐arms and GPS distributions against an
-    approximate box‐hull
+    Plot a 2D top-down projection of lever arms and GPS distributions against an
+    approximate box hull.
 
     Parameters
     ----------
@@ -80,7 +112,16 @@ def plot_2d_projection_topdown(
 
     Returns
     -------
-    fig, ax : matplotlib Figure and Axes3D objects
+    fig, ax : matplotlib Figure and Axes objects
+    inset_size : float, optional
+        Width and height of each inset in data (meter) units. Default 2.5.
+    zoom_half_range : float, optional
+        Half-size of the zoom window limits shown inside each inset (meters).
+        For example, 0.75 shows [center-0.75, center+0.75] in both X and Y.
+    tick_step_cm : int, optional
+        Tick spacing inside each inset in centimeters. Default 25 cm.
+    inset_label_fontsize : int, optional
+        Font size for the inset axis labels ("cm"). Default 7.
     """
 
     # Load GPS
@@ -99,8 +140,8 @@ def plot_2d_projection_topdown(
     fig, ax = plt.subplots(figsize=(8, 6))
 
     for (x1, y1), (x2, y2) in segments:
-        # Draw the line segment
-        plt.plot([x1, x2], [y1, y2], color="k", linewidth=2, zorder=2)
+        # Draw the line segment (thin, gray)
+        plt.plot([x1, x2], [y1, y2], color="0.5", linewidth=1.0, zorder=2)
 
     # Build rotation matrix about Z
     theta = np.deg2rad(rotation_deg)
@@ -120,51 +161,26 @@ def plot_2d_projection_topdown(
     # Rotate GPS grid
     GPS_Vessel_rot = GPS_Vessel @ Rz.T
 
+    # Precompute GPS XY arrays and centroids (post-rotation and translation)
+    gps_xy_list = []
+    centroids = []
+    for i in range(4):
+        gxy_full = GPS_Vessel_rot[:, i, :2] + GPS1[:2]
+        gps_xy_list.append(gxy_full[::downsample])
+        centroids.append(gxy_full.mean(axis=0))
+
     # 2D KDE of GPS distributions
     white_blue_cmap = LinearSegmentedColormap.from_list("white_blue", ["white", "blue"])
-    for i in range(4):
-        # Compute KDE for this GPS unit
-        gps_xy = GPS_Vessel_rot[:, i, :2] + GPS1[:2]  # Apply GPS1 shift
-        gps_xy = gps_xy[::downsample]  # Downsample for performance
-        # KDE
-        kde = gaussian_kde(gps_xy.T)
-        xgrid, ygrid = np.meshgrid(
-            np.linspace(gps_xy[:, 0].min(), gps_xy[:, 0].max(), 200),
-            np.linspace(gps_xy[:, 1].min(), gps_xy[:, 1].max(), 200),
-        )
-        xy_coords = np.vstack([xgrid.ravel(), ygrid.ravel()])
-        density = kde(xy_coords).reshape(xgrid.shape)
-        # Plot density as filled contour
-        ax.contourf(
-            xgrid,
-            ygrid,
-            density,
-            levels=50,
-            cmap=white_blue_cmap,
-            alpha=1,
-            zorder=1,
+    for pts in gps_xy_list:
+        _contour_kde2d(
+            ax, pts, levels=50, gridsize=200, cmap=white_blue_cmap, alpha=0.9
         )
 
     # 2D KDE of lever arms
     white_red_cmap = LinearSegmentedColormap.from_list("white_red", ["white", "red"])
     lever_xy = lever_xy[::downsample]
-    kde = gaussian_kde(lever_xy.T)
-    xgrid, ygrid = np.meshgrid(
-        np.linspace(lever_xy[:, 0].min(), lever_xy[:, 0].max(), 200),
-        np.linspace(lever_xy[:, 1].min(), lever_xy[:, 1].max(), 200),
-    )
-    grid_coords = np.vstack([xgrid.ravel(), ygrid.ravel()])
-    density = kde(grid_coords).reshape(xgrid.shape)
-
-    # Plot the lever density as filled contours
-    ax.contourf(
-        xgrid,
-        ygrid,
-        density,
-        levels=50,
-        cmap=white_red_cmap,
-        alpha=1,
-        zorder=1,
+    _contour_kde2d(
+        ax, lever_xy, levels=50, gridsize=200, cmap=white_red_cmap, alpha=0.9
     )
 
     # 68% error ellipse for GPS distributions
@@ -172,15 +188,6 @@ def plot_2d_projection_topdown(
         gps_i = GPS_Vessel_rot[:, i, :2] + GPS1[:2]  # (n_samples, 2)
         ellipse, pct = compute_error_ellipse(gps_i, confidence=0.68, zorder=3)
         ax.add_patch(ellipse)
-        ax.text(
-            6,
-            20 - 2 * i,
-            f"Points within GPS {i + 1} ellipse: {pct:.1f}%",
-            color="black",
-            fontsize=10,
-            ha="center",
-            va="center",
-        )
 
     # 68% error ellipse for lever-arm cloud
     lever_xy = np.column_stack((levers_rot[:, 0] + GPS1[0], levers_rot[:, 1] + GPS1[1]))
@@ -193,21 +200,72 @@ def plot_2d_projection_topdown(
     )
     ax.add_patch(ellipse)
     ax.add_patch(prior_ellipse)
-    ax.text(
-        9.13,
-        12,
-        f"Points within lever ellipse percentage: {pct:.1f}%",
-        color="black",
-        fontsize=10,
-        ha="center",
-        va="center",
-    )
+
+    # Overlay zoomed-in inset KDEs for each GPS distribution
+    for idx, (pts, c) in enumerate(zip(gps_xy_list, centroids), start=1):
+        w = inset_size
+        h = inset_size
+        cx, cy = float(c[0]), float(c[1])
+        if idx == 1:
+            dx, dy = 2.0, 2.24
+        elif idx == 2:
+            dx, dy = 2.0, -0.75
+        elif idx == 3:
+            dx, dy = -2.0, 1.2
+        else:
+            dx, dy = -2.0, 2.0
+        ix, iy = cx + dx, cy + dy
+        axins = ax.inset_axes(
+            [ix - w / 2.0, iy - h / 2.0, w, h], transform=ax.transData
+        )
+
+        # Plot KDE inside inset
+        _contour_kde2d(
+            axins, pts, levels=30, gridsize=120, cmap=white_blue_cmap, alpha=0.9
+        )
+
+        # Mark centroid location within inset view
+        axins.plot([cx], [cy], marker="o", markersize=2, zorder=3)
+
+        axins.set_xlim(cx - zoom_half_range, cx + zoom_half_range)
+        axins.set_ylim(cy - zoom_half_range, cy + zoom_half_range)
+
+        rng_m = zoom_half_range
+
+        cm_max = int(np.floor(rng_m * 100.0))
+        step = max(1, int(tick_step_cm))
+        tick_cm = np.arange(-cm_max, cm_max + 1, step, dtype=int)
+        xticks = cx + (tick_cm / 100.0)
+        yticks = cy + (tick_cm / 100.0)
+        axins.set_xticks(xticks)
+        axins.set_yticks(yticks)
+        axins.set_xticklabels([f"{v}" for v in tick_cm])
+        axins.set_yticklabels([f"{v}" for v in tick_cm])
+        axins.tick_params(axis="both", labelsize=inset_label_fontsize)
+        axins.set_xlabel("cm", fontsize=inset_label_fontsize)
+        axins.set_ylabel("cm", fontsize=inset_label_fontsize)
+
+        # Subtle border on insets
+        for spine in axins.spines.values():
+            spine.set_linewidth(0.8)
+            spine.set_alpha(0.8)
+
+        # Arrow from the GPS centroid to the inset center
+        ax.annotate(
+            "",
+            xy=(ix, iy),
+            xytext=(cx, cy),
+            arrowprops=dict(arrowstyle="->", lw=1.0, alpha=0.9),
+            zorder=4,
+        )
 
     # Labels & styling
     ax.set_xlabel("X (m) – forward")
-    ax.set_ylabel("Y (m) – depth")
+    ax.set_ylabel("Y (m) – beam")
     ax.set_title("Top-Down View: Lever Arms vs. Ship Hull")
-    ax.legend(loc="upper right")
+    handles, labels = ax.get_legend_handles_labels()
+    if labels:
+        ax.legend(loc="upper right")
     ax.set_aspect("equal", "box")
 
     plt.tight_layout()
@@ -224,8 +282,8 @@ def plot_2d_projection_side(
     downsample=1,
 ):
     """
-    Plot 2D top-down projection of lever‐arms and GPS distributions against an
-    approximate box‐hull
+    Plot a 2D side projection of lever arms and GPS distributions against an
+    approximate box hull.
 
     Parameters
     ----------
@@ -240,7 +298,7 @@ def plot_2d_projection_side(
 
     Returns
     -------
-    fig, ax : matplotlib Figure and Axes3D objects
+    fig, ax : matplotlib Figure and Axes objects
     """
 
     # Load GPS
@@ -259,8 +317,8 @@ def plot_2d_projection_side(
     fig, ax = plt.subplots(figsize=(8, 6))
 
     for (x1, y1), (x2, y2) in segments:
-        # Draw the line segment
-        plt.plot([x1, x2], [y1, y2], color="k", linewidth=2, zorder=2)
+        # Draw the line segment (thin, gray)
+        plt.plot([x1, x2], [y1, y2], color="0.5", linewidth=1.0, zorder=2)
 
     # Build rotation matrix about Z
     theta = np.deg2rad(rotation_deg)
@@ -283,48 +341,17 @@ def plot_2d_projection_side(
     # 2D KDE of GPS distributions
     white_blue_cmap = LinearSegmentedColormap.from_list("white_blue", ["white", "blue"])
     for i in range(4):
-        # Compute KDE for this GPS unit
         gps_xz = GPS_Vessel_rot[:, i, [0, 2]] + GPS1[[0, 2]]
-        gps_xz = gps_xz[::downsample]  # Downsample for performance
-
-        # KDE
-        kde = gaussian_kde(gps_xz.T)
-        xgrid, zgrid = np.meshgrid(
-            np.linspace(gps_xz[:, 0].min(), gps_xz[:, 0].max(), 200),
-            np.linspace(gps_xz[:, 1].min(), gps_xz[:, 1].max(), 200),
-        )
-        xz_coords = np.vstack([xgrid.ravel(), zgrid.ravel()])
-        density = kde(xz_coords).reshape(xgrid.shape)
-        # Plot density as filled contour
-        ax.contourf(
-            xgrid,
-            zgrid,
-            density,
-            levels=50,
-            cmap=white_blue_cmap,
-            alpha=1,
-            zorder=1,
+        gps_xz = gps_xz[::downsample]
+        _contour_kde2d(
+            ax, gps_xz, levels=50, gridsize=200, cmap=white_blue_cmap, alpha=0.9
         )
 
     # 2D KDE of lever arms
     white_red_cmap = LinearSegmentedColormap.from_list("white_red", ["white", "red"])
-    kde = gaussian_kde(levers_xz.T)
-    xgrid, zgrid = np.meshgrid(
-        np.linspace(levers_xz[:, 0].min(), levers_xz[:, 0].max(), 200),
-        np.linspace(levers_xz[:, 1].min(), levers_xz[:, 1].max(), 200),
-    )
-    grid_coords = np.vstack([xgrid.ravel(), zgrid.ravel()])
-    density = kde(grid_coords).reshape(xgrid.shape)
-
-    # Plot the lever density as filled contours
-    ax.contourf(
-        xgrid,
-        zgrid,
-        density,
-        levels=50,
-        cmap=white_red_cmap,
-        alpha=1,
-        zorder=1,
+    levers_xz = levers_xz[::downsample]
+    _contour_kde2d(
+        ax, levers_xz, levels=50, gridsize=200, cmap=white_red_cmap, alpha=0.9
     )
 
     # 68% error ellipse for GPS distributions
@@ -333,15 +360,6 @@ def plot_2d_projection_side(
         gps_xz = gps_i[:, [0, 2]] + GPS1[[0, 2]]  # (n_samples, 2)
         ellipse, pct = compute_error_ellipse(gps_xz, confidence=0.68, zorder=3)
         ax.add_patch(ellipse)
-        # ax.text(
-        #     6,
-        #     30 - 2 * i,
-        #     f"Points within GPS {i + 1} ellipse: {pct:.1f}%",
-        #     color="black",
-        #     fontsize=10,
-        #     ha="center",
-        #     va="center",
-        # )
 
     # 68% error ellipse for lever-arm cloud
     levers_xz = levers_rot[:, [0, 2]] + GPS1[[0, 2]]
@@ -356,22 +374,14 @@ def plot_2d_projection_side(
     )
     ax.add_patch(ellipse)
     ax.add_patch(prior_ellipse)
-    # annotate percentage
-    # ax.text(
-    #     9.13,
-    #     22,
-    #     f"Points within lever ellipse percentage: {pct:.1f}%",
-    #     color="black",
-    #     fontsize=10,
-    #     ha="center",
-    #     va="center",
-    # )
 
     # Labels & styling
     ax.set_xlabel("X (m) – forward")
-    ax.set_ylabel("Y (m) – depth")
-    ax.set_title("Top-Down View: Lever Arms vs. Ship Hull")
-    ax.legend(loc="upper right")
+    ax.set_ylabel("Z (m) – depth")
+    ax.set_title("Side View: Lever Arms vs. Ship Hull")
+    handles, labels = ax.get_legend_handles_labels()
+    if labels:
+        ax.legend(loc="upper right")
     ax.set_aspect("equal", "box")
 
     plt.tight_layout()
@@ -391,22 +401,12 @@ if __name__ == "__main__":
         ((550.13084465, 217.21435547), (425.11539656, 217.21435547)),
         ((425.11539656, 217.21435547), (425.11539656, 255.13511531)),
         ((425.11539656, 255.13511531), (361.68853695, 255.13511531)),
-        ((368.54864253, 251.66402715), (368.54864253, 123.49660633)),
-        ((368.54864253, 123.49660633), (411.01757812, 123.49660633)),
-        ((411.01757812, 123.49660633), (411.01282051, 136.22322775)),
-        ((411.01282051, 136.22322775), (457.07006836, 136.09863281)),
-        ((457.01809955, 136.14253394), (457.01809955, 123.02941176)),
-        ((457.01293945, 123.24609375), (543.94775391, 123.05761719)),
-        ((544.12707391, 123.10558069), (543.90422323, 208.97737557)),
-        ((544.04931641, 208.38769531), (418.03613281, 208.11523437)),
-        ((418.03959276, 207.95927602), (418.03959276, 251.19457014)),
-        ((418.04736328, 251.07128906), (368.03431373, 251.04901961)),
     ]
 
     ship_segments = [
         ((47.18438914, 243.84615385), (47.18438914, 67.09863281)),
-        ((53.02148437, 67.09863281), (172.00781250, 51.22558594)),
-        ((172.00781250, 51.41308594), (815.26562500, 51.41308594)),
+        ((47.18438914, 67.09863281), (172.00781250, 51.22558594)),
+        ((172.00781250, 51.22558594), (815.26562500, 51.41308594)),
         ((815.26562500, 51.41308594), (1000.39257813, 158.67382812)),
         ((1000.39257813, 158.67382812), (815.26562500, 259.94409180)),
         ((815.26562500, 259.94409180), (175.97265625, 259.94409180)),
@@ -471,14 +471,16 @@ if __name__ == "__main__":
     fig, ax = plot_2d_projection_topdown(
         segments, levers, lever_prior, lever_init, downsample=downsample
     )
+    ax.set_xlim(20, 44)
+    ax.set_ylim(-7.5, 7.5)
     plt.show()
 
-    fig, ax = plot_2d_projection_topdown(
-        segments, levers, lever_prior, lever_init, downsample=downsample
-    )
-    ax.set_xlim(22, 41)
-    ax.set_ylim(-5.5, 5.5)
-    plt.show()
+    # fig, ax = plot_2d_projection_topdown(
+    #     segments, levers, lever_prior, lever_init, downsample=downsample
+    # )
+    # ax.set_xlim(22, 41)
+    # ax.set_ylim(-5.5, 5.5)
+    # plt.show()
 
     """Side View"""
     side_view_segments = [
@@ -510,13 +512,6 @@ if __name__ == "__main__":
         ((268.87378, 478.96362), (93.10156, 437.16406)),
     ]
 
-    railing_segments = [
-        ((420.39501953, 302.03784180), (420.39501953, 290.79882812)),
-        ((420.39501953, 290.79882812), (542.09057617, 290.79882812)),
-        ((542.09057617, 290.79882812), (542.09057617, 302.03784180)),
-        ((542.09057617, 302.03784180), (420.39501953, 302.03784180)),
-    ]
-
     moonpool_segments = [
         ((338.1, 477.1), (350.3, 477.1)),
         ((350.3, 477.1), (350.3, 490)),
@@ -534,15 +529,6 @@ if __name__ == "__main__":
         view="side",
         flip_y=True,
     )
-    railing_segments = px_to_world_segments(
-        railing_segments,
-        scale=side_view_scale,
-        x_shift_px=0,
-        y_shift_px=39.31 / side_view_scale,
-        gps1_offset=(0, 0, 0),
-        view="side",
-        flip_y=True,
-    )
     moonpool_segments = px_to_world_segments(
         moonpool_segments,
         scale=side_view_scale,
@@ -552,14 +538,14 @@ if __name__ == "__main__":
         view="side",
         flip_y=True,
     )
-    segments = np.concatenate([side_view_segments, railing_segments, moonpool_segments])
+    # segments = np.concatenate([side_view_segments, moonpool_segments])
 
-    fig, ax = plot_2d_projection_side(
-        segments, levers, lever_prior, lever_init, downsample=downsample
-    )
-    ax.set_xlim(25, 47.5)
-    ax.set_ylim(-1.4, 15.7)
-    plt.show()
+    # fig, ax = plot_2d_projection_side(
+    #     segments, levers, lever_prior, lever_init, downsample=downsample
+    # )
+    # ax.set_xlim(25, 47.5)
+    # ax.set_ylim(-1.4, 15.7)
+    # plt.show()
 
 
 """
