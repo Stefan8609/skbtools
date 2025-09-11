@@ -215,7 +215,7 @@ def plot_best_sample(
 if __name__ == "__main__":
     # split_samples("7_individual_splits_esv_20250806_165630", 7)
 
-    file_name = "mcmc_chain_9-9_large_aug_prior.npz"
+    file_name = "mcmc_chain_esv_only.npz"
     DOG_num = 1
     timestamp = f"{file_name[:-4]}_best_DOG_{DOG_num}"
 
