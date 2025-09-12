@@ -10,21 +10,27 @@ from data import gps_output_path, gps_data_path
 
 
 def _contour_kde2d(ax, pts2d, levels=50, gridsize=200, cmap=None, alpha=0.9):
-    """Plot a 2D gaussian_kde as filled contours on *ax*.
+    """Plot a 2D Gaussian KDE as filled contours.
 
     Parameters
     ----------
-    ax : matplotlib Axes
+    ax : matplotlib.axes.Axes
+        Target axes.
     pts2d : (N, 2) ndarray
-        Points as columns [x, y].
-    levels : int
-        Number of contourf levels.
-    gridsize : int
-        Resolution of the grid along each axis.
-    cmap : Colormap
-        Colormap to use.
-    alpha : float
-        Alpha passed to contourf.
+        Input points as columns [x, y].
+    levels : int, optional
+        Number of contour levels. Default 50.
+    gridsize : int, optional
+        Grid resolution per axis. Default 200.
+    cmap : matplotlib.colors.Colormap, optional
+        Colormap for the density.
+    alpha : float, optional
+        Transparency for the filled contours. Default 0.9.
+
+    Returns
+    -------
+    matplotlib.contour.QuadContourSet
+        The contourf artist.
     """
     kde = gaussian_kde(pts2d.T)
     xlin = np.linspace(pts2d[:, 0].min(), pts2d[:, 0].max(), gridsize)
@@ -46,40 +52,125 @@ def px_to_world_segments(
     view="side",
     flip_y=False,
 ):
-    """
-    Convert pixel coordinates to ship-fixed meter coordinates (matching lever arms).
+    """Convert pixel coordinates to ship-fixed meter coordinates.
 
-    - scale: m/pixel
-    - x_shift_px, y_shift_px: the same center‐subtractions you used before
-    - gps1_offset: (x,y,z) in meters
-    - view: 'side' or 'top' → decide which pixel‐axis maps to world‐axis
-    - flip_y: if True, flips the segment vertically over the bisecting line
+    Parameters
+    ----------
+    segments_px : sequence of tuple
+        Iterable of pixel-space segments [((x1, y1), (x2, y2)), ...].
+    scale : float
+        Meters per pixel.
+    x_shift_px, y_shift_px : float, optional
+        Pixel offsets to subtract before scaling.
+    gps1_offset : tuple of float, optional
+        (x, y, z) offset in meters to translate results.
+    view : {"side", "top"}, optional
+        Mapping of pixel axes to world axes. Default "side".
+    flip_y : bool, optional
+        If True, multiply the pixel y-coordinates by -1 before scaling.
+
+    Returns
+    -------
+    list of tuple
+        World-coordinate segments [((x1, y1), (x2, y2)), ...].
     """
     ox, oy, oz = gps1_offset
     world = []
     for (x1, y1), (x2, y2) in segments_px:
-        # first subtract your pixel‐shifts:
         xp1, yp1 = x1 - x_shift_px, y1 - y_shift_px
         xp2, yp2 = x2 - x_shift_px, y2 - y_shift_px
 
         if flip_y:
             yp1 *= -1
             yp2 *= -1
-
-        # scale into meters:
         xm1, ym1 = xp1 * scale, yp1 * scale
         xm2, ym2 = xp2 * scale, yp2 * scale
 
         if view == "side":
-            # pixel‐Y → world‐Z, pixel‐X → world‐X
             p1 = (xm1 + ox, ym1 + oz)
             p2 = (xm2 + ox, ym2 + oz)
         else:
-            # top‐down: pixel‐Y → world‐Y (beam)
             p1 = (xm1 + ox, ym1 + oy)
             p2 = (xm2 + ox, ym2 + oy)
         world.append((p1, p2))
     return world
+
+
+# Helper: add a schematic inset showing the full boat outline on the left
+def _add_schematic_inset(
+    ax,
+    segments,
+    box=(0.02, 0.10, 0.40, 0.80),
+    line_color="0.35",
+    line_width=0.8,
+    title="Schematic",
+    scale=1.0,
+    box_coord="axes",
+):
+    """Add a boat-outline inset to the given axes.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes to attach the inset to.
+    segments : iterable
+        World-coordinate segments [((x1, y1), (x2, y2)), ...] for the outline.
+    box : tuple of float, optional
+        (x0, y0, width, height) for the inset box. Interpreted in the
+        coordinate system given by *box_coord*. Default (0.02, 0.10, 0.40, 0.80).
+    line_color : color, optional
+        Segment line color. Default "0.35".
+    line_width : float, optional
+        Segment line width. Default 0.8.
+    title : str, optional
+        Inset title. Default "Schematic".
+    scale : float, optional
+        Multiplier applied to width and height of *box*. Default 1.0.
+    box_coord : {"axes", "data", "figure"}, optional
+        Coordinate system for *box*: axes-fraction [0–1], data units of *ax*,
+        or figure-fraction. Default "axes".
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The inset axes.
+    """
+    # Create inset inside the axes, positioned along the left edge
+    x0, y0, w, h = box
+    w *= scale
+    h *= scale
+    if box_coord == "data":
+        transform = ax.transData
+    elif box_coord == "figure":
+        transform = ax.figure.transFigure
+    else:
+        transform = ax.transAxes
+    ax_in = ax.inset_axes([x0, y0, w, h], transform=transform)
+
+    xs, ys = [], []
+    for (x1, y1), (x2, y2) in segments:
+        ax_in.plot([x1, x2], [y1, y2], color=line_color, linewidth=line_width, zorder=2)
+        xs.extend([x1, x2])
+        ys.extend([y1, y2])
+
+    # Fit view to all segments with a small padding
+    x_min, x_max = (min(xs), max(xs)) if xs else (0.0, 1.0)
+    y_min, y_max = (min(ys), max(ys)) if ys else (0.0, 1.0)
+    pad_x = (x_max - x_min) * 0.05 or 1.0
+    pad_y = (y_max - y_min) * 0.05 or 1.0
+    ax_in.set_xlim(x_min - pad_x, x_max + pad_x)
+    ax_in.set_ylim(y_min - pad_y, y_max + pad_y)
+
+    # Styling: equal aspect, no ticks, subtle frame
+    ax_in.set_aspect("equal", "box")
+    ax_in.set_xticks([])
+    ax_in.set_yticks([])
+    for spine in ax_in.spines.values():
+        spine.set_alpha(0.6)
+        spine.set_linewidth(0.8)
+
+    ax_in.set_title(title, fontsize=8, pad=2)
+    return ax_in
 
 
 def plot_2d_projection_topdown(
@@ -94,34 +185,50 @@ def plot_2d_projection_topdown(
     zoom_half_range=0.25,
     tick_step_cm=25,
     inset_label_fontsize=7,
+    schematic_inset=True,
+    schematic_box=(0.02, 0.16, 0.17, 0.34),
+    schematic_scale=2.0,
+    schematic_box_coord="axes",
 ):
-    """
-    Plot a 2D top-down projection of lever arms and GPS distributions against an
-    approximate box hull.
+    """Top-down projection of lever arms and GPS distributions over a hull outline.
 
     Parameters
     ----------
-    lever_arms : (N,3) array‐like
-        X, Y, Z lever‐arm positions (in meters) in ship‐fixed coordinates.
+    segments : sequence
+        World-coordinate segments [((x1, y1), (x2, y2)), ...] for the hull.
+    lever_arms : (N, 3) array-like
+        Lever-arm samples in ship-fixed coordinates (meters).
+    lever_prior : (3,) array-like
+        Prior standard deviations (meters) for lever components.
+    lever_init : (3,) array-like
+        Initial lever-arm estimate (meters).
     rotation_deg : float, optional
-        Rotation angle about the Z‐axis (in degrees) to match the 3D plot’s
-        orientation. Default is 29.5.
-    gps1_offset : tuple of 3 floats, optional
-        (x, y, z) offset of the GPS1 reference point in ship‐fixed coords.
-        Default is (37, 8.3, 15.0).
+        Z-rotation (degrees) applied to lever arms and GPS grid. Default 29.5.
+    gps1_offset : (3,) tuple, optional
+        (x, y, z) location of GPS1 in ship-fixed coordinates. Default (39.5, 2.2, 15.0).
+    downsample : int, optional
+        Subsampling stride for plotting. Default 1.
+    inset_size : float, optional
+        Width and height (in data units) of each zoom-inset. Default 2.0.
+    zoom_half_range : float, optional
+        Half-size (meters) of the inset view window. Default 0.25.
+    tick_step_cm : int, optional
+        Tick spacing for inset axes in centimeters. Default 25.
+    inset_label_fontsize : int, optional
+        Font size for inset axis labels. Default 7.
+    schematic_inset : bool, optional
+        If True, draw a schematic inset of the full hull. Default True.
+    schematic_box : tuple, optional
+        Position/size of the schematic inset. Interpreted per *schematic_box_coord*.
+    schematic_scale : float, optional
+        Multiplier applied to schematic_box width/height. Default 2.0.
+    schematic_box_coord : {"axes", "data", "figure"}, optional
+        Coordinate system for *schematic_box*. Default "axes".
 
     Returns
     -------
-    fig, ax : matplotlib Figure and Axes objects
-    inset_size : float, optional
-        Width and height of each inset in data (meter) units. Default 2.5.
-    zoom_half_range : float, optional
-        Half-size of the zoom window limits shown inside each inset (meters).
-        For example, 0.75 shows [center-0.75, center+0.75] in both X and Y.
-    tick_step_cm : int, optional
-        Tick spacing inside each inset in centimeters. Default 25 cm.
-    inset_label_fontsize : int, optional
-        Font size for the inset axis labels ("cm"). Default 7.
+    (fig, ax) : tuple
+        Matplotlib figure and axes.
     """
 
     # Load GPS
@@ -136,14 +243,11 @@ def plot_2d_projection_topdown(
 
     GPS1 = np.array(gps1_offset)
 
-    # Set up figure
     fig, ax = plt.subplots(figsize=(8, 6))
 
     for (x1, y1), (x2, y2) in segments:
-        # Draw the line segment (thin, gray)
         plt.plot([x1, x2], [y1, y2], color="0.5", linewidth=1.0, zorder=2)
 
-    # Build rotation matrix about Z
     theta = np.deg2rad(rotation_deg)
     Rz = np.array(
         [
@@ -153,15 +257,12 @@ def plot_2d_projection_topdown(
         ]
     )
 
-    # Rotate & translate lever arms
     lever_init_rot = lever_init @ Rz.T
     levers_rot = np.asarray(lever_arms) @ Rz.T
     lever_xy = levers_rot[:, :2] + GPS1[:2]
 
-    # Rotate GPS grid
     GPS_Vessel_rot = GPS_Vessel @ Rz.T
 
-    # Precompute GPS XY arrays and centroids (post-rotation and translation)
     gps_xy_list = []
     centroids = []
     for i in range(4):
@@ -169,27 +270,23 @@ def plot_2d_projection_topdown(
         gps_xy_list.append(gxy_full[::downsample])
         centroids.append(gxy_full.mean(axis=0))
 
-    # 2D KDE of GPS distributions
     white_blue_cmap = LinearSegmentedColormap.from_list("white_blue", ["white", "blue"])
     for pts in gps_xy_list:
         _contour_kde2d(
             ax, pts, levels=50, gridsize=200, cmap=white_blue_cmap, alpha=0.9
         )
 
-    # 2D KDE of lever arms
     white_red_cmap = LinearSegmentedColormap.from_list("white_red", ["white", "red"])
     lever_xy = lever_xy[::downsample]
     _contour_kde2d(
         ax, lever_xy, levels=50, gridsize=200, cmap=white_red_cmap, alpha=0.9
     )
 
-    # 68% error ellipse for GPS distributions
     for i in range(4):
         gps_i = GPS_Vessel_rot[:, i, :2] + GPS1[:2]  # (n_samples, 2)
         ellipse, pct = compute_error_ellipse(gps_i, confidence=0.68, zorder=3)
         ax.add_patch(ellipse)
 
-    # 68% error ellipse for lever-arm cloud
     lever_xy = np.column_stack((levers_rot[:, 0] + GPS1[0], levers_rot[:, 1] + GPS1[1]))
     ellipse, pct = compute_error_ellipse(lever_xy, confidence=0.68, zorder=3)
     prior_ellipse = plot_prior_ellipse(
@@ -201,7 +298,6 @@ def plot_2d_projection_topdown(
     ax.add_patch(ellipse)
     ax.add_patch(prior_ellipse)
 
-    # Overlay zoomed-in inset KDEs for each GPS distribution
     for idx, (pts, c) in enumerate(zip(gps_xy_list, centroids), start=1):
         w = inset_size
         h = inset_size
@@ -218,20 +314,13 @@ def plot_2d_projection_topdown(
         axins = ax.inset_axes(
             [ix - w / 2.0, iy - h / 2.0, w, h], transform=ax.transData
         )
-
-        # Plot KDE inside inset
         _contour_kde2d(
             axins, pts, levels=30, gridsize=120, cmap=white_blue_cmap, alpha=0.9
         )
-
-        # Mark centroid location within inset view
         axins.plot([cx], [cy], marker="o", markersize=2, zorder=3)
-
         axins.set_xlim(cx - zoom_half_range, cx + zoom_half_range)
         axins.set_ylim(cy - zoom_half_range, cy + zoom_half_range)
-
         rng_m = zoom_half_range
-
         cm_max = int(np.floor(rng_m * 100.0))
         step = max(1, int(tick_step_cm))
         tick_cm = np.arange(-cm_max, cm_max + 1, step, dtype=int)
@@ -244,13 +333,9 @@ def plot_2d_projection_topdown(
         axins.tick_params(axis="both", labelsize=inset_label_fontsize)
         axins.set_xlabel("cm", fontsize=inset_label_fontsize)
         axins.set_ylabel("cm", fontsize=inset_label_fontsize)
-
-        # Subtle border on insets
         for spine in axins.spines.values():
             spine.set_linewidth(0.8)
             spine.set_alpha(0.8)
-
-        # Arrow from the GPS centroid to the inset center
         ax.annotate(
             "",
             xy=(ix, iy),
@@ -259,7 +344,15 @@ def plot_2d_projection_topdown(
             zorder=4,
         )
 
-    # Labels & styling
+    if schematic_inset:
+        _add_schematic_inset(
+            ax,
+            segments,
+            box=schematic_box,
+            scale=schematic_scale,
+            box_coord=schematic_box_coord,
+        )
+
     ax.set_xlabel("X (m) – forward")
     ax.set_ylabel("Y (m) – beam")
     ax.set_title("Top-Down View: Lever Arms vs. Ship Hull")
@@ -267,7 +360,6 @@ def plot_2d_projection_topdown(
     if labels:
         ax.legend(loc="upper right")
     ax.set_aspect("equal", "box")
-
     plt.tight_layout()
     return fig, ax
 
@@ -281,24 +373,30 @@ def plot_2d_projection_side(
     gps1_offset=(44.55, 2.2, 15.4),
     downsample=1,
 ):
-    """
-    Plot a 2D side projection of lever arms and GPS distributions against an
-    approximate box hull.
+    """Side projection of lever arms and GPS distributions over a hull outline.
 
     Parameters
     ----------
-    lever_arms : (N,3) array‐like
-        X, Y, Z lever‐arm positions (in meters) in ship‐fixed coordinates.
+    segments : sequence
+        World-coordinate segments [((x1, y1), (x2, y2)), ...] for the hull (side view).
+    lever_arms : (N, 3) array-like
+        Lever-arm samples in ship-fixed coordinates (meters).
+    lever_prior : (3,) array-like
+        Prior standard deviations (meters) for lever components.
+    lever_init : (3,) array-like
+        Initial lever-arm estimate (meters).
     rotation_deg : float, optional
-        Rotation angle about the Z‐axis (in degrees) to match the 3D plot’s
-        orientation. Default is 29.5.
-    gps1_offset : tuple of 3 floats, optional
-        (x, y, z) offset of the GPS1 reference point in ship‐fixed coords.
-        Default is (37, 8.3, 15.0).
+        Z-rotation (degrees) applied to lever arms and GPS grid. Default 29.5.
+    gps1_offset : (3,) tuple, optional
+        (x, y, z) location of GPS1 in ship-fixed coordinates.
+        Default (44.55, 2.2, 15.4).
+    downsample : int, optional
+        Subsampling stride for plotting. Default 1.
 
     Returns
     -------
-    fig, ax : matplotlib Figure and Axes objects
+    (fig, ax) : tuple
+        Matplotlib figure and axes.
     """
 
     # Load GPS
@@ -313,14 +411,11 @@ def plot_2d_projection_side(
 
     GPS1 = np.array(gps1_offset)
 
-    # Set up figure
     fig, ax = plt.subplots(figsize=(8, 6))
 
     for (x1, y1), (x2, y2) in segments:
-        # Draw the line segment (thin, gray)
         plt.plot([x1, x2], [y1, y2], color="0.5", linewidth=1.0, zorder=2)
 
-    # Build rotation matrix about Z
     theta = np.deg2rad(rotation_deg)
     Rz = np.array(
         [
@@ -330,15 +425,12 @@ def plot_2d_projection_side(
         ]
     )
 
-    # Rotate & translate lever arms
     lever_init_rot = lever_init @ Rz.T
     levers_rot = np.asarray(lever_arms) @ Rz.T
     levers_xz = levers_rot[:, [0, 2]] + GPS1[[0, 2]]
 
-    # Rotate GPS grid
     GPS_Vessel_rot = GPS_Vessel @ Rz.T
 
-    # 2D KDE of GPS distributions
     white_blue_cmap = LinearSegmentedColormap.from_list("white_blue", ["white", "blue"])
     for i in range(4):
         gps_xz = GPS_Vessel_rot[:, i, [0, 2]] + GPS1[[0, 2]]
@@ -347,21 +439,18 @@ def plot_2d_projection_side(
             ax, gps_xz, levels=50, gridsize=200, cmap=white_blue_cmap, alpha=0.9
         )
 
-    # 2D KDE of lever arms
     white_red_cmap = LinearSegmentedColormap.from_list("white_red", ["white", "red"])
     levers_xz = levers_xz[::downsample]
     _contour_kde2d(
         ax, levers_xz, levels=50, gridsize=200, cmap=white_red_cmap, alpha=0.9
     )
 
-    # 68% error ellipse for GPS distributions
     for i in range(4):
         gps_i = GPS_Vessel_rot[:, i, :]  # (n_samples, 3)
         gps_xz = gps_i[:, [0, 2]] + GPS1[[0, 2]]  # (n_samples, 2)
         ellipse, pct = compute_error_ellipse(gps_xz, confidence=0.68, zorder=3)
         ax.add_patch(ellipse)
 
-    # 68% error ellipse for lever-arm cloud
     levers_xz = levers_rot[:, [0, 2]] + GPS1[[0, 2]]
     levers_xz = levers_xz[::downsample]
 
@@ -374,8 +463,6 @@ def plot_2d_projection_side(
     )
     ax.add_patch(ellipse)
     ax.add_patch(prior_ellipse)
-
-    # Labels & styling
     ax.set_xlabel("X (m) – forward")
     ax.set_ylabel("Z (m) – depth")
     ax.set_title("Side View: Lever Arms vs. Ship Hull")
@@ -383,7 +470,6 @@ def plot_2d_projection_side(
     if labels:
         ax.legend(loc="upper right")
     ax.set_aspect("equal", "box")
-
     plt.tight_layout()
     return fig, ax
 
@@ -546,14 +632,3 @@ if __name__ == "__main__":
     # ax.set_xlim(25, 47.5)
     # ax.set_ylim(-1.4, 15.7)
     # plt.show()
-
-
-"""
-Transdimensional MCMC for the ESV bias (in each segment)
-    Updates are dependent on depth (2 or 3 diff updates)
-    Piecewise updates
-
-Azimuthal view for the ESV bias segments...
-
-Fix labeling of DOGS in split esv plot (and indexing of segments)
-"""
