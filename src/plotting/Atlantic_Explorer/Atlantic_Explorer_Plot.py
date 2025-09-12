@@ -173,7 +173,7 @@ def _add_schematic_inset(
     return ax_in
 
 
-def plot_2d_projection_topdown(
+def RV_Plot(
     segments,
     lever_arms,
     lever_prior,
@@ -189,8 +189,10 @@ def plot_2d_projection_topdown(
     schematic_box=(0.02, 0.16, 0.17, 0.34),
     schematic_scale=2.0,
     schematic_box_coord="axes",
+    side_segments=None,
 ):
-    """Top-down projection of lever arms and GPS distributions over a hull outline.
+    """Top-down + side-view figure for the R/V: top plot retains size;
+    bottom is a half-height side-view schematic built from segments.
 
     Parameters
     ----------
@@ -224,11 +226,15 @@ def plot_2d_projection_topdown(
         Multiplier applied to schematic_box width/height. Default 2.0.
     schematic_box_coord : {"axes", "data", "figure"}, optional
         Coordinate system for *schematic_box*. Default "axes".
+    side_segments : sequence of tuple, optional
+        World-coordinate segments for the side-view schematic:
+        [((x1, z1), (x2, z2)), ...]. If None, the panel is left empty with
+        axes shown.
 
     Returns
     -------
-    (fig, ax) : tuple
-        Matplotlib figure and axes.
+    (fig, (ax_top, ax_side)) : tuple
+        Matplotlib figure, top axes (top-down plot), and bottom axes (side-view image).
     """
 
     # Load GPS
@@ -243,10 +249,10 @@ def plot_2d_projection_topdown(
 
     GPS1 = np.array(gps1_offset)
 
-    fig, ax = plt.subplots(figsize=(8, 6))
-
-    for (x1, y1), (x2, y2) in segments:
-        plt.plot([x1, x2], [y1, y2], color="0.5", linewidth=1.0, zorder=2)
+    fig = plt.figure(figsize=(8, 9))
+    gs = fig.add_gridspec(nrows=2, ncols=1, height_ratios=[2, 1], hspace=0.25)
+    ax = fig.add_subplot(gs[0, 0])
+    ax_side = fig.add_subplot(gs[1, 0])
 
     theta = np.deg2rad(rotation_deg)
     Rz = np.array(
@@ -297,6 +303,10 @@ def plot_2d_projection_topdown(
     )
     ax.add_patch(ellipse)
     ax.add_patch(prior_ellipse)
+
+    # Redraw outline on top of KDE so it's visible
+    for (x1, y1), (x2, y2) in segments:
+        ax.plot([x1, x2], [y1, y2], color="0.3", linewidth=1.2, zorder=10)
 
     for idx, (pts, c) in enumerate(zip(gps_xy_list, centroids), start=1):
         w = inset_size
@@ -353,6 +363,8 @@ def plot_2d_projection_topdown(
             box_coord=schematic_box_coord,
         )
 
+    ax.set_xlim(20, 44)
+    ax.set_ylim(-7.5, 7.5)
     ax.set_xlabel("X (m) – forward")
     ax.set_ylabel("Y (m) – beam")
     ax.set_title("Top-Down View: Lever Arms vs. Ship Hull")
@@ -360,118 +372,28 @@ def plot_2d_projection_topdown(
     if labels:
         ax.legend(loc="upper right")
     ax.set_aspect("equal", "box")
-    plt.tight_layout()
-    return fig, ax
-
-
-def plot_2d_projection_side(
-    segments,
-    lever_arms,
-    lever_prior,
-    lever_init,
-    rotation_deg=29.5,
-    gps1_offset=(44.55, 2.2, 15.4),
-    downsample=1,
-):
-    """Side projection of lever arms and GPS distributions over a hull outline.
-
-    Parameters
-    ----------
-    segments : sequence
-        World-coordinate segments [((x1, y1), (x2, y2)), ...] for the hull (side view).
-    lever_arms : (N, 3) array-like
-        Lever-arm samples in ship-fixed coordinates (meters).
-    lever_prior : (3,) array-like
-        Prior standard deviations (meters) for lever components.
-    lever_init : (3,) array-like
-        Initial lever-arm estimate (meters).
-    rotation_deg : float, optional
-        Z-rotation (degrees) applied to lever arms and GPS grid. Default 29.5.
-    gps1_offset : (3,) tuple, optional
-        (x, y, z) location of GPS1 in ship-fixed coordinates.
-        Default (44.55, 2.2, 15.4).
-    downsample : int, optional
-        Subsampling stride for plotting. Default 1.
-
-    Returns
-    -------
-    (fig, ax) : tuple
-        Matplotlib figure and axes.
-    """
-
-    # Load GPS
-    data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
-    GPS_grid = data["gps1_to_others"]
-    GPS_Coordinates = data["GPS_Coordinates"]
-
-    GPS_Vessel = np.zeros_like(GPS_Coordinates)
-    for i in range(GPS_Coordinates.shape[0]):
-        R_mtrx, d = findRotationAndDisplacement(GPS_Coordinates[i].T, GPS_grid.T)
-        GPS_Vessel[i] = (R_mtrx @ GPS_Coordinates[i].T + d[:, None]).T
-
-    GPS1 = np.array(gps1_offset)
-
-    fig, ax = plt.subplots(figsize=(8, 6))
-
-    for (x1, y1), (x2, y2) in segments:
-        plt.plot([x1, x2], [y1, y2], color="0.5", linewidth=1.0, zorder=2)
-
-    theta = np.deg2rad(rotation_deg)
-    Rz = np.array(
-        [
-            [np.cos(theta), -np.sin(theta), 0],
-            [np.sin(theta), np.cos(theta), 0],
-            [0, 0, 1],
-        ]
-    )
-
-    lever_init_rot = lever_init @ Rz.T
-    levers_rot = np.asarray(lever_arms) @ Rz.T
-    levers_xz = levers_rot[:, [0, 2]] + GPS1[[0, 2]]
-
-    GPS_Vessel_rot = GPS_Vessel @ Rz.T
-
-    white_blue_cmap = LinearSegmentedColormap.from_list("white_blue", ["white", "blue"])
-    for i in range(4):
-        gps_xz = GPS_Vessel_rot[:, i, [0, 2]] + GPS1[[0, 2]]
-        gps_xz = gps_xz[::downsample]
-        _contour_kde2d(
-            ax, gps_xz, levels=50, gridsize=200, cmap=white_blue_cmap, alpha=0.9
+    # Bottom panel: side-view schematic from segments
+    if side_segments is not None:
+        xs, zs = [], []
+        for (x1, z1), (x2, z2) in side_segments:
+            ax_side.plot([x1, x2], [z1, z2], color="0.5", linewidth=1.0, zorder=2)
+            xs.extend([x1, x2])
+            zs.extend([z1, z2])
+        ax_side.set_xlim(20, 44)
+        ax_side.set_ylim(-1.5, 17.5)
+    else:
+        ax_side.text(
+            0.5,
+            0.5,
+            "No side-view segments provided",
+            ha="center",
+            va="center",
+            transform=ax_side.transAxes,
         )
 
-    white_red_cmap = LinearSegmentedColormap.from_list("white_red", ["white", "red"])
-    levers_xz = levers_xz[::downsample]
-    _contour_kde2d(
-        ax, levers_xz, levels=50, gridsize=200, cmap=white_red_cmap, alpha=0.9
-    )
-
-    for i in range(4):
-        gps_i = GPS_Vessel_rot[:, i, :]  # (n_samples, 3)
-        gps_xz = gps_i[:, [0, 2]] + GPS1[[0, 2]]  # (n_samples, 2)
-        ellipse, pct = compute_error_ellipse(gps_xz, confidence=0.68, zorder=3)
-        ax.add_patch(ellipse)
-
-    levers_xz = levers_rot[:, [0, 2]] + GPS1[[0, 2]]
-    levers_xz = levers_xz[::downsample]
-
-    ellipse, pct = compute_error_ellipse(levers_xz, confidence=0.68, zorder=3)
-    prior_ellipse = plot_prior_ellipse(
-        mean=lever_init_rot[[0, 2]] + GPS1[[0, 2]],
-        cov=np.diag(lever_prior[[0, 2]] ** 2),
-        confidence=0.68,
-        zorder=3,
-    )
-    ax.add_patch(ellipse)
-    ax.add_patch(prior_ellipse)
-    ax.set_xlabel("X (m) – forward")
-    ax.set_ylabel("Z (m) – depth")
-    ax.set_title("Side View: Lever Arms vs. Ship Hull")
-    handles, labels = ax.get_legend_handles_labels()
-    if labels:
-        ax.legend(loc="upper right")
-    ax.set_aspect("equal", "box")
-    plt.tight_layout()
-    return fig, ax
+    ax_side.set_xlabel("X (m) – forward")
+    ax_side.set_ylabel("Z (m) – depth")
+    return fig, (ax, ax_side)
 
 
 if __name__ == "__main__":
@@ -554,19 +476,6 @@ if __name__ == "__main__":
         flip_y=True,
     )
     segments = np.concatenate([segments_bridge, segments_ship, segments_moonpool])
-    fig, ax = plot_2d_projection_topdown(
-        segments, levers, lever_prior, lever_init, downsample=downsample
-    )
-    ax.set_xlim(20, 44)
-    ax.set_ylim(-7.5, 7.5)
-    plt.show()
-
-    # fig, ax = plot_2d_projection_topdown(
-    #     segments, levers, lever_prior, lever_init, downsample=downsample
-    # )
-    # ax.set_xlim(22, 41)
-    # ax.set_ylim(-5.5, 5.5)
-    # plt.show()
 
     """Side View"""
     side_view_segments = [
@@ -624,11 +533,19 @@ if __name__ == "__main__":
         view="side",
         flip_y=True,
     )
-    # segments = np.concatenate([side_view_segments, moonpool_segments])
 
-    # fig, ax = plot_2d_projection_side(
-    #     segments, levers, lever_prior, lever_init, downsample=downsample
-    # )
-    # ax.set_xlim(25, 47.5)
-    # ax.set_ylim(-1.4, 15.7)
-    # plt.show()
+    # Build side-view segments for the bottom panel (side schematic)
+    side_segments = np.concatenate([side_view_segments, moonpool_segments])
+
+    # Make side segments manually
+    side_segments = [()]
+
+    fig, (ax, ax_side) = RV_Plot(
+        segments,
+        levers,
+        lever_prior,
+        lever_init,
+        downsample=downsample,
+        side_segments=side_segments,
+    )
+    plt.show()
