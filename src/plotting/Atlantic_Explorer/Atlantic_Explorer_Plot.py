@@ -179,7 +179,7 @@ def RV_Plot(
     lever_prior,
     lever_init,
     rotation_deg=29.5,
-    gps1_offset=(39.5, 2.2, 15.2),
+    gps1_offset=(39.5, 2.2, 15.5),
     downsample=1,
     inset_size=2.0,
     zoom_half_range=0.10,
@@ -193,6 +193,9 @@ def RV_Plot(
     schematic_box_coord="axes",
     side_segments=None,
     segment_color="0.5",
+    figsize=(8, 9),
+    height_ratio=(3.0, 1.0),
+    margins=None,
 ):
     """Top-down + side-view figure for the R/V: top plot retains size;
     bottom is a half-height side-view schematic built from segments.
@@ -245,6 +248,9 @@ def RV_Plot(
         Matplotlib figure, top axes (top-down plot), and bottom axes (side-view image).
     """
 
+    if margins is None:
+        margins = dict(left=0.08, right=0.98, top=0.95, bottom=0.07, hspace=0.15)
+
     # Load GPS
     data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
     GPS_grid = data["gps1_to_others"]
@@ -257,10 +263,15 @@ def RV_Plot(
 
     GPS1 = np.array(gps1_offset)
 
-    fig = plt.figure(figsize=(8, 9))
-    gs = fig.add_gridspec(nrows=2, ncols=1, height_ratios=[2, 1], hspace=0.25)
-    ax = fig.add_subplot(gs[0, 0])
-    ax_side = fig.add_subplot(gs[1, 0])
+    fig = plt.figure(figsize=figsize, constrained_layout=False)
+    gs = fig.add_gridspec(
+        nrows=2,
+        ncols=1,
+        height_ratios=height_ratio,
+        **margins,
+    )
+    ax = fig.add_subplot(gs[0])
+    ax_side = fig.add_subplot(gs[1])
 
     theta = np.deg2rad(rotation_deg)
     Rz = np.array(
@@ -621,7 +632,7 @@ if __name__ == "__main__":
 
     # Make side segments manually (give height manually for
     # top and hull and moonpool)
-    side_bridge_segments = [((29.366, 15.2), (39.676, 15.2))]
+    side_bridge_segments = [((29.366, 15.5), (39.676, 15.5))]
     side_hull_segments = [((20, 0.0), (44, 0.0))]
     side_moonpool_segments = [
         ((23.804, 0.2), (22.814, 0.2)),
@@ -648,4 +659,4 @@ if __name__ == "__main__":
 
     # GPS 1 offset: (39.5, 2.2, 15.2)
     # Lever prior: [-13.12   9.72 -15.9 ]
-    # Fix Scaling
+    # Fix Scaling of prior
