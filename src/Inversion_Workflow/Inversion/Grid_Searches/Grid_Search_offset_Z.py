@@ -260,7 +260,7 @@ def grid_search_discrete(
         initial_lever_base = np.array([-16.0, 0.0, -15.0])
 
     # Load the external ESV data
-    esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_normal.mat"))
+    esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]

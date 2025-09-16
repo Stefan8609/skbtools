@@ -22,7 +22,7 @@ from geometry.ECEF_Geodetic import ECEF_Geodetic
 # esv_table = sio.loadmat('../../../Data/global_table_esv.mat')
 from data import gps_data_path
 
-esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_normal.mat"))
+esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"))
 
 dz_array = esv_table["distance"].flatten()
 angle_array = esv_table["angle"].flatten()

@@ -14,7 +14,7 @@ def print_GPS_points_per_segment(
 ):
     initial_params, _ = get_init_params_and_prior({})
 
-    esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_normal.mat"))
+    esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"))
     dz_array = esv["distance"].flatten()
     angle_array = esv["angle"].flatten()
     esv_matrix = esv["matrice"]

@@ -40,7 +40,7 @@ def tide_residual_correlation(chain, CDOG_num=3):
         GPS_Coordinates, gps1_grid_guess, lever_guess
     )
 
-    esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_normal.mat"))
+    esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"))
     dz_array = esv["distance"].flatten()
     angle_array = esv["angle"].flatten()
     esv_matrix = esv["matrice"]
@@ -94,6 +94,8 @@ def tide_residual_correlation(chain, CDOG_num=3):
 
     residuals = GPS_full - CDOG_full
     _, _, elev = ECEF_Geodetic(transponder_coordinates_full)
+
+    _, _, elev_DOG = ECEF_Geodetic(np.array([inv_guess]))
 
     # Center data
     residuals -= np.mean(residuals)

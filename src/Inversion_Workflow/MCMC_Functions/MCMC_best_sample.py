@@ -219,7 +219,7 @@ if __name__ == "__main__":
     DOG_num = 1
     timestamp = f"{file_name[:-4]}_best_DOG_{DOG_num}"
 
-    esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_normal.mat"))
+    esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"))
     dz_array = esv["distance"].flatten()
     angle_array = esv["angle"].flatten()
     esv_matrix = esv["matrice"]

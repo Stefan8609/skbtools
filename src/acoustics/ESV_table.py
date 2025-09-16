@@ -4,37 +4,51 @@ from acoustics.ray_tracing import ray_trace_locate, ray_tracing
 import matplotlib.pyplot as plt
 import scipy.io as sio
 from time import time
-from data import gps_data_path, gps_output_path
+from data import gps_data_path
 
 
 depth = np.ascontiguousarray(
-    np.genfromtxt(gps_data_path("depth_cast2_smoothed.txt"))[::20]
+    np.genfromtxt(gps_data_path("SVP_Data/depth_cast2_smoothed.txt"))[::20]
 )
-cz = np.ascontiguousarray(np.genfromtxt(gps_data_path("cz_cast2_smoothed.txt"))[::20])
+cz = np.ascontiguousarray(
+    np.genfromtxt(gps_data_path("SVP_Data/cz_cast2_smoothed.txt"))[::20]
+)
 
-plt.plot(cz, depth, label="CTD Bermuda SVP")
+dz_native = float(np.median(np.diff(depth)))
+z_max_current = float(depth[-1])
+z_target_max = 5300.0
+window_m = 10.0
+mask = depth >= (z_max_current - window_m)
+m_local, b_local = np.polyfit(depth[mask], cz[mask], 1)
 
-# Create a perturbation that starts at ~5 m/s at surface and diminishes below 100m
-# surface_effect = 5.0 * np.exp(-depth/40)  # Exponential decay with depth
-# deep_variation = 0.3 * np.sin(depth/200)  # Small sinusoidal variation for deep water
-# cz_perturbation = surface_effect + deep_variation
-# cz = cz + cz_perturbation
+# Extrapolate linearly at native spacing
+new_depth = np.arange(
+    np.nextafter(z_max_current, np.inf), z_target_max + 0.5 * dz_native, dz_native
+)
 
-# plt.plot(cz, depth, label="Realistically Perturbed SVP")
-# plt.gca().invert_yaxis()
-# plt.xlabel("Sound Speed (m/s)")
-# plt.ylabel("Depth (m)")
-# plt.title("Sound Speed Profile with Perturbation (-0.001 * depth)")
-# plt.legend()
-# plt.show()
-#
-# plt.plot(cz_perturbation, depth, label="Realistic SVP Perturbation")
-# plt.gca().invert_yaxis()
-# plt.xlabel("Sound Speed (m/s)")
-# plt.ylabel("Depth (m)")
-# plt.title("Sound Speed Profile Perturbation")
-# plt.legend()
-# plt.show()
+cz_tail = cz[-1] + m_local * (new_depth - z_max_current)
+
+depth_ext = np.concatenate([depth, new_depth])
+cz_ext = np.concatenate([cz, cz_tail])
+
+depth, cz = depth_ext, cz_ext
+
+# Keep arrays contiguous for numba calls that follow
+depth = np.ascontiguousarray(depth)
+cz = np.ascontiguousarray(cz)
+
+# Quick sanity plot (optional)
+plt.figure()
+plt.plot(cz, depth, label="Extended SVP")
+plt.gca().invert_yaxis()
+plt.xlabel("Sound Speed (m/s)")
+plt.ylabel("Depth (m)")
+plt.legend()
+plt.title("SVP extended to 5300 m")
+plt.show()
+
+print(f"New depth range: {depth.min():.1f} to {depth.max():.1f} m")
+print(f"Deep gradient used: {m_local * 1000:.2f} m/s per km")
 
 
 @njit
@@ -55,10 +69,10 @@ def construct_esv(depth, cz):
         and ``esv_matrix`` contains the effective sound velocities.
     """
     beta_array = np.linspace(20, 90, 400)
-    z_array = np.linspace(5150, 5250, 101)
+    z_array = np.linspace(5250, 5300, 51)
 
     esv_matrix = np.zeros((len(z_array), len(beta_array)))
-    z_a = 35
+    z_a = 51
 
     # Pre-calculate constants
     beta_rad = beta_array * np.pi / 180
@@ -80,7 +94,9 @@ def construct_esv(depth, cz):
 
 
 if __name__ == "__main__":
-    z_a = 35
+    z_a = 51
+    print(z_a)
+    print(cz[-1])
 
     # Time the execution
     start_time = time()
@@ -100,4 +116,4 @@ if __name__ == "__main__":
     dz_array = z_array - z_a
 
     data_to_save = {"angle": beta_array, "distance": dz_array, "matrice": esv_matrix}
-    sio.savemat(gps_output_path("global_table_esv_normal.mat"), data_to_save)
+    sio.savemat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"), data_to_save)
