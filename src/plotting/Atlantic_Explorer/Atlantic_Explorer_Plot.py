@@ -4,6 +4,9 @@ from matplotlib.colors import LinearSegmentedColormap
 from scipy.stats import gaussian_kde
 from plotting.Ellipses.Error_Ellipse import compute_error_ellipse
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
+from plotting.MCMC_plots import get_init_params_and_prior
+from plotting.KDE_MCMC_plot import plot_kde_mcmc
+from plotting.save import save_plot
 
 from geometry.rigid_body import findRotationAndDisplacement
 from data import gps_output_path, gps_data_path
@@ -175,83 +178,36 @@ def _add_schematic_inset(
 
 def RV_Plot(
     segments,
+    side_segments,
     lever_arms,
     lever_prior,
     lever_init,
-    rotation_deg=29.5,
-    gps1_offset=(39.5, 2.2, 15.5),
-    downsample=1,
-    inset_size=2.0,
-    zoom_half_range=0.10,
-    tick_step_cm=5,
-    inset_show_center=False,
-    inset_show_ellipse=True,
-    inset_label_fontsize=7,
-    schematic_inset=True,
-    schematic_box=(0.02, 0.16, 0.17, 0.34),
-    schematic_scale=2.0,
-    schematic_box_coord="axes",
-    side_segments=None,
-    segment_color="0.5",
-    figsize=(8, 9),
-    height_ratio=(3.0, 1.0),
-    margins=None,
+    CDOG_augs,
+    aug_prior,
+    aug_init,
 ):
-    """Top-down + side-view figure for the R/V: top plot retains size;
-    bottom is a half-height side-view schematic built from segments.
+    """Top-down (row 1) spans full width; side-view (row 2) spans full width;
+    rows 3–4 are split into 3 columns each and returned for external plotting.
 
-    Parameters
-    ----------
-    segments : sequence
-        World-coordinate segments [((x1, y1), (x2, y2)), ...] for the hull.
-    lever_arms : (N, 3) array-like
-        Lever-arm samples in ship-fixed coordinates (meters).
-    lever_prior : (3,) array-like
-        Prior standard deviations (meters) for lever components.
-    lever_init : (3,) array-like
-        Initial lever-arm estimate (meters).
-    rotation_deg : float, optional
-        Z-rotation (degrees) applied to lever arms and GPS grid. Default 29.5.
-    gps1_offset : (3,) tuple, optional
-        (x, y, z) location of GPS1 in ship-fixed coordinates. Default (39.5, 2.2, 15.0).
-    downsample : int, optional
-        Subsampling stride for plotting. Default 1.
-    inset_size : float, optional
-        Width and height (in data units) of each zoom-inset. Default 2.0.
-    zoom_half_range : float, optional
-        Half-size (meters) of the inset view window. Default 0.25.
-    tick_step_cm : int, optional
-        Tick spacing for inset axes in centimeters. Default 25.
-    inset_show_center : bool, optional
-        If True, plot a small marker at the center of each inset (the
-        centroid). Default False.
-    inset_show_ellipse : bool, optional
-        If True, overlay the 68% error ellipse inside each zoom inset. Default True.
-    inset_label_fontsize : int, optional
-        Font size for inset axis labels. Default 7.
-    schematic_inset : bool, optional
-        If True, draw a schematic inset of the full hull. Default True.
-    schematic_box : tuple, optional
-        Position/size of the schematic inset. Interpreted per *schematic_box_coord*.
-    schematic_scale : float, optional
-        Multiplier applied to schematic_box width/height. Default 2.0.
-    schematic_box_coord : {"axes", "data", "figure"}, optional
-        Coordinate system for *schematic_box*. Default "axes".
-    side_segments : sequence of tuple, optional
-        World-coordinate segments for the side-view schematic:
-        [((x1, z1), (x2, z2)), ...]. If None, the panel is left empty with
-        axes shown.
-
-    Returns
-    -------
-    (fig, (ax_top, ax_side)) : tuple
-        Matplotlib figure, top axes (top-down plot), and bottom axes (side-view image).
+    Simplified: many parameters are fixed for consistency and to reduce
+    complexity.
     """
 
-    if margins is None:
-        margins = dict(left=0.08, right=0.98, top=0.95, bottom=0.07, hspace=0.15)
+    # ---- Fixed constants (tune here, not via function args) ----
+    ROTATION_DEG = 29.5
+    GPS1_OFFSET = (39.5, 2.2, 15.5)
+    DOWNSAMPLE = 5
+    ZOOM_HALF_RANGE = 0.10  # meters
+    TICK_STEP_CM = 5
+    INSET_LABEL_FONTSIZE = 7
+    SCHEMATIC_BOX = (0.02, 0.16, 0.17, 0.34)
+    SCHEMATIC_SCALE = 2.0
+    SEGMENT_COLOR = "0.5"
+    FIGSIZE = (10, 14)
+    HEIGHT_RATIOS = (3.0, 2.0, 1.5, 1.5)
+    MARGINS = dict(left=0.08, right=0.98, top=0.95, bottom=0.07, hspace=0.15)
 
-    # Load GPS
+    # ---- Data load ----
     data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
     GPS_grid = data["gps1_to_others"]
     GPS_Coordinates = data["GPS_Coordinates"]
@@ -261,19 +217,32 @@ def RV_Plot(
         R_mtrx, d = findRotationAndDisplacement(GPS_Coordinates[i].T, GPS_grid.T)
         GPS_Vessel[i] = (R_mtrx @ GPS_Coordinates[i].T + d[:, None]).T
 
-    GPS1 = np.array(gps1_offset)
+    GPS1 = np.array(GPS1_OFFSET)
 
-    fig = plt.figure(figsize=figsize, constrained_layout=False)
-    gs = fig.add_gridspec(
-        nrows=2,
-        ncols=1,
-        height_ratios=height_ratio,
-        **margins,
-    )
+    fig = plt.figure(figsize=FIGSIZE, constrained_layout=False)
+    gs = fig.add_gridspec(4, 1, height_ratios=list(HEIGHT_RATIOS))
+    fig.subplots_adjust(**MARGINS)
+
+    # Rows 1 and 2: single full-width axes guaranteed to span the figure
     ax = fig.add_subplot(gs[0])
     ax_side = fig.add_subplot(gs[1])
 
-    theta = np.deg2rad(rotation_deg)
+    # Row 3 and Row 4: split into 3 columns each using sub-gridspecs
+    gs_row3 = gs[2].subgridspec(1, 3)
+
+    ax3_1 = fig.add_subplot(gs_row3[0, 0])
+    ax3_2 = fig.add_subplot(gs_row3[0, 1])
+    ax3_3 = fig.add_subplot(gs_row3[0, 2])
+    ax3 = [ax3_1, ax3_2, ax3_3]
+
+    gs_row4 = gs[3].subgridspec(1, 3)
+    ax4_1 = fig.add_subplot(gs_row4[0, 0])
+    ax4_2 = fig.add_subplot(gs_row4[0, 1])
+    ax4_3 = fig.add_subplot(gs_row4[0, 2])
+    ax4 = [ax4_1, ax4_2, ax4_3]
+
+    # ---- Rotate to ship frame ----
+    theta = np.deg2rad(ROTATION_DEG)
     Rz = np.array(
         [
             [np.cos(theta), -np.sin(theta), 0],
@@ -284,6 +253,8 @@ def RV_Plot(
 
     lever_init_rot = lever_init @ Rz.T
     levers_rot = np.asarray(lever_arms) @ Rz.T
+
+    # Top-down (X–Y) lever KDE
     lever_xy = levers_rot[:, :2] + GPS1[:2]
 
     GPS_Vessel_rot = GPS_Vessel @ Rz.T
@@ -292,7 +263,7 @@ def RV_Plot(
     centroids = []
     for i in range(4):
         gxy_full = GPS_Vessel_rot[:, i, :2] + GPS1[:2]
-        gps_xy_list.append(gxy_full[::downsample])
+        gps_xy_list.append(gxy_full[::DOWNSAMPLE])
         centroids.append(gxy_full.mean(axis=0))
 
     white_blue_cmap = LinearSegmentedColormap.from_list("white_blue", ["white", "blue"])
@@ -302,18 +273,18 @@ def RV_Plot(
         )
 
     white_red_cmap = LinearSegmentedColormap.from_list("white_red", ["white", "red"])
-    lever_xy = lever_xy[::downsample]
+    lever_xy_ds = lever_xy[::DOWNSAMPLE]
     _contour_kde2d(
-        ax, lever_xy, levels=50, gridsize=200, cmap=white_red_cmap, alpha=0.9
+        ax, lever_xy_ds, levels=50, gridsize=200, cmap=white_red_cmap, alpha=0.9
     )
 
+    # 68% error ellipses (GPS and lever) + prior
     for i in range(4):
-        gps_i = GPS_Vessel_rot[:, i, :2] + GPS1[:2]  # (n_samples, 2)
-        ellipse, pct = compute_error_ellipse(gps_i, confidence=0.68, zorder=3)
+        gps_i = GPS_Vessel_rot[:, i, :2] + GPS1[:2]
+        ellipse, _ = compute_error_ellipse(gps_i, confidence=0.68, zorder=3)
         ax.add_patch(ellipse)
 
-    lever_xy = np.column_stack((levers_rot[:, 0] + GPS1[0], levers_rot[:, 1] + GPS1[1]))
-    ellipse, pct = compute_error_ellipse(lever_xy, confidence=0.68, zorder=3)
+    ellipse, _ = compute_error_ellipse(lever_xy, confidence=0.68, zorder=3)
     prior_ellipse = plot_prior_ellipse(
         mean=lever_init_rot[:2] + GPS1[:2],
         cov=np.diag(lever_prior[:2] ** 2),
@@ -325,18 +296,19 @@ def RV_Plot(
 
     # Redraw outline on top of KDE so it's visible
     for (x1, y1), (x2, y2) in segments:
-        ax.plot([x1, x2], [y1, y2], color=segment_color, linewidth=1.2, zorder=10)
+        ax.plot([x1, x2], [y1, y2], color=SEGMENT_COLOR, linewidth=1.2, zorder=10)
 
+    # Top view insets (positions fixed as before)
     for idx, (pts, c) in enumerate(zip(gps_xy_list, centroids), start=1):
-        w = inset_size
-        h = inset_size
+        w = 2.0
+        h = 2.5
         cx, cy = float(c[0]), float(c[1])
         if idx == 1:
             dx, dy = 2.0, 2.24
         elif idx == 2:
-            dx, dy = 2.0, -0.75
+            dx, dy = 2.0, -0.9
         elif idx == 3:
-            dx, dy = -2.0, 1.2
+            dx, dy = -2.0, 1.05
         else:
             dx, dy = -2.0, 2.0
         ix, iy = cx + dx, cy + dy
@@ -346,19 +318,17 @@ def RV_Plot(
         _contour_kde2d(
             axins, pts, levels=30, gridsize=120, cmap=white_blue_cmap, alpha=0.9
         )
-        if inset_show_ellipse:
-            ellipse_ins, _ = compute_error_ellipse(pts, confidence=0.68, zorder=4)
-            # Make sure it's visible over the KDE
-            ellipse_ins.set_fill(False)
-            ellipse_ins.set_linewidth(1.0)
-            axins.add_patch(ellipse_ins)
-        if inset_show_center:
-            axins.plot([cx], [cy], marker="o", markersize=2, zorder=3)
-        axins.set_xlim(cx - zoom_half_range, cx + zoom_half_range)
-        axins.set_ylim(cy - zoom_half_range, cy + zoom_half_range)
-        rng_m = zoom_half_range
+
+        ellipse_ins, _ = compute_error_ellipse(pts, confidence=0.68, zorder=4)
+        ellipse_ins.set_fill(False)
+        ellipse_ins.set_linewidth(1.0)
+        axins.add_patch(ellipse_ins)
+
+        axins.set_xlim(cx - ZOOM_HALF_RANGE, cx + ZOOM_HALF_RANGE)
+        axins.set_ylim(cy - ZOOM_HALF_RANGE, cy + ZOOM_HALF_RANGE)
+        rng_m = ZOOM_HALF_RANGE
         cm_max = int(np.floor(rng_m * 100.0))
-        step = max(1, int(tick_step_cm))
+        step = max(1, int(TICK_STEP_CM))
         tick_cm = np.arange(-cm_max, cm_max + 1, step, dtype=int)
         xticks = cx + (tick_cm / 100.0)
         yticks = cy + (tick_cm / 100.0)
@@ -366,9 +336,9 @@ def RV_Plot(
         axins.set_yticks(yticks)
         axins.set_xticklabels([f"{v}" for v in tick_cm])
         axins.set_yticklabels([f"{v}" for v in tick_cm])
-        axins.tick_params(axis="both", labelsize=inset_label_fontsize)
-        axins.set_xlabel("cm", fontsize=inset_label_fontsize)
-        axins.set_ylabel("cm", fontsize=inset_label_fontsize)
+        axins.tick_params(axis="both", labelsize=INSET_LABEL_FONTSIZE)
+        axins.set_xlabel("cm", fontsize=INSET_LABEL_FONTSIZE)
+        axins.set_ylabel("cm", fontsize=INSET_LABEL_FONTSIZE)
         for spine in axins.spines.values():
             spine.set_linewidth(0.8)
             spine.set_alpha(0.8)
@@ -380,173 +350,158 @@ def RV_Plot(
             zorder=4,
         )
 
-    if schematic_inset:
-        _add_schematic_inset(
-            ax,
-            segments,
-            box=schematic_box,
-            scale=schematic_scale,
-            box_coord=schematic_box_coord,
-            line_color=segment_color,
-        )
+    # Always add schematic inset with fixed placement/scale
+    _add_schematic_inset(
+        ax,
+        segments,
+        box=SCHEMATIC_BOX,
+        scale=SCHEMATIC_SCALE,
+        box_coord="axes",
+        line_color=SEGMENT_COLOR,
+    )
 
+    # Axes cosmetics
     ax.set_xlim(20, 44)
     ax.set_ylim(-7.5, 7.5)
     ax.set_xlabel("")
     ax.set_ylabel("Y (m) – beam")
-    ax.set_title("Top-Down View: Lever Arms vs. Ship Hull")
-    handles, labels = ax.get_legend_handles_labels()
-    if labels:
-        ax.legend(loc="upper right")
-    ax.set_aspect("equal", "box")
-    # Bottom panel: side-view schematic from segments
-    if side_segments is not None:
-        # --- GPS distributions, ellipses, and insets for SIDE VIEW (X–Z) ---
-        gps_xz_list = []
-        centroids_xz = []
-        for i in range(4):
-            # Take X and Z columns, add GPS1 offset (X,Z)
-            g_xz_full = np.column_stack(
-                (
-                    GPS_Vessel_rot[:, i, 0] + GPS1[0],
-                    GPS_Vessel_rot[:, i, 2] + GPS1[2],
-                )
+    ax.set_title("Top-Down View")
+
+    # ---- Bottom panel: side-view schematic from segments (always drawn) ----
+    # Build GPS X–Z lists
+    gps_xz_list = []
+    centroids_xz = []
+    for i in range(4):
+        g_xz_full = np.column_stack(
+            (
+                GPS_Vessel_rot[:, i, 0] + GPS1[0],
+                GPS_Vessel_rot[:, i, 2] + GPS1[2],
             )
-            gps_xz_list.append(g_xz_full[::downsample])
-            centroids_xz.append(g_xz_full.mean(axis=0))
-
-        # KDE contours for each GPS in side view
-        for pts in gps_xz_list:
-            _contour_kde2d(
-                ax_side, pts, levels=30, gridsize=160, cmap=white_blue_cmap, alpha=0.9
-            )
-
-        # 68% error ellipses for each GPS in side view
-        for pts in gps_xz_list:
-            ellipse_xz, _ = compute_error_ellipse(pts, confidence=0.68, zorder=4)
-            ax_side.add_patch(ellipse_xz)
-
-        # --- Lever distribution, error ellipse, and prior (X–Z) ---
-        # Lever samples in side view (X and Z columns) with GPS1 offset
-        lever_xz = np.column_stack(
-            (levers_rot[:, 0] + GPS1[0], levers_rot[:, 2] + GPS1[2])
         )
-        # Downsample to match density plotting stride
-        lever_xz_ds = lever_xz[::downsample]
+        gps_xz_list.append(g_xz_full[::DOWNSAMPLE])
+        centroids_xz.append(g_xz_full.mean(axis=0))
 
-        # KDE contours for lever distribution (white→red like top view)
+    # KDE contours for each GPS in side view
+    for pts in gps_xz_list:
         _contour_kde2d(
-            ax_side,
-            lever_xz_ds,
-            levels=30,
-            gridsize=160,
-            cmap=white_red_cmap,
-            alpha=0.9,
+            ax_side, pts, levels=30, gridsize=160, cmap=white_blue_cmap, alpha=0.9
         )
 
-        # 68% error ellipse for lever samples in X–Z
-        ellipse_lev_xz, _ = compute_error_ellipse(lever_xz, confidence=0.68, zorder=5)
-        ax_side.add_patch(ellipse_lev_xz)
+    # 68% error ellipses for each GPS in side view
+    for pts in gps_xz_list:
+        ellipse_xz, _ = compute_error_ellipse(pts, confidence=0.68, zorder=4)
+        ax_side.add_patch(ellipse_xz)
 
-        # Prior ellipse for lever (X–Z): use init mean rotated into ship frame
-        # and prior stds
-        prior_mean_xz = np.array(
-            [
-                lever_init_rot[0] + GPS1[0],
-                lever_init_rot[2] + GPS1[2],
-            ]
+    # Lever distribution (X–Z)
+    lever_xz = np.column_stack((levers_rot[:, 0] + GPS1[0], levers_rot[:, 2] + GPS1[2]))
+    lever_xz_ds = lever_xz[::DOWNSAMPLE]
+    _contour_kde2d(
+        ax_side, lever_xz_ds, levels=30, gridsize=160, cmap=white_red_cmap, alpha=0.9
+    )
+
+    ellipse_lev_xz, _ = compute_error_ellipse(lever_xz, confidence=0.68, zorder=5)
+    ax_side.add_patch(ellipse_lev_xz)
+
+    # Prior ellipse for lever (X–Z)
+    prior_mean_xz = np.array([lever_init_rot[0] + GPS1[0], lever_init_rot[2] + GPS1[2]])
+    prior_cov_xz = np.diag([lever_prior[0] ** 2, lever_prior[2] ** 2])
+    prior_ellipse_xz = plot_prior_ellipse(
+        mean=prior_mean_xz, cov=prior_cov_xz, confidence=0.68, zorder=5
+    )
+    ax_side.add_patch(prior_ellipse_xz)
+
+    # Create square insets near each GPS centroid in X–Z, positioned below the
+    # bridge line
+    for idx, (pts, c) in enumerate(zip(gps_xz_list, centroids_xz), start=1):
+        w = 2.0
+        h = 5.0
+        cx, cz = float(c[0]), float(c[1])
+        # offsets (keep below)
+        if idx in (1, 3):
+            dx, dz = -2.0, -3.5
+        else:
+            dx, dz = 2.0, -3.5
+        ix, iz = cx + dx, cz + dz
+        axins = ax_side.inset_axes(
+            [ix - w / 2.0, iz - h / 2.0, w, h], transform=ax_side.transData
         )
-        prior_cov_xz = np.diag([lever_prior[0] ** 2, lever_prior[2] ** 2])
-        prior_ellipse_xz = plot_prior_ellipse(
-            mean=prior_mean_xz,
-            cov=prior_cov_xz,
-            confidence=0.68,
-            zorder=5,
+        _contour_kde2d(
+            axins, pts, levels=30, gridsize=120, cmap=white_blue_cmap, alpha=0.9
         )
-        ax_side.add_patch(prior_ellipse_xz)
+        ellipse_ins, _ = compute_error_ellipse(pts, confidence=0.68, zorder=5)
+        ellipse_ins.set_fill(False)
+        ellipse_ins.set_linewidth(1.0)
+        axins.add_patch(ellipse_ins)
 
-        # Create insets near each GPS centroid in X–Z
-        for idx, (pts, c) in enumerate(zip(gps_xz_list, centroids_xz), start=1):
-            w = 2
-            h = 4.5
-            cx, cz = float(c[0]), float(c[1])
-            # heuristic offsets so insets don't overlap GPS clouds
-            if idx == 1:
-                dx, dz = -2.0, -3.5
-            elif idx == 2:
-                dx, dz = 2.0, -3.5
-            elif idx == 3:
-                dx, dz = -2.0, -3.5
-            else:
-                dx, dz = 2.0, -3.5
-            ix, iz = cx + dx, cz + dz
-            axins = ax_side.inset_axes(
-                [ix - w / 2.0, iz - h / 2.0, w, h], transform=ax_side.transData
-            )
+        axins.set_xlim(cx - ZOOM_HALF_RANGE, cx + ZOOM_HALF_RANGE)
+        axins.set_ylim(cz - ZOOM_HALF_RANGE, cz + ZOOM_HALF_RANGE)
+        rng_m = ZOOM_HALF_RANGE
+        cm_max = int(np.floor(rng_m * 100.0))
+        step = max(1, int(TICK_STEP_CM))
+        tick_cm = np.arange(-cm_max, cm_max + 1, step, dtype=int)
+        xticks = (np.array(tick_cm) / 100.0) + cx
+        zticks = (np.array(tick_cm) / 100.0) + cz
+        axins.set_xticks(xticks)
+        axins.set_yticks(zticks)
+        axins.set_xticklabels([f"{v}" for v in tick_cm])
+        axins.set_yticklabels([f"{v}" for v in tick_cm])
+        axins.tick_params(axis="both", labelsize=INSET_LABEL_FONTSIZE)
+        axins.set_xlabel("cm", fontsize=INSET_LABEL_FONTSIZE)
+        axins.set_ylabel("cm", fontsize=INSET_LABEL_FONTSIZE)
+        for spine in axins.spines.values():
+            spine.set_linewidth(0.8)
+            spine.set_alpha(0.8)
 
-            _contour_kde2d(
-                axins, pts, levels=30, gridsize=120, cmap=white_blue_cmap, alpha=0.9
-            )
-            # Visible 68% ellipse in the inset
-            ellipse_ins, _ = compute_error_ellipse(pts, confidence=0.68, zorder=5)
-            ellipse_ins.set_fill(False)
-            ellipse_ins.set_linewidth(1.0)
-            axins.add_patch(ellipse_ins)
-
-            # Keep square data limits around the **GPS centroid** (X–Z), not
-            # the inset anchor point
-            axins.set_xlim(cx - zoom_half_range, cx + zoom_half_range)
-            axins.set_ylim(cz - zoom_half_range, cz + zoom_half_range)
-
-            rng_m = zoom_half_range
-            cm_max = int(np.floor(rng_m * 100.0))
-            step = max(1, int(tick_step_cm))
-            tick_cm = np.arange(-cm_max, cm_max + 1, step, dtype=int)
-            # Ticks labeled in centimeters, centered on the **data** center (cx, cz)
-            xticks = (np.array(tick_cm) / 100.0) + cx
-            zticks = (np.array(tick_cm) / 100.0) + cz
-            axins.set_xticks(xticks)
-            axins.set_yticks(zticks)
-            axins.set_xticklabels([f"{v}" for v in tick_cm])
-            axins.set_yticklabels([f"{v}" for v in tick_cm])
-            axins.tick_params(axis="both", labelsize=inset_label_fontsize)
-            axins.set_xlabel("cm", fontsize=inset_label_fontsize)
-            axins.set_ylabel("cm", fontsize=inset_label_fontsize)
-            for spine in axins.spines.values():
-                spine.set_linewidth(0.8)
-                spine.set_alpha(0.8)
-
-            # Arrow from centroid to inset location
-            ax_side.annotate(
-                "",
-                xy=(ix, iz),
-                xytext=(cx, cz),
-                arrowprops=dict(arrowstyle="->", lw=1.0, alpha=0.9),
-                zorder=6,
-            )
-
-        xs, zs = [], []
-        for (x1, z1), (x2, z2) in side_segments:
-            ax_side.plot(
-                [x1, x2], [z1, z2], color=segment_color, linewidth=1.0, zorder=2
-            )
-            xs.extend([x1, x2])
-            zs.extend([z1, z2])
-        ax_side.set_xlim(20, 44)
-        ax_side.set_ylim(-1.5, 17.5)
-    else:
-        ax_side.text(
-            0.5,
-            0.5,
-            "No side-view segments provided",
-            ha="center",
-            va="center",
-            transform=ax_side.transAxes,
+        ax_side.annotate(
+            "",
+            xy=(ix, iz),
+            xytext=(cx, cz),
+            arrowprops=dict(arrowstyle="->", lw=1.0, alpha=0.9),
+            zorder=6,
         )
 
+    # Side schematic segments
+    xs, zs = [], []
+    for (x1, z1), (x2, z2) in side_segments:
+        ax_side.plot([x1, x2], [z1, z2], color=SEGMENT_COLOR, linewidth=1.0, zorder=2)
+        xs.extend([x1, x2])
+        zs.extend([z1, z2])
+
+    ax_side.set_xlim(20, 44)
+    ax_side.set_ylim(-1.5, 16.5)
+    ax_side.set_title("Side View")
     ax_side.set_xlabel("X (m) – forward")
     ax_side.set_ylabel("Z (m) – depth")
-    return fig, (ax, ax_side)
+
+    CDOG_label = {0: "CDOG 1", 1: "CDOG 3", 2: "CDOG 4"}
+    for i in range(3):
+        CDOG_aug = CDOG_augs[:, i]
+        init = aug_init[i]
+        _, _, _ = plot_kde_mcmc(
+            CDOG_aug,
+            nbins=100,
+            prior_mean=init,
+            prior_sd=aug_prior,
+            ellipses=1,
+            return_axes=True,
+            ax1=ax3[i],
+            ax2=ax4[i],
+            fig=fig,
+        )
+        ax3[i].legend().remove()
+        ax4[i].legend().remove()
+        ax3[i].set_title(f"{CDOG_label[i]} in ENU")
+        ax4[i].set_title("")
+
+    # Remove colorbar
+    fig = ax.figure
+    for cax in fig.axes:
+        if cax.get_label() == "<colorbar>":
+            cax.remove()
+
+    save_plot(fig, func_name="RV_Plot", subdir="Figs", ext="pdf")
+
+    return fig, (ax, ax_side, ax3, ax4)
 
 
 if __name__ == "__main__":
@@ -589,17 +544,16 @@ if __name__ == "__main__":
 
     top_down_scale = 0.054715
 
-    downsample = 5
-
-    chain = np.load(gps_output_path("mcmc_chain_8-7.npz"))
+    chain = np.load(gps_output_path("mcmc_chain_9-9_large_aug_prior.npz"))
     levers = chain["lever"][::5000]
-    try:
-        lever_init = chain["init_lever"]
-        lever_prior = chain["prior_lever"]
-    except Exception:
-        print("Chain has no initial/prior info, using defaults")
-        lever_init = np.array([-13.12, 9.7, -15.9])
-        lever_prior = np.array([0.3, 0.3, 0.3])
+    CDOG_augs = chain["CDOG_aug"][::5000]
+
+    init_params, prior_scales, _ = get_init_params_and_prior(chain)
+
+    lever_init = init_params["lever"]
+    lever_prior = prior_scales["lever"]
+    aug_init = init_params["CDOG_aug"]
+    aug_prior = prior_scales["CDOG_aug"]
 
     segments_bridge = px_to_world_segments(
         bridge_segments,
@@ -632,31 +586,35 @@ if __name__ == "__main__":
 
     # Make side segments manually (give height manually for
     # top and hull and moonpool)
-    side_bridge_segments = [((29.366, 15.5), (39.676, 15.5))]
+    side_bridge_segments = [
+        ((10, 8.0), (29.366, 8.0)),
+        ((29.366, 8.0), (29.366, 15.5)),
+        ((29.366, 15.5), (39.676, 15.5)),
+        ((39.676, 15.5), (39.676, 11.0)),
+        ((39.676, 11.0), (45, 11.0)),
+    ]
     side_hull_segments = [((20, 0.0), (44, 0.0))]
     side_moonpool_segments = [
         ((23.804, 0.2), (22.814, 0.2)),
-        (
-            (22.814, 0.2),
-            (22.814, -0.790),
-        ),
+        ((22.814, 0.2), (22.814, -0.790)),
         ((22.814, -0.790), (23.804, -0.790)),
         ((23.804, -0.790), (23.804, 0.2)),
     ]
 
     side_segments = side_bridge_segments + side_hull_segments + side_moonpool_segments
 
-    fig, (ax, ax_side) = RV_Plot(
+    fig, (ax, ax_side, ax3, ax4) = RV_Plot(
         segments,
+        side_segments,
         levers,
         lever_prior,
         lever_init,
-        downsample=downsample,
-        side_segments=side_segments,
-        segment_color="0.5",
+        CDOG_augs,
+        aug_prior,
+        aug_init,
     )
+    # Rows 3 and 4 sub-axes are placeholders for external plotting
     plt.show()
 
     # GPS 1 offset: (39.5, 2.2, 15.2)
     # Lever prior: [-13.12   9.72 -15.9 ]
-    # Fix Scaling of prior

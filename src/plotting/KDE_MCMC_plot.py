@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 from pymap3d import geodetic2enu
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from scipy.stats import gaussian_kde
@@ -13,7 +14,6 @@ from plotting.save import save_plot
 def plot_kde_mcmc(
     samples,
     nbins=100,
-    cmap="viridis",
     prior_mean=None,
     prior_sd=None,
     conf_level=0.68,
@@ -22,6 +22,10 @@ def plot_kde_mcmc(
     save=False,
     chain_name=None,
     path="Figs",
+    return_axes=False,
+    ax1=None,
+    ax2=None,
+    fig=None,
 ):
     if CDOG_reference is None:
         CDOG_reference = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
@@ -104,29 +108,27 @@ def plot_kde_mcmc(
     sigma_U_cm = float(np.std(z, ddof=1))
 
     # Create a custom colormap from white to red
-    from matplotlib.colors import LinearSegmentedColormap
-
     new_cmap = LinearSegmentedColormap.from_list("white_blue", ["white", "blue"])
 
     # Plotting
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-
-    ax1.set_aspect("equal", "box")
-    ax2.set_aspect("equal", "box")
+    if fig is None and ax1 is None and ax2 is None:
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        ax1.set_aspect("equal", "box")
+        ax2.set_aspect("equal", "box")
 
     levels_xy = np.linspace(0, Z_xy_counts.max(), 21)
     cf1 = ax1.contourf(
         X, Y, Z_xy_counts, levels=levels_xy, cmap=new_cmap, antialiased=True
     )
     ax1.set_facecolor(new_cmap(0))
-    ax1.plot(line_x, line_y, color="red", linestyle="--", linewidth=2, label="PC1")
+    ax1.plot(line_x, line_y, color="red", linestyle="--", linewidth=1, label="PC1")
     ax1.plot(
         mode_x_cm,
         mode_y_cm,
         marker="x",
         linestyle="None",
         color="red",
-        markersize=8,
+        markersize=4,
         markeredgewidth=2,
         label="Posterior Mode",
         zorder=5,
@@ -183,7 +185,7 @@ def plot_kde_mcmc(
         marker="x",
         linestyle="None",
         color="red",
-        markersize=8,
+        markersize=4,
         markeredgewidth=2,
         label="Posterior Mode",
         zorder=5,
@@ -282,13 +284,11 @@ def plot_kde_mcmc(
     ax2.set_xlim(-lim_all, lim_all)
     ax2.set_ylim(-lim_all, lim_all)
 
-    fig.suptitle(
-        "Red X = posterior mode; Red ellipse = posterior (when 1 ellipse)", fontsize=10
-    )
-
     plt.tight_layout()
     if save:
         save_plot(fig, chain_name, "plot_kde_mcmc", subdir=path)
+    if return_axes:
+        return fig, ax1, ax2
     plt.show()
 
 
@@ -305,7 +305,6 @@ if __name__ == "__main__":
     plot_kde_mcmc(
         sample,
         nbins=100,
-        cmap="viridis",
         prior_mean=init_aug[DOG_num],
         prior_sd=prior_aug,
         ellipses=1,

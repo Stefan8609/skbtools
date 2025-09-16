@@ -86,8 +86,8 @@ def plot_fit(
 
 
 if __name__ == "__main__":
-    data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
-    # data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_full.npz"))
+    # data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
+    data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_full.npz"))
     GPS_Coordinates = data["GPS_Coordinates"]
     GPS_barycenter = np.mean(GPS_Coordinates, axis=1)
     GPS_data = data["GPS_data"]
