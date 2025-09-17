@@ -927,7 +927,7 @@ def corner_plot(
 
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
-    file_name = "mcmc_chain_esv_only"
+    file_name = "mcmc_chain_9_16_new_table"
     loglike = False
     save = False
 
@@ -937,41 +937,41 @@ if __name__ == "__main__":
 
     initial_params, prior_scales, proposal_scales = get_init_params_and_prior(chain)
 
-    # trace_plot(
-    #     chain,
-    #     initial_params=initial_params,
-    #     downsample=1000,
-    #     save=save,
-    #     chain_name=chain_name,
-    # )
-    # marginal_hists(
-    #     chain,
-    #     initial_params=initial_params,
-    #     prior_scales=prior_scales,
-    #     downsample=100,
-    #     save=save,
-    #     chain_name=chain_name,
-    # )
-    # corner_plot(
-    #     chain,
-    #     initial_params=initial_params,
-    #     prior_scales=prior_scales,
-    #     downsample=1000,
-    #     save=save,
-    #     chain_name=chain_name,
-    #     loglike=loglike,
-    # )
-
-    esv_split_posteriors(
+    trace_plot(
         chain,
-        dog_index=0,  # 0→DOG 1, 1→DOG 3, 2→DOG 4
-        downsample=100,
-        bins=40,
-        save=True,
-        chain_name=chain_name,
-        center=False,
-        # kept for back-compat; ignored when center_mode!= 'none'
         initial_params=initial_params,
-        center_mode="init",
-        # center all splits on the same initial ESVfor this DOG
+        downsample=1000,
+        save=save,
+        chain_name=chain_name,
     )
+    marginal_hists(
+        chain,
+        initial_params=initial_params,
+        prior_scales=prior_scales,
+        downsample=100,
+        save=save,
+        chain_name=chain_name,
+    )
+    corner_plot(
+        chain,
+        initial_params=initial_params,
+        prior_scales=prior_scales,
+        downsample=1000,
+        save=save,
+        chain_name=chain_name,
+        loglike=loglike,
+    )
+
+    # esv_split_posteriors(
+    #     chain,
+    #     dog_index=0,  # 0→DOG 1, 1→DOG 3, 2→DOG 4
+    #     downsample=100,
+    #     bins=40,
+    #     save=True,
+    #     chain_name=chain_name,
+    #     center=False,
+    #     # kept for back-compat; ignored when center_mode!= 'none'
+    #     initial_params=initial_params,
+    #     center_mode="init",
+    #     # center all splits on the same initial ESVfor this DOG
+    # )

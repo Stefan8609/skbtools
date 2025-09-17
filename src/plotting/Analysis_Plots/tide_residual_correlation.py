@@ -95,8 +95,6 @@ def tide_residual_correlation(chain, CDOG_num=3):
     residuals = GPS_full - CDOG_full
     _, _, elev = ECEF_Geodetic(transponder_coordinates_full)
 
-    _, _, elev_DOG = ECEF_Geodetic(np.array([inv_guess]))
-
     # Center data
     residuals -= np.mean(residuals)
     elev = elev - np.mean(elev)
@@ -151,7 +149,7 @@ def tide_residual_correlation(chain, CDOG_num=3):
 
 
 if __name__ == "__main__":
-    file = "mcmc_chain_9-9_large_aug_prior"
+    file = "mcmc_chain_9_16_new_table"
     chain = gps_output_path(f"{file}.npz")
 
     tide_residual_correlation(chain, CDOG_num=3)

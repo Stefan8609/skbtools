@@ -28,7 +28,7 @@ dz_array = esv_table["distance"].flatten()
 angle_array = esv_table["angle"].flatten()
 esv_matrix = esv_table["matrice"]
 
-DOG_num = 4
+DOG_num = 1
 
 data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
 GPS_Coordinates = data["GPS_Coordinates"]
@@ -46,7 +46,7 @@ gps1_to_others = np.array(
 )
 
 """Set up the initial estimations"""
-initial_lever_guess = np.array([-12.4659, 9.6021, -13.2993])
+initial_lever_guess = np.array([-12.69796149, 9.51739301, -15.0743129])
 
 # initial_lever_guess = np.array([-12.5841,  9.6593, -11.9162])
 # gps1_to_others =  np.array([[ -0.2763,   0.2039,  -0.2825],
