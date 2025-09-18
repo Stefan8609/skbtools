@@ -11,6 +11,18 @@ from plotting.save import save_plot
 from geometry.rigid_body import findRotationAndDisplacement
 from data import gps_output_path, gps_data_path
 
+plt.rcParams.update(
+    {
+        "text.usetex": True,
+        "font.family": "serif",
+        "font.serif": ["Computer Modern"],
+        "mathtext.fontset": "cm",
+        "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
+        "\n"
+        r"\usepackage{textcomp}",
+    }
+)
+
 
 def _contour_kde2d(ax, pts2d, levels=50, gridsize=200, cmap=None, alpha=0.9):
     """Plot a 2D Gaussian KDE as filled contours.
@@ -104,7 +116,7 @@ def _add_schematic_inset(
     ax,
     segments,
     box=(0.02, 0.10, 0.40, 0.80),
-    line_color="0.35",
+    line_color="0.7",
     line_width=0.8,
     title="Schematic",
     scale=1.0,
@@ -169,8 +181,7 @@ def _add_schematic_inset(
     ax_in.set_xticks([])
     ax_in.set_yticks([])
     for spine in ax_in.spines.values():
-        spine.set_alpha(0.6)
-        spine.set_linewidth(0.8)
+        spine.set_visible(False)
 
     ax_in.set_title(title, fontsize=8, pad=2)
     return ax_in
@@ -357,14 +368,13 @@ def RV_Plot(
         box=SCHEMATIC_BOX,
         scale=SCHEMATIC_SCALE,
         box_coord="axes",
-        line_color=SEGMENT_COLOR,
     )
 
     # Axes cosmetics
     ax.set_xlim(20, 44)
     ax.set_ylim(-7.5, 7.5)
     ax.set_xlabel("")
-    ax.set_ylabel("Y (m) – beam")
+    ax.set_ylabel("Y (m)")
     ax.set_title("Top-Down View")
 
     # ---- Bottom panel: side-view schematic from segments (always drawn) ----
@@ -470,8 +480,8 @@ def RV_Plot(
     ax_side.set_xlim(20, 44)
     ax_side.set_ylim(-1.5, 16.5)
     ax_side.set_title("Side View")
-    ax_side.set_xlabel("X (m) – forward")
-    ax_side.set_ylabel("Z (m) – depth")
+    ax_side.set_xlabel("X (m)")
+    ax_side.set_ylabel("Z (m)")
 
     CDOG_label = {0: "CDOG 1", 1: "CDOG 3", 2: "CDOG 4"}
     for i in range(3):
@@ -499,6 +509,28 @@ def RV_Plot(
         if cax.get_label() == "<colorbar>":
             cax.remove()
 
+    # Add plot letters
+    ax.text(
+        0.005, 1.04, "A", transform=ax.transAxes, ha="left", va="top", fontweight="bold"
+    )
+    ax_side.text(
+        0.005,
+        1.055,
+        "B",
+        transform=ax_side.transAxes,
+        ha="left",
+        va="top",
+        fontweight="bold",
+    )
+    ax3[0].text(
+        0.02,
+        1.075,
+        "C",
+        transform=ax3[0].transAxes,
+        ha="left",
+        va="top",
+        fontweight="bold",
+    )
     save_plot(fig, func_name="RV_Plot", subdir="Figs", ext="pdf")
 
     return fig, (ax, ax_side, ax3, ax4)
@@ -613,8 +645,24 @@ if __name__ == "__main__":
         aug_prior,
         aug_init,
     )
-    # Rows 3 and 4 sub-axes are placeholders for external plotting
+
     plt.show()
 
-    # GPS 1 offset: (39.5, 2.2, 15.2)
-    # Lever prior: [-13.12   9.72 -15.9 ]
+# ADD LABELS IN THE PLOT
+# CHANGE AXES NAMES TO OFFICIAL TERMS (RESEARCH INTO THESE)
+# MAKE ARROWS IN SIDEVIEW GO TO INSET NOT CENTER
+# INSET THE LEVER IN THE SIDEPLOT AND GIVE SCALE
+# MAKE THE ENU AXES MATCH FOR EACH OF THE PLOTS
+# MAKE THE ERROR ELLIPSES IN THE ENU PLOTS BLACK AND PRIOR THE SAME BLUE
+# MAKE THE CONTOURING IN THE INSETS THE SAME AS THE KDE PLOTS
+# MAKE A DIAGRAM OF THE PRINCIPAL COMPONENT (WHAT IS IT?)
+# PUT A XI LABEL RIGHT NEXT TO THE RED DOTTED LINE
+# ADD ARROW TO DOTTED LINE AND MAKE THE ARROW THE LENGTH OF THE X-AXES
+# MAKE DOTTED LINE SOLID
+# ROUND THE STANDARD DEVIATION TO ONE DECIMAL PLACE
+# AND ALIGN THE THE TEXT
+# PUT STANDARD DEVIATIONS OF GPS IN THE PLOTS
+#   GET THE NUMBERS, BUT NOT RENDER THEM LATER
+#   OR FIND FREE SPACE IN THE PLOTS TO MAKE A TABLE
+# MAKE CDOG AND GPS COLORS DIFFERENT
+#   MAKE GPS LAND COLORED (GREEN)

@@ -927,7 +927,7 @@ def corner_plot(
 
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
-    file_name = "mcmc_chain_9_16_new_table"
+    file_name = "mcmc_chain_9_17_grid"
     loglike = False
     save = False
 
