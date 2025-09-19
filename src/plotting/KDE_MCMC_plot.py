@@ -49,7 +49,6 @@ def plot_kde_mcmc(
         samples_converted[i] = np.squeeze(enu)
 
     samples_converted = samples_converted * 100.0  # m -> cm
-
     x, y, z = samples_converted.T
 
     # KDE in x,y
@@ -68,18 +67,14 @@ def plot_kde_mcmc(
     cell_area_xy = dx * dy
     Z_xy_counts = Z_xy * N * cell_area_xy
 
-    # Find Principal Component of x,y
+    # Principal component of x,y
     xy_mean = xy.mean(axis=1, keepdims=True)
     xy_cent = xy - xy_mean
     cov = np.cov(xy_cent)
     eigvals, eigvecs = np.linalg.eigh(cov)
-    pc1_vec = eigvecs[:, np.argmax(eigvals)]
-    # Principal component line endpoints for plotting
-    t = np.linspace(-lim_xy, lim_xy, 2)
-    line_x = xy_mean[0] + t * pc1_vec[0]
-    line_y = xy_mean[1] + t * pc1_vec[1]
+    pc1_vec = eigvecs[:, np.argmax(eigvals)]  # unit vector in EN plane
 
-    # KDE in Principal Component and z
+    # KDE in (PC1, z)
     pcz = np.vstack([pc1_vec.dot(xy_cent), z])
     kde_pcz = gaussian_kde(pcz)
     lim_pcz = max(np.max(np.abs(pcz[0])), np.max(np.abs(pcz[1])))
@@ -94,34 +89,35 @@ def plot_kde_mcmc(
     cell_area_pcz = dpi * dzi
     Z_pcz_counts = Z_pcz * N * cell_area_pcz
 
+    # Posterior modes
     max_idx_xy = np.unravel_index(np.argmax(Z_xy_counts), Z_xy_counts.shape)
     mode_x_cm = X[max_idx_xy]
     mode_y_cm = Y[max_idx_xy]
-
     max_idx_pcz = np.unravel_index(np.argmax(Z_pcz_counts), Z_pcz_counts.shape)
     mode_xi_cm = P[max_idx_pcz]
     mode_up_cm = Z[max_idx_pcz]
 
+    # STD (rounded to 1 decimal place)
     sigma_E_cm = float(np.std(x, ddof=1))
     sigma_N_cm = float(np.std(y, ddof=1))
     sigma_xi_cm = float(np.std(pcz[0], ddof=1))
     sigma_U_cm = float(np.std(z, ddof=1))
 
-    # Create a custom colormap from white to red
+    # White->Blue colormap
     new_cmap = LinearSegmentedColormap.from_list("white_blue", ["white", "blue"])
 
-    # Plotting
+    # Set up figure/axes
     if fig is None and ax1 is None and ax2 is None:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
         ax1.set_aspect("equal", "box")
         ax2.set_aspect("equal", "box")
 
+    # Left panel (E,N)
     levels_xy = np.linspace(0, Z_xy_counts.max(), 21)
     cf1 = ax1.contourf(
         X, Y, Z_xy_counts, levels=levels_xy, cmap=new_cmap, antialiased=True
     )
     ax1.set_facecolor(new_cmap(0))
-    ax1.plot(line_x, line_y, color="red", linestyle="--", linewidth=1, label="PC1")
     ax1.plot(
         mode_x_cm,
         mode_y_cm,
@@ -133,20 +129,23 @@ def plot_kde_mcmc(
         label="Posterior Mode",
         zorder=5,
     )
+    # Monospace, aligned stats (1 decimal place)
     ax1.text(
         0.02,
         0.98,
-        f"$\\sigma_E$ = {sigma_E_cm:.2f} cm\n$\\sigma_N$ = {sigma_N_cm:.2f} cm",
+        f"$\\sigma_E$ = {sigma_E_cm:4.1f} cm\n$\\sigma_N$ = {sigma_N_cm:4.1f} cm",
         transform=ax1.transAxes,
         ha="left",
         va="top",
         color="red",
+        family="monospace",
     )
     ax1.set_xlabel("East (cm)")
     ax1.set_ylabel("North (cm)")
     ax1.set_title("KDE of (East, North)")
     fig.colorbar(cf1, ax=ax1, label=f"Counts (Total Samples = {num_points})")
 
+    # Prior ellipses (blue) in both panels
     if prior_sd is not None and prior_mean is not None:
         prior_sd_cm = prior_sd * 100.0
         prior_cov = np.diag([prior_sd_cm**2, prior_sd_cm**2])
@@ -155,20 +154,25 @@ def plot_kde_mcmc(
             cov=prior_cov,
             confidence=conf_level,
             zorder=3,
-            label="Prior",
         )
         e_xy.set_label("Prior 68%")
+        e_xy.set_edgecolor("blue")
+        e_xy.set_linewidth(1.5)
+
         e_pcz = plot_prior_ellipse(
             mean=np.array([0, 0]),
             cov=prior_cov,
             confidence=conf_level,
             zorder=3,
-            label="Prior",
         )
         e_pcz.set_label("Prior 68%")
+        e_pcz.set_edgecolor("blue")
+        e_pcz.set_linewidth(1.5)
+
         ax1.add_patch(e_xy)
         ax2.add_patch(e_pcz)
 
+    # Right panel (ξ, Up)
     levels_pcz = np.linspace(0, Z_pcz_counts.max(), 21)
     cf2 = ax2.contourf(
         P, Z, Z_pcz_counts, levels=levels_pcz, cmap=new_cmap, antialiased=True
@@ -178,7 +182,6 @@ def plot_kde_mcmc(
     ax2.set_ylabel("Up (cm)")
     ax2.set_title("KDE of (PC1, Up)")
     fig.colorbar(cf2, ax=ax2, label=f"Counts (Total Samples = {num_points})")
-    # Posterior mode and std (right plot)
     ax2.plot(
         mode_xi_cm,
         mode_up_cm,
@@ -193,23 +196,56 @@ def plot_kde_mcmc(
     ax2.text(
         0.02,
         0.98,
-        f"$\\sigma_\\xi$ = {sigma_xi_cm:.2f} cm\n$\\sigma_U$ = {sigma_U_cm:.2f} cm",
+        f"$\\sigma_\\xi$ = {sigma_xi_cm:4.1f} cm\n$\\sigma_U$  = {sigma_U_cm:4.1f} cm",
         transform=ax2.transAxes,
         ha="left",
         va="top",
         color="red",
+        family="monospace",
     )
 
-    # Draw error ellipses for segmented subsets, if requested
+    # === Draw the ξ axis as a SOLID red arrow across the full EN panel ===
+    # Use the larger of the two limits so the arrow spans the visible width later.
+    lim_all = max(lim_xy, lim_pcz)
+
+    # Start/end points in EN for the PC1 arrow
+    start_EN = (xy_mean.flatten() - lim_all * pc1_vec).tolist()
+    end_EN = (xy_mean.flatten() + lim_all * pc1_vec).tolist()
+
+    # Solid arrow along PC1
+    ax1.annotate(
+        "",
+        xy=(end_EN[0], end_EN[1]),
+        xytext=(start_EN[0], start_EN[1]),
+        arrowprops=dict(arrowstyle="->", color="red", lw=1.5),
+        clip_on=False,
+        annotation_clip=False,
+        zorder=10,
+    )
+
+    print(end_EN, start_EN)
+
+    # "ξ" label next to the arrow, rotated with the arrow direction
+    label_pos = (
+        xy_mean.flatten() + 0.65 * lim_all * pc1_vec
+    )  # slight offset along arrow
+    ax1.text(
+        label_pos[0],
+        label_pos[1],
+        r"$\xi$",
+        color="red",
+        fontsize=11,
+        ha="left",
+        va="bottom",
+        zorder=5,
+    )
+
+    # === Error ellipses (posterior) in BLACK ===
     if isinstance(ellipses, int) and ellipses > 0:
         min_segment_size = 20
-
         idx_splits = np.array_split(np.arange(num_points), ellipses)
 
-        seg_cmap = plt.get_cmap("tab10")
-
         for i, idx in enumerate(idx_splits):
-            # Guard against tiny segments
             if idx.size < min_segment_size:
                 mid = int(idx.mean())
                 half = max(min_segment_size // 2, 1)
@@ -219,70 +255,57 @@ def plot_kde_mcmc(
                 if idx.size < min_segment_size:
                     continue
 
+            # EN ellipse
             segment_xy = xy[:, idx].T
-            if segment_xy.shape[0] < min_segment_size:
-                continue
+            if segment_xy.shape[0] >= min_segment_size:
+                e_xy_seg, _ = compute_error_ellipse(
+                    segment_xy, confidence=conf_level, zorder=10
+                )
+                e_xy_seg.set_fill(False)
+                e_xy_seg.set_linewidth(1.5 if ellipses == 1 else 1.2)
+                e_xy_seg.set_alpha(0.95)
+                e_xy_seg.set_edgecolor("black")  # <-- BLACK
+                e_xy_seg.set_label(f"Segment {i + 1} Posterior")
+                ax1.add_patch(e_xy_seg)
 
-            e_xy, _ = compute_error_ellipse(
-                segment_xy, confidence=conf_level, zorder=10
-            )
-            e_xy.set_fill(False)
-            e_xy.set_linewidth(1.5)
-            e_xy.set_alpha(0.95)
-            e_xy.set_label(f"Segment {i + 1} Posterior")
-            edge_col = (
-                "red"
-                if (isinstance(ellipses, int) and ellipses == 1)
-                else seg_cmap(i % 10)
-            )
-            e_xy.set_edgecolor(edge_col)
-            if isinstance(ellipses, int) and ellipses == 1:
-                e_xy.set_linewidth(2.0)
-            ax1.add_patch(e_xy)
-
+            # (ξ,Up) ellipse
             segment_pcz = pcz[:, idx].T
-            if segment_pcz.shape[0] < min_segment_size:
-                continue
+            if segment_pcz.shape[0] >= min_segment_size:
+                e_pcz_seg, _ = compute_error_ellipse(
+                    segment_pcz, confidence=conf_level, zorder=10
+                )
+                e_pcz_seg.set_fill(False)
+                e_pcz_seg.set_linewidth(1.5 if ellipses == 1 else 1.2)
+                e_pcz_seg.set_alpha(0.95)
+                e_pcz_seg.set_edgecolor("black")  # <-- BLACK
+                e_pcz_seg.set_label(f"Segment {i + 1} Posterior")
+                ax2.add_patch(e_pcz_seg)
 
-            e_pcz, _ = compute_error_ellipse(
-                segment_pcz, confidence=conf_level, zorder=10
-            )
-            e_pcz.set_fill(False)
-            e_pcz.set_linewidth(1.5)
-            e_pcz.set_alpha(0.95)
-            e_pcz.set_label(f"Segment {i + 1} Posterior")
-            edge_col = (
-                "red"
-                if (isinstance(ellipses, int) and ellipses == 1)
-                else seg_cmap(i % 10)
-            )
-            e_pcz.set_edgecolor(edge_col)
-            if isinstance(ellipses, int) and ellipses == 1:
-                e_pcz.set_linewidth(2.0)
-            ax2.add_patch(e_pcz)
-
-    for ax in (ax1, ax2):
-        handles, labels = ax.get_legend_handles_labels()
-        priority = {"Prior 68%": 0, "Posterior Mode": 1, "PC1": 2}
-        order = sorted(
-            range(len(labels)), key=lambda i: (priority.get(labels[i], 3), labels[i])
-        )
-        ax.legend(
-            [handles[i] for i in order],
-            [labels[i] for i in order],
-            fontsize=8,
-            loc="upper right",
-            frameon=True,
-            framealpha=0.8,
-            handlelength=1.0,
-            borderpad=0.3,
-            labelspacing=0.3,
-        )
-    lim_all = max(lim_xy, lim_pcz)
+    # Consistent limits on both panels
     ax1.set_xlim(-lim_all, lim_all)
     ax1.set_ylim(-lim_all, lim_all)
     ax2.set_xlim(-lim_all, lim_all)
     ax2.set_ylim(-lim_all, lim_all)
+
+    # Legends (no entry for the ξ arrow)
+    for ax in (ax1, ax2):
+        handles, labels = ax.get_legend_handles_labels()
+        priority = {"Prior 68%": 0, "Posterior Mode": 1}
+        order = sorted(
+            range(len(labels)), key=lambda i: (priority.get(labels[i], 3), labels[i])
+        )
+        if order:
+            ax.legend(
+                [handles[i] for i in order],
+                [labels[i] for i in order],
+                fontsize=8,
+                loc="upper right",
+                frameon=True,
+                framealpha=0.8,
+                handlelength=1.0,
+                borderpad=0.3,
+                labelspacing=0.3,
+            )
 
     plt.tight_layout()
     if save:
@@ -293,7 +316,7 @@ def plot_kde_mcmc(
 
 
 if __name__ == "__main__":
-    file = "mcmc_chain_9-9_large_aug_prior"
+    file = "mcmc_chain_9_16_new_table"
     chain = np.load(gps_output_path(f"{file}.npz"))
     DOG_num = 0
     sample = chain["CDOG_aug"][::100, DOG_num]

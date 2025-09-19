@@ -277,13 +277,17 @@ def RV_Plot(
         gps_xy_list.append(gxy_full[::DOWNSAMPLE])
         centroids.append(gxy_full.mean(axis=0))
 
-    white_blue_cmap = LinearSegmentedColormap.from_list("white_blue", ["white", "blue"])
-    for pts in gps_xy_list:
-        _contour_kde2d(
-            ax, pts, levels=50, gridsize=200, cmap=white_blue_cmap, alpha=0.9
-        )
+    white_green_cmap = LinearSegmentedColormap.from_list(
+        "white_green", ["white", "green"]
+    )
 
     white_red_cmap = LinearSegmentedColormap.from_list("white_red", ["white", "red"])
+
+    for pts in gps_xy_list:
+        _contour_kde2d(
+            ax, pts, levels=50, gridsize=200, cmap=white_green_cmap, alpha=0.9
+        )
+
     lever_xy_ds = lever_xy[::DOWNSAMPLE]
     _contour_kde2d(
         ax, lever_xy_ds, levels=50, gridsize=200, cmap=white_red_cmap, alpha=0.9
@@ -305,6 +309,56 @@ def RV_Plot(
     ax.add_patch(ellipse)
     ax.add_patch(prior_ellipse)
 
+    # Lever inset in top view (same size/style as GPS insets)
+    lever_c_xy = lever_xy.mean(axis=0)
+    cx, cy = float(lever_c_xy[0]), float(lever_c_xy[1])
+    w, h = 2.0, 2.5  # match GPS inset size in top view
+    # Offset the inset slightly from the centroid to avoid overlap
+    dx, dy = 2.0, 0.27
+    ix, iy = cx + dx, cy + dy
+    axins_lev_xy = ax.inset_axes(
+        [ix - w / 2.0, iy - h / 2.0, w, h], transform=ax.transData
+    )
+    _contour_kde2d(
+        axins_lev_xy,
+        lever_xy_ds,
+        levels=30,
+        gridsize=120,
+        cmap=white_red_cmap,
+        alpha=0.9,
+    )
+    ellipse_lev_xy_ins, _ = compute_error_ellipse(lever_xy, confidence=0.68, zorder=4)
+    ellipse_lev_xy_ins.set_fill(False)
+    ellipse_lev_xy_ins.set_linewidth(1.0)
+    axins_lev_xy.add_patch(ellipse_lev_xy_ins)
+
+    axins_lev_xy.set_xlim(cx - 0.4, cx + 0.4)
+    axins_lev_xy.set_ylim(cy - 0.4, cy + 0.4)
+    rng_m = 0.4
+    cm_max = int(np.floor(rng_m * 100.0))
+    step = max(1, int(20))
+    tick_cm = np.arange(-cm_max, cm_max + 1, step, dtype=int)
+    xticks = cx + (tick_cm / 100.0)
+    yticks = cy + (tick_cm / 100.0)
+    axins_lev_xy.set_xticks(xticks)
+    axins_lev_xy.set_yticks(yticks)
+    axins_lev_xy.set_xticklabels([f"{v}" for v in tick_cm])
+    axins_lev_xy.set_yticklabels([f"{v}" for v in tick_cm])
+    axins_lev_xy.tick_params(axis="both", labelsize=INSET_LABEL_FONTSIZE)
+    axins_lev_xy.set_xlabel("cm", fontsize=INSET_LABEL_FONTSIZE)
+    axins_lev_xy.set_ylabel("cm", fontsize=INSET_LABEL_FONTSIZE)
+    for spine in axins_lev_xy.spines.values():
+        spine.set_linewidth(0.8)
+        spine.set_alpha(0.8)
+
+    ax.annotate(
+        "",
+        xy=(ix, iy),
+        xytext=(cx, cy),
+        arrowprops=dict(arrowstyle="->", lw=1.0, alpha=0.9),
+        zorder=4,
+    )
+
     # Redraw outline on top of KDE so it's visible
     for (x1, y1), (x2, y2) in segments:
         ax.plot([x1, x2], [y1, y2], color=SEGMENT_COLOR, linewidth=1.2, zorder=10)
@@ -321,13 +375,13 @@ def RV_Plot(
         elif idx == 3:
             dx, dy = -2.0, 1.05
         else:
-            dx, dy = -2.0, 2.0
+            dx, dy = 4.0, 2.0
         ix, iy = cx + dx, cy + dy
         axins = ax.inset_axes(
             [ix - w / 2.0, iy - h / 2.0, w, h], transform=ax.transData
         )
         _contour_kde2d(
-            axins, pts, levels=30, gridsize=120, cmap=white_blue_cmap, alpha=0.9
+            axins, pts, levels=30, gridsize=120, cmap=white_green_cmap, alpha=0.9
         )
 
         ellipse_ins, _ = compute_error_ellipse(pts, confidence=0.68, zorder=4)
@@ -394,13 +448,16 @@ def RV_Plot(
     # KDE contours for each GPS in side view
     for pts in gps_xz_list:
         _contour_kde2d(
-            ax_side, pts, levels=30, gridsize=160, cmap=white_blue_cmap, alpha=0.9
+            ax_side, pts, levels=30, gridsize=160, cmap=white_green_cmap, alpha=0.9
         )
 
     # 68% error ellipses for each GPS in side view
     for pts in gps_xz_list:
         ellipse_xz, _ = compute_error_ellipse(pts, confidence=0.68, zorder=4)
         ax_side.add_patch(ellipse_xz)
+        sigma_x = np.std(pts[:, 0])
+        sigma_z = np.std(pts[:, 1])
+        print(f"Std_x: {sigma_x * 100} cm, Std_z: {sigma_z * 100} cm")
 
     # Lever distribution (X–Z)
     lever_xz = np.column_stack((levers_rot[:, 0] + GPS1[0], levers_rot[:, 2] + GPS1[2]))
@@ -420,6 +477,55 @@ def RV_Plot(
     )
     ax_side.add_patch(prior_ellipse_xz)
 
+    # Lever inset in side view
+    lever_c_xz = lever_xz.mean(axis=0)
+    cx, cz = float(lever_c_xz[0]), float(lever_c_xz[1])
+    w, h = 2.0, 5.0
+    dx, dz = 2.0, 4.0
+    ix, iz = cx + dx, cz + dz
+    axins_lev_xz = ax_side.inset_axes(
+        [ix - w / 2.0, iz - h / 2.0, w, h], transform=ax_side.transData
+    )
+    _contour_kde2d(
+        axins_lev_xz,
+        lever_xz_ds,
+        levels=30,
+        gridsize=120,
+        cmap=white_red_cmap,
+        alpha=0.9,
+    )
+    ellipse_lev_xz_ins, _ = compute_error_ellipse(lever_xz, confidence=0.68, zorder=5)
+    ellipse_lev_xz_ins.set_fill(False)
+    ellipse_lev_xz_ins.set_linewidth(1.0)
+    axins_lev_xz.add_patch(ellipse_lev_xz_ins)
+
+    axins_lev_xz.set_xlim(cx - 0.4, cx + 0.4)
+    axins_lev_xz.set_ylim(cz - 0.4, cz + 0.4)
+    rng_m = 0.4
+    cm_max = int(np.floor(rng_m * 100.0))
+    step = max(1, int(20))
+    tick_cm = np.arange(-cm_max, cm_max + 1, step, dtype=int)
+    xticks = (np.array(tick_cm) / 100.0) + cx
+    zticks = (np.array(tick_cm) / 100.0) + cz
+    axins_lev_xz.set_xticks(xticks)
+    axins_lev_xz.set_yticks(zticks)
+    axins_lev_xz.set_xticklabels([f"{v}" for v in tick_cm])
+    axins_lev_xz.set_yticklabels([f"{v}" for v in tick_cm])
+    axins_lev_xz.tick_params(axis="both", labelsize=INSET_LABEL_FONTSIZE)
+    axins_lev_xz.set_xlabel("cm", fontsize=INSET_LABEL_FONTSIZE)
+    axins_lev_xz.set_ylabel("cm", fontsize=INSET_LABEL_FONTSIZE)
+    for spine in axins_lev_xz.spines.values():
+        spine.set_linewidth(0.8)
+        spine.set_alpha(0.8)
+
+    ax_side.annotate(
+        "",
+        xy=(ix, iz),
+        xytext=(cx, cz),
+        arrowprops=dict(arrowstyle="->", lw=1.0, alpha=0.9),
+        zorder=4,
+    )
+
     # Create square insets near each GPS centroid in X–Z, positioned below the
     # bridge line
     for idx, (pts, c) in enumerate(zip(gps_xz_list, centroids_xz), start=1):
@@ -436,7 +542,7 @@ def RV_Plot(
             [ix - w / 2.0, iz - h / 2.0, w, h], transform=ax_side.transData
         )
         _contour_kde2d(
-            axins, pts, levels=30, gridsize=120, cmap=white_blue_cmap, alpha=0.9
+            axins, pts, levels=30, gridsize=120, cmap=white_green_cmap, alpha=0.9
         )
         ellipse_ins, _ = compute_error_ellipse(pts, confidence=0.68, zorder=5)
         ellipse_ins.set_fill(False)
@@ -467,7 +573,7 @@ def RV_Plot(
             xy=(ix, iz),
             xytext=(cx, cz),
             arrowprops=dict(arrowstyle="->", lw=1.0, alpha=0.9),
-            zorder=6,
+            zorder=4,
         )
 
     # Side schematic segments
@@ -502,6 +608,40 @@ def RV_Plot(
         ax4[i].legend().remove()
         ax3[i].set_title(f"{CDOG_label[i]} in ENU")
         ax4[i].set_title("")
+
+    # Collect current limits
+    row3_xmins, row3_xmaxs, row3_ymins, row3_ymaxs = [], [], [], []
+    row4_xmins, row4_xmaxs, row4_ymins, row4_ymaxs = [], [], [], []
+    for a in ax3:
+        xlim = a.get_xlim()
+        ylim = a.get_ylim()
+        row3_xmins.append(xlim[0])
+        row3_xmaxs.append(xlim[1])
+        row3_ymins.append(ylim[0])
+        row3_ymaxs.append(ylim[1])
+    for a in ax4:
+        xlim = a.get_xlim()
+        ylim = a.get_ylim()
+        row4_xmins.append(xlim[0])
+        row4_xmaxs.append(xlim[1])
+        row4_ymins.append(ylim[0])
+        row4_ymaxs.append(ylim[1])
+
+    # Compute common limits per row
+    row3_xlim = (min(row3_xmins), max(row3_xmaxs))
+    row3_ylim = (min(row3_ymins), max(row3_ymaxs))
+    row4_xlim = (min(row4_xmins), max(row4_xmaxs))
+    row4_ylim = (min(row4_ymins), max(row4_ymaxs))
+
+    # Apply common limits and lock equal aspect for metric fidelity
+    for a in ax3:
+        a.set_xlim(row3_xlim)
+        a.set_ylim(row3_ylim)
+        a.set_aspect("equal", "box")
+    for a in ax4:
+        a.set_xlim(row4_xlim)
+        a.set_ylim(row4_ylim)
+        a.set_aspect("equal", "box")
 
     # Remove colorbar
     fig = ax.figure
@@ -649,20 +789,12 @@ if __name__ == "__main__":
     plt.show()
 
 # ADD LABELS IN THE PLOT
+# ADD SIDE VIEW SCHEMATICS
 # CHANGE AXES NAMES TO OFFICIAL TERMS (RESEARCH INTO THESE)
-# MAKE ARROWS IN SIDEVIEW GO TO INSET NOT CENTER
-# INSET THE LEVER IN THE SIDEPLOT AND GIVE SCALE
 # MAKE THE ENU AXES MATCH FOR EACH OF THE PLOTS
-# MAKE THE ERROR ELLIPSES IN THE ENU PLOTS BLACK AND PRIOR THE SAME BLUE
 # MAKE THE CONTOURING IN THE INSETS THE SAME AS THE KDE PLOTS
 # MAKE A DIAGRAM OF THE PRINCIPAL COMPONENT (WHAT IS IT?)
-# PUT A XI LABEL RIGHT NEXT TO THE RED DOTTED LINE
-# ADD ARROW TO DOTTED LINE AND MAKE THE ARROW THE LENGTH OF THE X-AXES
-# MAKE DOTTED LINE SOLID
-# ROUND THE STANDARD DEVIATION TO ONE DECIMAL PLACE
-# AND ALIGN THE THE TEXT
+# AND ALIGN THE TEXT
 # PUT STANDARD DEVIATIONS OF GPS IN THE PLOTS
 #   GET THE NUMBERS, BUT NOT RENDER THEM LATER
 #   OR FIND FREE SPACE IN THE PLOTS TO MAKE A TABLE
-# MAKE CDOG AND GPS COLORS DIFFERENT
-#   MAKE GPS LAND COLORED (GREEN)
