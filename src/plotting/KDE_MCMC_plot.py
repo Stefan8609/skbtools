@@ -196,7 +196,8 @@ def plot_kde_mcmc(
     ax2.text(
         0.02,
         0.98,
-        f"$\\sigma_\\xi$ = {sigma_xi_cm:4.1f} cm\n$\\sigma_U$  = {sigma_U_cm:4.1f} cm",
+        f"$\\sigma_\\xi\\,$ = {sigma_xi_cm:4.1f} cm \
+        \n$\\sigma_U$ = {sigma_U_cm:4.1f} cm",
         transform=ax2.transAxes,
         ha="left",
         va="top",
@@ -204,8 +205,6 @@ def plot_kde_mcmc(
         family="monospace",
     )
 
-    # === Draw the ξ axis as a SOLID red arrow across the full EN panel ===
-    # Use the larger of the two limits so the arrow spans the visible width later.
     lim_all = max(lim_xy, lim_pcz)
 
     # Start/end points in EN for the PC1 arrow

@@ -481,7 +481,7 @@ def RV_Plot(
     lever_c_xz = lever_xz.mean(axis=0)
     cx, cz = float(lever_c_xz[0]), float(lever_c_xz[1])
     w, h = 2.0, 5.0
-    dx, dz = 2.0, 4.0
+    dx, dz = 9.0, 3.65
     ix, iz = cx + dx, cz + dz
     axins_lev_xz = ax_side.inset_axes(
         [ix - w / 2.0, iz - h / 2.0, w, h], transform=ax_side.transData
@@ -588,6 +588,89 @@ def RV_Plot(
     ax_side.set_title("Side View")
     ax_side.set_xlabel("X (m)")
     ax_side.set_ylabel("Z (m)")
+
+    # Standard deviation table (x, y, z) in centimeters
+    gps_std_rows = []
+    for i in range(4):
+        pts_3d = GPS_Vessel_rot[:, i, :]
+        sx_cm, sy_cm, sz_cm = (np.std(pts_3d, axis=0) * 100.0).tolist()
+        gps_std_rows.append([sx_cm, sy_cm, sz_cm])
+
+    lever_sx_cm, lever_sy_cm, lever_sz_cm = (
+        np.std(levers_rot, axis=0) * 100.0
+    ).tolist()
+
+    # Prepare table contents (rounded to 0.1 cm)
+    row_labels = ["GPS1", "GPS2", "GPS3", "GPS4", "Lever"]
+    cell_text = [
+        [
+            f"{gps_std_rows[0][0]:.1f}",
+            f"{gps_std_rows[0][1]:.1f}",
+            f"{gps_std_rows[0][2]:.1f}",
+        ],
+        [
+            f"{gps_std_rows[1][0]:.1f}",
+            f"{gps_std_rows[1][1]:.1f}",
+            f"{gps_std_rows[1][2]:.1f}",
+        ],
+        [
+            f"{gps_std_rows[2][0]:.1f}",
+            f"{gps_std_rows[2][1]:.1f}",
+            f"{gps_std_rows[2][2]:.1f}",
+        ],
+        [
+            f"{gps_std_rows[3][0]:.1f}",
+            f"{gps_std_rows[3][1]:.1f}",
+            f"{gps_std_rows[3][2]:.1f}",
+        ],
+        [f"{lever_sx_cm:.1f}", f"{lever_sy_cm:.1f}", f"{lever_sz_cm:.1f}"],
+    ]
+
+    col_labels = [r"$\sigma_x$ (cm)", r"$\sigma_y$ (cm)", r"$\sigma_z$ (cm)"]
+
+    tbl = ax_side.table(
+        cellText=cell_text,
+        rowLabels=row_labels,
+        colLabels=col_labels,
+        bbox=[0.68, 0.13, 0.24, 0.34],
+        colLoc="center",
+        rowLoc="left",
+        cellLoc="center",
+        edges="closed",
+    )
+    # Style the table to be compact and readable
+    tbl.auto_set_font_size(False)
+    tbl.set_fontsize(8)
+    tbl.scale(0.9, 0.9)
+
+    # Auto-size columns to content and minimize padding so columns use only needed space
+    try:
+        # Must draw once before auto-sizing to get a valid renderer
+        ax_side.figure.canvas.draw_idle()
+        cols = [-1] + list(range(len(col_labels)))  # include row-label column (-1)
+        # Auto width based on rendered text extents
+        if hasattr(tbl, "auto_set_column_width"):
+            tbl.auto_set_column_width(cols)
+    except Exception:
+        # Fallback: keep going even if backend doesn't support autosize here
+        pass
+
+    # Reduce per-cell padding to tighten layout
+    for _key, cell in tbl.get_celld().items():
+        # Smaller padding yields tighter columns while preserving readability
+        if hasattr(cell, "PAD"):
+            cell.PAD = 0.08
+
+    # Optional small title above table
+    ax_side.text(
+        0.995,
+        0.995,
+        r"Std. dev. of clouds",
+        transform=ax_side.transAxes,
+        ha="right",
+        va="top",
+        fontsize=8,
+    )
 
     CDOG_label = {0: "CDOG 1", 1: "CDOG 3", 2: "CDOG 4"}
     for i in range(3):
