@@ -222,8 +222,6 @@ def plot_kde_mcmc(
         zorder=10,
     )
 
-    print(end_EN, start_EN)
-
     # "ξ" label next to the arrow, rotated with the arrow direction
     label_pos = (
         xy_mean.flatten() + 0.65 * lim_all * pc1_vec

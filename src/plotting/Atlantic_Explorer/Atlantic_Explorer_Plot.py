@@ -24,7 +24,7 @@ plt.rcParams.update(
 )
 
 
-def _contour_kde2d(ax, pts2d, levels=50, gridsize=200, cmap=None, alpha=0.9):
+def _contour_kde2d(ax, pts2d, levels=20, gridsize=200, cmap=None, alpha=0.9):
     """Plot a 2D Gaussian KDE as filled contours.
 
     Parameters
@@ -48,14 +48,48 @@ def _contour_kde2d(ax, pts2d, levels=50, gridsize=200, cmap=None, alpha=0.9):
         The contourf artist.
     """
     kde = gaussian_kde(pts2d.T)
+    # Build grid
     xlin = np.linspace(pts2d[:, 0].min(), pts2d[:, 0].max(), gridsize)
     ylin = np.linspace(pts2d[:, 1].min(), pts2d[:, 1].max(), gridsize)
     xgrid, ygrid = np.meshgrid(xlin, ylin)
     xy_coords = np.vstack([xgrid.ravel(), ygrid.ravel()])
+
+    # KDE evaluation (probability density)
     density = kde(xy_coords).reshape(xgrid.shape)
-    return ax.contourf(
-        xgrid, ygrid, density, levels=levels, cmap=cmap, alpha=alpha, zorder=1
+
+    # Convert density to expected counts per cell (match KDE_MCMC_plot style)
+    N = pts2d.shape[0]
+    dx = xlin[1] - xlin[0]
+    dy = ylin[1] - ylin[0]
+    cell_area = dx * dy
+    counts = density * N * cell_area
+
+    # Determine levels: if an int was provided, span 0..max; else use as-is
+    if isinstance(levels, int):
+        level_values = np.linspace(0, float(counts.max()), levels)
+    else:
+        level_values = levels
+
+    # Set background consistent with the colormap's zero color (white→color look)
+    if cmap is not None:
+        try:
+            ax.set_facecolor(cmap(0))
+        except Exception:
+            pass
+
+    # Draw filled contours with antialiasing
+    cs = ax.contourf(
+        xgrid,
+        ygrid,
+        counts,
+        levels=level_values,
+        cmap=cmap,
+        alpha=alpha,
+        antialiased=True,
+        zorder=1,
     )
+
+    return cs
 
 
 def px_to_world_segments(
@@ -118,7 +152,6 @@ def _add_schematic_inset(
     box=(0.02, 0.10, 0.40, 0.80),
     line_color="0.7",
     line_width=0.8,
-    title="Schematic",
     scale=1.0,
     box_coord="axes",
 ):
@@ -160,7 +193,7 @@ def _add_schematic_inset(
         transform = ax.figure.transFigure
     else:
         transform = ax.transAxes
-    ax_in = ax.inset_axes([x0, y0, w, h], transform=transform)
+    ax_in = ax.inset_axes([x0, y0, w, h], transform=transform, zorder=1)
 
     xs, ys = [], []
     for (x1, y1), (x2, y2) in segments:
@@ -176,14 +209,13 @@ def _add_schematic_inset(
     ax_in.set_xlim(x_min - pad_x, x_max + pad_x)
     ax_in.set_ylim(y_min - pad_y, y_max + pad_y)
 
-    # Styling: equal aspect, no ticks, subtle frame
+    # Styling: equal aspect, no ticks
     ax_in.set_aspect("equal", "box")
     ax_in.set_xticks([])
     ax_in.set_yticks([])
     for spine in ax_in.spines.values():
         spine.set_visible(False)
 
-    ax_in.set_title(title, fontsize=8, pad=2)
     return ax_in
 
 
@@ -217,6 +249,7 @@ def RV_Plot(
     FIGSIZE = (10, 14)
     HEIGHT_RATIOS = (3.0, 2.0, 1.5, 1.5)
     MARGINS = dict(left=0.08, right=0.98, top=0.95, bottom=0.07, hspace=0.15)
+    CONTOUR_LEVERS = 15
 
     # ---- Data load ----
     data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
@@ -285,12 +318,22 @@ def RV_Plot(
 
     for pts in gps_xy_list:
         _contour_kde2d(
-            ax, pts, levels=50, gridsize=200, cmap=white_green_cmap, alpha=0.9
+            ax,
+            pts,
+            levels=CONTOUR_LEVERS,
+            gridsize=200,
+            cmap=white_green_cmap,
+            alpha=0.9,
         )
 
     lever_xy_ds = lever_xy[::DOWNSAMPLE]
     _contour_kde2d(
-        ax, lever_xy_ds, levels=50, gridsize=200, cmap=white_red_cmap, alpha=0.9
+        ax,
+        lever_xy_ds,
+        levels=CONTOUR_LEVERS,
+        gridsize=200,
+        cmap=white_red_cmap,
+        alpha=0.9,
     )
 
     # 68% error ellipses (GPS and lever) + prior
@@ -314,7 +357,7 @@ def RV_Plot(
     cx, cy = float(lever_c_xy[0]), float(lever_c_xy[1])
     w, h = 2.0, 2.5  # match GPS inset size in top view
     # Offset the inset slightly from the centroid to avoid overlap
-    dx, dy = 2.0, 0.27
+    dx, dy = 2.5, 0.27
     ix, iy = cx + dx, cy + dy
     axins_lev_xy = ax.inset_axes(
         [ix - w / 2.0, iy - h / 2.0, w, h], transform=ax.transData
@@ -322,7 +365,7 @@ def RV_Plot(
     _contour_kde2d(
         axins_lev_xy,
         lever_xy_ds,
-        levels=30,
+        levels=CONTOUR_LEVERS,
         gridsize=120,
         cmap=white_red_cmap,
         alpha=0.9,
@@ -381,7 +424,12 @@ def RV_Plot(
             [ix - w / 2.0, iy - h / 2.0, w, h], transform=ax.transData
         )
         _contour_kde2d(
-            axins, pts, levels=30, gridsize=120, cmap=white_green_cmap, alpha=0.9
+            axins,
+            pts,
+            levels=CONTOUR_LEVERS,
+            gridsize=120,
+            cmap=white_green_cmap,
+            alpha=0.9,
         )
 
         ellipse_ins, _ = compute_error_ellipse(pts, confidence=0.68, zorder=4)
@@ -448,22 +496,29 @@ def RV_Plot(
     # KDE contours for each GPS in side view
     for pts in gps_xz_list:
         _contour_kde2d(
-            ax_side, pts, levels=30, gridsize=160, cmap=white_green_cmap, alpha=0.9
+            ax_side,
+            pts,
+            levels=CONTOUR_LEVERS,
+            gridsize=160,
+            cmap=white_green_cmap,
+            alpha=0.9,
         )
 
     # 68% error ellipses for each GPS in side view
     for pts in gps_xz_list:
         ellipse_xz, _ = compute_error_ellipse(pts, confidence=0.68, zorder=4)
         ax_side.add_patch(ellipse_xz)
-        sigma_x = np.std(pts[:, 0])
-        sigma_z = np.std(pts[:, 1])
-        print(f"Std_x: {sigma_x * 100} cm, Std_z: {sigma_z * 100} cm")
 
     # Lever distribution (X–Z)
     lever_xz = np.column_stack((levers_rot[:, 0] + GPS1[0], levers_rot[:, 2] + GPS1[2]))
     lever_xz_ds = lever_xz[::DOWNSAMPLE]
     _contour_kde2d(
-        ax_side, lever_xz_ds, levels=30, gridsize=160, cmap=white_red_cmap, alpha=0.9
+        ax_side,
+        lever_xz_ds,
+        levels=CONTOUR_LEVERS,
+        gridsize=160,
+        cmap=white_red_cmap,
+        alpha=0.9,
     )
 
     ellipse_lev_xz, _ = compute_error_ellipse(lever_xz, confidence=0.68, zorder=5)
@@ -489,7 +544,7 @@ def RV_Plot(
     _contour_kde2d(
         axins_lev_xz,
         lever_xz_ds,
-        levels=30,
+        levels=CONTOUR_LEVERS,
         gridsize=120,
         cmap=white_red_cmap,
         alpha=0.9,
@@ -542,7 +597,12 @@ def RV_Plot(
             [ix - w / 2.0, iz - h / 2.0, w, h], transform=ax_side.transData
         )
         _contour_kde2d(
-            axins, pts, levels=30, gridsize=120, cmap=white_green_cmap, alpha=0.9
+            axins,
+            pts,
+            levels=CONTOUR_LEVERS,
+            gridsize=120,
+            cmap=white_green_cmap,
+            alpha=0.9,
         )
         ellipse_ins, _ = compute_error_ellipse(pts, confidence=0.68, zorder=5)
         ellipse_ins.set_fill(False)
@@ -575,6 +635,14 @@ def RV_Plot(
             arrowprops=dict(arrowstyle="->", lw=1.0, alpha=0.9),
             zorder=4,
         )
+
+    _add_schematic_inset(
+        ax_side,
+        side_segments,
+        box=(0.02, 0.04, 0.15, 0.30),
+        scale=2.0,
+        box_coord="axes",
+    )
 
     # Side schematic segments
     xs, zs = [], []
@@ -661,17 +729,6 @@ def RV_Plot(
         if hasattr(cell, "PAD"):
             cell.PAD = 0.08
 
-    # Optional small title above table
-    ax_side.text(
-        0.995,
-        0.995,
-        r"Std. dev. of clouds",
-        transform=ax_side.transAxes,
-        ha="right",
-        va="top",
-        fontsize=8,
-    )
-
     CDOG_label = {0: "CDOG 1", 1: "CDOG 3", 2: "CDOG 4"}
     for i in range(3):
         CDOG_aug = CDOG_augs[:, i]
@@ -731,6 +788,85 @@ def RV_Plot(
     for cax in fig.axes:
         if cax.get_label() == "<colorbar>":
             cax.remove()
+
+    # Add text to plots
+    ax.text(
+        0.6,
+        0.45,
+        "bridge",
+        transform=ax.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize=10,
+    )
+    ax.text(
+        0.224,
+        0.477,
+        "bridge",
+        transform=ax.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize=8,
+        color="0.3",
+    )
+    ax.text(
+        0.063,
+        0.765,
+        "moonpool",
+        transform=ax.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize=10,
+    )
+    ax.text(
+        0.12,
+        0.538,
+        "moonpool",
+        transform=ax.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize=8,
+        color="0.3",
+    )
+
+    ax_side.text(
+        0.6,
+        0.87,
+        "bridge",
+        transform=ax_side.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize=10,
+    )
+    ax_side.text(
+        0.20,
+        0.481,
+        "bridge",
+        transform=ax_side.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize=8,
+        color="0.3",
+    )
+    ax_side.text(
+        0.07,
+        0.02,
+        "moonpool",
+        transform=ax_side.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize=10,
+    )
+    ax_side.text(
+        0.1387,
+        0.22,
+        "moonpool",
+        transform=ax_side.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize=8,
+        color="0.3",
+    )
 
     # Add plot letters
     ax.text(
@@ -841,14 +977,18 @@ if __name__ == "__main__":
 
     # Make side segments manually (give height manually for
     # top and hull and moonpool)
-    side_bridge_segments = [
-        ((10, 8.0), (29.366, 8.0)),
-        ((29.366, 8.0), (29.366, 15.5)),
+    side_ship_segments = [
+        ((10, 8.5), (29.366, 8.5)),
+        ((29.366, 8.5), (29.366, 15.5)),
         ((29.366, 15.5), (39.676, 15.5)),
-        ((39.676, 15.5), (39.676, 11.0)),
-        ((39.676, 11.0), (45, 11.0)),
+        ((39.676, 15.5), (39.676, 10.0)),
+        ((39.676, 10.0), (45, 10.0)),
+        ((45, 10.0), (54.74, 10.0)),
+        ((54.74, 10.0), (44.74, 0.0)),
+        ((44.74, 0.0), (8.0, 0.0)),
+        ((8.0, 0.0), (2.58, 8.5)),
+        ((2.58, 8.5), (10, 8.5)),
     ]
-    side_hull_segments = [((20, 0.0), (44, 0.0))]
     side_moonpool_segments = [
         ((23.804, 0.2), (22.814, 0.2)),
         ((22.814, 0.2), (22.814, -0.790)),
@@ -856,7 +996,7 @@ if __name__ == "__main__":
         ((23.804, -0.790), (23.804, 0.2)),
     ]
 
-    side_segments = side_bridge_segments + side_hull_segments + side_moonpool_segments
+    side_segments = side_ship_segments + side_moonpool_segments
 
     fig, (ax, ax_side, ax3, ax4) = RV_Plot(
         segments,
@@ -874,10 +1014,5 @@ if __name__ == "__main__":
 # ADD LABELS IN THE PLOT
 # ADD SIDE VIEW SCHEMATICS
 # CHANGE AXES NAMES TO OFFICIAL TERMS (RESEARCH INTO THESE)
-# MAKE THE ENU AXES MATCH FOR EACH OF THE PLOTS
-# MAKE THE CONTOURING IN THE INSETS THE SAME AS THE KDE PLOTS
-# MAKE A DIAGRAM OF THE PRINCIPAL COMPONENT (WHAT IS IT?)
-# AND ALIGN THE TEXT
-# PUT STANDARD DEVIATIONS OF GPS IN THE PLOTS
-#   GET THE NUMBERS, BUT NOT RENDER THEM LATER
-#   OR FIND FREE SPACE IN THE PLOTS TO MAKE A TABLE
+
+# -8.1670 # -6.6
