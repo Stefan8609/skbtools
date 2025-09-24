@@ -1,24 +1,17 @@
-"""High-level configurable driver for inversion workflows.
+"""High-level, top-down driver for inversion workflows (no argparse).
 
-This module provides a command line interface that exposes the various
-building blocks found in :mod:`Inversion_Workflow`.  The intent is to
-offer a single entry point where different data sources (real or
-synthetic), trajectory generators, inversion algorithms and noise/bias
-parameters can be selected without modifying the underlying library
-code.
+Edit the constants in the **USER EDITABLE CONSTANTS** section below.
+The script then executes top-to-bottom: configure → load/generate data →
+select solvers → run pipeline → report quality → optionally save results.
 
-The script is purposely lightweight – it wires together the available
-components and leaves the heavy numerical work to the specialised
-modules.  It is therefore well suited as a starting point for
-experimentation or for building higher level applications.
+This version preserves the functionality of the CLI-driven version but removes
+all argument parsing and centralizes inputs as global constants.
 """
 
 from __future__ import annotations
 
-import argparse
 import numpy as np
 import scipy.io as sio
-from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
 import logging
@@ -32,74 +25,53 @@ from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 
 logger = logging.getLogger(__name__)
 
+# =============================================================================
+# USER EDITABLE CONSTANTS
+# =============================================================================
+# Data/trajectory
+DATA_TYPE: str = "synthetic"  # "synthetic" or "real"
+TRAJECTORY: str = "realistic"  # "realistic", "random", "line", "cross", "bermuda"
+N_SAMPLES: int = 20000  # synthetic only
+DOG_NUM: int = 3  # real data set selection (and used by bermuda)
 
-def _arrfmt(a) -> str:
-    """Compact array format for logs."""
-    return np.array2string(
-        np.asarray(a), precision=4, suppress_small=True, separator=", "
-    )
+# Noise used for *generation* (synthetic only)
+TIME_NOISE: float = 0.0
+POSITION_NOISE: float = 0.0
 
+# --- Generation knobs (synthetic only) ---
+# If set to None, defaults (below) are used
+GEN_LEVER: Optional[np.ndarray] = None  # (3,)
+GEN_GPS_GRID: Optional[np.ndarray] = None  # (4,3)
+GEN_OFFSET: float = 151.25  # scalar
+GEN_ESV_BIAS: float = 0.0  # m/s
+GEN_TIME_BIAS: float = 0.0  # s
+GEN_ESV_TABLE: str = "global_table_esv_extended"
 
-def validate_args(args: argparse.Namespace) -> None:
-    """Emit warnings for incompatible or ignored combinations.
+# --- Solving knobs ---
+# If set to None, sensible defaults (below) are used
+SOLVE_LEVER: Optional[np.ndarray] = None  # (3,)
+SOLVE_GPS_GRID: Optional[np.ndarray] = None  # (4,3)
+SOLVE_OFFSET: float = 0.0  # scalar
+SOLVE_ESV_BIAS: float = 0.0  # used only in biased GN
+SOLVE_TIME_BIAS: float = 0.0  # used only in biased GN
+SOLVE_ESV_TABLE: str = "global_table_esv_extended"
 
-    This does *not* modify args; it only surfaces likely user mistakes.
-    """
-    # 1) Data-type vs. generation/trajectory knobs
-    if args.data_type == "real":
-        logging.warning("Using real data: ignoring --trajectory (synthetic-only).")
-        # All --gen-* and --gen-esv-table are ignored when not generating
-        ignored_gen = []
-        if args.gen_lever is not None:
-            ignored_gen.append("--gen-lever")
-        if args.gen_gps_grid is not None:
-            ignored_gen.append("--gen-gps-grid")
-        if args.gen_cdog is not None:
-            ignored_gen.append("--gen-cdog")
-        if float(args.gen_offset) != 0.0:
-            ignored_gen.append("--gen-offset")
-        if float(args.gen_esv_bias) != 0.0:
-            ignored_gen.append("--gen-esv-bias")
-        if float(args.gen_time_bias) != 0.0:
-            ignored_gen.append("--gen-time-bias")
-        if args.gen_esv_table != "global_table_esv_extended":
-            ignored_gen.append("--gen-esv-table")
-        if ignored_gen:
-            logging.warning(
-                "Real-data mode: the following generation options are ignored: %s",
-                ", ".join(ignored_gen),
-            )
+# Inversion choices
+GAUSS_NEWTON: str = "unbiased"  # "none", "biased", "unbiased"
+ALIGNMENT: bool = True
+ANNEALING: bool = False
+ANNEAL_ITER: int = 300
 
-    # 2) Solver pipeline consistency
-    if args.gauss_newton == "none" and args.alignment:
-        logging.warning("--alignment has no effect because --gauss-newton is 'none'.")
+# Output
+SAVE_OUTPUT: bool = False
+OUTPUT_NAME: str = "inversion_result"
 
-    # ESV/time bias hints are only used in the *biased* GN path
-    if args.gauss_newton != "biased":
-        bias_flags = []
-        if float(args.solve_esv_bias) != 0.0:
-            bias_flags.append("--solve-esv-bias")
-        if float(args.solve_time_bias) != 0.0:
-            bias_flags.append("--solve-time-bias")
-        if bias_flags:
-            logging.warning(
-                "Ignoring %s unless you use --gauss-newton biased.",
-                ", ".join(bias_flags),
-            )
+# Logging
+LOG_LEVEL = logging.INFO
 
-    # 3) Annealing
-    if not args.annealing and int(args.anneal_iter) != 1000:
-        logging.warning("--anneal-iter has no effect unless --annealing is enabled.")
-
-    # 4) Output ergonomics
-    if not args.save_output and args.output_name != "inversion_result":
-        logging.warning(
-            "--output-name will not be written because --save-output is not set."
-        )
-
-
-# ---------------------------------------------------------------------------
-# Defaults / module-level constants
+# =============================================================================
+# DEFAULTS / CONSTANTS (do not usually edit)
+# =============================================================================
 DEFAULT_GPS_GRID = np.array(
     [
         [0.0, 0.0, 0.0],
@@ -110,25 +82,53 @@ DEFAULT_GPS_GRID = np.array(
 )
 
 # Lever arm defaults (transponder relative to GPS1)
-DEFAULT_SYNTHETIC_LEVER = np.array([-12.4659, 9.6021, -13.2993])
+DEFAULT_SYNTHETIC_LEVER = np.array([-12.0, 1.0, -16.0])
 DEFAULT_REAL_LEVER = np.array([-12.48862757, 0.22622633, -15.89601934])
 
 # Default offset applied to the CDOG initial location guess (absolute)
 DEFAULT_INITIAL_DOG_OFFSET = np.array([100.0, 100.0, 200.0])
 
-# ---------------------------------------------------------------------------
-# Result container
+# -----------------------------------------------------------------------------
+# Small shape checks on user-provided constants (as requested)
+# -----------------------------------------------------------------------------
+if GEN_LEVER is not None and np.asarray(GEN_LEVER).reshape(-1).size != 3:
+    raise ValueError(
+        f"GEN_LEVER must be length-3, got shape {np.asarray(GEN_LEVER).shape}"
+    )
+if SOLVE_LEVER is not None and np.asarray(SOLVE_LEVER).reshape(-1).size != 3:
+    raise ValueError(
+        f"SOLVE_LEVER must be length-3, got shape {np.asarray(SOLVE_LEVER).shape}"
+    )
+
+if GEN_GPS_GRID is not None and np.asarray(GEN_GPS_GRID).shape != (4, 3):
+    raise ValueError(
+        f"GEN_GPS_GRID must be shape (4,3), got {np.asarray(GEN_GPS_GRID).shape}"
+    )
+if SOLVE_GPS_GRID is not None and np.asarray(SOLVE_GPS_GRID).shape != (4, 3):
+    raise ValueError(
+        f"SOLVE_GPS_GRID must be shape (4,3), got {np.asarray(SOLVE_GPS_GRID).shape}"
+    )
+
+# -----------------------------------------------------------------------------
+# Default to values if None (after checks)
+# -----------------------------------------------------------------------------
+if GEN_LEVER is None:
+    GEN_LEVER = DEFAULT_SYNTHETIC_LEVER
+if SOLVE_LEVER is None:
+    SOLVE_LEVER = DEFAULT_REAL_LEVER if DATA_TYPE == "real" else DEFAULT_SYNTHETIC_LEVER
+if GEN_GPS_GRID is None:
+    GEN_GPS_GRID = DEFAULT_GPS_GRID
+if SOLVE_GPS_GRID is None:
+    SOLVE_GPS_GRID = DEFAULT_GPS_GRID
+
+# =============================================================================
+# RESULT TYPE
+# =============================================================================
 
 
 @dataclass
 class InversionResult:
-    """Normalized output from the solver pipeline.
-
-    position : np.ndarray of shape (3,)
-    time_bias : Optional[float]  # seconds; None if not estimated
-    esv_bias : Optional[float]   # m/s; None if not estimated
-    offset : float               # scalar offset returned by solvers
-    """
+    """Normalized output from the solver pipeline."""
 
     position: np.ndarray
     lever: np.ndarray
@@ -137,142 +137,94 @@ class InversionResult:
     offset: float
 
 
-# ---------------------------------------------------------------------------
-# Structured containers used throughout the workflow
+# =============================================================================
+# TOP-LEVEL RUN SEQUENCE
+# =============================================================================
 
 
-@dataclass
-class Geometry:
-    """Geometric relationship between GPS receivers and the transponder."""
+def run() -> InversionResult:
+    """Execute the configured inversion workflow."""
+    _configure_logging()
+    _log_configuration_summary()
 
-    gps1_to_others: np.ndarray
-    gps1_to_transponder: np.ndarray
-
-
-@dataclass
-class SolverSetup:
-    """Configuration for the inversion stage."""
-
-    initial_position: np.ndarray
-    offset: float
-    geometry: Geometry
-    time_bias: Optional[float] = None
-    esv_bias: Optional[float] = None
-
-
-@dataclass
-class WorkflowData:
-    """Bundle of DOG/GPS observations passed through the workflow."""
-
-    cdog_clock: np.ndarray
-    cdog_reference: np.ndarray
-    gps_coordinates: np.ndarray
-    gps_time: np.ndarray
-    transponder_coordinates: np.ndarray
-
-    @classmethod
-    def from_tuple(cls, data: "WorkflowData | tuple") -> "WorkflowData":
-        """Coerce tuples returned by legacy helpers into ``WorkflowData``."""
-
-        if isinstance(data, cls):
-            return data
-        cdog_clock, cdog_reference, gps_coordinates, gps_time, transponder = data
-        return cls(
-            cdog_clock=np.asarray(cdog_clock, dtype=float),
-            cdog_reference=np.asarray(cdog_reference, dtype=float),
-            gps_coordinates=np.asarray(gps_coordinates, dtype=float),
-            gps_time=np.asarray(gps_time, dtype=float),
-            transponder_coordinates=np.asarray(transponder, dtype=float),
+    # Prepare data (synthetic vs real)
+    if DATA_TYPE == "synthetic":
+        dz_gen, angle_gen, esv_gen = load_esv_table(GEN_ESV_TABLE)
+        dataset = generate_synthetic(
+            dz_gen, angle_gen, esv_gen, GEN_GPS_GRID, GEN_LEVER
         )
-
-
-# ---------------------------------------------------------------------------
-# Utilities
-
-
-def _parse_vector3(val: Optional[str]) -> Optional[np.ndarray]:
-    """Parse a 3-vector from 'x,y,z' or a .npy path. Returns None if val is falsy."""
-    if not val:
-        return None
-    p = Path(val)
-    if p.suffix == ".npy" and p.exists():
-        arr = np.load(p)
-        arr = np.asarray(arr, dtype=float).reshape(-1)
-        if arr.size != 3:
-            raise ValueError(
-                f"Expected 3 elements in vector file '{val}', got {arr.size}"
-            )
-        return arr.astype(float)
-    parts = [s for s in val.split(",") if s.strip() != ""]
-    if len(parts) != 3:
-        raise ValueError(f"Expected 'x,y,z' with 3 numbers, got {val!r}")
-    return np.array(list(map(float, parts)), dtype=float)
-
-
-def _parse_grid4x3(val: Optional[str]) -> Optional[np.ndarray]:
-    """Parse a (4,3) GPS grid from 12 comma-separated numbers (row-major) or a .
-    npy path."""
-    if not val:
-        return None
-    p = Path(val)
-    if p.suffix == ".npy" and p.exists():
-        arr = np.load(p).astype(float)
-        arr = np.asarray(arr)
-        if arr.shape != (4, 3):
-            raise ValueError(
-                f"Expected grid of shape (4,3) in '{val}', got {arr.shape}"
-            )
-        return arr
-    parts = [s for s in val.split(",") if s.strip() != ""]
-    if len(parts) != 12:
-        raise ValueError(
-            f"Expected 12 numbers for a 4x3 grid, got {len(parts)}: {val!r}"
-        )
-    return np.array(list(map(float, parts)), dtype=float).reshape(4, 3)
-
-
-def _resolve_vector3(value: Optional[np.ndarray], default: np.ndarray) -> np.ndarray:
-    """Return a copy of ``value`` if provided, otherwise the default vector."""
-
-    if value is None:
-        return np.array(default, dtype=float, copy=True)
-    arr = np.asarray(value, dtype=float).reshape(-1)
-    if arr.size != 3:
-        raise ValueError(
-            f"Expected vector of length 3, received shape {np.asarray(value).shape}"
-        )
-    return np.array(arr, dtype=float, copy=True)
-
-
-def _resolve_grid(value: Optional[np.ndarray], default: np.ndarray) -> np.ndarray:
-    """Return a copy of ``value`` (shape ``(4,3)``) or the provided default."""
-
-    if value is None:
-        arr = np.array(default, dtype=float, copy=True)
+        logger.info("Synthetic data generated.")
+    elif DATA_TYPE == "real":
+        dataset = load_real_data()
+        logger.info("Real data loaded.")
     else:
-        arr = np.asarray(value, dtype=float)
-    if arr.shape != (4, 3):
-        raise ValueError(f"Expected grid of shape (4,3), received {arr.shape}")
-    return np.array(arr, dtype=float, copy=True)
+        raise ValueError("DATA_TYPE must be 'synthetic' or 'real'")
 
-
-def resolve_generation_geometry(args: argparse.Namespace) -> Geometry:
-    """Resolve geometry used when synthesising data."""
-
-    gps_grid = _resolve_grid(args.gen_gps_grid, DEFAULT_GPS_GRID)
-    lever = _resolve_vector3(args.gen_lever, DEFAULT_SYNTHETIC_LEVER)
-    return Geometry(gps_grid, lever)
-
-
-def resolve_solver_geometry(args: argparse.Namespace) -> Geometry:
-    """Resolve geometry used during the inversion stage."""
-
-    default_lever = (
-        DEFAULT_REAL_LEVER if args.data_type == "real" else DEFAULT_SYNTHETIC_LEVER
+    # Run inversion
+    dz_inv, angle_inv, esv_inv = load_esv_table(SOLVE_ESV_TABLE)
+    res = run_inversion(
+        dataset, SOLVE_GPS_GRID, SOLVE_LEVER, dz_inv, angle_inv, esv_inv
     )
-    gps_grid = _resolve_grid(args.solve_gps_grid, DEFAULT_GPS_GRID)
-    lever = _resolve_vector3(args.solve_lever, default_lever)
-    return Geometry(gps_grid, lever)
+
+    # Report quality (if synthetic)
+    if DATA_TYPE == "synthetic":
+        _report_quality_synthetic(dataset, SOLVE_GPS_GRID, res, GEN_LEVER)
+
+    # Save
+    if SAVE_OUTPUT:
+        out_path = gps_output_path(f"{OUTPUT_NAME}.npz")
+        np.savez(
+            out_path,
+            estimate=res.position,
+            lever=res.lever,
+            offset=res.offset,
+            time_bias=res.time_bias if res.time_bias is not None else np.nan,
+            esv_bias=res.esv_bias if res.esv_bias is not None else np.nan,
+        )
+        print("Saved output to", out_path)
+
+    return res
+
+
+# =============================================================================
+# UTILITIES & HELPERS
+# =============================================================================
+
+
+def _configure_logging() -> None:
+    if not logging.getLogger().handlers:
+        logging.basicConfig(level=LOG_LEVEL, format="[%(levelname)s] %(message)s")
+    else:
+        logging.getLogger().setLevel(LOG_LEVEL)
+
+
+def _arrfmt(a) -> str:
+    """Compact array format for logs."""
+    return np.array2string(
+        np.asarray(a), precision=4, suppress_small=True, separator=", "
+    )
+
+
+def _log_configuration_summary() -> None:
+    print("\n")
+    print("====== Program start ======")
+    logger.info(
+        "Config: DATA_TYPE=%s  TRAJECTORY=%s  N_SAMPLES=%d  DOG_NUM=%d",
+        DATA_TYPE,
+        TRAJECTORY,
+        N_SAMPLES,
+        DOG_NUM,
+    )
+    logger.info(
+        "Inversion: GN=%s  alignment=%s  annealing=%s(iter=%d)",
+        GAUSS_NEWTON,
+        ALIGNMENT,
+        ANNEALING,
+        ANNEAL_ITER,
+    )
+
+
+# ----------------------------- Data loading ------------------------------- #
 
 
 def load_esv_table(name: str):
@@ -290,79 +242,82 @@ def load_esv_table(name: str):
     return dz_array, angle_array, esv_matrix
 
 
-def generate_synthetic(
-    args: argparse.Namespace, dz, angle, esv, geometry: Geometry
-) -> WorkflowData:
-    """Generate a synthetic trajectory according to command line options."""
+def generate_synthetic(dz, angle, esv, gps_grid: np.ndarray, lever: np.ndarray):
+    """Generate a synthetic trajectory according to configured options.
 
-    logger.info("Generating synthetic data with:")
+    Returns a 5-tuple:
+        (cdog_clock, cdog_reference, gps_coordinates, gps_time, transponder_coordinates)
+    """
+    print("\n")
+    print("====== Generating Synthetic ======")
     logger.info(
-        "  trajectory=%s  n_samples=%d  time_noise=%.6g  position_noise=%.6g",
-        args.trajectory,
-        args.n_samples,
-        args.time_noise,
-        args.position_noise,
+        "trajectory = %s  n_samples = %d  time_noise = %.6g  position_noise = %.6g",
+        TRAJECTORY,
+        N_SAMPLES,
+        TIME_NOISE,
+        POSITION_NOISE,
     )
     logger.info(
-        "  gen_offset=%.6g  gen_esv_bias=%.6g  gen_time_bias=%.6g",
-        args.gen_offset,
-        args.gen_esv_bias,
-        args.gen_time_bias,
+        "gen_offset = %.6g  gen_esv_bias = %.6g  gen_time_bias = %.6g",
+        GEN_OFFSET,
+        GEN_ESV_BIAS,
+        GEN_TIME_BIAS,
     )
-    logger.info("  gen_esv_table=%s", getattr(args, "gen_esv_table", "N/A"))
-    logger.info("  gps geometry=%s", _arrfmt(geometry.gps1_to_others))
-    logger.info("  lever used=%s", _arrfmt(geometry.gps1_to_transponder))
-    logger.info(
-        "  ESV table arrays: dz[%d], angle[%d], esv%s",
-        np.size(dz),
-        np.size(angle),
-        " (matrix)" if hasattr(esv, "shape") else "",
-    )
+    logger.info("gen_esv_table = %s", GEN_ESV_TABLE)
+    logger.info("gen_gps_grid = %s", _arrfmt(gps_grid))
+    logger.info("gen_lever = %s", _arrfmt(lever))
 
-    if args.trajectory == "bermuda":
-        dataset = bermuda_trajectory(
-            args.time_noise,
-            args.position_noise,
-            args.gen_esv_bias,
-            args.gen_time_bias,
-            dz,
-            angle,
-            esv,
-            offset=args.gen_offset,
-            gps1_to_others=geometry.gps1_to_others,
-            gps1_to_transponder=geometry.gps1_to_transponder,
-            DOG_num=args.dog_num,
+    if TRAJECTORY == "bermuda":
+        cdog_clock, cdog_reference, gps_coordinates, gps_time, transponder = (
+            bermuda_trajectory(
+                TIME_NOISE,
+                POSITION_NOISE,
+                GEN_ESV_BIAS,
+                GEN_TIME_BIAS,
+                dz,
+                angle,
+                esv,
+                offset=GEN_OFFSET,
+                gps1_to_others=gps_grid,
+                gps1_to_transponder=lever,
+                DOG_num=DOG_NUM,
+            )
         )
     else:
-        dataset = generateUnaligned(
-            args.n_samples,
-            args.time_noise,
-            args.position_noise,
-            args.gen_offset,
-            args.gen_esv_bias,
-            args.gen_time_bias,
-            dz,
-            angle,
-            esv,
-            gps1_to_others=geometry.gps1_to_others,
-            gps1_to_transponder=geometry.gps1_to_transponder,
-            trajectory=args.trajectory,
+        cdog_clock, cdog_reference, gps_coordinates, gps_time, transponder = (
+            generateUnaligned(
+                N_SAMPLES,
+                TIME_NOISE,
+                POSITION_NOISE,
+                GEN_OFFSET,
+                GEN_ESV_BIAS,
+                GEN_TIME_BIAS,
+                dz,
+                angle,
+                esv,
+                gps1_to_others=gps_grid,
+                gps1_to_transponder=lever,
+                trajectory=TRAJECTORY,
+            )
         )
 
-    workflow = WorkflowData.from_tuple(dataset)
     logger.info(
-        "Generated synthetic dataset: CDOG_clock=%s GPS_time=%s",
-        workflow.cdog_clock.shape,
-        workflow.gps_time.shape,
+        "Generated synthetic dataset with sizes: CDOG_clock = %s GPS_time = %s",
+        np.asarray(cdog_clock).shape,
+        np.asarray(gps_time).shape,
     )
-    return workflow
+    logger.info("Generated CDOG location = %s", _arrfmt(cdog_reference))
+    return (cdog_clock, cdog_reference, gps_coordinates, gps_time, transponder)
 
 
-def load_real_data(args: argparse.Namespace) -> WorkflowData:
-    """Load processed real GPS/DOG data from disk."""
+def load_real_data():
+    """Load processed real GPS/DOG data from disk.
 
-    logger.info("Loading real data for DOG %d", args.dog_num)
-    path = gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{args.dog_num}.npz")
+    Returns a 5-tuple:
+        (cdog_clock, cdog_reference, gps_coordinates, gps_time, transponder_coordinates)
+    """
+    logger.info("Loading real data for DOG %d", DOG_NUM)
+    path = gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_NUM}.npz")
     data = np.load(path)
     gps_coordinates = data["GPS_Coordinates"].astype(float)
     gps_time = data["GPS_data"].astype(float)
@@ -373,34 +328,30 @@ def load_real_data(args: argparse.Namespace) -> WorkflowData:
     transponder = np.zeros_like(gps_coordinates[:, 0, :])
     logger.info("Loaded real data from %s", path)
     logger.info(
-        "  GPS_Coordinates shape=%s  GPS_time shape=%s",
+        "GPS_Coordinates shape = %s  GPS_time shape = %s",
         gps_coordinates.shape,
         gps_time.shape,
     )
     logger.info(
-        "  CDOG_clock shape=%s  CDOG_guess=%s", cdog_clock.shape, _arrfmt(cdog_guess)
+        "CDOG_clock shape = %s  CDOG_guess = %s", cdog_clock.shape, _arrfmt(cdog_guess)
     )
-    return WorkflowData(
-        cdog_clock=cdog_clock,
-        cdog_reference=cdog_guess,
-        gps_coordinates=gps_coordinates,
-        gps_time=gps_time,
-        transponder_coordinates=transponder,
-    )
+    return (cdog_clock, cdog_guess, gps_coordinates, gps_time, transponder)
 
 
-def choose_inversion_functions(args: argparse.Namespace):
-    """Select inversion callables based on user options."""
+# ------------------------------ Solver choice ----------------------------- #
+
+
+def choose_inversion_functions():
+    """Select inversion callables based on configured options."""
     funcs: dict[str, object] = {}
     logger.info(
         "Choosing inversion functions: gauss_newton=%s, alignment=%s, annealing=%s",
-        args.gauss_newton,
-        bool(args.alignment),
-        bool(args.annealing),
+        GAUSS_NEWTON,
+        bool(ALIGNMENT),
+        bool(ANNEALING),
     )
 
-    # Alignment + Gauss–Newton (unbiased or biased)
-    if args.gauss_newton == "biased":
+    if GAUSS_NEWTON == "biased":
         from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
             initial_bias_geiger,
             transition_bias_geiger,
@@ -412,7 +363,7 @@ def choose_inversion_functions(args: argparse.Namespace):
             transition_bias_geiger,
             final_bias_geiger,
         )
-        if args.annealing:
+        if ANNEALING:
             from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
                 simulated_annealing_bias,
             )
@@ -423,7 +374,7 @@ def choose_inversion_functions(args: argparse.Namespace):
             "annealing" in funcs,
         )
 
-    elif args.gauss_newton == "unbiased":
+    elif GAUSS_NEWTON == "unbiased":
         from Inversion_Workflow.Inversion.Numba_xAline_Geiger import (
             initial_geiger,
             transition_geiger,
@@ -431,7 +382,7 @@ def choose_inversion_functions(args: argparse.Namespace):
         )
 
         funcs["gauss_newton"] = (initial_geiger, transition_geiger, final_geiger)
-        if args.annealing:
+        if ANNEALING:
             from Inversion_Workflow.Inversion.Numba_xAline_Annealing import (
                 simulated_annealing,
             )
@@ -442,7 +393,7 @@ def choose_inversion_functions(args: argparse.Namespace):
             "annealing" in funcs,
         )
 
-    elif args.annealing:
+    elif ANNEALING:
         # Simulated annealing without Gauss–Newton (rare but allowed)
         from Inversion_Workflow.Inversion.Numba_xAline_Annealing import (
             simulated_annealing,
@@ -463,34 +414,18 @@ def solve_pipeline(steps, state):
 
 
 def _build_solver_steps(
-    args: argparse.Namespace,
     funcs: dict,
-    data: WorkflowData,
-    setup: SolverSetup,
+    cdog_clock: np.ndarray,
+    gps_time: np.ndarray,
+    gps_coordinates: np.ndarray,
+    gps1_to_others: np.ndarray,
     dz_array,
     angle_array,
     esv_matrix,
 ):
-    """Create a list of step functions that operate on a shared state dict.
-
-    The state dict keys used/updated are: 'initial_guess', 'position', 'offset',
-    'time_bias', 'esv_bias', 'lever', 'transponder_est'.
-    """
+    """Create a list of step functions that operate on a shared state dict."""
     steps = []
-
-    cdog_clock = data.cdog_clock
-    gps_time = data.gps_time
-    gps_coordinates = data.gps_coordinates
-    gps1_to_others = setup.geometry.gps1_to_others
-
     logger.info("Building solver steps...")
-    logger.info("  GPS grid (gps1_to_others): %s", _arrfmt(gps1_to_others))
-    logger.info(
-        "  dz size=%d  angle size=%d  esv_matrix shape=%s",
-        np.size(dz_array),
-        np.size(angle_array),
-        getattr(esv_matrix, "shape", None),
-    )
 
     if "annealing" in funcs:
         anneal = funcs["annealing"]
@@ -498,11 +433,11 @@ def _build_solver_steps(
         def step_anneal(state):
             logger.info(
                 "[STEP] Annealing: start (iter=%d, real_data=%s)",
-                args.anneal_iter,
-                args.data_type == "real",
+                ANNEAL_ITER,
+                DATA_TYPE == "real",
             )
             lever_guess, offset, result = anneal(
-                args.anneal_iter,
+                ANNEAL_ITER,
                 cdog_clock,
                 gps_time,
                 gps_coordinates,
@@ -513,7 +448,7 @@ def _build_solver_steps(
                 angle_array,
                 esv_matrix,
                 initial_offset=state["offset"],
-                real_data=args.data_type == "real",
+                real_data=DATA_TYPE == "real",
             )
             state["lever"] = np.asarray(lever_guess, dtype=float)
             state["offset"] = float(offset)
@@ -547,8 +482,7 @@ def _build_solver_steps(
 
         def step_initial(state):
             logger.info(
-                "[STEP] Gauss–Newton initial: start (real_data=%s)",
-                args.data_type == "real",
+                "[STEP] Gauss–Newton initial: start (real_data=%s)", DATA_TYPE == "real"
             )
             result, off = initial_fn(
                 state["initial_guess"],
@@ -558,7 +492,7 @@ def _build_solver_steps(
                 dz_array,
                 angle_array,
                 esv_matrix,
-                real_data=args.data_type == "real",
+                real_data=DATA_TYPE == "real",
             )
             arr = np.asarray(result, dtype=float)
             state["position"] = arr[:3]
@@ -578,7 +512,7 @@ def _build_solver_steps(
 
         steps.append(step_initial)
 
-        if args.alignment:
+        if ALIGNMENT:
 
             def step_transition(state):
                 logger.info(
@@ -601,7 +535,7 @@ def _build_solver_steps(
                         dz_array,
                         angle_array,
                         esv_matrix,
-                        real_data=args.data_type == "real",
+                        real_data=DATA_TYPE == "real",
                     )
                     arr = np.asarray(result, dtype=float)
                     state["position"] = arr[:3]
@@ -618,7 +552,7 @@ def _build_solver_steps(
                         dz_array,
                         angle_array,
                         esv_matrix,
-                        real_data=args.data_type == "real",
+                        real_data=DATA_TYPE == "real",
                     )
                     state["position"] = np.asarray(result, dtype=float)
                     state["offset"] = float(off)
@@ -652,7 +586,7 @@ def _build_solver_steps(
                         dz_array,
                         angle_array,
                         esv_matrix,
-                        real_data=args.data_type == "real",
+                        real_data=DATA_TYPE == "real",
                     )
                     arr = np.asarray(result, dtype=float)
                     state["position"] = arr[:3]
@@ -668,7 +602,7 @@ def _build_solver_steps(
                         dz_array,
                         angle_array,
                         esv_matrix,
-                        real_data=args.data_type == "real",
+                        real_data=DATA_TYPE == "real",
                     )
                     state["position"] = np.asarray(result, dtype=float)
                 logger.info(
@@ -682,82 +616,73 @@ def _build_solver_steps(
 
 
 def run_inversion(
-    args: argparse.Namespace,
-    data,
-    geometry: Geometry,
+    dataset,
+    solve_gps_grid: np.ndarray,
+    solve_lever: np.ndarray,
     dz_array,
     angle_array,
     esv_matrix,
-):
-    """Execute the selected inversion workflow."""
+) -> InversionResult:
+    """Execute the selected inversion workflow.
 
-    workflow = WorkflowData.from_tuple(data)
+    `data` is a 5-tuple:
+      (cdog_clock, cdog_reference, gps_coordinates, gps_time, transponder_coordinates)
+    """
+    cdog_clock, cdog_reference, gps_coordinates, gps_time, transponder = dataset
 
-    logger.info("==== Inversion setup ====")
-    logger.info("data_type=%s", args.data_type)
-    logger.info("Initial CDOG reference: %s", _arrfmt(workflow.cdog_reference))
-    logger.info("Default/initial DOG offset: %s", _arrfmt(DEFAULT_INITIAL_DOG_OFFSET))
-    logger.info("Using GPS grid (solve): %s", _arrfmt(geometry.gps1_to_others))
-    logger.info("Using lever guess (solve): %s", _arrfmt(geometry.gps1_to_transponder))
+    print("\n")
+    print("====== Inversion Setup ======")
+    logger.info("data_type = %s", DATA_TYPE)
+    logger.info("inversion_esv_table = %s", SOLVE_ESV_TABLE)
+    logger.info("inversion_gps_grid = %s", _arrfmt(solve_gps_grid))
+    logger.info("inversion_CDOG_offset = %s", _arrfmt(DEFAULT_INITIAL_DOG_OFFSET))
 
-    if args.solve_cdog_init is not None:
-        initial_guess = np.asarray(args.solve_cdog_init, dtype=float).reshape(-1)
-    else:
-        initial_guess = (
-            np.asarray(workflow.cdog_reference, dtype=float).reshape(-1)
-            + DEFAULT_INITIAL_DOG_OFFSET
-        )
-    logger.info("Using initial DOG position guess: %s", _arrfmt(initial_guess))
-
-    offset = float(args.solve_offset)
-    logger.info("Initial scalar offset: %.6g", offset)
-
-    solver_geometry = Geometry(
-        np.array(geometry.gps1_to_others, dtype=float, copy=True),
-        np.array(geometry.gps1_to_transponder, dtype=float, copy=True),
-    )
-
-    transponder_est = findTransponder(
-        workflow.gps_coordinates,
-        solver_geometry.gps1_to_others,
-        solver_geometry.gps1_to_transponder,
+    print("\n")
+    print("====== Initial Values ======")
+    initial_guess = (
+        np.asarray(cdog_reference, dtype=float).reshape(-1) + DEFAULT_INITIAL_DOG_OFFSET
     )
     logger.info(
-        "Transponder estimate from lever & GPS grid: %s", _arrfmt(transponder_est)
+        "initial_offset = %.6g  initial_esv_bias = %.6g  initial_time_bias = %.6g",
+        SOLVE_OFFSET,
+        SOLVE_ESV_BIAS,
+        SOLVE_TIME_BIAS,
+    )
+    logger.info("initial_CDOG_guess = %s", _arrfmt(initial_guess))
+    logger.info("initial_lever = %s", _arrfmt(solve_lever))
+
+    offset = float(SOLVE_OFFSET)
+
+    transponder_est = findTransponder(
+        gps_coordinates,
+        solve_gps_grid,
+        solve_lever,
     )
 
-    time_bias_guess = (
-        float(args.solve_time_bias) if args.gauss_newton == "biased" else None
-    )
-    esv_bias_guess = (
-        float(args.solve_esv_bias) if args.gauss_newton == "biased" else None
-    )
+    time_bias_guess = float(SOLVE_TIME_BIAS) if GAUSS_NEWTON == "biased" else None
+    esv_bias_guess = float(SOLVE_ESV_BIAS) if GAUSS_NEWTON == "biased" else None
 
-    setup = SolverSetup(
-        initial_position=np.array(initial_guess, dtype=float, copy=True),
-        offset=offset,
-        geometry=solver_geometry,
-        time_bias=time_bias_guess,
-        esv_bias=esv_bias_guess,
-    )
+    print("\n")
+    print("====== Inversion Start ======")
 
-    funcs = choose_inversion_functions(args)
+    funcs = choose_inversion_functions()
 
     state = {
-        "initial_guess": setup.initial_position.copy(),
+        "initial_guess": initial_guess,
         "position": None,
-        "offset": setup.offset,
-        "time_bias": setup.time_bias,
-        "esv_bias": setup.esv_bias,
-        "lever": setup.geometry.gps1_to_transponder.copy(),
+        "offset": offset,
+        "time_bias": time_bias_guess,
+        "esv_bias": esv_bias_guess,
+        "lever": solve_lever,
         "transponder_est": transponder_est,
     }
 
     steps = _build_solver_steps(
-        args,
         funcs,
-        workflow,
-        setup,
+        cdog_clock,
+        gps_time,
+        gps_coordinates,
+        solve_gps_grid,
         dz_array,
         angle_array,
         esv_matrix,
@@ -768,7 +693,8 @@ def run_inversion(
     if state["position"] is None:
         state["position"] = np.asarray(state["initial_guess"], dtype=float)[:3]
 
-    logger.info("==== Inversion complete ====")
+    print("\n")
+    print("====== Inversion complete ======")
     logger.info(
         "Final position=%s  lever=%s  offset=%.6g",
         _arrfmt(state["position"]),
@@ -790,379 +716,75 @@ def run_inversion(
     )
 
 
-# ---------------------------------------------------------------------------
-# Command line interface
+# ---------------------------- Quality reporting --------------------------- #
 
 
-def build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=__doc__)
+def _report_quality_synthetic(
+    dataset_tuple,
+    solve_gps_grid: np.ndarray,
+    res: InversionResult,
+    gen_lever_used: np.ndarray,
+) -> None:
+    (
+        cdog_clock,
+        cdog_reference,
+        gps_coordinates,
+        gps_time,
+        transponder_coordinates,
+    ) = dataset_tuple
 
-    # Data/trajectory options
-    parser.add_argument(
-        "--data-type",
-        choices=["synthetic", "real"],
-        default="synthetic",
-        help="Use synthetic or real data",
-    )
-    parser.add_argument(
-        "--trajectory",
-        default="realistic",
-        choices=["realistic", "random", "line", "cross", "bermuda"],
-        help="Synthetic trajectory type",
-    )
-    parser.add_argument(
-        "--n-samples",
-        type=int,
-        default=20000,
-        help="Number of samples when generating synthetic data",
-    )
-    parser.add_argument(
-        "--dog-num",
-        type=int,
-        default=3,
-        help="DOG data set number when using real data",
-    )
+    cdog_ref = np.asarray(cdog_reference, dtype=float)[:3]
+    pos_err_vec = np.asarray(res.position, dtype=float) - cdog_ref
+    pos_err_norm = float(np.linalg.norm(pos_err_vec))
 
-    # Noise (generation)
-    parser.add_argument("--time-noise", type=float, default=0.0)
-    parser.add_argument("--position-noise", type=float, default=0.0)
+    lever_err_vec = np.asarray(res.lever, dtype=float) - np.asarray(
+        gen_lever_used, dtype=float
+    )
+    lever_err_norm = float(np.linalg.norm(lever_err_vec))
 
-    # -------------------- NEW: GENERATION ARGUMENTS --------------------
-    parser.add_argument(
-        "--gen-lever",
-        type=str,
-        default=None,
-        help="Transponder lever (x,y,z) RELATIVE TO GPS1 used in data generation, "
-        "or path to .npy with shape (3,). Currently not passed to generator.",
+    transponder_est_m = findTransponder(
+        gps_coordinates,
+        solve_gps_grid,
+        res.lever,
     )
-    parser.add_argument(
-        "--gen-gps-grid",
-        type=str,
-        default=None,
-        help="Generation GPS grid (4x3) as 12 comma-separated numbers or path to .npy "
-        "with shape (4,3). Currently not passed to generator.",
+    transp_err_vec = np.asarray(transponder_est_m, dtype=float) - np.asarray(
+        transponder_coordinates, dtype=float
     )
-    parser.add_argument(
-        "--gen-offset",
-        type=float,
-        default=0.0,
-        help="Scalar offset used when generating synthetic data.",
-    )
-    parser.add_argument(
-        "--gen-cdog",
-        type=str,
-        default=None,
-        help="CDOG base location (x,y,z) for generation, or .npy path. Currently not "
-        "plumbed into the generator.",
-    )
-    parser.add_argument(
-        "--gen-esv-bias",
-        type=float,
-        default=0.0,
-        help="ESV bias used in synthetic data generation.",
-    )
-    parser.add_argument(
-        "--gen-time-bias",
-        type=float,
-        default=0.0,
-        help="Time bias used in synthetic data generation.",
-    )
-    # -------------------------------------------------------------------
+    transp_err_norm = float(np.linalg.norm(transp_err_vec))
 
-    # -------------------- NEW: SOLVING ARGUMENTS -----------------------
-    parser.add_argument(
-        "--solve-lever",
-        type=str,
-        default=None,
-        help="Initial lever guess (x,y,z) RELATIVE TO GPS1 for solving, or .npy path.",
+    time_bias_err = (
+        None if res.time_bias is None else float(res.time_bias - float(GEN_TIME_BIAS))
     )
-    parser.add_argument(
-        "--solve-gps-grid",
-        type=str,
-        default=None,
-        help="Solving GPS grid (4x3) as 12 comma-separated numbers or path to .npy "
-        "with shape (4,3). Overrides the default hardcoded grid.",
-    )
-    parser.add_argument(
-        "--solve-offset",
-        type=float,
-        default=0.0,
-        help="Initial scalar offset for solver (annealing/GN).",
-    )
-    parser.add_argument(
-        "--solve-cdog-init",
-        type=str,
-        default=None,
-        help="Initial DOG location guess (x,y,z) or .npy path. If omitted, "
-        "uses CDOG + [100,100,200].",
-    )
-    parser.add_argument(
-        "--solve-esv-bias",
-        type=float,
-        default=0.0,
-        help="Initial ESV bias guess for solving (used only if the solver "
-        "path supports it).",
-    )
-    parser.add_argument(
-        "--solve-time-bias",
-        type=float,
-        default=0.0,
-        help="Initial time bias guess for solving (used only if the solver "
-        "path supports it).",
-    )
-    # -------------------------------------------------------------------
-
-    # Inversion choices
-    parser.add_argument(
-        "--gauss-newton",
-        choices=["none", "biased", "unbiased"],
-        default="unbiased",
-        help="Type of Gauss–Newton solver to apply",
-    )
-    parser.add_argument(
-        "--alignment", action="store_true", help="Apply alignment steps"
-    )
-    parser.add_argument(
-        "--annealing", action="store_true", help="Use simulated annealing"
-    )
-    parser.add_argument(
-        "--anneal-iter", type=int, default=1000, help="Iterations for annealing"
+    esv_bias_err = (
+        None if res.esv_bias is None else float(res.esv_bias - float(GEN_ESV_BIAS))
     )
 
-    # ESV table names
-    parser.add_argument(
-        "--gen-esv-table",
-        default="global_table_esv_extended",
-        help="ESV table used for synthetic generation",
-    )
-    parser.add_argument(
-        "--inv-esv-table",
-        default="global_table_esv_extended",
-        help="ESV table used during inversion",
-    )
+    offset_err = float(res.offset - float(GEN_OFFSET))
 
-    # Misc
-    parser.add_argument(
-        "--save-output",
-        action="store_true",
-        help="Save inversion result as a NumPy .npz file",
-    )
-    parser.add_argument(
-        "--output-name", default="inversion_result", help="Base name for saved output"
-    )
-
-    return parser
-
-
-def _postprocess_parsed_args(args: argparse.Namespace) -> None:
-    """Convert string CLI values into arrays where appropriate."""
-    # Generation (stored for symmetry; generator may not use yet)
-    args.gen_lever = (
-        _parse_vector3(args.gen_lever) if isinstance(args.gen_lever, str) else None
-    )
-    args.gen_gps_grid = (
-        _parse_grid4x3(args.gen_gps_grid)
-        if isinstance(args.gen_gps_grid, str)
-        else None
-    )
-    args.gen_cdog = (
-        _parse_vector3(args.gen_cdog) if isinstance(args.gen_cdog, str) else None
-    )
-
-    # Solving
-    args.solve_lever = (
-        _parse_vector3(args.solve_lever) if isinstance(args.solve_lever, str) else None
-    )
-    args.solve_gps_grid = (
-        _parse_grid4x3(args.solve_gps_grid)
-        if isinstance(args.solve_gps_grid, str)
-        else None
-    )
-    args.solve_cdog_init = (
-        _parse_vector3(args.solve_cdog_init)
-        if isinstance(args.solve_cdog_init, str)
-        else None
-    )
-
-
-def main(argv: list[str] | None = None) -> None:
-    parser = build_arg_parser()
-    args = parser.parse_args(argv)
-    _postprocess_parsed_args(args)
-    validate_args(args)
-
-    if not logging.getLogger().handlers():
-        logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
-    else:
-        logging.getLogger().setLevel(logging.INFO)
-    logger.info("==== Program start ====")
-    logger.info("Parsed CLI arguments: %s", vars(args))
-    # Show resolved array-like arguments explicitly
-    logger.info("Resolved arguments:")
+    print("\n")
+    print("====== Quality (synthetic) ======")
     logger.info(
-        "  solve_lever=%s",
-        "None" if args.solve_lever is None else _arrfmt(args.solve_lever),
+        "Position error: vec=%s  norm=%.6g m", _arrfmt(pos_err_vec), pos_err_norm
     )
     logger.info(
-        "  solve_gps_grid=%s",
-        "None" if args.solve_gps_grid is None else _arrfmt(args.solve_gps_grid),
+        "Lever error:    vec=%s  norm=%.6g m", _arrfmt(lever_err_vec), lever_err_norm
     )
     logger.info(
-        "  solve_cdog_init=%s",
-        "None" if args.solve_cdog_init is None else _arrfmt(args.solve_cdog_init),
+        "Transponder error: vec=%s  norm=%.6g m",
+        _arrfmt(transp_err_vec),
+        transp_err_norm,
     )
+    logger.info("Offset error: %.6g", offset_err)
     logger.info(
-        "  gen_lever=%s", "None" if args.gen_lever is None else _arrfmt(args.gen_lever)
-    )
-    logger.info(
-        "  gen_gps_grid=%s",
-        "None" if args.gen_gps_grid is None else _arrfmt(args.gen_gps_grid),
-    )
-    logger.info(
-        "  gen_cdog=%s", "None" if args.gen_cdog is None else _arrfmt(args.gen_cdog)
+        "Bias errors: time=%s  esv=%s",
+        "None" if time_bias_err is None else f"{time_bias_err:.6g} s",
+        "None" if esv_bias_err is None else f"{esv_bias_err:.6g} m/s",
     )
 
-    generation_geometry = resolve_generation_geometry(args)
-    solver_geometry = resolve_solver_geometry(args)
-    logger.info("  generation gps grid=%s", _arrfmt(generation_geometry.gps1_to_others))
-    logger.info(
-        "  generation lever=%s", _arrfmt(generation_geometry.gps1_to_transponder)
-    )
-    logger.info("  solver gps grid=%s", _arrfmt(solver_geometry.gps1_to_others))
-    logger.info("  solver lever=%s", _arrfmt(solver_geometry.gps1_to_transponder))
 
-    dz_inv, angle_inv, esv_inv = load_esv_table(args.inv_esv_table)
-    logger.info(
-        "Loaded inversion ESV table '%s': dz[%d], angle[%d], esv shape=%s",
-        args.inv_esv_table,
-        np.size(dz_inv),
-        np.size(angle_inv),
-        getattr(esv_inv, "shape", None),
-    )
-
-    if args.data_type == "synthetic":
-        dz_gen, angle_gen, esv_gen = load_esv_table(args.gen_esv_table)
-        dataset = generate_synthetic(
-            args, dz_gen, angle_gen, esv_gen, generation_geometry
-        )
-        logger.info("Synthetic data generated.")
-    else:
-        dataset = load_real_data(args)
-        logger.info("Real data loaded.")
-
-    res = run_inversion(args, dataset, solver_geometry, dz_inv, angle_inv, esv_inv)
-
-    pos_err_vec = None
-    pos_err_norm = 0.0
-    lever_err_vec = None
-    lever_err_norm = 0.0
-    transp_err_vec = None
-    transp_err_norm = 0.0
-    time_bias_err = None
-    esv_bias_err = None
-
-    if args.data_type == "synthetic":
-        cdog_ref = np.asarray(dataset.cdog_reference, dtype=float)[:3]
-        pos_err_vec = np.asarray(res.position, dtype=float) - cdog_ref
-        pos_err_norm = float(np.linalg.norm(pos_err_vec))
-
-        if args.gen_lever is not None:
-            lever_truth = np.asarray(
-                generation_geometry.gps1_to_transponder, dtype=float
-            )
-            lever_err_vec = np.asarray(res.lever, dtype=float) - lever_truth
-            lever_err_norm = float(np.linalg.norm(lever_err_vec))
-
-        if res.time_bias is not None:
-            time_bias_err = float(res.time_bias - float(args.gen_time_bias))
-        if res.esv_bias is not None:
-            esv_bias_err = float(res.esv_bias - float(args.gen_esv_bias))
-
-        transponder_est_m = findTransponder(
-            dataset.gps_coordinates,
-            solver_geometry.gps1_to_others,
-            res.lever,
-        )
-        transp_err_vec = np.asarray(transponder_est_m, dtype=float) - np.asarray(
-            dataset.transponder_coordinates, dtype=float
-        )
-        transp_err_norm = float(np.linalg.norm(transp_err_vec))
-
-        logger.info("==== Quality (synthetic) ====")
-        logger.info(
-            "Position error: vec=%s  norm=%.6g m", _arrfmt(pos_err_vec), pos_err_norm
-        )
-        if lever_err_vec is not None:
-            logger.info(
-                "Lever error:    vec=%s  norm=%.6g m",
-                _arrfmt(lever_err_vec),
-                lever_err_norm,
-            )
-        else:
-            logger.info("Lever error:    (no ground truth lever provided)")
-        logger.info(
-            "Transponder error: vec=%s  norm=%.6g m",
-            _arrfmt(transp_err_vec),
-            transp_err_norm,
-        )
-        logger.info(
-            "Bias errors: time=%s  esv=%s",
-            "None" if time_bias_err is None else f"{time_bias_err:.6g} s",
-            "None" if esv_bias_err is None else f"{esv_bias_err:.6g} m/s",
-        )
-
-    print("Inversion estimate:", np.round(res.position, 3))
-    print("Estimated lever:", np.round(res.lever, 3))
-    print("Estimated offset:", round(float(res.offset), 6))
-    if res.time_bias is not None or res.esv_bias is not None:
-        print("Time bias:", None if res.time_bias is None else round(res.time_bias, 6))
-        print("ESV bias:", None if res.esv_bias is None else round(res.esv_bias, 6))
-    if args.data_type == "synthetic" and pos_err_vec is not None:
-        print(
-            "Position error (m):",
-            np.round(pos_err_vec, 4),
-            " | ||e|| =",
-            round(pos_err_norm, 6),
-        )
-        if lever_err_vec is not None:
-            print(
-                "Lever error (m):   ",
-                np.round(lever_err_vec, 4),
-                " | ||e|| =",
-                round(lever_err_norm, 6),
-            )
-        print(
-            "Transponder error (m):",
-            np.round(transp_err_vec, 4),
-            " | ||e|| =",
-            round(transp_err_norm, 6),
-        )
-        if res.time_bias is not None and time_bias_err is not None:
-            print("Time bias error (s):", round(time_bias_err, 9))
-        if res.esv_bias is not None and esv_bias_err is not None:
-            print("ESV bias error (m/s):", round(esv_bias_err, 9))
-
-    logger.info(
-        "Summary: position=%s  lever=%s  offset=%.6g  time_bias=%s  esv_bias=%s",
-        _arrfmt(res.position),
-        _arrfmt(res.lever),
-        float(res.offset),
-        "None" if res.time_bias is None else f"{res.time_bias:.6g}",
-        "None" if res.esv_bias is None else f"{res.esv_bias:.6g}",
-    )
-
-    if args.save_output:
-        out_path = gps_output_path(f"{args.output_name}.npz")
-        np.savez(
-            out_path,
-            estimate=res.position,
-            lever=res.lever,
-            offset=res.offset,
-            time_bias=res.time_bias if res.time_bias is not None else np.nan,
-            esv_bias=res.esv_bias if res.esv_bias is not None else np.nan,
-        )
-        print("Saved output to", out_path)
-
+# =============================================================================
+# SCRIPT ENTRY POINT
+# =============================================================================
 
 if __name__ == "__main__":
-    main()
+    run()

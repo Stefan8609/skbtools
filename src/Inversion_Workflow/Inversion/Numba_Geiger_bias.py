@@ -5,6 +5,11 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias,
 )
 
+"""
+Function that tests a Gauss-Newton inversion including ESV and
+time bias terms. Toy box that requires knowledge of CDOG and
+actual transducer locations"""
+
 
 @njit(cache=True)
 def compute_Jacobian_biased(guess, transponder_coordinates, times, esv, esv_bias):

@@ -66,7 +66,6 @@ def generateUnaligned(
         gps1_to_transponder = np.array([-12.4659, 9.6021, -13.2993])
 
     if trajectory == "random":
-        print("Generating random trajectory")
         (
             CDOG,
             GPS_Coordinates,
@@ -75,7 +74,6 @@ def generateUnaligned(
             gps1_to_transponder,
         ) = generateRandomData(n, gps1_to_others, gps1_to_transponder)
     elif trajectory == "line":
-        print("Generating line trajectory")
         (
             CDOG,
             GPS_Coordinates,
@@ -84,7 +82,6 @@ def generateUnaligned(
             gps1_to_transponder,
         ) = generateLine(n, gps1_to_others, gps1_to_transponder)
     elif trajectory == "cross":
-        print("Generating cross trajectory")
         (
             CDOG,
             GPS_Coordinates,
@@ -93,7 +90,6 @@ def generateUnaligned(
             gps1_to_transponder,
         ) = generateCross(n, gps1_to_others, gps1_to_transponder)
     else:
-        print("Generating realistic trajectory")
         (
             CDOG,
             GPS_Coordinates,
