@@ -32,9 +32,7 @@ def test_load_real_data_path(monkeypatch):
     args = argparse.Namespace(dog_num=5)
     data = load_real_data(args)
 
-    assert captured_path["value"].endswith(
-        "GPS_Data/Processed_GPS_Receivers_DOG_5.npz"
-    )
+    assert captured_path["value"].endswith("GPS_Data/Processed_GPS_Receivers_DOG_5.npz")
     assert isinstance(data, WorkflowData)
     assert data.gps_coordinates.shape == (1, 4, 3)
     assert data.gps_time.shape == (1,)

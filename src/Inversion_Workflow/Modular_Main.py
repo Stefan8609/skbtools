@@ -567,7 +567,8 @@ def _build_solver_steps(
                 state["time_bias"] = float(arr[3])
                 state["esv_bias"] = float(arr[4])
             logger.info(
-                "[STEP] Gauss–Newton initial: position=%s  offset=%.6g  time_bias=%s  esv_bias=%s",
+                "[STEP] Gauss–Newton initial: position=%s  "
+                "offset=%.6g  time_bias=%s  esv_bias=%s",
                 _arrfmt(state["position"]),
                 state["offset"],
                 "None" if state["time_bias"] is None else f"{state['time_bias']:.6g}",
@@ -694,16 +695,10 @@ def run_inversion(
 
     logger.info("==== Inversion setup ====")
     logger.info("data_type=%s", args.data_type)
-    logger.info(
-        "Initial CDOG reference: %s", _arrfmt(workflow.cdog_reference)
-    )
-    logger.info(
-        "Default/initial DOG offset: %s", _arrfmt(DEFAULT_INITIAL_DOG_OFFSET)
-    )
+    logger.info("Initial CDOG reference: %s", _arrfmt(workflow.cdog_reference))
+    logger.info("Default/initial DOG offset: %s", _arrfmt(DEFAULT_INITIAL_DOG_OFFSET))
     logger.info("Using GPS grid (solve): %s", _arrfmt(geometry.gps1_to_others))
-    logger.info(
-        "Using lever guess (solve): %s", _arrfmt(geometry.gps1_to_transponder)
-    )
+    logger.info("Using lever guess (solve): %s", _arrfmt(geometry.gps1_to_transponder))
 
     if args.solve_cdog_init is not None:
         initial_guess = np.asarray(args.solve_cdog_init, dtype=float).reshape(-1)
@@ -1029,9 +1024,7 @@ def main(argv: list[str] | None = None) -> None:
 
     generation_geometry = resolve_generation_geometry(args)
     solver_geometry = resolve_solver_geometry(args)
-    logger.info(
-        "  generation gps grid=%s", _arrfmt(generation_geometry.gps1_to_others)
-    )
+    logger.info("  generation gps grid=%s", _arrfmt(generation_geometry.gps1_to_others))
     logger.info(
         "  generation lever=%s", _arrfmt(generation_geometry.gps1_to_transponder)
     )
