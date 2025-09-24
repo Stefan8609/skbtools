@@ -1,7 +1,11 @@
 import argparse
 import numpy as np
 
-from Inversion_Workflow.Modular_Main import build_arg_parser, load_real_data
+from Inversion_Workflow.Modular_Main import (
+    WorkflowData,
+    build_arg_parser,
+    load_real_data,
+)
 
 
 def test_parser_defaults():
@@ -28,5 +32,9 @@ def test_load_real_data_path(monkeypatch):
     args = argparse.Namespace(dog_num=5)
     data = load_real_data(args)
 
-    assert captured_path["value"].endswith("GPS_Data/Processed_GPS_Receivers_DOG_5.npz")
-    assert len(data) == 5
+    assert captured_path["value"].endswith(
+        "GPS_Data/Processed_GPS_Receivers_DOG_5.npz"
+    )
+    assert isinstance(data, WorkflowData)
+    assert data.gps_coordinates.shape == (1, 4, 3)
+    assert data.gps_time.shape == (1,)
