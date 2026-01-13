@@ -4,6 +4,7 @@ import scipy.io as sio
 from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
     bermuda_trajectory,
 )
+from Inversion_Workflow.Synthetic.Generate_Unaligned import generateUnaligned
 from Inversion_Workflow.Inversion.Numba_xAline import (
     two_pointer_index,
     find_int_offset,
@@ -22,7 +23,7 @@ from plotting.Plot_Modular import time_series_plot
 from data import gps_data_path
 
 
-@njit(cache=True, fastmath=True)
+# @njit(cache=True, fastmath=True)
 def initial_bias_geiger(
     guess,
     CDOG_data,
@@ -279,24 +280,6 @@ if __name__ == "__main__":
     time_bias = 0
     true_offset = np.random.rand() * 10000
 
-    """Either generate a realistic or use bermuda trajectory"""
-
-    (
-        CDOG_data,
-        CDOG,
-        GPS_Coordinates,
-        GPS_data,
-        true_transponder_coordinates,
-    ) = bermuda_trajectory(
-        time_noise,
-        position_noise,
-        0.0,
-        0.0,
-        dz_array,
-        angle_array,
-        esv_matrix,
-        offset=true_offset,
-    )
     gps1_to_others = np.array(
         [
             [0.0, 0.0, 0.0],
@@ -306,6 +289,51 @@ if __name__ == "__main__":
         ]
     )
     gps1_to_transponder = np.array([-12.48862757, 0.22622633, -15.89601934])
+
+    """Either generate a realistic or use bermuda trajectory"""
+    type = "unaligned"
+
+    if type == "bermuda":
+        (
+            CDOG_data,
+            CDOG,
+            GPS_Coordinates,
+            GPS_data,
+            true_transponder_coordinates,
+        ) = bermuda_trajectory(
+            time_noise,
+            position_noise,
+            esv_bias,
+            time_bias,
+            dz_array,
+            angle_array,
+            esv_matrix,
+            offset=true_offset,
+            gps1_to_others=gps1_to_others,
+            gps1_to_transponder=gps1_to_transponder,
+        )
+        real = True
+    if type == "unaligned":
+        (
+            CDOG_data,
+            CDOG,
+            GPS_Coordinates,
+            GPS_data,
+            true_transponder_coordinates,
+        ) = generateUnaligned(
+            20000,
+            time_noise,
+            position_noise,
+            true_offset,
+            esv_bias,
+            time_bias,
+            dz_array,
+            angle_array,
+            esv_matrix,
+            gps1_to_others=gps1_to_others,
+            gps1_to_transponder=gps1_to_transponder,
+        )
+        real = False
 
     print("True Offset: ", true_offset)
 
@@ -326,6 +354,7 @@ if __name__ == "__main__":
         dz_array,
         angle_array,
         esv_matrix,
+        real_data=real,
     )
     inversion_guess = inversion_result[:3]
     time_bias = inversion_result[3]
@@ -349,6 +378,7 @@ if __name__ == "__main__":
         dz_array,
         angle_array,
         esv_matrix,
+        real_data=real,
     )
     inversion_guess = inversion_result[:3]
     time_bias = inversion_result[3]
@@ -373,6 +403,7 @@ if __name__ == "__main__":
         dz_array,
         angle_array,
         esv_matrix,
+        real_data=real,
     )
     inversion_guess = inversion_result[:3]
     time_bias = inversion_result[3]

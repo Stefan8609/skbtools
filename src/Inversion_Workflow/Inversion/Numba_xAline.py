@@ -1,6 +1,5 @@
 import numpy as np
 from numba import njit
-from scipy import signal
 
 
 @njit(cache=True)
@@ -81,7 +80,7 @@ def two_pointer_index(
     if exact:
         CDOG_full = CDOG_clock - (GPS_clock - GPS_full)
     else:
-        CDOG_full = CDOG_clock + GPS_travel_times[0] - CDOG_clock[0]
+        CDOG_full = CDOG_clock + GPS_full[0] - CDOG_clock[0]
         for i in range(len(CDOG_full)):
             diff = GPS_full[i] - CDOG_full[i]
             if abs(diff) >= 0.9:
@@ -95,6 +94,86 @@ def two_pointer_index(
         transponder_coordinates_full,
         esv_full,
     )
+
+
+@njit(cache=True)
+def _coherence_score_from_pairs(CDOG_full, GPS_full):
+    """
+    score = R * sqrt(N), where
+    w = wrap(CDOG_full - GPS_full) into [-0.5, 0.5)
+    R = |mean(exp(i 2π w))|
+    """
+    N = len(CDOG_full)
+    if N == 0:
+        return -1.0  # worst possible
+
+    # Wrapped residuals in [-0.5, 0.5)
+    w = (CDOG_full - GPS_full + 0.5) % 1.0 - 0.5
+
+    # Circular mean resultant length
+    # mean(exp(i*theta)) = mean(cos)+ i mean(sin)
+    c = 0.0
+    s = 0.0
+    for i in range(N):
+        theta = 2.0 * np.pi * w[i]
+        c += np.cos(theta)
+        s += np.sin(theta)
+    c /= N
+    s /= N
+    R = np.sqrt(c * c + s * s)
+
+    return R * np.sqrt(N)  # beta=0.5
+
+
+@njit(cache=True)
+def find_int_offset(
+    offset,
+    CDOG_data,
+    GPS_data,
+    travel_times,
+    transponder_coordinates,
+    esv,
+    halfwindow=5000,
+):
+    """
+    Refine an offset estimate by maximizing coherence * sqrt(N)
+    over progressively smaller step sizes.
+    """
+    lower = offset - halfwindow
+    upper = offset + halfwindow
+    intervals = np.array([10, 1, 0.1, 0.01])
+    best_offset = offset
+    best_score = -1.0
+    for interval in intervals:
+        # scan window
+        lag = lower
+        while lag <= upper + 1e-15:
+            lag_r = np.round(lag, 8)
+
+            CDOG_full, GPS_clock, GPS_full = two_pointer_index(
+                lag_r,
+                0.5,
+                CDOG_data,
+                GPS_data,
+                travel_times,
+                transponder_coordinates,
+                esv,
+                True,
+            )[1:4]
+
+            score = _coherence_score_from_pairs(CDOG_full, GPS_full)
+
+            if score > best_score:
+                best_score = score
+                best_offset = lag_r
+
+            lag += interval
+
+        # tighten bounds for next level
+        lower = best_offset - interval
+        upper = best_offset + interval
+
+    return best_offset
 
 
 @njit(cache=True)
@@ -146,78 +225,6 @@ def find_subint_offset(
     return best_offset
 
 
-def find_int_offset(
-    CDOG_data,
-    GPS_data,
-    travel_times,
-    transponder_coordinates,
-    esv,
-    start=0,
-    best=0,
-    best_RMSE=np.inf,
-):
-    """Find the integer offset between two time series."""
-    # Set initial parameters
-    offset = start
-    err_int = 1000
-    k = 0
-    lag = np.inf
-
-    while lag != 0 and k < 10:
-        # Get indexed data according to offset
-        CDOG_full, GPS_clock, GPS_full = two_pointer_index(
-            offset, 0.5, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
-        )[1:4]
-        # Get fractional parts of the data
-        GPS_fp = np.modf(GPS_full)[0]
-        CDOG_fp = np.modf(CDOG_full)[0]
-        # Find the cross-correlation between the fractional parts of the time series
-        correlation = signal.correlate(
-            CDOG_fp - np.mean(CDOG_fp),
-            GPS_fp - np.mean(GPS_fp),
-            mode="full",
-            method="fft",
-        )
-        lags = signal.correlation_lags(len(CDOG_fp), len(GPS_fp), mode="full")
-        lag = lags[np.argmax(abs(correlation))]
-        # Adjust the offset by the optimal lag
-        offset += lag
-        k += 1
-        # Conditional check to prevent false positives
-        if offset < 0:
-            offset = err_int
-            err_int += 500
-            lag = np.inf
-
-    # Conditional check to ensure the resulting value
-    # is reasonable (and to prevent stack overflows)
-    if start > 10000:
-        print(f"Error - No true offset found: {offset}")
-        return best
-
-    # If RMSE is too high, rerun the algorithm to see if it can be improved
-    CDOG_full, GPS_clock, GPS_full = two_pointer_index(
-        offset, 0.5, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
-    )[1:4]
-    RMSE = np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100
-    if RMSE < best_RMSE:
-        best = offset
-        best_RMSE = RMSE
-    if RMSE > 10000:
-        start += 500
-        return find_int_offset(
-            CDOG_data,
-            GPS_data,
-            travel_times,
-            transponder_coordinates,
-            esv,
-            start,
-            best,
-            best_RMSE,
-        )
-    return best
-
-
 if __name__ == "__main__":
     import scipy.io as sio
     from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
@@ -228,15 +235,17 @@ if __name__ == "__main__":
     from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
     from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
         calculateTimesRayTracing_Bias_Real,
+        calculateTimesRayTracing_Bias,
     )
+    import matplotlib.pyplot as plt
 
     esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
     esv_matrix = esv_table["matrice"]
 
-    position_noise = 2 * 10**-2
-    time_noise = 2 * 10**-5
+    position_noise = 2e-2
+    time_noise = 2e-5
 
     gps1_to_others = np.array(
         [
@@ -248,10 +257,10 @@ if __name__ == "__main__":
     )
     gps1_to_transponder = np.array([-12.48862757, 0.22622633, -15.89601934])
 
-    esv_bias = 0
+    esv_bias = 3.0
     time_bias = 0
     true_offset = np.random.rand() * 10000
-    type = "unaligned"  # "bermuda" or "unaligned"
+    type = "bermuda"  # "bermuda" or "unaligned"
 
     if type == "bermuda":
         (
@@ -292,9 +301,6 @@ if __name__ == "__main__":
             gps1_to_others=gps1_to_others,
             gps1_to_transponder=gps1_to_transponder,
         )
-        GPS_Coordinates += np.random.normal(
-            0, position_noise, (len(GPS_Coordinates), 4, 3)
-        )
 
     print("True Offset: ", true_offset)
 
@@ -302,19 +308,30 @@ if __name__ == "__main__":
         GPS_Coordinates, gps1_to_others, gps1_to_transponder
     )
 
-    guess = CDOG + [0, 0, 0]
+    guess = CDOG + [100, 100, 100]
 
-    travel_times, esv = calculateTimesRayTracing_Bias_Real(
-        CDOG,
-        transponder_coordinates,
-        esv_bias,
-        dz_array,
-        angle_array,
-        esv_matrix,
-    )
+    if type == "bermuda":
+        travel_times, esv = calculateTimesRayTracing_Bias_Real(
+            CDOG,
+            transponder_coordinates,
+            esv_bias,
+            dz_array,
+            angle_array,
+            esv_matrix,
+        )
+    if type == "unaligned":
+        travel_times, esv = calculateTimesRayTracing_Bias(
+            guess,
+            transponder_coordinates,
+            esv_bias,
+            dz_array,
+            angle_array,
+            esv_matrix,
+        )
     travel_times = travel_times + time_bias
 
-    int_offset = find_int_offset(
+    coh_offset = find_int_offset(
+        true_offset,
         CDOG_data,
         GPS_data,
         travel_times,
@@ -322,6 +339,9 @@ if __name__ == "__main__":
         esv,
     )
 
+    print(coh_offset, true_offset, abs(coh_offset - true_offset))
+
+    int_offset = coh_offset
     print("Integer Offset: ", int_offset)
 
     subint_offset = find_subint_offset(
@@ -358,9 +378,6 @@ if __name__ == "__main__":
         if abs(diff) >= 0.9:
             CDOG_full[i] += np.round(diff)
     RMSE = np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100
-    print("Final RMSE (cm): ", RMSE)
-
-    import matplotlib.pyplot as plt
 
     plt.figure()
     plt.plot(CDOG_full - GPS_full)
@@ -369,3 +386,172 @@ if __name__ == "__main__":
     plt.ylabel("Time Difference (s)")
     plt.grid()
     plt.show()
+
+    # Plot metrics if desired
+    quit()
+
+    @njit()
+    def rmse_cm_for_offset(
+        offset,
+        CDOG_data,
+        GPS_data,
+        travel_times,
+        transponder_coordinates,
+        esv,
+        thresh=0.5,
+    ):
+        CDOG_full, GPS_clock, GPS_full = two_pointer_index(
+            offset,
+            thresh,
+            CDOG_data,
+            GPS_data,
+            travel_times,
+            transponder_coordinates,
+            esv,
+            True,
+        )[1:4]
+
+        if len(CDOG_full) == 0:
+            return np.nan, 0
+
+        # same integer-cycle correction you use elsewhere
+        for i in range(len(CDOG_full)):
+            diff = GPS_full[i] - CDOG_full[i]
+            if abs(diff) >= 0.9:
+                CDOG_full[i] += np.round(diff)
+
+        rmse_cm = np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100
+        return rmse_cm, len(CDOG_full)
+
+    @njit()
+    def coherence_obj_for_offset(
+        offset,
+        CDOG_data,
+        GPS_data,
+        travel_times,
+        transponder_coordinates,
+        esv,
+        thresh=0.5,
+    ):
+        """
+        Phase-coherence objective:
+        w = wrap(CDOG_full - GPS_full) into [-0.5, 0.5)
+        R = |mean(exp(i 2π w))|
+        obj = (1 - R) / sqrt(N)   (smaller is better)
+        """
+        CDOG_full, GPS_clock, GPS_full = two_pointer_index(
+            offset,
+            thresh,
+            CDOG_data,
+            GPS_data,
+            travel_times,
+            transponder_coordinates,
+            esv,
+            True,
+        )[1:4]
+
+        N = len(CDOG_full)
+        if N < 5:
+            return np.nan, N, np.nan
+
+        r = CDOG_full - GPS_full
+        w = (r + 0.5) % 1.0 - 0.5  # wrap to [-0.5, 0.5)
+        R = np.abs(np.mean(np.exp(1j * 2 * np.pi * w)))
+
+        obj = (1.0 - R) / np.sqrt(N)
+        return obj, N, R
+
+    def plot_integer_pick_metrics(
+        center_offset,
+        CDOG_data,
+        GPS_data,
+        travel_times,
+        transponder_coordinates,
+        esv,
+        half_window=50,  # seconds on either side
+        step=1.0,  # use 1.0 for integer-scale search; use 0.01 if you want fine detail
+        thresh=0.5,
+        true_offset=None,  # optional vertical line if you know it (synthetic)
+    ):
+        offsets = np.round(
+            np.arange(
+                center_offset - half_window, center_offset + half_window + step, step
+            ),
+            8,
+        )
+
+        rmse = np.empty_like(offsets, dtype=float)
+        nmatch = np.empty_like(offsets, dtype=float)
+        coh_obj = np.empty_like(offsets, dtype=float)
+        coh_R = np.empty_like(offsets, dtype=float)
+
+        for i, off in enumerate(offsets):
+            rmse[i], nmatch[i] = rmse_cm_for_offset(
+                off,
+                CDOG_data,
+                GPS_data,
+                travel_times,
+                transponder_coordinates,
+                esv,
+                thresh=thresh,
+            )
+            coh_obj[i], _, coh_R[i] = coherence_obj_for_offset(
+                off,
+                CDOG_data,
+                GPS_data,
+                travel_times,
+                transponder_coordinates,
+                esv,
+                thresh=thresh,
+            )
+
+        # pick "best" by coherence objective (robust integer picker)
+        finite = np.isfinite(coh_obj)
+        best_off = offsets[np.nanargmin(coh_obj)] if finite.any() else None
+
+        fig, axes = plt.subplots(3, 1, sharex=True, figsize=(10, 9))
+
+        axes[0].plot(offsets, rmse)
+        axes[0].set_ylabel("RMSE (cm)")
+        axes[0].grid(True)
+
+        axes[1].plot(offsets, coh_obj)
+        axes[1].set_ylabel("(1 - R) / sqrt(N)")
+        axes[1].grid(True)
+
+        axes[2].plot(offsets, nmatch)
+        axes[2].set_ylabel("N matched pairs")
+        axes[2].set_xlabel("Offset (s)")
+        axes[2].grid(True)
+
+        # annotate lines
+        if best_off is not None:
+            for ax in axes:
+                ax.axvline(best_off, linestyle="--")
+            axes[0].set_title(
+                f"Integer-pick metrics (best by coherence: {best_off:.2f} s)"
+            )
+
+        if true_offset is not None:
+            for ax in axes:
+                ax.axvline(true_offset, linestyle=":")
+            # don't overwrite title if already set
+            if best_off is None:
+                axes[0].set_title("Integer-pick metrics")
+
+        plt.tight_layout()
+        plt.show()
+
+        return offsets, rmse, coh_obj, nmatch, coh_R
+
+    plot_integer_pick_metrics(
+        true_offset,
+        CDOG_data,
+        GPS_data,
+        travel_times,
+        transponder_coordinates,
+        esv,
+        half_window=500.0,  # widen if you want
+        step=0.1,
+        thresh=0.5,
+    )
