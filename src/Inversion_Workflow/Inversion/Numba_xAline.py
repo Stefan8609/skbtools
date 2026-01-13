@@ -127,12 +127,12 @@ def _coherence_score_from_pairs(CDOG_full, GPS_full):
 
 @njit(cache=True)
 def find_int_offset(
-    offset,
     CDOG_data,
     GPS_data,
     travel_times,
     transponder_coordinates,
     esv,
+    offset=5000,
     halfwindow=5000,
 ):
     """
@@ -141,7 +141,7 @@ def find_int_offset(
     """
     lower = offset - halfwindow
     upper = offset + halfwindow
-    intervals = np.array([10, 1, 0.1, 0.01])
+    intervals = np.array([10, 1, 0.1, 0.01, 0.001])
     best_offset = offset
     best_score = -1.0
     for interval in intervals:
@@ -260,7 +260,10 @@ if __name__ == "__main__":
     esv_bias = 3.0
     time_bias = 0
     true_offset = np.random.rand() * 10000
+
+    # Options
     type = "bermuda"  # "bermuda" or "unaligned"
+    metrics_plot = True  # Whether to plot integer pick metrics
 
     if type == "bermuda":
         (
@@ -330,18 +333,14 @@ if __name__ == "__main__":
         )
     travel_times = travel_times + time_bias
 
-    coh_offset = find_int_offset(
-        true_offset,
+    int_offset = find_int_offset(
         CDOG_data,
         GPS_data,
         travel_times,
         transponder_coordinates,
         esv,
+        offset=true_offset,
     )
-
-    print(coh_offset, true_offset, abs(coh_offset - true_offset))
-
-    int_offset = coh_offset
     print("Integer Offset: ", int_offset)
 
     subint_offset = find_subint_offset(
@@ -388,170 +387,172 @@ if __name__ == "__main__":
     plt.show()
 
     # Plot metrics if desired
-    quit()
+    if metrics_plot:
 
-    @njit()
-    def rmse_cm_for_offset(
-        offset,
-        CDOG_data,
-        GPS_data,
-        travel_times,
-        transponder_coordinates,
-        esv,
-        thresh=0.5,
-    ):
-        CDOG_full, GPS_clock, GPS_full = two_pointer_index(
+        @njit()
+        def rmse_cm_for_offset(
             offset,
-            thresh,
             CDOG_data,
             GPS_data,
             travel_times,
             transponder_coordinates,
             esv,
-            True,
-        )[1:4]
+            thresh=0.5,
+        ):
+            CDOG_full, GPS_clock, GPS_full = two_pointer_index(
+                offset,
+                thresh,
+                CDOG_data,
+                GPS_data,
+                travel_times,
+                transponder_coordinates,
+                esv,
+                True,
+            )[1:4]
 
-        if len(CDOG_full) == 0:
-            return np.nan, 0
+            if len(CDOG_full) == 0:
+                return np.nan, 0
 
-        # same integer-cycle correction you use elsewhere
-        for i in range(len(CDOG_full)):
-            diff = GPS_full[i] - CDOG_full[i]
-            if abs(diff) >= 0.9:
-                CDOG_full[i] += np.round(diff)
+            # same integer-cycle correction you use elsewhere
+            for i in range(len(CDOG_full)):
+                diff = GPS_full[i] - CDOG_full[i]
+                if abs(diff) >= 0.9:
+                    CDOG_full[i] += np.round(diff)
 
-        rmse_cm = np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100
-        return rmse_cm, len(CDOG_full)
+            rmse_cm = np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100
+            return rmse_cm, len(CDOG_full)
 
-    @njit()
-    def coherence_obj_for_offset(
-        offset,
-        CDOG_data,
-        GPS_data,
-        travel_times,
-        transponder_coordinates,
-        esv,
-        thresh=0.5,
-    ):
-        """
-        Phase-coherence objective:
-        w = wrap(CDOG_full - GPS_full) into [-0.5, 0.5)
-        R = |mean(exp(i 2π w))|
-        obj = (1 - R) / sqrt(N)   (smaller is better)
-        """
-        CDOG_full, GPS_clock, GPS_full = two_pointer_index(
+        @njit()
+        def coherence_obj_for_offset(
             offset,
-            thresh,
             CDOG_data,
             GPS_data,
             travel_times,
             transponder_coordinates,
             esv,
-            True,
-        )[1:4]
+            thresh=0.5,
+        ):
+            """
+            Phase-coherence objective:
+            w = wrap(CDOG_full - GPS_full) into [-0.5, 0.5)
+            R = |mean(exp(i 2π w))|
+            obj = (1 - R) / sqrt(N)   (smaller is better)
+            """
+            CDOG_full, GPS_clock, GPS_full = two_pointer_index(
+                offset,
+                thresh,
+                CDOG_data,
+                GPS_data,
+                travel_times,
+                transponder_coordinates,
+                esv,
+                True,
+            )[1:4]
 
-        N = len(CDOG_full)
-        if N < 5:
-            return np.nan, N, np.nan
+            N = len(CDOG_full)
+            if N < 5:
+                return np.nan, N, np.nan
 
-        r = CDOG_full - GPS_full
-        w = (r + 0.5) % 1.0 - 0.5  # wrap to [-0.5, 0.5)
-        R = np.abs(np.mean(np.exp(1j * 2 * np.pi * w)))
+            r = CDOG_full - GPS_full
+            w = (r + 0.5) % 1.0 - 0.5  # wrap to [-0.5, 0.5)
+            R = np.abs(np.mean(np.exp(1j * 2 * np.pi * w)))
 
-        obj = (1.0 - R) / np.sqrt(N)
-        return obj, N, R
+            obj = (1.0 - R) / np.sqrt(N)
+            return obj, N, R
 
-    def plot_integer_pick_metrics(
-        center_offset,
-        CDOG_data,
-        GPS_data,
-        travel_times,
-        transponder_coordinates,
-        esv,
-        half_window=50,  # seconds on either side
-        step=1.0,  # use 1.0 for integer-scale search; use 0.01 if you want fine detail
-        thresh=0.5,
-        true_offset=None,  # optional vertical line if you know it (synthetic)
-    ):
-        offsets = np.round(
-            np.arange(
-                center_offset - half_window, center_offset + half_window + step, step
-            ),
-            8,
+        def plot_integer_pick_metrics(
+            center_offset,
+            CDOG_data,
+            GPS_data,
+            travel_times,
+            transponder_coordinates,
+            esv,
+            half_window=50,
+            step=1.0,
+            thresh=0.5,
+            true_offset=None,
+        ):
+            offsets = np.round(
+                np.arange(
+                    center_offset - half_window,
+                    center_offset + half_window + step,
+                    step,
+                ),
+                8,
+            )
+
+            rmse = np.empty_like(offsets, dtype=float)
+            nmatch = np.empty_like(offsets, dtype=float)
+            coh_obj = np.empty_like(offsets, dtype=float)
+            coh_R = np.empty_like(offsets, dtype=float)
+
+            for i, off in enumerate(offsets):
+                rmse[i], nmatch[i] = rmse_cm_for_offset(
+                    off,
+                    CDOG_data,
+                    GPS_data,
+                    travel_times,
+                    transponder_coordinates,
+                    esv,
+                    thresh=thresh,
+                )
+                coh_obj[i], _, coh_R[i] = coherence_obj_for_offset(
+                    off,
+                    CDOG_data,
+                    GPS_data,
+                    travel_times,
+                    transponder_coordinates,
+                    esv,
+                    thresh=thresh,
+                )
+
+            # pick "best" by coherence objective (robust integer picker)
+            finite = np.isfinite(coh_obj)
+            best_off = offsets[np.nanargmin(coh_obj)] if finite.any() else None
+
+            fig, axes = plt.subplots(3, 1, sharex=True, figsize=(10, 9))
+
+            axes[0].plot(offsets, rmse)
+            axes[0].set_ylabel("RMSE (cm)")
+            axes[0].grid(True)
+
+            axes[1].plot(offsets, coh_obj)
+            axes[1].set_ylabel("(1 - R) / sqrt(N)")
+            axes[1].grid(True)
+
+            axes[2].plot(offsets, nmatch)
+            axes[2].set_ylabel("N matched pairs")
+            axes[2].set_xlabel("Offset (s)")
+            axes[2].grid(True)
+
+            # annotate lines
+            if best_off is not None:
+                for ax in axes:
+                    ax.axvline(best_off, linestyle="--")
+                axes[0].set_title(
+                    f"Integer-pick metrics (best by coherence: {best_off:.2f} s)"
+                )
+
+            if true_offset is not None:
+                for ax in axes:
+                    ax.axvline(true_offset, linestyle=":")
+                # don't overwrite title if already set
+                if best_off is None:
+                    axes[0].set_title("Integer-pick metrics")
+
+            plt.tight_layout()
+            plt.show()
+
+            return offsets, rmse, coh_obj, nmatch, coh_R
+
+        plot_integer_pick_metrics(
+            true_offset,
+            CDOG_data,
+            GPS_data,
+            travel_times,
+            transponder_coordinates,
+            esv,
+            half_window=100.0,  # widen if you want
+            step=0.1,
+            thresh=0.5,
         )
-
-        rmse = np.empty_like(offsets, dtype=float)
-        nmatch = np.empty_like(offsets, dtype=float)
-        coh_obj = np.empty_like(offsets, dtype=float)
-        coh_R = np.empty_like(offsets, dtype=float)
-
-        for i, off in enumerate(offsets):
-            rmse[i], nmatch[i] = rmse_cm_for_offset(
-                off,
-                CDOG_data,
-                GPS_data,
-                travel_times,
-                transponder_coordinates,
-                esv,
-                thresh=thresh,
-            )
-            coh_obj[i], _, coh_R[i] = coherence_obj_for_offset(
-                off,
-                CDOG_data,
-                GPS_data,
-                travel_times,
-                transponder_coordinates,
-                esv,
-                thresh=thresh,
-            )
-
-        # pick "best" by coherence objective (robust integer picker)
-        finite = np.isfinite(coh_obj)
-        best_off = offsets[np.nanargmin(coh_obj)] if finite.any() else None
-
-        fig, axes = plt.subplots(3, 1, sharex=True, figsize=(10, 9))
-
-        axes[0].plot(offsets, rmse)
-        axes[0].set_ylabel("RMSE (cm)")
-        axes[0].grid(True)
-
-        axes[1].plot(offsets, coh_obj)
-        axes[1].set_ylabel("(1 - R) / sqrt(N)")
-        axes[1].grid(True)
-
-        axes[2].plot(offsets, nmatch)
-        axes[2].set_ylabel("N matched pairs")
-        axes[2].set_xlabel("Offset (s)")
-        axes[2].grid(True)
-
-        # annotate lines
-        if best_off is not None:
-            for ax in axes:
-                ax.axvline(best_off, linestyle="--")
-            axes[0].set_title(
-                f"Integer-pick metrics (best by coherence: {best_off:.2f} s)"
-            )
-
-        if true_offset is not None:
-            for ax in axes:
-                ax.axvline(true_offset, linestyle=":")
-            # don't overwrite title if already set
-            if best_off is None:
-                axes[0].set_title("Integer-pick metrics")
-
-        plt.tight_layout()
-        plt.show()
-
-        return offsets, rmse, coh_obj, nmatch, coh_R
-
-    plot_integer_pick_metrics(
-        true_offset,
-        CDOG_data,
-        GPS_data,
-        travel_times,
-        transponder_coordinates,
-        esv,
-        half_window=500.0,  # widen if you want
-        step=0.1,
-        thresh=0.5,
-    )

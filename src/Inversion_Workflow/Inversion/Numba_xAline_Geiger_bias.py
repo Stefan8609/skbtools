@@ -23,7 +23,7 @@ from plotting.Plot_Modular import time_series_plot
 from data import gps_data_path
 
 
-# @njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True)
 def initial_bias_geiger(
     guess,
     CDOG_data,
@@ -64,6 +64,7 @@ def initial_bias_geiger(
         offset = find_int_offset(
             CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
         )
+        print(offset, true_offset)
         (
             CDOG_clock,
             CDOG_full,
@@ -291,7 +292,7 @@ if __name__ == "__main__":
     gps1_to_transponder = np.array([-12.48862757, 0.22622633, -15.89601934])
 
     """Either generate a realistic or use bermuda trajectory"""
-    type = "unaligned"
+    type = "bermuda"
 
     if type == "bermuda":
         (
