@@ -41,6 +41,30 @@ def initial_bias_geiger(
     time_bias = 0.0
     esv_bias = 0.0
     estimate = np.array([guess[0], guess[1], guess[2], time_bias, esv_bias])
+
+    # Initial offset estimate
+    if not real_data:
+        times_guess, esv = calculateTimesRayTracing_Bias(
+            guess,
+            transponder_coordinates,
+            esv_bias,
+            dz_array,
+            angle_array,
+            esv_matrix,
+        )
+    else:
+        times_guess, esv = calculateTimesRayTracing_Bias_Real(
+            guess,
+            transponder_coordinates,
+            esv_bias,
+            dz_array,
+            angle_array,
+            esv_matrix,
+        )
+    offset = find_int_offset(
+        CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
+    )
+
     while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
         if not real_data:
@@ -61,10 +85,7 @@ def initial_bias_geiger(
                 angle_array,
                 esv_matrix,
             )
-        offset = find_int_offset(
-            CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
-        )
-        print(offset, true_offset)
+
         (
             CDOG_clock,
             CDOG_full,
@@ -85,78 +106,18 @@ def initial_bias_geiger(
         esv_bias = estimate[4]
         k += 1
     """Refine offset in local region"""
-    print("Offset before sub-int:", offset)
+    offset = find_int_offset(
+        CDOG_data,
+        GPS_data,
+        times_guess,
+        transponder_coordinates,
+        esv,
+        offset=offset,
+        halfwindow=50,
+    )
     offset = find_subint_offset(
         offset, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
     )
-    return estimate, offset
-
-
-@njit(cache=True, fastmath=True)
-def transition_bias_geiger(
-    guess,
-    CDOG_data,
-    GPS_data,
-    transponder_coordinates,
-    offset,
-    esv_bias,
-    time_bias,
-    dz_array,
-    angle_array,
-    esv_matrix,
-    real_data=False,
-):
-    """Refine estimate while solving for time/ESV bias."""
-    epsilon = 10**-5
-    delta = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
-    estimate = np.array([guess[0], guess[1], guess[2], time_bias, esv_bias])
-    k = 0
-    while np.linalg.norm(delta) > epsilon and k < 100:
-        # Find the best offset
-        if not real_data:
-            times_guess, esv = calculateTimesRayTracing_Bias(
-                guess,
-                transponder_coordinates,
-                esv_bias,
-                dz_array,
-                angle_array,
-                esv_matrix,
-            )
-        else:
-            times_guess, esv = calculateTimesRayTracing_Bias_Real(
-                guess,
-                transponder_coordinates,
-                esv_bias,
-                dz_array,
-                angle_array,
-                esv_matrix,
-            )
-        (
-            CDOG_clock,
-            CDOG_full,
-            GPS_clock,
-            GPS_full,
-            transponder_coordinates_full,
-            esv_full,
-        ) = two_pointer_index(
-            offset,
-            0.6,
-            CDOG_data,
-            GPS_data,
-            times_guess,
-            transponder_coordinates,
-            esv,
-        )
-        J = compute_Jacobian_biased(
-            guess, transponder_coordinates_full, GPS_full, esv_full, esv_bias
-        )
-        delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ ((GPS_full - time_bias) - CDOG_full)
-        estimate = estimate + delta
-        guess = estimate[:3]
-        time_bias = estimate[3]
-        esv_bias = estimate[4]
-        offset -= time_bias
-        k += 1
     return estimate, offset
 
 
@@ -277,7 +238,7 @@ if __name__ == "__main__":
     position_noise = 2 * 10**-2
     time_noise = 2 * 10**-5
 
-    esv_bias = 0
+    esv_bias = 3.0
     time_bias = 0
     true_offset = np.random.rand() * 10000
 
@@ -344,38 +305,16 @@ if __name__ == "__main__":
         GPS_Coordinates, gps1_to_others, gps1_to_transponder
     )
 
-    guess = CDOG + [100, 100, 200]
+    CDOG_position_adjustment = (np.random.rand(3) * 400) - 200
+    print("CDOG Position Adjustment:", CDOG_position_adjustment)
+    guess = CDOG + CDOG_position_adjustment
 
-    print("Starting Initial Geiger")
+    print("\n ------Starting Initial Geiger------ \n")
     inversion_result, offset = initial_bias_geiger(
         guess,
         CDOG_data,
         GPS_data,
         transponder_coordinates,
-        dz_array,
-        angle_array,
-        esv_matrix,
-        real_data=real,
-    )
-    inversion_guess = inversion_result[:3]
-    time_bias = inversion_result[3]
-    esv_bias = inversion_result[4]
-    print(
-        "INT Offset: {:.4f}".format(offset), "DIFF: {:.4f}".format(offset - true_offset)
-    )
-    print("CDOG:", np.around(CDOG, 2))
-    print("Inversion_Workflow:", np.around(inversion_result, 2))
-    print("Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100))
-    print("\n")
-
-    inversion_result, offset = transition_bias_geiger(
-        inversion_guess,
-        CDOG_data,
-        GPS_data,
-        transponder_coordinates,
-        offset,
-        esv_bias,
-        time_bias,
         dz_array,
         angle_array,
         esv_matrix,
@@ -393,6 +332,7 @@ if __name__ == "__main__":
     print("Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100))
     print("\n")
 
+    print("------Starting Final Geiger------ \n")
     inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(
         inversion_guess,
         CDOG_data,
