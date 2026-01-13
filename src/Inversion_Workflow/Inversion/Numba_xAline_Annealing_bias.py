@@ -39,7 +39,7 @@ def simulated_annealing_bias(
     esv_matrix,
     initial_offset=0,
     real_data=False,
-    z_sample=False,
+    z_sample=True,
 ):
     """Estimate lever arm and biases using simulated annealing."""
     # Initialize variables

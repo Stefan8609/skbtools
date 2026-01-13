@@ -253,7 +253,14 @@ def RV_Plot(
 
     # ---- Data load ----
     data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
-    GPS_grid = data["gps1_to_others"]
+    GPS_grid = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [-2.39341409, -4.22350344, 0.02941493],
+            [-12.09568416, -0.94568462, 0.0043972],
+            [-8.68674054, 5.16918806, 0.02499322],
+        ]
+    )
     GPS_Coordinates = data["GPS_Coordinates"]
 
     GPS_Vessel = np.zeros_like(GPS_Coordinates)
@@ -407,6 +414,7 @@ def RV_Plot(
         ax.plot([x1, x2], [y1, y2], color=SEGMENT_COLOR, linewidth=1.2, zorder=10)
 
     # Top view insets (positions fixed as before)
+    GPS_labels = {1: "GPS 1", 2: "GPS 2", 3: "GPS 3", 4: "GPS 4"}
     for idx, (pts, c) in enumerate(zip(gps_xy_list, centroids), start=1):
         w = 2.0
         h = 2.5
@@ -461,6 +469,22 @@ def RV_Plot(
             xytext=(cx, cy),
             arrowprops=dict(arrowstyle="->", lw=1.0, alpha=0.9),
             zorder=4,
+        )
+        if idx == 1:
+            text_offset = [-0.8, -0.3]
+        if idx == 2:
+            text_offset = [-0.8, 0.0]
+        if idx == 3:
+            text_offset = [0.8, 0.0]
+        if idx == 4:
+            text_offset = [0.8, -0.5]
+        ax.text(
+            cx + text_offset[0],
+            cy + text_offset[1],
+            GPS_labels[idx],
+            fontsize=8,
+            ha="center",
+            va="bottom",
         )
 
     # Always add schematic inset with fixed placement/scale
@@ -589,9 +613,9 @@ def RV_Plot(
         cx, cz = float(c[0]), float(c[1])
         # offsets (keep below)
         if idx in (1, 3):
-            dx, dz = -2.0, -3.5
+            dx, dz = -2.0, -3.3
         else:
-            dx, dz = 2.0, -3.5
+            dx, dz = 2.0, -3.3
         ix, iz = cx + dx, cz + dz
         axins = ax_side.inset_axes(
             [ix - w / 2.0, iz - h / 2.0, w, h], transform=ax_side.transData
@@ -669,7 +693,7 @@ def RV_Plot(
     ).tolist()
 
     # Prepare table contents (rounded to 0.1 cm)
-    row_labels = ["GPS1", "GPS2", "GPS3", "GPS4", "Lever"]
+    row_labels = ["GPS1", "GPS2", "GPS3", "GPS4", "XDCR"]
     cell_text = [
         [
             f"{gps_std_rows[0][0]:.1f}",

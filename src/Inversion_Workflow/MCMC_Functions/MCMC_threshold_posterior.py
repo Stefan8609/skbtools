@@ -1,13 +1,13 @@
 import numpy as np
 
-from MCMC_plots import corner_plot, get_init_params_and_prior
+from plotting.MCMC_plots import corner_plot, get_init_params_and_prior
 from data import gps_output_path
 
 
 def threshold_posterior(
     chain, threshold=-50, save=False, chain_name=None, loglike=False
 ):
-    initial_params, prior_scales = get_init_params_and_prior(chain)
+    initial_params, prior_scales, _ = get_init_params_and_prior(chain)
 
     mask = chain["logpost"] > threshold
 
@@ -50,7 +50,7 @@ def threshold_posterior(
         reduced_chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        downsample=1,
+        downsample=5000,
         save=save,
         chain_name=name,
         loglike=loglike,
@@ -68,5 +68,5 @@ if __name__ == "__main__":
     chain = np.load(gps_output_path(file_name))
 
     threshold_posterior(
-        chain, threshold=-43, save=save, chain_name=chain_name, loglike=loglike
+        chain, threshold=-1000, save=save, chain_name=chain_name, loglike=loglike
     )

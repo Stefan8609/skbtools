@@ -182,7 +182,6 @@ def plot_best_sample(
         times_guess,
         trans_coords,
         esv,
-        True,
     )
 
     # Plotting
@@ -215,7 +214,7 @@ def plot_best_sample(
 if __name__ == "__main__":
     # split_samples("7_individual_splits_esv_20250806_165630", 7)
 
-    file_name = "mcmc_chain_9_16_new_table.npz"
+    file_name = "mcmc_chain_10_28_new_2.npz"
     DOG_num = 1
     timestamp = f"{file_name[:-4]}_best_DOG_{DOG_num}"
 

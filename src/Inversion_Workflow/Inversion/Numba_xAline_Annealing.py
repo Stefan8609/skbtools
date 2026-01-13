@@ -14,7 +14,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Times import (
     calculateTimesRayTracing,
 )
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-from src.Inversion_Workflow.Synthetic.Generate_Unaligned import (
+from Inversion_Workflow.Synthetic.Generate_Unaligned import (
     generateUnaligned,
 )
 import scipy.io as sio
@@ -38,6 +38,7 @@ def simulated_annealing(
     esv_matrix,
     initial_offset=0,
     real_data=False,
+    z_sample=True,
 ):
     """Estimate lever arm and receiver location via simulated annealing."""
 
@@ -198,6 +199,60 @@ def simulated_annealing(
         old_offset = offset
         k += 1
 
+    # Sample z values in case where it is poorly constrained
+    if z_sample:
+        best_lever_new = best_lever
+        for dz in np.arange(-5, 5, 0.1):
+            lever = best_lever + np.array([0.0, 0.0, dz])
+            transponder_coordinates = findTransponder(
+                GPS_Coordinates, gps1_to_others, lever
+            )
+            (
+                inversion_estimate,
+                CDOG_full,
+                GPS_full,
+                CDOG_clock,
+                GPS_clock,
+            ) = final_geiger(
+                inversion_guess,
+                CDOG_data,
+                GPS_data,
+                transponder_coordinates,
+                offset,
+                esv_bias,
+                time_bias,
+                dz_array,
+                angle_array,
+                esv_matrix,
+                real_data,
+            )
+            inversion_guess = inversion_estimate[:3]
+            time_bias = inversion_estimate[3]
+            esv_bias = inversion_estimate[4]
+
+            RMSE = np.sqrt(np.nanmean((GPS_full - CDOG_full) ** 2))
+            if RMSE < best_rmse:
+                best_rmse = RMSE
+                best_lever_new = lever
+        best_lever = best_lever_new
+
+    transponder_coordinates = findTransponder(
+        GPS_Coordinates, gps1_to_others, best_lever
+    )
+    inversion_estimate, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_geiger(
+        inversion_guess,
+        CDOG_data,
+        GPS_data,
+        transponder_coordinates,
+        offset,
+        esv_bias,
+        time_bias,
+        dz_array,
+        angle_array,
+        esv_matrix,
+        real_data,
+    )
+
     return best_lever, offset, inversion_guess
 
 
@@ -221,6 +276,7 @@ if __name__ == "__main__":
     ) = generateUnaligned(
         10000,
         time_noise,
+        position_noise,
         true_offset,
         0.0,
         0.0,
@@ -228,7 +284,6 @@ if __name__ == "__main__":
         angle_array,
         esv_matrix,
     )
-    GPS_Coordinates += np.random.normal(0, position_noise, (len(GPS_Coordinates), 4, 3))
 
     gps1_to_others = np.array(
         [[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64

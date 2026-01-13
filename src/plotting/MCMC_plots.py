@@ -927,7 +927,7 @@ def corner_plot(
 
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
-    file_name = "mcmc_chain_9_18_no_grid"
+    file_name = "mcmc_chain_10_28_new_2"
     loglike = False
     save = False
 
@@ -937,10 +937,12 @@ if __name__ == "__main__":
 
     initial_params, prior_scales, proposal_scales = get_init_params_and_prior(chain)
 
+    print(initial_params)
+
     trace_plot(
         chain,
         initial_params=initial_params,
-        downsample=1000,
+        downsample=100,
         save=save,
         chain_name=chain_name,
     )
@@ -956,7 +958,7 @@ if __name__ == "__main__":
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        downsample=1000,
+        downsample=100,
         save=save,
         chain_name=chain_name,
         loglike=loglike,

@@ -22,7 +22,7 @@ from plotting.Plot_Modular import time_series_plot
 from data import gps_data_path
 
 
-@njit
+@njit(cache=True, fastmath=True)
 def initial_bias_geiger(
     guess,
     CDOG_data,
@@ -82,7 +82,7 @@ def initial_bias_geiger(
         time_bias = estimate[3]
         esv_bias = estimate[4]
         k += 1
-    "Refine offset in local region"
+    """Refine offset in local region"""
     print("Offset before sub-int:", offset)
     offset = refine_offset(
         offset, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
@@ -90,7 +90,7 @@ def initial_bias_geiger(
     return estimate, offset
 
 
-@njit
+@njit(cache=True, fastmath=True)
 def transition_bias_geiger(
     guess,
     CDOG_data,
@@ -144,7 +144,6 @@ def transition_bias_geiger(
             times_guess,
             transponder_coordinates,
             esv,
-            True,
         )
         J = compute_Jacobian_biased(
             guess, transponder_coordinates_full, GPS_full, esv_full, esv_bias
@@ -159,7 +158,7 @@ def transition_bias_geiger(
     return estimate, offset
 
 
-@njit
+@njit(cache=True, fastmath=True)
 def final_bias_geiger(
     guess,
     CDOG_data,
@@ -203,7 +202,6 @@ def final_bias_geiger(
         times_guess,
         transponder_coordinates,
         esv,
-        True,
     )
 
     while np.linalg.norm(delta) > epsilon and k < 100:
@@ -263,7 +261,6 @@ def final_bias_geiger(
         times_guess,
         transponder_coordinates,
         esv,
-        True,
     )
     return estimate, CDOG_full, GPS_full, CDOG_clock, GPS_clock
 
@@ -280,6 +277,8 @@ if __name__ == "__main__":
 
     esv_bias = 0
     time_bias = 0
+    true_offset = np.random.rand() * 10000
+
     """Either generate a realistic or use bermuda trajectory"""
 
     (
@@ -289,9 +288,15 @@ if __name__ == "__main__":
         GPS_data,
         true_transponder_coordinates,
     ) = bermuda_trajectory(
-        time_noise, position_noise, dz_array, angle_array, esv_matrix
+        time_noise,
+        position_noise,
+        0.0,
+        0.0,
+        dz_array,
+        angle_array,
+        esv_matrix,
+        offset=true_offset,
     )
-    true_offset = 1991.01236648
     gps1_to_others = np.array(
         [
             [0.0, 0.0, 0.0],
@@ -302,6 +307,8 @@ if __name__ == "__main__":
     )
     gps1_to_transponder = np.array([-12.48862757, 0.22622633, -15.89601934])
 
+    print("True Offset: ", true_offset)
+
     """After Generating run through the analysis"""
 
     transponder_coordinates = findTransponder(
@@ -310,6 +317,7 @@ if __name__ == "__main__":
 
     guess = CDOG + [100, 100, 200]
 
+    print("Starting Initial Geiger")
     inversion_result, offset = initial_bias_geiger(
         guess,
         CDOG_data,
