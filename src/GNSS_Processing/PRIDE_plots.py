@@ -36,7 +36,7 @@ def load_simple(path_mat):
     return dict(lon=lon, lat=lat, ht=ht, pdop=pdop, nsats=nsats, t=t)
 
 
-def plot_GNSS(path, nthresh=4, pthresh=15.0, downsample = 1, save=False, show=False):
+def plot_GNSS(path, nthresh=4, pthresh=15.0, downsample=1, save=False, show=False):
     data = load_simple(path)
 
     lon = np.asarray(data["lon"], dtype=float)[::downsample]
@@ -74,7 +74,7 @@ def plot_GNSS(path, nthresh=4, pthresh=15.0, downsample = 1, save=False, show=Fa
 
     ax_map.set_xlabel("Longitude [deg]")
     ax_map.set_ylabel("Latitude [deg]")
-    ax_map.set_title(f"Location of Ship in Geographic Coordinates")
+    ax_map.set_title("Location of Ship in Geographic Coordinates")
     ax_map.grid(True)
 
     # Colorbar — larger and further below
@@ -104,7 +104,7 @@ def plot_GNSS(path, nthresh=4, pthresh=15.0, downsample = 1, save=False, show=Fa
     pad = 0.005 * max(1.0, abs(ymin), abs(ymax))
     ax_ht.set_ylim(ymin - pad, ymax + pad)
     ax_ht.set_ylabel("Height [m]")
-    ax_ht.set_title(f"Height relative to WGS84")
+    ax_ht.set_title("Height relative to WGS84")
     ax_ht.grid(True)
 
     # ---- Satellites & PDOP ----
@@ -130,9 +130,9 @@ def plot_GNSS(path, nthresh=4, pthresh=15.0, downsample = 1, save=False, show=Fa
 
     # ---- Annotation ----
     fig.suptitle("Ship GNSS Summary", fontsize=14, y=0.95)
-    if save == True:
+    if save:
         fig.savefig(gps_data_path(str(path).replace(".mat", "") + ".pdf"), dpi=300)
-    if show == True:
+    if show:
         plt.show()
 
     plt.close(fig)

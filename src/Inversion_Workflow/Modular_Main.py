@@ -13,7 +13,6 @@ from __future__ import annotations
 import numpy as np
 import scipy.io as sio
 from typing import Optional
-from dataclasses import dataclass
 import logging
 
 from data import gps_data_path, gps_output_path
@@ -22,14 +21,6 @@ from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
     bermuda_trajectory,
 )
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-from Inversion_Workflow.Forward_Model.Calculate_Times import (
-    calculateTimesRayTracing,
-)
-from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
-    calculateTimesRayTracing_Bias,
-)
-from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
-from plotting.Plot_Modular import time_series_plot
 
 logger = logging.getLogger(__name__)
 
@@ -182,12 +173,16 @@ def run():
             CDOG_guess=inversion_result["CDOG_guess"],
             lever=inversion_result["lever"],
             offset=inversion_result["offset"],
-            time_bias=inversion_result["time_bias"]
-            if inversion_result["time_bias"] is not None
-            else np.nan,
-            esv_bias=inversion_result["esv_bias"]
-            if inversion_result["esv_bias"] is not None
-            else np.nan,
+            time_bias=(
+                inversion_result["time_bias"]
+                if inversion_result["time_bias"] is not None
+                else np.nan
+            ),
+            esv_bias=(
+                inversion_result["esv_bias"]
+                if inversion_result["esv_bias"] is not None
+                else np.nan
+            ),
         )
         print("Saved output to", out_path)
 

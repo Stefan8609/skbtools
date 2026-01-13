@@ -1,4 +1,3 @@
-import numpy as np
 from GNSS_Processing.ppp2mat import save_mat
 from GNSS_Processing.PRIDE_plots import plot_GNSS
 from data import gps_data_path
@@ -15,7 +14,7 @@ def _get_files_and_apply_function(directory_path, function, pattern="*.kin"):
             print("Done processing.\n")
 
 
-def process_kinematic_files(individual_kinematic_dir, downsample = 1):
+def process_kinematic_files(individual_kinematic_dir, downsample=1):
     directory_path = Path(individual_kinematic_dir)
 
     def process_file(file_path):
@@ -23,7 +22,7 @@ def process_kinematic_files(individual_kinematic_dir, downsample = 1):
         print(f"Processing file: {file_path}")
         save_mat(file_path, output_path)
         print(f"Saved processed data to: {output_path}")
-        plot_GNSS(output_path, save=True, show=False, downsample = downsample)
+        plot_GNSS(output_path, save=True, show=False, downsample=downsample)
 
     _get_files_and_apply_function(directory_path, process_file)
 
@@ -32,4 +31,4 @@ if __name__ == "__main__":
     individual_kinematic_dir = gps_data_path(
         "GPS_Data/Puerto_Rico/4_PortAft/individual"
     )
-    process_kinematic_files(individual_kinematic_dir, downsample = 5)
+    process_kinematic_files(individual_kinematic_dir, downsample=5)

@@ -48,16 +48,20 @@ elev_terry = output_terry["elev"][idx_terry]
 
 # Print mean and std of differences
 print(
-    f"X Difference: Mean = {np.mean(x_me - x_terry):.4f} m, Std = {np.std(x_me - x_terry):.4f} m"
+    f"X Difference: Mean = {np.mean(x_me - x_terry):.4f} m, "
+    f"Std = {np.std(x_me - x_terry):.4f} m"
 )
 print(
-    f"Y Difference: Mean = {np.mean(y_me - y_terry):.4f} m, Std = {np.std(y_me - y_terry):.4f} m"
+    f"Y Difference: Mean = {np.mean(y_me - y_terry):.4f} m, "
+    f"Std = {np.std(y_me - y_terry):.4f} m"
 )
 print(
-    f"Z Difference: Mean = {np.mean(z_me - z_terry):.4f} m, Std = {np.std(z_me - z_terry):.4f} m"
+    f"Z Difference: Mean = {np.mean(z_me - z_terry):.4f} m,"
+    "Std = {np.std(z_me- z_terry):.4f} m"
 )
 print(
-    f"Elevation Difference: Mean = {np.mean(elev_me - elev_terry):.4f} m, Std = {np.std(elev_me - elev_terry):.4f} m"
+    f"Elevation Difference: Mean = {np.mean(elev_me - elev_terry):.4f} m, Std "
+    "{np.std(elev_me - elev_terry):.4f} m"
 )
 
 fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True, sharey=True)
