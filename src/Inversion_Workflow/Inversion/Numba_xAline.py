@@ -219,9 +219,153 @@ def find_int_offset(
 
 
 if __name__ == "__main__":
-    n = 10000
-    true_offset = np.random.rand() * 10000
+    import scipy.io as sio
+    from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
+        bermuda_trajectory,
+    )
+    from Inversion_Workflow.Synthetic.Generate_Unaligned import generateUnaligned
+    from data import gps_data_path
+    from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
+    from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
+        calculateTimesRayTracing_Bias_Real,
+    )
+
+    esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
+    dz_array = esv_table["distance"].flatten()
+    angle_array = esv_table["angle"].flatten()
+    esv_matrix = esv_table["matrice"]
+
     position_noise = 2 * 10**-2
     time_noise = 2 * 10**-5
 
-    """Write some code to test"""
+    gps1_to_others = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [-2.4054, -4.20905, 0.060621],
+            [-12.1105, -0.956145, 0.00877],
+            [-8.70446831, 5.165195, 0.04880436],
+        ]
+    )
+    gps1_to_transponder = np.array([-12.48862757, 0.22622633, -15.89601934])
+
+    esv_bias = 0
+    time_bias = 0
+    true_offset = np.random.rand() * 10000
+    type = "unaligned"  # "bermuda" or "unaligned"
+
+    if type == "bermuda":
+        (
+            CDOG_data,
+            CDOG,
+            GPS_Coordinates,
+            GPS_data,
+            true_transponder_coordinates,
+        ) = bermuda_trajectory(
+            time_noise,
+            position_noise,
+            esv_bias,
+            time_bias,
+            dz_array,
+            angle_array,
+            esv_matrix,
+            offset=true_offset,
+            gps1_to_others=gps1_to_others,
+            gps1_to_transponder=gps1_to_transponder,
+        )
+    if type == "unaligned":
+        (
+            CDOG_data,
+            CDOG,
+            GPS_Coordinates,
+            GPS_data,
+            true_transponder_coordinates,
+        ) = generateUnaligned(
+            20000,
+            time_noise,
+            position_noise,
+            true_offset,
+            esv_bias,
+            time_bias,
+            dz_array,
+            angle_array,
+            esv_matrix,
+            gps1_to_others=gps1_to_others,
+            gps1_to_transponder=gps1_to_transponder,
+        )
+        GPS_Coordinates += np.random.normal(
+            0, position_noise, (len(GPS_Coordinates), 4, 3)
+        )
+
+    print("True Offset: ", true_offset)
+
+    transponder_coordinates = findTransponder(
+        GPS_Coordinates, gps1_to_others, gps1_to_transponder
+    )
+
+    guess = CDOG + [0, 0, 0]
+
+    travel_times, esv = calculateTimesRayTracing_Bias_Real(
+        CDOG,
+        transponder_coordinates,
+        esv_bias,
+        dz_array,
+        angle_array,
+        esv_matrix,
+    )
+    travel_times = travel_times + time_bias
+
+    int_offset = find_int_offset(
+        CDOG_data,
+        GPS_data,
+        travel_times,
+        transponder_coordinates,
+        esv,
+    )
+
+    print("Integer Offset: ", int_offset)
+
+    subint_offset = find_subint_offset(
+        int_offset,
+        CDOG_data,
+        GPS_data,
+        travel_times,
+        transponder_coordinates,
+        esv,
+    )
+    print("Sub-integer Offset: ", subint_offset)
+    print("Offset Error: ", abs(true_offset - subint_offset))
+
+    # Validate final result
+    (
+        CDOG_clock,
+        CDOG_full,
+        GPS_clock,
+        GPS_full,
+        transponder_coordinates_full,
+        esv_full,
+    ) = two_pointer_index(
+        subint_offset,
+        0.5,
+        CDOG_data,
+        GPS_data,
+        travel_times,
+        transponder_coordinates,
+        esv,
+        True,
+    )
+    for i in range(len(CDOG_full)):
+        diff = GPS_full[i] - CDOG_full[i]
+        if abs(diff) >= 0.9:
+            CDOG_full[i] += np.round(diff)
+    RMSE = np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515 * 100
+    print("Final RMSE (cm): ", RMSE)
+
+    import matplotlib.pyplot as plt
+
+    plt.figure()
+    plt.plot(CDOG_full - GPS_full)
+    plt.title("Final Time Differences After Synchronization")
+    plt.xlabel("Sample Index")
+    plt.ylabel("Time Difference (s)")
+    plt.grid()
+    plt.show()

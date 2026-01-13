@@ -4,7 +4,10 @@ import scipy.io as sio
 from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
     bermuda_trajectory,
 )
-from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index, refine_offset
+from Inversion_Workflow.Inversion.Numba_xAline import (
+    two_pointer_index,
+    find_subint_offset,
+)
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias,
     calculateTimesRayTracing_Bias_Real,
@@ -131,7 +134,7 @@ def simulated_annealing_bias(
         )
 
     # Fractional refinement around the integer offset
-    offset = refine_offset(
+    offset = find_subint_offset(
         offset_int,
         CDOG_data,
         GPS_data,

@@ -19,12 +19,6 @@ from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
 from plotting.Plot_Modular import time_series_plot
 from data import gps_data_path
 
-"""
-File to allow for easy changing of parameters when running synthetic
-
-Write a code to check the indexing of the Bermuda data vs exact indexing
-"""
-
 
 def modular_synthetic(
     time_noise,

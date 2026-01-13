@@ -7,7 +7,7 @@ from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
 from Inversion_Workflow.Inversion.Numba_xAline import (
     two_pointer_index,
     find_int_offset,
-    refine_offset,
+    find_subint_offset,
 )
 from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
     compute_Jacobian_biased,
@@ -84,7 +84,7 @@ def initial_bias_geiger(
         k += 1
     """Refine offset in local region"""
     print("Offset before sub-int:", offset)
-    offset = refine_offset(
+    offset = find_subint_offset(
         offset, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
     )
     return estimate, offset
