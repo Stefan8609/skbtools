@@ -227,7 +227,7 @@ def plot_kde_mcmc(
         xy_mean.flatten() + 0.65 * lim_all * pc1_vec
     )  # slight offset along arrow
     ax1.text(
-        label_pos[0],
+        label_pos[0] + 35,
         label_pos[1],
         r"$\xi$",
         color="red",
@@ -313,7 +313,7 @@ def plot_kde_mcmc(
 
 
 if __name__ == "__main__":
-    file = "mcmc_chain_9_16_new_table"
+    file = "mcmc_chain_1_20_new_inversion"
     chain = np.load(gps_output_path(f"{file}.npz"))
     DOG_num = 0
     sample = chain["CDOG_aug"][::100, DOG_num]

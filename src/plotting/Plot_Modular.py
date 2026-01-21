@@ -3,20 +3,20 @@ import matplotlib.pyplot as plt
 from scipy.stats import norm
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from data import gps_data_path
-from .save import save_plot
+from plotting.save import save_plot
 
 """Enable this for paper plots"""
-# plt.rcParams.update(
-#     {
-#         "text.usetex": True,
-#         "font.family": "serif",
-#         "font.serif": ["Computer Modern"],
-#         "mathtext.fontset": "cm",
-#         "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
-#         "\n"
-#         r"\usepackage{textcomp}",
-#     }
-# )
+plt.rcParams.update(
+    {
+        "text.usetex": True,
+        "font.family": "serif",
+        "font.serif": ["Computer Modern"],
+        "mathtext.fontset": "cm",
+        "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
+        "\n"
+        r"\usepackage{textcomp}",
+    }
+)
 
 
 def time_series_plot(
@@ -31,6 +31,7 @@ def time_series_plot(
     path="Figs",
     chain_name=None,
     segments=0,
+    zoom_start=-1,
 ):
     """Plot DOG and GPS time series with residuals."""
     difference_data = CDOG_full - GPS_full
@@ -39,9 +40,13 @@ def time_series_plot(
     mu, std = norm.fit(difference_data * 1000)
 
     # Get range of times for zoom in
-    zoom_region = np.random.randint(min(CDOG_clock), max(CDOG_clock) - 100)
-    zoom_idx = (np.abs(CDOG_clock - zoom_region)).argmin()
     zoom_length = 1200
+    if zoom_start == -1:
+        zoom_region = np.random.randint(min(CDOG_clock), max(CDOG_clock) - zoom_length)
+        zoom_idx = (np.abs(CDOG_clock - zoom_region)).argmin()
+    else:
+        zoom_region = zoom_start
+        zoom_idx = (np.abs(CDOG_clock - zoom_region)).argmin()
 
     # Plot axes to return
     fig, axes = plt.subplots(

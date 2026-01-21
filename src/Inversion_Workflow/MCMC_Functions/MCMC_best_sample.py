@@ -18,7 +18,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
 )
 
 
-def load_min_logpost_params(npz_path):
+def load_min_logpost_params(npz_path, loglike=False):
     """
     Load an MCMC chain saved with np.savez and return the parameter set
     corresponding to the maximum logpost.
@@ -37,7 +37,11 @@ def load_min_logpost_params(npz_path):
     """
     data = np.load(npz_path)
     logpost = data["logpost"]
-    idx_min = np.argmax(logpost)
+    loglikelihood = data["loglike"]
+    if loglike:
+        idx_min = np.argmax(loglikelihood)
+    else:
+        idx_min = np.argmax(logpost)
 
     return {
         "lever": data["lever"][idx_min],
@@ -46,6 +50,7 @@ def load_min_logpost_params(npz_path):
         "esv_bias": data["esv_bias"][idx_min],
         "time_bias": data["time_bias"][idx_min],
         "logpost": logpost[idx_min],
+        "loglike": loglikelihood[idx_min],
     }
 
 
@@ -109,6 +114,7 @@ def plot_best_sample(
     esv_matrix,
     CDOG_num=3,
     timestamp=None,
+    loglike=False,
 ):
     """
     Plot the best sample from an MCMC chain based on minimum logpost.
@@ -123,7 +129,7 @@ def plot_best_sample(
     CDOG_to_index = {1: 0, 3: 1, 4: 2}
     CDOG_index = CDOG_to_index[CDOG_num]
 
-    best = load_min_logpost_params(npz_path)
+    best = load_min_logpost_params(npz_path, loglike=loglike)
 
     lever_guess = best["lever"]
     gps1_grid_guess = best["gps1_grid"]
@@ -131,7 +137,11 @@ def plot_best_sample(
     esv_bias = best["esv_bias"]
     time_bias = best["time_bias"]
     logpost = best["logpost"]
+    loglikelihood = best["loglike"]
 
+    print("\n")
+    print(f"Best sample by {'loglikelihood' if loglike else 'logpost'}:")
+    print("==============================")
     print("Best parameters:")
     print("Lever guess:", lever_guess)
     print("GPS1 grid guess:", gps1_grid_guess)
@@ -139,6 +149,7 @@ def plot_best_sample(
     print("ESV bias:", esv_bias)
     print("Time bias:", time_bias)
     print("Log posterior:", logpost)
+    print("Log likelihood:", loglikelihood)
 
     split_esv = False
     if esv_bias.ndim == 2:
@@ -214,7 +225,8 @@ def plot_best_sample(
 if __name__ == "__main__":
     # split_samples("7_individual_splits_esv_20250806_165630", 7)
 
-    file_name = "mcmc_chain_10_28_new_2.npz"
+    loglike = True
+    file_name = "mcmc_chain_1_20_new_inversion.npz"
     DOG_num = 1
     timestamp = f"{file_name[:-4]}_best_DOG_{DOG_num}"
 
@@ -224,7 +236,7 @@ if __name__ == "__main__":
     esv_matrix = esv["matrice"]
 
     downsample = 1
-    data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
+    data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
     GPS_Coordinates = data["GPS_Coordinates"][::downsample]
     GPS_data = data["GPS_data"][::downsample]
     CDOG_guess = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
@@ -237,7 +249,7 @@ if __name__ == "__main__":
         tmp[:, 1] /= 1e9
         CDOG_all_data.append(tmp)
 
-    offsets = np.array([1866.0, 3175.0, 1939.0])
+    offsets = np.array([1866.016, 3175.017, 1939.0178])
     plot_best_sample(
         gps_output_path(file_name),
         GPS_Coordinates,
@@ -248,6 +260,7 @@ if __name__ == "__main__":
         dz_array,
         angle_array,
         esv_matrix,
-        CDOG_num=1,
+        CDOG_num=DOG_num,
         timestamp=timestamp,
+        loglike=loglike,
     )

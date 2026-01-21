@@ -16,9 +16,7 @@ from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
 from plotting.Plot_Modular import (
     time_series_plot,
     range_residual,
-    elevation_angle_residual,
 )
-from plotting.Analysis_Plots.metric_plots import plot_integer_pick_metrics_dog
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from data import gps_data_path
 
@@ -27,6 +25,7 @@ from data import gps_data_path
 # -------------------------
 DOG_num = 4
 simulated_annealing = True
+save = True
 
 # -------------------------
 # Known data
@@ -90,27 +89,28 @@ if simulated_annealing:
         real_data=True,
         z_sample=True,
     )
-    inversion_guess = inversion_result[:3]
-    time_bias = inversion_result[3]
-    esv_bias = inversion_result[4]
 
     transponder_coordinates = findTransponder(
         GPS_Coordinates, gps1_to_others, best_lever
     )
 
-    inversion_final, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(
-        inversion_guess,
+    inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(
+        inversion_result[:3],
         CDOG_data,
         GPS_data,
         transponder_coordinates,
         best_offset,
-        esv_bias,
-        time_bias,
+        inversion_result[4],
+        inversion_result[3],
         dz_array,
         angle_array,
         esv_matrix,
         real_data=True,
     )
+
+    inversion_guess = inversion_result[:3]
+    time_bias = inversion_result[3]
+    esv_bias = inversion_result[4]
 else:
     # -------------------------
     # Inversion: Initial → Final
@@ -179,7 +179,24 @@ print("RMSE:", np.round(RMSE_cm, 3), "cm")
 # -------------------------
 # Plots
 # -------------------------
-time_series_plot(CDOG_clock, CDOG_full, GPS_clock, GPS_full)
+DOG_name = {1: "DOG1", 3: "DOG3", 4: "DOG4"}
+save_path = "Figs/Inversion_Workflow"
+file_tag = (
+    DOG_name[DOG_num] + "_SimAnn"
+    if simulated_annealing
+    else DOG_name[DOG_num] + "_Geiger"
+)
+
+time_series_plot(
+    CDOG_clock,
+    CDOG_full,
+    GPS_clock,
+    GPS_full,
+    save=save,
+    path=save_path,
+    chain_name=file_tag,
+    zoom_start=40000,
+)
 
 # Range residual plot inputs: recompute travel times at final estimate
 times_guess, esv = calculateTimesRayTracing_Bias_Real(
@@ -191,9 +208,9 @@ times_guess, esv = calculateTimesRayTracing_Bias_Real(
     esv_matrix,
 )
 
-_, CDOG_full_ex, GPS_clock_ex, GPS_full_ex, trans_coords_full, esv_full = (
+CDOG_clock_ex, CDOG_full_ex, GPS_clock_ex, GPS_full_ex, trans_coords_full, esv_full = (
     two_pointer_index(
-        best_offset,
+        best_offset_eff,
         0.6,
         CDOG_data,
         GPS_data,
@@ -210,6 +227,9 @@ range_residual(
     CDOG_full_ex,
     GPS_full_ex,
     GPS_clock_ex,
+    save=save,
+    path=save_path,
+    chain_name=file_tag,
 )
 
 # Elevation-angle residuals
@@ -221,15 +241,16 @@ dz = depth_arr - depth0
 abs_dist = np.sqrt(np.sum((trans_coords_full - inv_xyz) ** 2, axis=1))
 beta = np.arcsin(dz / abs_dist) * 180.0 / np.pi
 
-elevation_angle_residual(beta, CDOG_full_ex, GPS_full_ex, save=True)
+# elevation_angle_residual(beta, CDOG_full_ex, GPS_full_ex, save=save,
+# path= save_path, chain_name=file_tag)
 
-plot_integer_pick_metrics_dog(
-    best_offset,
-    CDOG_data,
-    GPS_data,
-    times_guess,
-    transponder_coordinates,
-    esv,
-    half_window=50,
-    step=0.1,
-)
+# plot_integer_pick_metrics_dog(
+#     best_offset,
+#     CDOG_data,
+#     GPS_data,
+#     times_guess,
+#     transponder_coordinates,
+#     esv,
+#     half_window=50,
+#     step=0.1,
+# )

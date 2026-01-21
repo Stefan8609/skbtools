@@ -34,7 +34,7 @@ def two_pointer_index(
     Returns
     -------
     tuple
-        ``(CDOG_clock, GPS_clock, GPS_full, transponder_coords, esv_full)``.
+        ``(CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coords, esv_full)``.
     """
     CDOG_times = CDOG_data[:, 0] + CDOG_data[:, 1] - offset
     GPS_times = GPS_data + GPS_travel_times
@@ -96,7 +96,7 @@ def _coherence_score_from_pairs(CDOG_full, GPS_full):
     """
     N = len(CDOG_full)
     if N == 0:
-        return -1.0  # worst possible
+        return np.inf
 
     # Wrapped residuals in [-0.5, 0.5)
     w = (CDOG_full - GPS_full + 0.5) % 1.0 - 0.5
@@ -127,7 +127,8 @@ def find_int_offset(
     halfwindow=5000,
 ):
     """
-    Refine an offset estimate by minimizing (1 - R)/sqrt(N)
+    Refine an offset estimate by minimizing
+    circular variance (1 - R)/sqrt(N)
     over progressively smaller step sizes.
     """
     lower = offset - halfwindow

@@ -72,7 +72,7 @@ def percentile_plots(chain, percentile, loglike=False, save=False, chain_name=No
 
 
 if __name__ == "__main__":
-    file_name = "mcmc_chain_9_18_no_grid"
+    file_name = "mcmc_chain_1_20_new_inversion"
     loglike = False
     save = False
 

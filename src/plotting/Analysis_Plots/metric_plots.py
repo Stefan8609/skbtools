@@ -3,6 +3,18 @@ import matplotlib.pyplot as plt
 from numba import njit
 from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
 
+plt.rcParams.update(
+    {
+        "text.usetex": True,
+        "font.family": "serif",
+        "font.serif": ["Computer Modern"],
+        "mathtext.fontset": "cm",
+        "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
+        "\n"
+        r"\usepackage{textcomp}",
+    }
+)
+
 
 @njit(cache=True)
 def _rmse_cm_for_offset(
@@ -137,21 +149,21 @@ def plot_integer_pick_metrics_dog(
     axes[0].grid(True)
 
     axes[1].plot(offsets, coh_obj)
-    axes[1].set_ylabel("(1 - R) / sqrt(N)")
+    axes[1].set_ylabel("Circular Variance $(1 - R)/(sqrt(M))$")
     axes[1].grid(True)
 
     axes[2].plot(offsets, nmatch)
-    axes[2].set_ylabel("N matched pairs")
-    axes[2].set_xlabel("Offset (s)")
+    axes[2].set_ylabel("Matched Pairs (N)")
+    axes[2].set_xlabel("Timing Bias (s)")
     axes[2].grid(True)
 
-    # Annotate best by coherence
+    # Annotate best by Circular Variance
     if np.isfinite(best_off):
         for ax in axes:
             ax.axvline(best_off, linestyle="--")
-        axes[0].set_title(
-            f"Integer-pick metrics (best by coherence: {best_off:.3f} s){title_suffix}"
-        )
+        # axes[0].set_title(
+        #     f"Integer-pick metrics (best by coherence: {best_off:.3f}{title_suffix}"
+        # )
 
     # Additional vlines (hint / solved offset etc.)
     if vlines is not None:
