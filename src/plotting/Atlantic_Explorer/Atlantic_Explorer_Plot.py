@@ -238,7 +238,7 @@ def RV_Plot(
 
     # ---- Fixed constants (tune here, not via function args) ----
     ROTATION_DEG = 29.5
-    GPS1_OFFSET = (39.5, 2.2, 15.5)
+    GPS1_OFFSET = (39.5, 2.2, 14.2)
     DOWNSAMPLE = 5
     ZOOM_HALF_RANGE = 0.10  # meters
     TICK_STEP_CM = 5
@@ -560,7 +560,7 @@ def RV_Plot(
     lever_c_xz = lever_xz.mean(axis=0)
     cx, cz = float(lever_c_xz[0]), float(lever_c_xz[1])
     w, h = 2.0, 5.0
-    dx, dz = 9.0, 3.65
+    dx, dz = 6.0, 3.0
     ix, iz = cx + dx, cz + dz
     axins_lev_xz = ax_side.inset_axes(
         [ix - w / 2.0, iz - h / 2.0, w, h], transform=ax_side.transData
@@ -613,9 +613,9 @@ def RV_Plot(
         cx, cz = float(c[0]), float(c[1])
         # offsets (keep below)
         if idx in (1, 3):
-            dx, dz = -2.0, -3.3
+            dx, dz = -2.0, -1.0
         else:
-            dx, dz = 2.0, -3.3
+            dx, dz = 2.0, -1.0
         ix, iz = cx + dx, cz + dz
         axins = ax_side.inset_axes(
             [ix - w / 2.0, iz - h / 2.0, w, h], transform=ax_side.transData
@@ -663,7 +663,7 @@ def RV_Plot(
     _add_schematic_inset(
         ax_side,
         side_segments,
-        box=(0.02, 0.04, 0.15, 0.30),
+        box=(0.02, 0.12, 0.15, 0.30),
         scale=2.0,
         box_coord="axes",
     )
@@ -883,7 +883,7 @@ def RV_Plot(
     )
     ax_side.text(
         0.1387,
-        0.22,
+        0.32,
         "moonpool",
         transform=ax_side.transAxes,
         ha="center",
@@ -959,7 +959,7 @@ if __name__ == "__main__":
 
     top_down_scale = 0.054715
 
-    chain = np.load(gps_output_path("mcmc_chain_9_16_new_table.npz"))
+    chain = np.load(gps_output_path("mcmc_chain_1_20_new_inversion.npz"))
     levers = chain["lever"][::5000]
     CDOG_augs = chain["CDOG_aug"][::5000]
 
@@ -1003,9 +1003,9 @@ if __name__ == "__main__":
     # top and hull and moonpool)
     side_ship_segments = [
         ((10, 8.5), (29.366, 8.5)),
-        ((29.366, 8.5), (29.366, 15.5)),
-        ((29.366, 15.5), (39.676, 15.5)),
-        ((39.676, 15.5), (39.676, 10.0)),
+        ((29.366, 8.5), (29.366, 14.2)),
+        ((29.366, 14.2), (39.676, 14.2)),
+        ((39.676, 14.2), (39.676, 10.0)),
         ((39.676, 10.0), (45, 10.0)),
         ((45, 10.0), (54.74, 10.0)),
         ((54.74, 10.0), (44.74, 0.0)),
@@ -1014,10 +1014,10 @@ if __name__ == "__main__":
         ((2.58, 8.5), (10, 8.5)),
     ]
     side_moonpool_segments = [
-        ((23.804, 0.2), (22.814, 0.2)),
-        ((22.814, 0.2), (22.814, -0.790)),
-        ((22.814, -0.790), (23.804, -0.790)),
-        ((23.804, -0.790), (23.804, 0.2)),
+        ((23.804, 0.790), (22.814, 0.790)),
+        ((22.814, 0.790), (22.814, -0.200)),
+        ((22.814, -0.200), (23.804, -0.200)),
+        ((23.804, -0.200), (23.804, 0.790)),
     ]
 
     side_segments = side_ship_segments + side_moonpool_segments
@@ -1034,9 +1034,3 @@ if __name__ == "__main__":
     )
 
     plt.show()
-
-# ADD LABELS IN THE PLOT
-# ADD SIDE VIEW SCHEMATICS
-# CHANGE AXES NAMES TO OFFICIAL TERMS (RESEARCH INTO THESE)
-
-# -8.1670 # -6.6

@@ -43,10 +43,8 @@ def time_series_plot(
     zoom_length = 1200
     if zoom_start == -1:
         zoom_region = np.random.randint(min(CDOG_clock), max(CDOG_clock) - zoom_length)
-        zoom_idx = (np.abs(CDOG_clock - zoom_region)).argmin()
     else:
         zoom_region = zoom_start
-        zoom_idx = (np.abs(CDOG_clock - zoom_region)).argmin()
 
     # Plot axes to return
     fig, axes = plt.subplots(
@@ -85,9 +83,13 @@ def time_series_plot(
     axes[0, 1].legend(loc="upper right")
     axes[0, 1].set_xlim(min(CDOG_clock), max(CDOG_clock))
 
+    # Zoomed in plot
+    CDOG_mask = (CDOG_clock >= zoom_region) & (CDOG_clock <= zoom_region + zoom_length)
+    GPS_mask = (GPS_clock >= zoom_region) & (GPS_clock <= zoom_region + zoom_length)
+
     axes[0, 2].scatter(
-        CDOG_clock[zoom_idx : zoom_idx + zoom_length],
-        CDOG_full[zoom_idx : zoom_idx + zoom_length],
+        CDOG_clock[CDOG_mask],
+        CDOG_full[CDOG_mask],
         s=5,
         label="Observed Travel Times",
         alpha=0.6,
@@ -96,8 +98,8 @@ def time_series_plot(
         zorder=2,
     )
     axes[0, 2].scatter(
-        GPS_clock[zoom_idx : zoom_idx + zoom_length],
-        GPS_full[zoom_idx : zoom_idx + zoom_length],
+        GPS_clock[GPS_mask],
+        GPS_full[GPS_mask],
         s=10,
         label="Modelled Travel Times",
         alpha=1,
@@ -105,10 +107,7 @@ def time_series_plot(
         color="r",
         zorder=1,
     )
-    axes[0, 2].set_xlim(
-        min(CDOG_clock[zoom_idx : zoom_idx + zoom_length]),
-        max(CDOG_clock[zoom_idx : zoom_idx + zoom_length]),
-    )
+    axes[0, 2].set_xlim(zoom_region, zoom_region + zoom_length)
     axes[0, 2].legend(loc="upper right")
 
     # Histogram and normal distributions
@@ -179,26 +178,21 @@ def time_series_plot(
             axes[1, 1].axvline(seg_time, color="k", linestyle="--", alpha=0.5)
 
     # Zoom difference plot
-    mu_zoom, std_zoom = norm.fit(
-        difference_data[zoom_idx : zoom_idx + zoom_length] * 1000
-    )
+    mu_zoom, std_zoom = norm.fit(difference_data[CDOG_mask] * 1000)
     axes[1, 2].scatter(
-        CDOG_clock[zoom_idx : zoom_idx + zoom_length],
-        difference_data[zoom_idx : zoom_idx + zoom_length] * 1000,
+        CDOG_clock[CDOG_mask],
+        difference_data[CDOG_mask] * 1000,
         s=1,
     )
     axes[1, 2].set_xlabel("Time (s)")
     axes[1, 2].set_ylim([mu - 3 * std, mu + 3 * std])
-    axes[1, 2].set_xlim(
-        min(CDOG_clock[zoom_idx : zoom_idx + zoom_length]),
-        max(CDOG_clock[zoom_idx : zoom_idx + zoom_length]),
-    )
+    axes[1, 2].set_xlim(zoom_region, zoom_region + zoom_length)
     axes[1, 2].axhline(mu_zoom - std_zoom, color="r", label="Observed Noise")
     axes[1, 2].axhline(mu_zoom + std_zoom, color="r")
     axes[1, 2].yaxis.tick_right()
 
     # Histogram and normal distributions
-    data_zoom_ms = difference_data[zoom_idx : zoom_idx + zoom_length] * 1000
+    data_zoom_ms = difference_data[CDOG_mask] * 1000
     mask_zoom = np.abs(data_zoom_ms - mu_zoom) <= 3 * std_zoom
     n_zoom, bins_zoom, patches_zoom = axes[1, 3].hist(
         data_zoom_ms[mask_zoom],

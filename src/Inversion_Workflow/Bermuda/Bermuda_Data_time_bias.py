@@ -23,7 +23,7 @@ from data import gps_data_path
 # -------------------------
 # Config
 # -------------------------
-DOG_num = 4
+DOG_num = 1
 simulated_annealing = True
 save = True
 
@@ -195,7 +195,7 @@ time_series_plot(
     save=save,
     path=save_path,
     chain_name=file_tag,
-    zoom_start=40000,
+    zoom_start=35000,
 )
 
 # Range residual plot inputs: recompute travel times at final estimate

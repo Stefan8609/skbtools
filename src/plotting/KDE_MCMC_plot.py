@@ -227,8 +227,8 @@ def plot_kde_mcmc(
         xy_mean.flatten() + 0.65 * lim_all * pc1_vec
     )  # slight offset along arrow
     ax1.text(
-        label_pos[0] + 35,
-        label_pos[1],
+        label_pos[0] - 35,
+        label_pos[1] + 20,
         r"$\xi$",
         color="red",
         fontsize=11,
