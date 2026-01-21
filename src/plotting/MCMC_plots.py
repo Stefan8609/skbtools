@@ -927,7 +927,7 @@ def corner_plot(
 
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
-    file_name = "mcmc_chain_1_20_new_inversion"
+    file_name = "mcmc_chain_test"
     loglike = False
     save = True
 

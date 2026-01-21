@@ -225,9 +225,9 @@ def plot_best_sample(
 if __name__ == "__main__":
     # split_samples("7_individual_splits_esv_20250806_165630", 7)
 
-    loglike = True
-    file_name = "mcmc_chain_1_20_new_inversion.npz"
-    DOG_num = 1
+    loglike = False
+    file_name = "mcmc_chain_test.npz"
+    DOG_num = 4
     timestamp = f"{file_name[:-4]}_best_DOG_{DOG_num}"
 
     esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"))
