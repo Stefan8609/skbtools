@@ -1,7 +1,6 @@
 from scipy import io as sio
-from data import gps_data_path
+from data import gps_data_path, gps_output_path
 import numpy as np
-from data import gps_output_path
 import matplotlib.pyplot as plt
 
 from plotting.Plot_Modular import (
@@ -151,9 +150,7 @@ def plot_best_sample(
     print("Log posterior:", logpost)
     print("Log likelihood:", loglikelihood)
 
-    split_esv = False
-    if esv_bias.ndim == 2:
-        split_esv = True
+    split_esv = (esv_bias.ndim == 2) and (esv_bias.shape[1] > 1)
     trans_coords = findTransponder(GPS_Coordinates, gps1_grid_guess, lever_guess)
 
     inv_guess = CDOG_guess + CDOG_augments[CDOG_index]
@@ -189,7 +186,7 @@ def plot_best_sample(
         offsets[CDOG_index],
         0.6,
         CDOG_data,
-        GPS_data + time_bias[CDOG_index],
+        GPS_data - time_bias[CDOG_index],
         times_guess,
         trans_coords,
         esv,
@@ -227,7 +224,7 @@ if __name__ == "__main__":
 
     loglike = False
     file_name = "mcmc_chain_test.npz"
-    DOG_num = 4
+    DOG_num = 3
     timestamp = f"{file_name[:-4]}_best_DOG_{DOG_num}"
 
     esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"))

@@ -160,24 +160,72 @@ def cdog_aug_ecef_to_enu(
     return enu
 
 
-def trace_plot(chain, initial_params=None, downsample=1, save=False, chain_name=None):
-    """Plot traces of MCMC parameters, with per-DOG ESV bias
-    and time_bias mean-centered, including units."""
+def trace_plot(
+    chain,
+    initial_params=None,
+    downsample=1,
+    save=False,
+    chain_name=None,
+    dog_u_index=0,  # which DOG augment to plot (0->DOG1, 1->DOG3, 2->DOG4)
+    dog_u_center="init",  # 'init' | 'mean' | 'none'
+):
+    """Plot traces of MCMC parameters, with per-DOG ESV bias mean-centered,
+    including units. Also plots one DOG vertical (ENU Up) augment trace.
+    (Time-bias traces removed.)"""
     DOG_index_num = {0: 1, 1: 3, 2: 4}
 
     # Downsample
     lever = chain["lever"][::downsample]
     esv = chain["esv_bias"][::downsample]
-    tb = chain["time_bias"][::downsample]
-    rmse = chain["logpost"][::downsample] * -2
+    rmse = chain["logpost"][::downsample] * -2  # your existing choice
 
-    # Center lever by subtracting initial lever (if provided), then convert to cm
+    # ---- Lever (center on init) ----
     if initial_params is not None and "lever" in initial_params:
         lever_centered = lever - np.asarray(initial_params["lever"])
     else:
         lever_centered = lever
     lever_cm = lever_centered * 100.0
 
+    # ---- One DOG vertical (ENU Up) from CDOG_aug ----
+    cdog_aug = chain["CDOG_aug"][::downsample]  # (T, 3, 3)
+    if (
+        cdog_aug.ndim != 3
+        or cdog_aug.shape[1] < dog_u_index + 1
+        or cdog_aug.shape[2] != 3
+    ):
+        raise ValueError(f"CDOG_aug must have shape (T, 3, 3); got {cdog_aug.shape}")
+
+    # Choose prior_mean for ENU origin
+    if initial_params is not None and "CDOG_aug" in initial_params:
+        prior_mean_aug = np.asarray(initial_params["CDOG_aug"][dog_u_index])
+    else:
+        prior_mean_aug = np.mean(cdog_aug[:, dog_u_index, :], axis=0)
+
+    cdog_enu = cdog_aug_ecef_to_enu(
+        cdog_aug[:, dog_u_index, :], prior_mean=prior_mean_aug
+    )
+    dog_u_m = cdog_enu[:, 2]  # Up (m)
+
+    # Centering for DOG-U trace
+    dog_u_ref_m = 0.0
+    if dog_u_center == "init" and (
+        initial_params is not None and "CDOG_aug" in initial_params
+    ):
+        init_enu = cdog_aug_ecef_to_enu(
+            np.asarray(initial_params["CDOG_aug"][dog_u_index])[None, :],
+            prior_mean=prior_mean_aug,
+        )[0]
+        dog_u_ref_m = float(init_enu[2])
+    elif dog_u_center == "mean":
+        dog_u_ref_m = float(np.mean(dog_u_m))
+    elif dog_u_center == "none":
+        dog_u_ref_m = 0.0
+    else:
+        raise ValueError("dog_u_center must be one of {'init','mean','none'}")
+
+    dog_u_cm = (dog_u_m - dog_u_ref_m) * 100.0
+
+    # ---- Normalize ESV to (T, D, S) ----
     n_iter = esv.shape[0]
     if esv.ndim == 1:
         esv = esv.reshape(n_iter, 1, 1)
@@ -187,19 +235,15 @@ def trace_plot(chain, initial_params=None, downsample=1, save=False, chain_name=
         raise ValueError(f"esv_bias must be 1-, 2- or 3-D; got shape {esv.shape}")
     n_dogs, n_splits = esv.shape[1], esv.shape[2]
 
-    tb = tb.reshape(n_iter, -1)
-    n_tb = tb.shape[1]
-
-    # Mean-center ESV and time_bias
+    # Mean-center ESV (per DOG x split)
     esv_mean = esv.mean(axis=0)
     esv_centered = esv - esv_mean[np.newaxis, ...]
-    tb_mean = tb.mean(axis=0)
-    tb_centered = tb - tb_mean[np.newaxis, :]
 
-    # Build subplots
-    n_rows = 3 + n_dogs + 1 + 1
+    # ---- Build subplots (+1 row for DOG-U), NO time-bias row ----
+    n_rows = 3 + 1 + n_dogs + 1  # lever(3) + dogU(1) + esv(n_dogs) + rmse(1)
     fig, axes = plt.subplots(n_rows, 1, figsize=(16, 1.5 * n_rows), sharex=True)
 
+    # Lever traces
     axes[0].plot(lever_cm[:, 0])
     axes[0].set_ylabel("lever x (cm)")
     axes[1].plot(lever_cm[:, 1])
@@ -207,57 +251,32 @@ def trace_plot(chain, initial_params=None, downsample=1, save=False, chain_name=
     axes[2].plot(lever_cm[:, 2])
     axes[2].set_ylabel("lever z (cm)")
 
+    # DOG-U trace (one panel)
+    ax_u = axes[3]
+    DOG_num = DOG_index_num.get(dog_u_index, dog_u_index + 1)
+    ax_u.plot(dog_u_cm, linewidth=0.9)
+    ax_u.set_ylabel(f"DOG {DOG_num} U (cm)")
+    if dog_u_center in ("init", "mean"):
+        ax_u.axhline(0.0, color="r", ls="--", linewidth=0.7)
+
+    # ESV traces
+    base = 4
     for j in range(n_dogs):
-        ax = axes[3 + j]
+        ax = axes[base + j]
         DOG_num = DOG_index_num.get(j, j + 1)
         for k in range(n_splits):
             ax.plot(esv_centered[:, j, k], linewidth=0.8, label=f"split {k + 1}")
         ax.set_ylabel(f"ESV {DOG_num} (m/s)")
         ax.legend(fontsize="x-small", ncol=min(n_splits, 3), loc="upper right")
 
-    ax_tb = axes[3 + n_dogs]
-    for j in range(n_tb):
-        DOG_num = DOG_index_num.get(j, j + 1)
-        ax_tb.plot(tb_centered[:, j], linewidth=0.8, label=f"Time bias {DOG_num}")
-    ax_tb.set_ylabel("time bias (s)")
-    ax_tb.legend(fontsize="x-small", ncol=min(n_tb, 3), loc="upper right")
+    # Log posterior / rmse line
+    axes[base + n_dogs].plot(rmse)
+    axes[base + n_dogs].set_ylabel("Log Posterior (ms)")
 
-    axes[4 + n_dogs].plot(rmse)
-    axes[4 + n_dogs].set_ylabel("RMSE (ms)")
-
+    # Initial lines for lever
     if initial_params:
-        # After centering, the initial lever corresponds to 0 cm
-        for i, _ in enumerate(["x", "y", "z"]):
+        for i in range(3):
             axes[i].axhline(0.0, color="r", ls="--")
-
-        eb0 = initial_params.get("esv_bias", None)
-        if eb0 is not None:
-            eb0 = np.asarray(eb0).ravel()
-
-            if eb0.size == n_dogs * n_splits:
-                eb0 = eb0.reshape(n_dogs, n_splits).mean(axis=1)
-            elif eb0.size == n_dogs:
-                eb0 = eb0
-            else:
-                raise ValueError(
-                    f"initial esv_bias has {eb0.size} entries; "
-                    f"expected {n_dogs * n_splits} or {n_dogs}"
-                )
-
-            esv_mean_per_dog = esv_mean.mean(axis=1)
-            eb0_centered = eb0 - esv_mean_per_dog
-
-            for j in range(n_dogs):
-                ax = axes[3 + j]
-                ax.axhline(eb0_centered[j], color="r", ls="--", linewidth=0.7)
-
-        # time_bias init
-        tb0 = initial_params.get("time_bias", None)
-        if tb0 is not None:
-            tb0 = np.asarray(tb0).reshape(-1)[:n_tb]
-            tb0_centered = tb0 - tb_mean
-            for j in range(n_tb):
-                ax_tb.axhline(tb0_centered[j], color="r", ls="--", linewidth=0.7)
 
     for ax in axes:
         ax.margins(x=0)
@@ -942,7 +961,7 @@ if __name__ == "__main__":
     trace_plot(
         chain,
         initial_params=initial_params,
-        downsample=100,
+        downsample=5,
         save=save,
         chain_name=chain_name,
     )
@@ -950,7 +969,7 @@ if __name__ == "__main__":
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        downsample=100,
+        downsample=5,
         save=save,
         chain_name=chain_name,
     )
@@ -958,7 +977,7 @@ if __name__ == "__main__":
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        downsample=100,
+        downsample=5,
         save=save,
         chain_name=chain_name,
         loglike=loglike,

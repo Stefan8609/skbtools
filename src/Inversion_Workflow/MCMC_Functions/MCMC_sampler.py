@@ -78,7 +78,7 @@ def compute_log_likelihood(
             offsets[j],
             0.6,
             CDOG_data,
-            GPS_data + time_bias[j],
+            GPS_data - time_bias[j],
             times_guess,
             trans_coords,
             esv,

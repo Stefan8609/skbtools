@@ -83,7 +83,7 @@ def compute_log_likelihood(
             esv_full,
         ) = two_pointer_index(
             offsets[j],
-            0.6,
+            0.4,
             CDOG_data,
             gps_t,
             times_guess,
@@ -92,7 +92,8 @@ def compute_log_likelihood(
         )
 
         # residual in cm
-        resid = (CDOG_full - GPS_full) * 1515.0 * 100.0
+        dt = CDOG_full - GPS_full
+        resid = dt * 1515.0 * 100.0
 
         # SSE with NaN guard
         for r in resid:
@@ -101,10 +102,13 @@ def compute_log_likelihood(
                 total_n += 1
 
     if total_n == 0:
-        return -1e30  # extremely bad likelihood if nothing paired
+        return -1e30, 0  # extremely bad likelihood if nothing paired
 
     # Gaussian loglike (up to additive constant)
-    return -0.5 * total_sse * inv_sigma2
+    return (
+        -0.5 * total_sse * inv_sigma2 - 0.5 * total_n * math.log(sigma_cm * sigma_cm),
+        total_n,
+    )
 
 
 @njit(cache=True, fastmath=True)
@@ -241,7 +245,7 @@ def mcmc_sampler(
     tbias_curr = initial_time_bias.copy()
 
     # compute initial likelihood & prior
-    ll_curr = compute_log_likelihood(
+    ll_curr, total_n = compute_log_likelihood(
         lever_curr,
         gps_curr,
         cdog_aug_curr,
@@ -290,7 +294,7 @@ def mcmc_sampler(
                 0.0, proposal_scales["lever"][i]
             )
 
-        ll_prop = compute_log_likelihood(
+        ll_prop, total_n = compute_log_likelihood(
             lever_prop,
             gps_curr,
             cdog_aug_curr,
@@ -339,7 +343,7 @@ def mcmc_sampler(
             0.0, proposal_scales["CDOG_aug"], cdog_aug_curr.shape
         )
 
-        ll_prop = compute_log_likelihood(
+        ll_prop, total_n = compute_log_likelihood(
             lever_curr,
             gps_curr,
             cdog_aug_prop,
@@ -388,7 +392,7 @@ def mcmc_sampler(
             0.0, proposal_scales["esv_bias"], ebias_curr.shape
         )
 
-        ll_prop = compute_log_likelihood(
+        ll_prop, total_n = compute_log_likelihood(
             lever_curr,
             gps_curr,
             cdog_aug_curr,
@@ -437,7 +441,7 @@ def mcmc_sampler(
             0.0, proposal_scales["time_bias"], tbias_curr.shape
         )
 
-        ll_prop = compute_log_likelihood(
+        ll_prop, total_n = compute_log_likelihood(
             lever_curr,
             gps_curr,
             cdog_aug_curr,
@@ -491,9 +495,26 @@ def mcmc_sampler(
         logpost_chain[it] = lpo_curr
 
         if it % 100 == 0:
-            # acceptance rates over the last 100 iters
-            # (simple running since start is okay too; this is minimal)
-            print("Iter", it, ": logpost =", float(int(lpo_curr * 100) / 100.0))
+            print(
+                "Iter",
+                it,
+                ": logpost =",
+                float(int(lpo_curr * 100) / 100.0),
+                "Pairs =",
+                total_n,
+            )
+        if it % 1000 == 0 and it > 0:
+            print(
+                "acc (last 1000): lever",
+                acc_lever / 1000,
+                "aug",
+                acc_aug / 1000,
+                "esv",
+                acc_eb / 1000,
+                "tb",
+                acc_tb / 1000,
+            )
+            acc_lever = acc_aug = acc_eb = acc_tb = 0
 
     if burn_in <= n_iters:
         # discard burn-in samples
@@ -504,6 +525,13 @@ def mcmc_sampler(
         tbias_chain = tbias_chain[burn_in:]
         loglike_chain = loglike_chain[burn_in:]
         logpost_chain = logpost_chain[burn_in:]
+
+    # #Print final acceptance rates
+    # print("Final acceptance rates:")
+    # print(" Lever: ", acc_lever / n_iters)
+    # print(" CDOG Augment:", acc_aug / n_iters)
+    # print(" ESV Bias: ", acc_eb / n_iters)
+    # print(" Time Bias: ", acc_tb / n_iters)
 
     return (
         lever_chain,
@@ -569,11 +597,11 @@ if __name__ == "__main__":
     init_tbias = np.array([0.0, 0.0, 0.0])
 
     # proposal scales
-    proposal_lever = np.array([0.01, 0.01, 0.05])
+    proposal_lever = np.array([0.01, 0.01, 0.025])
     proposal_gps_grid = 0.0
-    proposal_CDOG_aug = 0.1
-    proposal_esv_bias = 0.02
-    proposal_time_bias = 1e-4
+    proposal_CDOG_aug = 0.015
+    proposal_esv_bias = 0.002
+    proposal_time_bias = 0.0
 
     # prior scales
     prior_lever = np.array([0.5, 0.5, 0.5])
@@ -591,8 +619,8 @@ if __name__ == "__main__":
         loglike_chain,
         logpost_chain,
     ) = mcmc_sampler(
-        n_iters=10000,
-        burn_in=2000,
+        n_iters=50000,
+        burn_in=1000,
         initial_lever_base=init_lever,
         initial_gps_grid=init_gps_grid,
         initial_CDOG_augments=init_aug,
