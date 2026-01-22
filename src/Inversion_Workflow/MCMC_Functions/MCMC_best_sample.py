@@ -224,7 +224,7 @@ if __name__ == "__main__":
 
     loglike = False
     file_name = "mcmc_chain_test.npz"
-    DOG_num = 3
+    DOG_num = 1
     timestamp = f"{file_name[:-4]}_best_DOG_{DOG_num}"
 
     esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"))

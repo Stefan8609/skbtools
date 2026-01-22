@@ -961,7 +961,7 @@ if __name__ == "__main__":
     trace_plot(
         chain,
         initial_params=initial_params,
-        downsample=5,
+        downsample=1,
         save=save,
         chain_name=chain_name,
     )
@@ -969,7 +969,7 @@ if __name__ == "__main__":
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        downsample=5,
+        downsample=1,
         save=save,
         chain_name=chain_name,
     )
@@ -977,7 +977,7 @@ if __name__ == "__main__":
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        downsample=5,
+        downsample=1,
         save=save,
         chain_name=chain_name,
         loglike=loglike,
