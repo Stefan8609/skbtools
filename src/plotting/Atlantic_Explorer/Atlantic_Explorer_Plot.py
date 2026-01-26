@@ -959,7 +959,7 @@ if __name__ == "__main__":
 
     top_down_scale = 0.054715
 
-    chain = np.load(gps_output_path("mcmc_chain_1_20_new_inversion.npz"))
+    chain = np.load(gps_output_path("mcmc_chain_1_22_new_MCMC_long.npz"))
     levers = chain["lever"][::5000]
     CDOG_augs = chain["CDOG_aug"][::5000]
 

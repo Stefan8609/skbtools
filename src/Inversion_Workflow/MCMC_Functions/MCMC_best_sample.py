@@ -114,6 +114,7 @@ def plot_best_sample(
     CDOG_num=3,
     timestamp=None,
     loglike=False,
+    chain_name=None,
 ):
     """
     Plot the best sample from an MCMC chain based on minimum logpost.
@@ -202,8 +203,9 @@ def plot_best_sample(
         time_noise=0,
         block=True,
         save=True,
-        path="Figs/MCMC",
-        chain_name=timestamp,
+        path=f"Figs/MCMC/{chain_name}",
+        zoom_start=35000,
+        DOG_num=CDOG_num,
     )
     range_residual(
         transponder_coordinates_full,
@@ -213,8 +215,8 @@ def plot_best_sample(
         GPS_full,
         GPS_clock,
         save=True,
-        path="Figs/MCMC",
-        chain_name=timestamp,
+        path=f"Figs/MCMC/{chain_name}",
+        DOG_num=CDOG_num,
     )
 
 
@@ -223,7 +225,8 @@ if __name__ == "__main__":
     # split_samples("7_individual_splits_esv_20250806_165630", 7)
 
     loglike = False
-    file_name = "mcmc_chain_test.npz"
+    file_name = "mcmc_chain_1_22_new_MCMC_long.npz"
+    chain_name = ("loglike_" if loglike else "logpost_") + file_name[:-4]
     DOG_num = 1
     timestamp = f"{file_name[:-4]}_best_DOG_{DOG_num}"
 
@@ -260,4 +263,5 @@ if __name__ == "__main__":
         CDOG_num=DOG_num,
         timestamp=timestamp,
         loglike=loglike,
+        chain_name=chain_name,
     )

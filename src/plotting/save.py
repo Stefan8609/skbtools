@@ -28,13 +28,7 @@ def save_plot(
     The file name is built from ``chain_name`` and ``func_name`` and the figure
     is saved as a PDF by default.
     """
-    if chain_name is None:
-        chain_name = "chain"
-    safe_chain = _safe_filename(chain_name)
-    if not chain_name:
-        fname = f"{func_name}.{ext}"
-    else:
-        fname = f"{safe_chain}_{func_name}.{ext}"
+    fname = f"{func_name}.{ext}"
     dirpath = gps_data_path(subdir)
     os.makedirs(dirpath, exist_ok=True)
     fullpath = dirpath / fname

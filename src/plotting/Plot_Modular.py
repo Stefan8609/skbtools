@@ -29,7 +29,7 @@ def time_series_plot(
     block=True,
     save=False,
     path="Figs",
-    chain_name=None,
+    DOG_num=None,
     segments=0,
     zoom_start=-1,
 ):
@@ -254,7 +254,7 @@ def time_series_plot(
     plt.tight_layout()
 
     if save:
-        save_plot(fig, chain_name, "time_series_plot", subdir=path)
+        save_plot(fig, func_name=f"time_series_plot_DOG{DOG_num}", subdir=path)
 
     plt.show(block=block)
 
@@ -300,7 +300,7 @@ def trajectory_plot(
     plt.legend()
 
     if save:
-        save_plot(plt.gcf(), chain_name, "trajectory_plot", subdir=path)
+        save_plot(plt.gcf(), func_name="trajectory_plot", subdir=path)
 
     plt.show(block=block)
 
@@ -364,7 +364,7 @@ def split_trajectory_plot(
     ax.legend()
 
     if save:
-        save_plot(fig, chain_name, f"split_trajectory_{numsplit}", subdir=path)
+        save_plot(fig, func_name=f"split_trajectory_{numsplit}", subdir=path)
 
     plt.show()
 
@@ -378,7 +378,7 @@ def range_residual(
     GPS_clock,
     save=False,
     path="Figs",
-    chain_name=None,
+    DOG_num=None,
 ):
     """Plot residual range errors along the track."""
     times_hours = GPS_clock / 3600  # Convert seconds to hours
@@ -425,7 +425,7 @@ def range_residual(
     axes[1].legend()
 
     if save:
-        save_plot(fig, chain_name, "range_residual", subdir=path)
+        save_plot(fig, func_name=f"range_residual_DOG{DOG_num}", subdir=path)
 
     plt.tight_layout()
     plt.show()
@@ -467,7 +467,7 @@ def elevation_angle_residual(
     ax.grid(True)
 
     if save:
-        save_plot(fig, chain_name, "elevation_angle_residual", subdir=path)
+        save_plot(fig, func_name="elevation_angle_residual", subdir=path)
 
     plt.tight_layout()
     plt.show()

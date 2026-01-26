@@ -11,6 +11,19 @@ from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
 from plotting.save import save_plot
 import itertools
 
+"""Enable this for paper plots"""
+plt.rcParams.update(
+    {
+        "text.usetex": True,
+        "font.family": "serif",
+        "font.serif": ["Computer Modern"],
+        "mathtext.fontset": "cm",
+        "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
+        "\n"
+        r"\usepackage{textcomp}",
+    }
+)
+
 
 def get_init_params_and_prior(chain):
     """
@@ -284,7 +297,7 @@ def trace_plot(
     fig.tight_layout()
 
     if save:
-        save_plot(fig, chain_name, "trace_plot", f"Figs/MCMC/{chain_name}")
+        save_plot(fig, func_name="trace_plot", subdir=f"Figs/MCMC/{chain_name}")
     plt.show()
 
 
@@ -651,7 +664,7 @@ def marginal_hists(
         ax.text(
             0.02,
             0.98,
-            f"σ = {std_cm:.2f} cm",
+            rf"$\sigma = {std_cm:.2f}\ \mathrm{{cm}}$",
             transform=ax.transAxes,
             ha="left",
             va="top",
@@ -674,7 +687,7 @@ def marginal_hists(
             ax.set_ylim(*ylim)
 
     if save:
-        save_plot(fig, chain_name, "marginal_hists", subdir=f"Figs/MCMC/{chain_name}")
+        save_plot(fig, func_name="marginal_hists", subdir=f"Figs/MCMC/{chain_name}")
     plt.tight_layout()
     plt.show(block=True)
 
@@ -775,9 +788,10 @@ def corner_plot(
     n = len(keys)
     fig, axes = plt.subplots(n, n, figsize=(12, 8))
 
-    # Cap the colorbar at 80
-    min_val = -65
-    norm_cmap = mpl.colors.Normalize(vmin=min_val, vmax=logpost.max())
+    # Colorbar spans full posterior range
+    vmin = float(np.min(logpost))
+    vmax = float(np.max(logpost))
+    norm_cmap = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
     cmap = plt.get_cmap("viridis")
 
     for i, j in itertools.product(range(n), range(n)):
@@ -800,7 +814,7 @@ def corner_plot(
             post_pdf = norm.pdf(xg, loc=0.0, scale=max(stats[key_i]["std_cm"], 1e-12))
             ax.plot(xg, post_pdf, lw=1.6, label="Posterior (Gaussian)", color="red")
 
-            # Prior overlay (centered relative to posterior mode, convert σ to cm)
+            # Prior overlay (centered relative to posterior mode, convert \sigma to cm)
             if flat_prior:
                 sx_cm = float(flat_prior[key_i]) * 100.0
                 mx_cm = float(flat_init.get(key_i, 0.0))
@@ -818,7 +832,7 @@ def corner_plot(
             ax.text(
                 0.02,
                 0.98,
-                f"σ = {stats[key_i]['std_cm']:.3g} cm",
+                rf"$\sigma = {stats[key_i]['std_cm']:.3g}\ \mathrm{{cm}}$",
                 transform=ax.transAxes,
                 ha="left",
                 va="top",
@@ -858,7 +872,7 @@ def corner_plot(
                 prior68.set_edgecolor("blue")
                 prior68.set_linewidth(1.5)
                 prior68.set_facecolor("none")
-                prior68.set_label("Prior 68%")
+                prior68.set_label("Prior 68\%")
                 ax.add_patch(prior68)
 
             # 68% POSTERIOR Gaussian ellipse (centered at 0, covariance from samples)
@@ -870,7 +884,7 @@ def corner_plot(
             post68.set_edgecolor("red")
             post68.set_linewidth(1.5)
             post68.set_facecolor("none")
-            post68.set_label("Posterior 68% (Gaussian)")
+            post68.set_label("Posterior 68\% (Gaussian)")
             ax.add_patch(post68)
 
             if key_j in flat_init and key_i in flat_init:
@@ -908,13 +922,13 @@ def corner_plot(
         [], [], linestyle="none", marker="o", markersize=4, label="Posterior (samples)"
     )
     prior_h = mpatches.Patch(
-        edgecolor="blue", facecolor="none", linewidth=1.5, label="Prior 68%"
+        edgecolor="blue", facecolor="none", linewidth=1.5, label="Prior 68\%"
     )
     post_h = mpatches.Patch(
         edgecolor="red",
         facecolor="none",
         linewidth=1.5,
-        label="Posterior 68% (Gaussian)",
+        label="Posterior 68\% (Gaussian)",
     )
     init_h = mlines.Line2D(
         [], [], color="red", marker="x", linestyle="none", markersize=6, label="Initial"
@@ -940,13 +954,13 @@ def corner_plot(
     )
 
     if save:
-        save_plot(fig, chain_name, "corner_plot", subdir=f"Figs/MCMC/{chain_name}")
+        save_plot(fig, func_name="corner_plot", subdir=f"Figs/MCMC/{chain_name}")
     plt.show()
 
 
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
-    file_name = "mcmc_chain_test"
+    file_name = "mcmc_chain_1_22_new_MCMC_long"
     loglike = False
     save = True
 
@@ -961,7 +975,7 @@ if __name__ == "__main__":
     trace_plot(
         chain,
         initial_params=initial_params,
-        downsample=1,
+        downsample=500,
         save=save,
         chain_name=chain_name,
     )
@@ -969,7 +983,7 @@ if __name__ == "__main__":
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        downsample=1,
+        downsample=500,
         save=save,
         chain_name=chain_name,
     )
@@ -977,7 +991,7 @@ if __name__ == "__main__":
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        downsample=1,
+        downsample=500,
         save=save,
         chain_name=chain_name,
         loglike=loglike,
