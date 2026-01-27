@@ -970,7 +970,11 @@ if __name__ == "__main__":
 
     initial_params, prior_scales, proposal_scales = get_init_params_and_prior(chain)
 
+    print("Initial parameters:")
     print(initial_params)
+
+    print("\nPrior scales:")
+    print(prior_scales)
 
     trace_plot(
         chain,
