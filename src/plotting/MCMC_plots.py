@@ -960,7 +960,7 @@ def corner_plot(
 
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
-    file_name = "mcmc_chain_1_22_new_MCMC_long"
+    file_name = "mcmc_chain_1_26_one_dog"
     loglike = False
     save = True
 
@@ -979,7 +979,7 @@ if __name__ == "__main__":
     trace_plot(
         chain,
         initial_params=initial_params,
-        downsample=500,
+        downsample=5,
         save=save,
         chain_name=chain_name,
     )
@@ -987,7 +987,7 @@ if __name__ == "__main__":
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        downsample=500,
+        downsample=5,
         save=save,
         chain_name=chain_name,
     )
@@ -995,7 +995,7 @@ if __name__ == "__main__":
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        downsample=500,
+        downsample=5,
         save=save,
         chain_name=chain_name,
         loglike=loglike,

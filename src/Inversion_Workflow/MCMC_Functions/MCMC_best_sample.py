@@ -227,7 +227,7 @@ if __name__ == "__main__":
     loglike = False
     file_name = "mcmc_chain_1_22_new_MCMC_long.npz"
     chain_name = ("loglike_" if loglike else "logpost_") + file_name[:-4]
-    DOG_num = 1
+    DOG_num = 3
     timestamp = f"{file_name[:-4]}_best_DOG_{DOG_num}"
 
     esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"))
