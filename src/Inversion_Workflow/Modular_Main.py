@@ -106,7 +106,9 @@ def run():
     _configure_logging()
     _log_configuration_summary()
     gen_gps_grid = (
-        DEFAULT_GPS_GRID if GEN_GPS_GRID is None else np.asarray(GEN_GPS_GRID, dtype=float)
+        DEFAULT_GPS_GRID
+        if GEN_GPS_GRID is None
+        else np.asarray(GEN_GPS_GRID, dtype=float)
     )
     solve_gps_grid = (
         DEFAULT_GPS_GRID
@@ -118,9 +120,7 @@ def run():
         if GEN_LEVER is None
         else np.asarray(GEN_LEVER, dtype=float)
     )
-    solve_lever = (
-        DEFAULT_REAL_LEVER if DATA_TYPE == "real" else DEFAULT_SYNTHETIC_LEVER
-    )
+    solve_lever = DEFAULT_REAL_LEVER if DATA_TYPE == "real" else DEFAULT_SYNTHETIC_LEVER
     if SOLVE_LEVER is not None:
         solve_lever = np.asarray(SOLVE_LEVER, dtype=float)
 

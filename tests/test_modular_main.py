@@ -30,10 +30,10 @@ def test_load_real_data_path(monkeypatch):
     assert gps_coordinates.shape == (1, 4, 3)
     assert gps_time.shape == (1,)
 
+
 def test_generate_synthetic_dispatches_bermuda(monkeypatch):
     expected = tuple(
-        np.zeros((1, size)) if size > 1 else np.zeros(1)
-        for size in [2, 3, 12, 1, 3]
+        np.zeros((1, size)) if size > 1 else np.zeros(1) for size in [2, 3, 12, 1, 3]
     )
 
     def fake_bermuda(*args, **kwargs):
@@ -54,8 +54,7 @@ def test_generate_synthetic_dispatches_bermuda(monkeypatch):
 
 def test_generate_synthetic_dispatches_standard_trajectory(monkeypatch):
     expected = tuple(
-        np.zeros((1, size)) if size > 1 else np.zeros(1)
-        for size in [2, 3, 12, 1, 3]
+        np.zeros((1, size)) if size > 1 else np.zeros(1) for size in [2, 3, 12, 1, 3]
     )
 
     def fake_generate(*args, **kwargs):
