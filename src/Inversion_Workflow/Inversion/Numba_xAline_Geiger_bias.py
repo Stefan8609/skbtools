@@ -64,6 +64,7 @@ def initial_bias_geiger(
     offset = find_int_offset(
         CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
     )
+    print("Initial INT Offset: ", offset)
 
     while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
@@ -94,7 +95,7 @@ def initial_bias_geiger(
             transponder_coordinates_full,
             esv_full,
         ) = two_pointer_index(
-            offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
+            offset, 0.4, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
         )
         J = compute_Jacobian_biased(
             guess, transponder_coordinates_full, GPS_full, esv_full, esv_bias
@@ -104,20 +105,19 @@ def initial_bias_geiger(
         guess = estimate[:3]
         time_bias = estimate[3]
         esv_bias = estimate[4]
+        offset -= time_bias
         k += 1
     """Refine offset in local region"""
-    offset = find_int_offset(
+    print("HERRREE CHAAAANGED", offset)
+    offset = find_subint_offset(
+        offset,
         CDOG_data,
-        GPS_data,
+        GPS_data - time_bias,
         times_guess,
         transponder_coordinates,
         esv,
-        offset=offset,
-        halfwindow=50,
     )
-    offset = find_subint_offset(
-        offset, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
-    )
+    print("Refined SUB-INT Offset: ", offset)
     return estimate, offset
 
 
@@ -237,6 +237,7 @@ if __name__ == "__main__":
 
     position_noise = 2 * 10**-2
     time_noise = 2 * 10**-5
+    downsample = 10
 
     esv_bias = 3.0
     time_bias = 0
@@ -296,6 +297,9 @@ if __name__ == "__main__":
             gps1_to_transponder=gps1_to_transponder,
         )
         real = False
+
+    GPS_data = GPS_data[::downsample]
+    GPS_Coordinates = GPS_Coordinates[::downsample]
 
     print("True Offset: ", true_offset)
 

@@ -66,7 +66,7 @@ def _plot_error_ellipse(
     return ellipse
 
 
-def error_ellipse(num_points, time_noise, position_noise):
+def error_ellipse(num_points, time_noise, position_noise, downsample):
     """Plot error ellipses from Monte Carlo samples.
 
     Parameters
@@ -91,37 +91,43 @@ def error_ellipse(num_points, time_noise, position_noise):
     lever_diff_array = np.zeros((num_points, 3))
     RMSE_array = np.zeros(num_points)
     for i in range(num_points):
-        (
-            inversion_result,
-            CDOG_data,
-            CDOG_full,
-            GPS_data,
-            GPS_full,
-            CDOG_clock,
-            GPS_clock,
-            CDOG,
-            transponder_coordinates,
-            GPS_Coordinates,
-            offset,
-            lever,
-        ) = modular_synthetic(
-            time_noise,
-            position_noise,
-            0,
-            0,
-            esv1="global_table_esv",
-            esv2="global_table_esv_perturbed",
-            generate_type=1,
-            inversion_type=1,
-            plot=False,
-        )
-        diff_data = (CDOG_full - GPS_full) * 1000
-        RMSE = np.sqrt(np.nanmean(diff_data**2)) / 1000 * 1515 * 100
+        try:
+            (
+                inversion_result,
+                CDOG_data,
+                CDOG_full,
+                GPS_data,
+                GPS_full,
+                CDOG_clock,
+                GPS_clock,
+                CDOG,
+                transponder_coordinates,
+                GPS_Coordinates,
+                offset,
+                lever,
+            ) = modular_synthetic(
+                time_noise,
+                position_noise,
+                0,
+                0,
+                esv1="global_table_esv",
+                esv2="global_table_esv_perturbed",
+                generate_type=1,
+                inversion_type=1,
+                plot=False,
+            )
+            diff_data = (CDOG_full - GPS_full) * 1000
+            RMSE = np.sqrt(np.nanmean(diff_data**2)) / 1000 * 1515 * 100
 
-        estimate_array[i] = inversion_result[:3]
-        lever_diff_array[i] = lever - real_lever
-        RMSE_array[i] = RMSE
-        print(f"{i + 1}/{num_points} iterations complete")
+            estimate_array[i] = inversion_result[:3]
+            lever_diff_array[i] = lever - real_lever
+            RMSE_array[i] = RMSE
+            print(f"\n{i + 1}/{num_points} iterations complete")
+        except Exception as e:
+            print(f"\n{i + 1}/{num_points} iteration failed: {e}")
+            estimate_array[i] = np.nan
+            lever_diff_array[i] = np.nan
+            RMSE_array[i] = np.nan
 
     # Convert to geodetic
     CDOG_lat, CDOG_lon, CDOG_height = ECEF_Geodetic(np.array([CDOG]))
@@ -312,4 +318,5 @@ if __name__ == "__main__":
     num_points = 10
     time_noise = 2 * 10**-5
     position_noise = 2 * 10**-2
-    error_ellipse(num_points, time_noise, position_noise)
+    downsample = 25
+    error_ellipse(num_points, time_noise, position_noise, downsample)

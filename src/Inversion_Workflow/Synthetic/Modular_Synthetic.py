@@ -78,6 +78,7 @@ def modular_synthetic(
         z_sample = False
     else:
         # Use Bermuda Dataset
+        true_offset = 1991.01236648
         (
             CDOG_data,
             CDOG,
@@ -92,9 +93,9 @@ def modular_synthetic(
             dz_array_generate,
             angle_array_generate,
             esv_matrix_generate,
+            offset=true_offset,
             DOG_num=DOG_num,
         )
-        true_offset = 1991.01236648
         gps1_to_others = np.array(
             [
                 [0.0, 0.0, 0.0],
@@ -113,7 +114,7 @@ def modular_synthetic(
     #   0: Just xAline Geiger
     #   1: xAline Geiger with Simulated Annealing
     real_data = True if generate_type == 1 else False
-    initial_guess = CDOG + [100, 100, 200]
+    initial_guess = CDOG + np.random.normal(0, 100, 3)
     if inversion_type == 0:
         # Just xAline Geiger
         lever = (
@@ -185,9 +186,9 @@ def modular_synthetic(
         real_lever = (
             np.array([-10.0, 3.0, -15.0])
             if generate_type == 0
-            else np.array([-12.48862757, 0.22622633, -15.89601934])
+            else np.array([-12.4659, 9.6021, -13.2993])
         )
-        initial_lever = np.array([-10.478, 0.667, -13.292])
+        initial_lever = real_lever - np.random.normal(0, 5, 3)
 
         """True levers: Realistic Generate [-10, 3, -15],
         Bermuda Generate: [-12.48862757, 0.22622633, -15.89601934]"""

@@ -148,10 +148,14 @@ def simulated_annealing_bias(
                 np.round(lever, 3),
             )
         if k % 50 == 0 and k > 0:
+            best_transponder_coordinates = findTransponder(
+                GPS_Coordinates, gps1_to_others, best_lever
+            )
+
             if not real_data:
                 times_guess, esv = calculateTimesRayTracing_Bias(
                     inversion_guess,
-                    transponder_coordinates,
+                    best_transponder_coordinates,
                     esv_bias,
                     dz_array,
                     angle_array,
@@ -160,7 +164,7 @@ def simulated_annealing_bias(
             else:
                 times_guess, esv = calculateTimesRayTracing_Bias_Real(
                     inversion_guess,
-                    transponder_coordinates,
+                    best_transponder_coordinates,
                     esv_bias,
                     dz_array,
                     angle_array,
@@ -171,7 +175,7 @@ def simulated_annealing_bias(
                 CDOG_data,
                 GPS_data,
                 times_guess,
-                transponder_coordinates,
+                best_transponder_coordinates,
                 esv,
             )
             print("    Updated offset:", np.round(offset, 5))

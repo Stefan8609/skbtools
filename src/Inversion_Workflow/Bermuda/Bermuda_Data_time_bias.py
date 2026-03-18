@@ -23,7 +23,7 @@ from data import gps_data_path
 # -------------------------
 # Config
 # -------------------------
-DOG_num = 1
+DOG_num = 4
 simulated_annealing = True
 save = True
 
@@ -194,7 +194,6 @@ time_series_plot(
     GPS_full,
     save=save,
     path=save_path,
-    chain_name=file_tag,
     zoom_start=35000,
 )
 

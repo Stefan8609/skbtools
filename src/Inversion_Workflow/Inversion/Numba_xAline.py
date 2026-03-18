@@ -133,7 +133,7 @@ def find_int_offset(
     """
     lower = offset - halfwindow
     upper = offset + halfwindow
-    intervals = np.array([10.0, 1.0, 0.1, 0.01, 0.001])
+    intervals = np.array([10.0, 1.0, 0.1, 0.01, 0.001, 0.0001])
     best_offset = offset
     best_score = np.inf
     for interval in intervals:
@@ -195,12 +195,6 @@ def find_subint_offset(
                 transponder_coordinates,
                 esv,
             )[1:4]
-
-            # Adjust CDOG_full to match GPS_full
-            for i in range(len(CDOG_full)):
-                diff = GPS_full[i] - CDOG_full[i]
-                if abs(diff) >= 0.9:
-                    CDOG_full[i] += np.round(diff)
 
             # Compute RMSE
             diff_data = GPS_full - CDOG_full
