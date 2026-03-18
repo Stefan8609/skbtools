@@ -255,6 +255,7 @@ if __name__ == "__main__":
     # --- Synthetic settings ---
     position_noise = 2e-2
     time_noise = 2e-5
+    downsample = 50
 
     true_esv_bias = 3.0
     true_time_bias = 0.0
@@ -318,6 +319,9 @@ if __name__ == "__main__":
             gps1_to_transponder=true_lever,
         )
         real = False
+
+    GPS_data = GPS_data[::downsample]
+    GPS_Coordinates = GPS_Coordinates[::downsample]
 
     # --- Starting guesses for annealing ---
     initial_lever = true_lever + (np.random.rand(3) * 6.0 - 3.0)  # +/-3 m perturbation

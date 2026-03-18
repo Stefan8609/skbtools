@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.io as sio
 
-from src.Inversion_Workflow.Synthetic.Generate_Unaligned import (
+from Inversion_Workflow.Synthetic.Generate_Unaligned import (
     generateUnaligned,
 )
 from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
@@ -10,7 +10,6 @@ from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     initial_bias_geiger,
-    transition_bias_geiger,
     final_bias_geiger,
 )
 from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
@@ -31,6 +30,7 @@ def modular_synthetic(
     inversion_type=0,
     plot=True,
     DOG_num=3,
+    downsample=50,
 ):
     np.set_printoptions(suppress=True)
     # Choose ESV table for generation and to run synthetic
@@ -87,10 +87,12 @@ def modular_synthetic(
         ) = bermuda_trajectory(
             time_noise,
             position_noise,
+            in_esv_bias,
+            in_time_bias,
             dz_array_generate,
             angle_array_generate,
             esv_matrix_generate,
-            DOG_num,
+            DOG_num=DOG_num,
         )
         true_offset = 1991.01236648
         gps1_to_others = np.array(
@@ -102,7 +104,6 @@ def modular_synthetic(
             ]
         )
 
-        downsample = 1
         GPS_Coordinates = GPS_Coordinates[::downsample]
         GPS_data = GPS_data[::downsample]
         true_transponder_coordinates = true_transponder_coordinates[::downsample]
@@ -152,33 +153,6 @@ def modular_synthetic(
             "Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100)
         )
         print("\n")
-        inversion_result, offset = transition_bias_geiger(
-            inversion_guess,
-            CDOG_data,
-            GPS_data,
-            transponder_coordinates,
-            offset,
-            esv_bias,
-            time_bias,
-            dz_array_inversion,
-            angle_array_inversion,
-            esv_matrix_inversion,
-            real_data=real_data,
-        )
-        inversion_guess = inversion_result[:3]
-        time_bias = inversion_result[3]
-        esv_bias = inversion_result[4]
-        print(
-            "SUB-INT Offset: {:.4f}".format(offset),
-            "DIFF: {:.4f}".format(offset - true_offset),
-        )
-        print("CDOG:", np.around(CDOG, 2))
-        print("Inversion_Workflow:", np.round(inversion_result, 3))
-        print(
-            "Distance: {:.2f} cm".format(np.linalg.norm(inversion_guess - CDOG) * 100)
-        )
-        print("\n")
-
         (
             inversion_result,
             CDOG_full,
@@ -213,7 +187,7 @@ def modular_synthetic(
             if generate_type == 0
             else np.array([-12.48862757, 0.22622633, -15.89601934])
         )
-        initial_lever = np.array([-12.478, 0.667, -14.292])
+        initial_lever = np.array([-10.478, 0.667, -13.292])
 
         """True levers: Realistic Generate [-10, 3, -15],
         Bermuda Generate: [-12.48862757, 0.22622633, -15.89601934]"""
@@ -230,7 +204,7 @@ def modular_synthetic(
             angle_array_inversion,
             esv_matrix_inversion,
             real_data=real_data,
-            initial_offset=1991,
+            initial_offset=1987,
             z_sample=z_sample,
         )
         inversion_guess = inversion_result[:3]
@@ -244,6 +218,7 @@ def modular_synthetic(
         print(
             f"Lever Error: {np.round(np.linalg.norm(lever - real_lever) * 100, 2)} cm"
         )
+        print(f"Offset Error: {np.round(np.abs(offset - true_offset), 2)} s")
 
         transponder_coordinates = findTransponder(
             GPS_Coordinates, gps1_to_others, lever
@@ -293,6 +268,7 @@ def modular_synthetic(
 if __name__ == "__main__":
     esv_bias = 0
     time_bias = 0
+    downsample = 20
 
     modular_synthetic(
         2 * 10**-5,
@@ -301,6 +277,7 @@ if __name__ == "__main__":
         0,
         "global_table_esv",
         "global_table_esv_realistic_perturbed",
+        downsample=downsample,
         generate_type=1,
         inversion_type=1,
         DOG_num=3,

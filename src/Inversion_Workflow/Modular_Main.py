@@ -1,8 +1,8 @@
 """High-level, top-down driver for inversion workflows (no argparse).
 
-Edit the constants in the **USER EDITABLE CONSTANTS** section below.
-The script then executes top-to-bottom: configure → load/generate data →
-select solvers → run pipeline → report quality → optionally save results.
+Edit the constants in the USER EDITABLE CONSTANTS section below.
+The script then executes top-to-bottom: configure -> load/generate data -.
+select solvers -> run pipeline -> report quality -> optionally save results.
 
 This version preserves the functionality of the CLI-driven version but removes
 all argument parsing and centralizes inputs as global constants.

@@ -309,7 +309,7 @@ def error_ellipse(num_points, time_noise, position_noise):
 
 
 if __name__ == "__main__":
-    num_points = 100
+    num_points = 10
     time_noise = 2 * 10**-5
     position_noise = 2 * 10**-2
     error_ellipse(num_points, time_noise, position_noise)
