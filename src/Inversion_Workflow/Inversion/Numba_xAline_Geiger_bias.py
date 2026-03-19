@@ -66,6 +66,32 @@ def initial_bias_geiger(
     )
     print("Initial INT Offset: ", offset)
 
+    # The coherence offset puts us in the middle,
+    # so we try both +/- to get optimal offset
+    offset_m = offset - 0.5
+    offset_p = offset + 0.5
+
+    (_, CDOG_full_m, _, GPS_full_m, _, _) = two_pointer_index(
+        offset_m, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
+    )
+
+    (_, CDOG_full_p, _, GPS_full_p, _, _) = two_pointer_index(
+        offset_p, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
+    )
+
+    n_m = len(CDOG_full_m)
+    n_p = len(CDOG_full_p)
+
+    misfit_m = np.linalg.norm(GPS_full_m - CDOG_full_m) if n_m > 0 else 1e30
+    misfit_p = np.linalg.norm(GPS_full_p - CDOG_full_p) if n_p > 0 else 1e30
+
+    if (n_p > n_m) or ((n_p == n_m) and (misfit_p < misfit_m)):
+        offset = offset_p
+        print("USING +0.5", offset, "pairs:", n_p)
+    else:
+        offset = offset_m
+        print("USING -0.5", offset, "pairs:", n_m)
+
     while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
         if not real_data:
@@ -95,7 +121,7 @@ def initial_bias_geiger(
             transponder_coordinates_full,
             esv_full,
         ) = two_pointer_index(
-            offset, 0.4, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
+            offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
         )
         J = compute_Jacobian_biased(
             guess, transponder_coordinates_full, GPS_full, esv_full, esv_bias
@@ -108,11 +134,10 @@ def initial_bias_geiger(
         offset -= time_bias
         k += 1
     """Refine offset in local region"""
-    print("HERRREE CHAAAANGED", offset)
     offset = find_subint_offset(
         offset,
         CDOG_data,
-        GPS_data - time_bias,
+        GPS_data,
         times_guess,
         transponder_coordinates,
         esv,

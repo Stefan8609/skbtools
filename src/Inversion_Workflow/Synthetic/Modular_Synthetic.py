@@ -114,7 +114,7 @@ def modular_synthetic(
     #   0: Just xAline Geiger
     #   1: xAline Geiger with Simulated Annealing
     real_data = True if generate_type == 1 else False
-    initial_guess = CDOG + np.random.normal(0, 100, 3)
+    initial_guess = CDOG + np.random.normal(0, 50, 3)
     if inversion_type == 0:
         # Just xAline Geiger
         lever = (
@@ -188,10 +188,7 @@ def modular_synthetic(
             if generate_type == 0
             else np.array([-12.4659, 9.6021, -13.2993])
         )
-        initial_lever = real_lever - np.random.normal(0, 5, 3)
-
-        """True levers: Realistic Generate [-10, 3, -15],
-        Bermuda Generate: [-12.48862757, 0.22622633, -15.89601934]"""
+        initial_lever = real_lever - np.random.normal(0, 3, 3)
 
         lever, offset, inversion_result = simulated_annealing_bias(
             300,
