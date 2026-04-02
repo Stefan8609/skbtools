@@ -78,7 +78,7 @@ def modular_synthetic(
         z_sample = False
     else:
         # Use Bermuda Dataset
-        true_offset = 1991.01236648
+        true_offset = np.random.rand() * 9000 + 1000
         (
             CDOG_data,
             CDOG,
@@ -109,7 +109,7 @@ def modular_synthetic(
         GPS_data = GPS_data[::downsample]
         true_transponder_coordinates = true_transponder_coordinates[::downsample]
         z_sample = True
-
+    print("True Offset")
     # Choose Inversion_Workflow Type
     #   0: Just xAline Geiger
     #   1: xAline Geiger with Simulated Annealing
@@ -266,7 +266,7 @@ def modular_synthetic(
 if __name__ == "__main__":
     esv_bias = 0
     time_bias = 0
-    downsample = 20
+    downsample = 1
 
     modular_synthetic(
         2 * 10**-5,
