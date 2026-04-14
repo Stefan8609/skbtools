@@ -5,7 +5,7 @@ from scipy.stats import gaussian_kde
 from plotting.Ellipses.Error_Ellipse import compute_error_ellipse
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
 from plotting.MCMC_plots import get_init_params_and_prior
-from plotting.KDE_MCMC_plot import plot_kde_mcmc
+from plotting.Misc.KDE_MCMC_plot import plot_kde_mcmc
 from plotting.save import save_plot
 
 from geometry.rigid_body import findRotationAndDisplacement
