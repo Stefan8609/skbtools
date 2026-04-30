@@ -66,22 +66,19 @@ def combined_dependence(generate=True):
         np.savez(
             data_path,
             # raw axes and grids
-            space_axis=space_axis,             # m
-            time_axis=time_axis,               # s
-            X=X,                               # m
-            Y=Y,                               # s
-
+            space_axis=space_axis,  # m
+            time_axis=time_axis,  # s
+            X=X,  # m
+            Y=Y,  # s
             # outputs
-            Z_std=Z_std,                       # s
-            Z_error=Z_error,                   # cm
-            Z_stdexp=Z_stdexp,                 # s
-
+            Z_std=Z_std,  # s
+            Z_error=Z_error,  # cm
+            Z_stdexp=Z_stdexp,  # s
             # convenient plot-scaled versions
             X_cm=X * 100,
             Y_us=Y * 1_000_000,
             Z_std_cm=Z_std * 1515 * 100,
             Z_stdexp_cm=Z_stdexp * 1515 * 100,
-
             # metadata
             residual_scale_mps=1515,
             position_noise_units="m",

@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.io as sio
+import matplotlib.pyplot as plt
 
 from Inversion_Workflow.Synthetic.Generate_Unaligned import (
     generateUnaligned,
@@ -17,6 +18,19 @@ from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
 )
 from plotting.Plot_Modular import time_series_plot
 from data import gps_data_path
+
+plt.rcParams.update(
+    {
+        "text.usetex": True,
+        "font.family": "serif",
+        "font.serif": ["Computer Modern"],
+        "font.size": 20,  # change this freely
+        "mathtext.fontset": "cm",
+        "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
+        "\n"
+        r"\usepackage{textcomp}",
+    }
+)
 
 
 def modular_synthetic(

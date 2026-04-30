@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
@@ -16,45 +18,36 @@ plt.rcParams.update(
         "text.usetex": True,
         "font.family": "serif",
         "font.serif": ["Computer Modern"],
+        "font.size": 20,  # change this freely
         "mathtext.fontset": "cm",
         "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
         "\n"
-        r"\usepackage{textcomp}",
+        r"\usepackage{textcomp, amsmath}",
     }
 )
 
 
-def _contour_kde2d(ax, pts2d, levels=20, gridsize=200, cmap=None, alpha=0.9):
-    """Plot a 2D Gaussian KDE as filled contours.
+def default_rv_plot_data_path():
+    """Return the default NPZ cache path for this figure."""
+    plot_data_dir = gps_output_path("Plot_Data")
+    return f"{plot_data_dir}/Atlantic_RV_Plot_Data.npz"
 
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        Target axes.
-    pts2d : (N, 2) ndarray
-        Input points as columns [x, y].
-    levels : int, optional
-        Number of contour levels. Default 50.
-    gridsize : int, optional
-        Grid resolution per axis. Default 200.
-    cmap : matplotlib.colors.Colormap, optional
-        Colormap for the density.
-    alpha : float, optional
-        Transparency for the filled contours. Default 0.9.
 
-    Returns
-    -------
-    matplotlib.contour.QuadContourSet
-        The contourf artist.
+def _compute_contour_kde2d(pts2d, levels=20, gridsize=200):
+    """Evaluate the expensive 2D KDE contour grid once.
+
+    The returned arrays are all plain NumPy arrays, so they can be stored in
+    the NPZ cache and redrawn later with ``ax.contourf`` without re-running
+    ``scipy.stats.gaussian_kde``.
     """
+    pts2d = np.asarray(pts2d, dtype=float)
     kde = gaussian_kde(pts2d.T)
-    # Build grid
+
     xlin = np.linspace(pts2d[:, 0].min(), pts2d[:, 0].max(), gridsize)
     ylin = np.linspace(pts2d[:, 1].min(), pts2d[:, 1].max(), gridsize)
     xgrid, ygrid = np.meshgrid(xlin, ylin)
     xy_coords = np.vstack([xgrid.ravel(), ygrid.ravel()])
 
-    # KDE evaluation (probability density)
     density = kde(xy_coords).reshape(xgrid.shape)
 
     # Convert density to expected counts per cell (match KDE_MCMC_plot style)
@@ -64,21 +57,31 @@ def _contour_kde2d(ax, pts2d, levels=20, gridsize=200, cmap=None, alpha=0.9):
     cell_area = dx * dy
     counts = density * N * cell_area
 
-    # Determine levels: if an int was provided, span 0..max; else use as-is
     if isinstance(levels, int):
         level_values = np.linspace(0, float(counts.max()), levels)
     else:
-        level_values = levels
+        level_values = np.asarray(levels, dtype=float)
 
-    # Set background consistent with the colormap's zero color (white→color look)
+    return xgrid, ygrid, counts, level_values
+
+
+def _draw_contour_kde2d(
+    ax,
+    xgrid,
+    ygrid,
+    counts,
+    level_values,
+    cmap=None,
+    alpha=0.9,
+):
+    """Draw an already-evaluated 2D KDE contour grid."""
     if cmap is not None:
         try:
             ax.set_facecolor(cmap(0))
         except Exception:
             pass
 
-    # Draw filled contours with antialiasing
-    cs = ax.contourf(
+    return ax.contourf(
         xgrid,
         ygrid,
         counts,
@@ -89,7 +92,156 @@ def _contour_kde2d(ax, pts2d, levels=20, gridsize=200, cmap=None, alpha=0.9):
         zorder=1,
     )
 
-    return cs
+
+def _contour_kde2d(ax, pts2d, levels=20, gridsize=200, cmap=None, alpha=0.9):
+    """Plot a 2D Gaussian KDE as filled contours.
+
+    This is the original compute-and-draw path. Use
+    ``_contour_kde2d_cached`` when a precomputed contour grid may exist in the
+    NPZ cache.
+    """
+    xgrid, ygrid, counts, level_values = _compute_contour_kde2d(
+        pts2d, levels=levels, gridsize=gridsize
+    )
+    return _draw_contour_kde2d(
+        ax, xgrid, ygrid, counts, level_values, cmap=cmap, alpha=alpha
+    )
+
+
+def _save_contour_to_dict(out, key, pts2d, levels=20, gridsize=200):
+    """Evaluate one contour grid and store it in a flat NPZ-friendly dict."""
+    xgrid, ygrid, counts, level_values = _compute_contour_kde2d(
+        pts2d, levels=levels, gridsize=gridsize
+    )
+    out[f"contour_{key}_xgrid"] = xgrid
+    out[f"contour_{key}_ygrid"] = ygrid
+    out[f"contour_{key}_counts"] = counts
+    out[f"contour_{key}_levels"] = level_values
+
+
+def _contour_kde2d_cached(
+    ax,
+    contour_cache,
+    key,
+    pts2d,
+    levels=20,
+    gridsize=200,
+    cmap=None,
+    alpha=0.9,
+):
+    """Draw a cached KDE contour when available; otherwise compute it."""
+    if contour_cache is not None:
+        xkey = f"contour_{key}_xgrid"
+        ykey = f"contour_{key}_ygrid"
+        ckey = f"contour_{key}_counts"
+        lkey = f"contour_{key}_levels"
+        if all(k in contour_cache for k in (xkey, ykey, ckey, lkey)):
+            return _draw_contour_kde2d(
+                ax,
+                contour_cache[xkey],
+                contour_cache[ykey],
+                contour_cache[ckey],
+                contour_cache[lkey],
+                cmap=cmap,
+                alpha=alpha,
+            )
+
+    return _contour_kde2d(
+        ax, pts2d, levels=levels, gridsize=gridsize, cmap=cmap, alpha=alpha
+    )
+
+
+def _precompute_rv_plot_contours(
+    *,
+    GPS_Vessel_rot,
+    GPS1,
+    levers_rot,
+    downsample,
+    contour_levers,
+):
+    """Precompute every expensive KDE contour used in the RV figure.
+
+    This includes the main top/side panels and all zoomed GPS/XDCR insets.
+    Later figure edits can redraw the contours directly from these arrays.
+    """
+    contours = {}
+
+    lever_xy = levers_rot[:, :2] + GPS1[:2]
+    lever_xy_ds = lever_xy[::downsample]
+    for i in range(4):
+        gxy_full = GPS_Vessel_rot[:, i, :2] + GPS1[:2]
+        gps_xy_ds = gxy_full[::downsample]
+        _save_contour_to_dict(
+            contours,
+            f"top_gps_main_{i}",
+            gps_xy_ds,
+            levels=contour_levers,
+            gridsize=200,
+        )
+        _save_contour_to_dict(
+            contours,
+            f"top_gps_inset_{i}",
+            gps_xy_ds,
+            levels=contour_levers,
+            gridsize=120,
+        )
+
+    _save_contour_to_dict(
+        contours,
+        "top_lever_main",
+        lever_xy_ds,
+        levels=contour_levers,
+        gridsize=200,
+    )
+    _save_contour_to_dict(
+        contours,
+        "top_lever_inset",
+        lever_xy_ds,
+        levels=contour_levers,
+        gridsize=120,
+    )
+
+    lever_xz = np.column_stack((levers_rot[:, 0] + GPS1[0], levers_rot[:, 2] + GPS1[2]))
+    lever_xz_ds = lever_xz[::downsample]
+    for i in range(4):
+        gps_xz_full = np.column_stack(
+            (
+                GPS_Vessel_rot[:, i, 0] + GPS1[0],
+                GPS_Vessel_rot[:, i, 2] + GPS1[2],
+            )
+        )
+        gps_xz_ds = gps_xz_full[::downsample]
+        _save_contour_to_dict(
+            contours,
+            f"side_gps_main_{i}",
+            gps_xz_ds,
+            levels=contour_levers,
+            gridsize=160,
+        )
+        _save_contour_to_dict(
+            contours,
+            f"side_gps_inset_{i}",
+            gps_xz_ds,
+            levels=contour_levers,
+            gridsize=120,
+        )
+
+    _save_contour_to_dict(
+        contours,
+        "side_lever_main",
+        lever_xz_ds,
+        levels=contour_levers,
+        gridsize=160,
+    )
+    _save_contour_to_dict(
+        contours,
+        "side_lever_inset",
+        lever_xz_ds,
+        levels=contour_levers,
+        gridsize=120,
+    )
+
+    return contours
 
 
 def px_to_world_segments(
@@ -219,15 +371,114 @@ def _add_schematic_inset(
     return ax_in
 
 
-def RV_Plot(
+def _save_rv_plot_cache(
+    cache_path,
+    *,
     segments,
     side_segments,
-    lever_arms,
+    GPS_Vessel_rot,
+    GPS1,
+    levers_rot,
+    lever_init_rot,
     lever_prior,
-    lever_init,
     CDOG_augs,
     aug_prior,
     aug_init,
+    rotation_deg,
+    gps1_offset,
+    downsample,
+    zoom_half_range,
+    tick_step_cm,
+    inset_label_fontsize,
+    schematic_box,
+    schematic_scale,
+    figsize,
+    height_ratios,
+    contour_levers,
+):
+    """Save the fully preprocessed data needed to redraw ``RV_Plot``.
+
+    This cache intentionally stores arrays after the expensive GPS/MCMC
+    preprocessing steps. The replay script can then redraw the figure without
+    loading the MCMC chain, loading the raw GPS file, or recomputing the rigid
+    body rotations.
+    """
+    cache_path = Path(cache_path)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # These are the expensive scipy.stats.gaussian_kde evaluations. Store the
+    # resulting contour grids/counts in the same NPZ so figure replays only call
+    # ax.contourf on precomputed arrays.
+    contour_cache = _precompute_rv_plot_contours(
+        GPS_Vessel_rot=np.asarray(GPS_Vessel_rot, dtype=float),
+        GPS1=np.asarray(GPS1, dtype=float),
+        levers_rot=np.asarray(levers_rot, dtype=float),
+        downsample=int(downsample),
+        contour_levers=int(contour_levers),
+    )
+
+    metadata_and_samples = dict(
+        segments=np.asarray(segments, dtype=float),
+        side_segments=np.asarray(side_segments, dtype=float),
+        GPS_Vessel_rot=np.asarray(GPS_Vessel_rot, dtype=float),
+        GPS1=np.asarray(GPS1, dtype=float),
+        levers_rot=np.asarray(levers_rot, dtype=float),
+        lever_init_rot=np.asarray(lever_init_rot, dtype=float),
+        lever_prior=np.asarray(lever_prior, dtype=float),
+        CDOG_augs=np.asarray(CDOG_augs, dtype=float),
+        aug_prior=np.asarray(aug_prior, dtype=float),
+        aug_init=np.asarray(aug_init, dtype=float),
+        rotation_deg=np.asarray(rotation_deg, dtype=float),
+        gps1_offset=np.asarray(gps1_offset, dtype=float),
+        downsample=np.asarray(downsample, dtype=int),
+        zoom_half_range=np.asarray(zoom_half_range, dtype=float),
+        tick_step_cm=np.asarray(tick_step_cm, dtype=int),
+        inset_label_fontsize=np.asarray(inset_label_fontsize, dtype=float),
+        schematic_box=np.asarray(schematic_box, dtype=float),
+        schematic_scale=np.asarray(schematic_scale, dtype=float),
+        figsize=np.asarray(figsize, dtype=float),
+        height_ratios=np.asarray(height_ratios, dtype=float),
+        contour_levers=np.asarray(contour_levers, dtype=int),
+    )
+
+    np.savez_compressed(cache_path, **metadata_and_samples, **contour_cache)
+    print(f"Saved RV_Plot cache, including KDE contour grids, to {cache_path}")
+    return contour_cache
+
+
+def _load_rv_plot_cache(cache_path):
+    """Load cached plotting arrays saved by ``_save_rv_plot_cache``."""
+    cache_path = Path(cache_path)
+    if not cache_path.exists():
+        raise FileNotFoundError(f"No RV_Plot cache found at {cache_path}")
+
+    with np.load(cache_path, allow_pickle=False) as cache:
+        return {key: cache[key] for key in cache.files}
+
+
+def RV_Plot_from_cache(cache_path=None, save=True):
+    """Redraw ``RV_Plot`` from a saved NPZ cache.
+
+    Use this after running the full script once with ``save_npz=True``. This
+    avoids reloading the MCMC chain, reloading the raw GPS file, and recomputing
+    the GPS rigid-body rotations.
+    """
+    return RV_Plot(cache_path=cache_path, load_npz=True, save=save)
+
+
+def RV_Plot(
+    segments=None,
+    side_segments=None,
+    lever_arms=None,
+    lever_prior=None,
+    lever_init=None,
+    CDOG_augs=None,
+    aug_prior=None,
+    aug_init=None,
+    cache_path=None,
+    save_npz=False,
+    load_npz=False,
+    save=True,
 ):
     """Top-down (row 1) spans full width; side-view (row 2) spans full width;
     rows 3–4 are split into 3 columns each and returned for external plotting.
@@ -251,24 +502,119 @@ def RV_Plot(
     MARGINS = dict(left=0.08, right=0.98, top=0.95, bottom=0.07, hspace=0.15)
     CONTOUR_LEVERS = 15
 
-    # ---- Data load ----
-    data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
-    GPS_grid = np.array(
-        [
-            [0.0, 0.0, 0.0],
-            [-2.39341409, -4.22350344, 0.02941493],
-            [-12.09568416, -0.94568462, 0.0043972],
-            [-8.68674054, 5.16918806, 0.02499322],
-        ]
-    )
-    GPS_Coordinates = data["GPS_Coordinates"]
+    if cache_path is None:
+        cache_path = default_rv_plot_data_path()
 
-    GPS_Vessel = np.zeros_like(GPS_Coordinates)
-    for i in range(GPS_Coordinates.shape[0]):
-        R_mtrx, d = findRotationAndDisplacement(GPS_Coordinates[i].T, GPS_grid.T)
-        GPS_Vessel[i] = (R_mtrx @ GPS_Coordinates[i].T + d[:, None]).T
+    contour_cache = None
 
-    GPS1 = np.array(GPS1_OFFSET)
+    # ---- Data load / cache load ----
+    if load_npz:
+        cache = _load_rv_plot_cache(cache_path)
+        contour_cache = cache
+
+        segments = cache["segments"]
+        side_segments = cache["side_segments"]
+        GPS_Vessel_rot = cache["GPS_Vessel_rot"]
+        GPS1 = cache["GPS1"]
+        levers_rot = cache["levers_rot"]
+        lever_init_rot = cache["lever_init_rot"]
+        lever_prior = cache["lever_prior"]
+        CDOG_augs = cache["CDOG_augs"]
+        aug_prior = cache["aug_prior"]
+        aug_init = cache["aug_init"]
+
+        # Keep the cached values available for exact replay if you changed
+        # these constants after writing the cache.
+        ROTATION_DEG = float(cache.get("rotation_deg", ROTATION_DEG))
+        GPS1_OFFSET = tuple(np.asarray(cache.get("gps1_offset", GPS1_OFFSET)).tolist())
+        DOWNSAMPLE = int(cache.get("downsample", DOWNSAMPLE))
+        ZOOM_HALF_RANGE = float(cache.get("zoom_half_range", ZOOM_HALF_RANGE))
+        TICK_STEP_CM = int(cache.get("tick_step_cm", TICK_STEP_CM))
+        INSET_LABEL_FONTSIZE = float(
+            cache.get("inset_label_fontsize", INSET_LABEL_FONTSIZE)
+        )
+        SCHEMATIC_BOX = tuple(
+            np.asarray(cache.get("schematic_box", SCHEMATIC_BOX)).tolist()
+        )
+        SCHEMATIC_SCALE = float(cache.get("schematic_scale", SCHEMATIC_SCALE))
+        FIGSIZE = tuple(np.asarray(cache.get("figsize", FIGSIZE)).tolist())
+        HEIGHT_RATIOS = tuple(
+            np.asarray(cache.get("height_ratios", HEIGHT_RATIOS)).tolist()
+        )
+        CONTOUR_LEVERS = int(cache.get("contour_levers", CONTOUR_LEVERS))
+    else:
+        required = {
+            "segments": segments,
+            "side_segments": side_segments,
+            "lever_arms": lever_arms,
+            "lever_prior": lever_prior,
+            "lever_init": lever_init,
+            "CDOG_augs": CDOG_augs,
+            "aug_prior": aug_prior,
+            "aug_init": aug_init,
+        }
+        missing = [name for name, value in required.items() if value is None]
+        if missing:
+            raise ValueError(
+                "Missing required inputs for full RV_Plot run: " + ", ".join(missing)
+            )
+
+        data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
+        GPS_grid = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [-2.39341409, -4.22350344, 0.02941493],
+                [-12.09568416, -0.94568462, 0.0043972],
+                [-8.68674054, 5.16918806, 0.02499322],
+            ]
+        )
+        GPS_Coordinates = data["GPS_Coordinates"]
+
+        GPS_Vessel = np.zeros_like(GPS_Coordinates)
+        for i in range(GPS_Coordinates.shape[0]):
+            R_mtrx, d = findRotationAndDisplacement(GPS_Coordinates[i].T, GPS_grid.T)
+            GPS_Vessel[i] = (R_mtrx @ GPS_Coordinates[i].T + d[:, None]).T
+
+        GPS1 = np.array(GPS1_OFFSET)
+
+        theta = np.deg2rad(ROTATION_DEG)
+        Rz = np.array(
+            [
+                [np.cos(theta), -np.sin(theta), 0],
+                [np.sin(theta), np.cos(theta), 0],
+                [0, 0, 1],
+            ]
+        )
+
+        lever_init_rot = np.asarray(lever_init) @ Rz.T
+        levers_rot = np.asarray(lever_arms) @ Rz.T
+        GPS_Vessel_rot = GPS_Vessel @ Rz.T
+
+        if save_npz:
+            contour_cache = _save_rv_plot_cache(
+                cache_path,
+                segments=segments,
+                side_segments=side_segments,
+                GPS_Vessel_rot=GPS_Vessel_rot,
+                GPS1=GPS1,
+                levers_rot=levers_rot,
+                lever_init_rot=lever_init_rot,
+                lever_prior=lever_prior,
+                CDOG_augs=CDOG_augs,
+                aug_prior=aug_prior,
+                aug_init=aug_init,
+                rotation_deg=ROTATION_DEG,
+                gps1_offset=GPS1_OFFSET,
+                downsample=DOWNSAMPLE,
+                zoom_half_range=ZOOM_HALF_RANGE,
+                tick_step_cm=TICK_STEP_CM,
+                inset_label_fontsize=INSET_LABEL_FONTSIZE,
+                schematic_box=SCHEMATIC_BOX,
+                schematic_scale=SCHEMATIC_SCALE,
+                figsize=FIGSIZE,
+                height_ratios=HEIGHT_RATIOS,
+                contour_levers=CONTOUR_LEVERS,
+            )
 
     fig = plt.figure(figsize=FIGSIZE, constrained_layout=False)
     gs = fig.add_gridspec(4, 1, height_ratios=list(HEIGHT_RATIOS))
@@ -292,23 +638,8 @@ def RV_Plot(
     ax4_3 = fig.add_subplot(gs_row4[0, 2])
     ax4 = [ax4_1, ax4_2, ax4_3]
 
-    # ---- Rotate to ship frame ----
-    theta = np.deg2rad(ROTATION_DEG)
-    Rz = np.array(
-        [
-            [np.cos(theta), -np.sin(theta), 0],
-            [np.sin(theta), np.cos(theta), 0],
-            [0, 0, 1],
-        ]
-    )
-
-    lever_init_rot = lever_init @ Rz.T
-    levers_rot = np.asarray(lever_arms) @ Rz.T
-
     # Top-down (X–Y) lever KDE
     lever_xy = levers_rot[:, :2] + GPS1[:2]
-
-    GPS_Vessel_rot = GPS_Vessel @ Rz.T
 
     gps_xy_list = []
     centroids = []
@@ -323,9 +654,11 @@ def RV_Plot(
 
     white_red_cmap = LinearSegmentedColormap.from_list("white_red", ["white", "red"])
 
-    for pts in gps_xy_list:
-        _contour_kde2d(
+    for idx, pts in enumerate(gps_xy_list):
+        _contour_kde2d_cached(
             ax,
+            contour_cache,
+            f"top_gps_main_{idx}",
             pts,
             levels=CONTOUR_LEVERS,
             gridsize=200,
@@ -334,8 +667,10 @@ def RV_Plot(
         )
 
     lever_xy_ds = lever_xy[::DOWNSAMPLE]
-    _contour_kde2d(
+    _contour_kde2d_cached(
         ax,
+        contour_cache,
+        "top_lever_main",
         lever_xy_ds,
         levels=CONTOUR_LEVERS,
         gridsize=200,
@@ -369,8 +704,10 @@ def RV_Plot(
     axins_lev_xy = ax.inset_axes(
         [ix - w / 2.0, iy - h / 2.0, w, h], transform=ax.transData
     )
-    _contour_kde2d(
+    _contour_kde2d_cached(
         axins_lev_xy,
+        contour_cache,
+        "top_lever_inset",
         lever_xy_ds,
         levels=CONTOUR_LEVERS,
         gridsize=120,
@@ -431,8 +768,10 @@ def RV_Plot(
         axins = ax.inset_axes(
             [ix - w / 2.0, iy - h / 2.0, w, h], transform=ax.transData
         )
-        _contour_kde2d(
+        _contour_kde2d_cached(
             axins,
+            contour_cache,
+            f"top_gps_inset_{idx - 1}",
             pts,
             levels=CONTOUR_LEVERS,
             gridsize=120,
@@ -518,9 +857,11 @@ def RV_Plot(
         centroids_xz.append(g_xz_full.mean(axis=0))
 
     # KDE contours for each GPS in side view
-    for pts in gps_xz_list:
-        _contour_kde2d(
+    for idx, pts in enumerate(gps_xz_list):
+        _contour_kde2d_cached(
             ax_side,
+            contour_cache,
+            f"side_gps_main_{idx}",
             pts,
             levels=CONTOUR_LEVERS,
             gridsize=160,
@@ -536,8 +877,10 @@ def RV_Plot(
     # Lever distribution (X–Z)
     lever_xz = np.column_stack((levers_rot[:, 0] + GPS1[0], levers_rot[:, 2] + GPS1[2]))
     lever_xz_ds = lever_xz[::DOWNSAMPLE]
-    _contour_kde2d(
+    _contour_kde2d_cached(
         ax_side,
+        contour_cache,
+        "side_lever_main",
         lever_xz_ds,
         levels=CONTOUR_LEVERS,
         gridsize=160,
@@ -565,8 +908,10 @@ def RV_Plot(
     axins_lev_xz = ax_side.inset_axes(
         [ix - w / 2.0, iz - h / 2.0, w, h], transform=ax_side.transData
     )
-    _contour_kde2d(
+    _contour_kde2d_cached(
         axins_lev_xz,
+        contour_cache,
+        "side_lever_inset",
         lever_xz_ds,
         levels=CONTOUR_LEVERS,
         gridsize=120,
@@ -620,8 +965,10 @@ def RV_Plot(
         axins = ax_side.inset_axes(
             [ix - w / 2.0, iz - h / 2.0, w, h], transform=ax_side.transData
         )
-        _contour_kde2d(
+        _contour_kde2d_cached(
             axins,
+            contour_cache,
+            f"side_gps_inset_{idx - 1}",
             pts,
             levels=CONTOUR_LEVERS,
             gridsize=120,
@@ -914,7 +1261,8 @@ def RV_Plot(
         va="top",
         fontweight="bold",
     )
-    save_plot(fig, func_name="RV_Plot", subdir="Figs", ext="pdf")
+    if save:
+        save_plot(fig, func_name="RV_Plot", subdir="Figs", ext="pdf")
 
     return fig, (ax, ax_side, ax3, ax4)
 
@@ -1022,15 +1370,28 @@ if __name__ == "__main__":
 
     side_segments = side_ship_segments + side_moonpool_segments
 
-    fig, (ax, ax_side, ax3, ax4) = RV_Plot(
-        segments,
-        side_segments,
-        levers,
-        lever_prior,
-        lever_init,
-        CDOG_augs,
-        aug_prior,
-        aug_init,
-    )
+    plot_data_dir = gps_output_path("Plot_Data")
+    plot_data_path = f"{plot_data_dir}/Atlantic_RV_Plot_Data.npz"
+    load = True
 
-    plt.show()
+    if load:
+        fig, axes = RV_Plot_from_cache(
+            cache_path=default_rv_plot_data_path(),
+            save=True,
+        )
+        plt.show()
+    else:
+        fig, (ax, ax_side, ax3, ax4) = RV_Plot(
+            segments,
+            side_segments,
+            levers,
+            lever_prior,
+            lever_init,
+            CDOG_augs,
+            aug_prior,
+            aug_init,
+            cache_path=plot_data_path,
+            save_npz=True,
+        )
+
+        plt.show()

@@ -87,12 +87,12 @@ def initial_bias_geiger(
             transponder_coordinates,
             esv,
         )
-        test_misfit = np.sqrt(np.nanmean((GPS_full - CDOG_full) ** 2)) *1515 * 100
+        test_misfit = np.sqrt(np.nanmean((GPS_full - CDOG_full) ** 2)) * 1515 * 100
         if test_misfit < best_misfit:
             best_misfit = test_misfit
             best_offset = test_offset
-        print("TEST",test_offset, test_misfit)
-        print("BEST",best_offset, best_misfit, "\n")
+        print("TEST", test_offset, test_misfit)
+        print("BEST", best_offset, best_misfit, "\n")
     offset = best_offset
     print("Initial Offset Estimate:", offset)
 

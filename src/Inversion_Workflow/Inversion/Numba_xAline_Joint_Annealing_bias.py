@@ -6,7 +6,10 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-from Inversion_Workflow.Inversion.Numba_xAline import find_subint_offset, two_pointer_index
+from Inversion_Workflow.Inversion.Numba_xAline import (
+    find_subint_offset,
+    two_pointer_index,
+)
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     final_bias_geiger,
     initial_bias_geiger,
@@ -57,16 +60,16 @@ def _evaluate_single_dog(
 @njit(cache=True)
 def simulated_annealing_bias_joint(
     iter,
-    CDOG_data_array,        # shape: (n_dogs, ...)
-    GPS_data,               # shared GPS data
-    GPS_Coordinates,        # shared platform trajectory
+    CDOG_data_array,  # shape: (n_dogs, ...)
+    GPS_data,  # shared GPS data
+    GPS_Coordinates,  # shared platform trajectory
     gps1_to_others,
-    initial_guess_list,     # shape: (n_dogs, 3)
+    initial_guess_list,  # shape: (n_dogs, 3)
     initial_lever,
     dz_array,
     angle_array,
     esv_matrix,
-    initial_offset_list,    # shape: (n_dogs,)
+    initial_offset_list,  # shape: (n_dogs,)
     real_data=False,
     z_sample=True,
 ):
@@ -161,7 +164,6 @@ def simulated_annealing_bias_joint(
 
     # Save best per-DOG state
     best_inversion_guesses = inversion_guesses.copy()
-    best_inversion_estimates = inversion_estimates.copy()
     best_time_biases = time_biases.copy()
     best_esv_biases = esv_biases.copy()
     best_offsets = offsets.copy()
@@ -213,7 +215,6 @@ def simulated_annealing_bias_joint(
             best_total_rmse = candidate_total_rmse
             best_lever = lever.copy()
 
-            best_inversion_estimates = candidate_inversion_estimates.copy()
             best_inversion_guesses = candidate_inversion_guesses.copy()
 
             for j in range(n_dogs):
@@ -224,8 +225,13 @@ def simulated_annealing_bias_joint(
             print("\nIteration", k)
             print("Current Lever:", np.round(lever, 3))
             print("Best Lever:", np.round(best_lever, 3))
-            print("Current Total RMSE (cm):", np.round(candidate_total_rmse * 100.0 * 1515.0, 2))
-            print("Best Total RMSE (cm):", np.round(best_total_rmse * 100.0 * 1515.0, 2))
+            print(
+                "Current Total RMSE (cm):",
+                np.round(candidate_total_rmse * 100.0 * 1515.0, 2),
+            )
+            print(
+                "Best Total RMSE (cm):", np.round(best_total_rmse * 100.0 * 1515.0, 2)
+            )
             print("Best Offsets:", np.round(best_offsets, 3))
 
         if k % 50 == 0 and k > 0:
@@ -307,7 +313,6 @@ def simulated_annealing_bias_joint(
             if candidate_total_rmse < best_total_rmse:
                 best_total_rmse = candidate_total_rmse
                 best_lever_new = lever.copy()
-                best_inversion_estimates = candidate_inversion_estimates.copy()
                 best_inversion_guesses = candidate_inversion_guesses.copy()
 
                 for j in range(n_dogs):

@@ -2,7 +2,6 @@ import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
 from matplotlib import colors
-from pathlib import Path
 
 from data import gps_data_path, gps_output_path
 
@@ -124,7 +123,7 @@ def save_elevation_plot_cache(
         keep_mask = (elevation >= lower_band) & (elevation <= upper_band)
         reject_mask = ~keep_mask
 
-        prefix = f"unit{i+1}_"
+        prefix = f"unit{i + 1}_"
         save_dict[f"{prefix}time_vals"] = time_vals
         save_dict[f"{prefix}elevation"] = elevation
         save_dict[f"{prefix}median_elev"] = median_elev
@@ -136,6 +135,7 @@ def save_elevation_plot_cache(
 
     np.savez_compressed(save_path, **save_dict)
     print(f"Saved cache to {save_path}")
+
 
 def plot_elevation_density_from_cache(
     cache_path="bermuda_elevation_plot_cache.npz",
@@ -154,17 +154,16 @@ def plot_elevation_density_from_cache(
     # median_color = "#2A6F97"
     # cutoff_color = "#D98F00"
     hard_cut_color = "#7A8B5B"
-    rejected_color = "#C8553D" 
+    rejected_color = "#C8553D"
 
     elev_upper = float(cache["elev_upper"])
     elev_lower = float(cache["elev_lower"])
-    window = int(cache["window"])
 
     hb = None
 
     for i in range(4):
         ax = axs[i]
-        prefix = f"unit{i+1}_"
+        prefix = f"unit{i + 1}_"
 
         time_vals = cache[f"{prefix}time_vals"]
         time_hours = time_vals / 3600.0
@@ -322,6 +321,7 @@ def plot_elevation_density_from_cache(
         fontsize=18,
     )
     plt.show()
+
 
 if __name__ == "__main__":
     data_path = gps_output_path("Plot_Data/bermuda_elevation_plot_cache.npz")

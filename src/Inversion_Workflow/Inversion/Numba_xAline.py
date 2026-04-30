@@ -175,7 +175,7 @@ def find_subint_offset(
     # Initialize values for loop
     lower, upper = offset - 0.5, offset + 0.5
     intervals = np.array(
-        [0.1,0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001]
+        [0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001]
     )
     best_offset = offset
     best_RMSE = np.inf

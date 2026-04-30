@@ -261,11 +261,20 @@ def time_series_plot(
         ax.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
         ax.set_xlabel("")
     for ax in (axes[1, 1], axes[1, 2]):
-        ax.tick_params(axis="y", which="both", left=False, right=False, labelleft=False, labelright=False)
+        ax.tick_params(
+            axis="y",
+            which="both",
+            left=False,
+            right=False,
+            labelleft=False,
+            labelright=False,
+        )
         ax.set_ylabel("")
 
     # Adjust spacing between subplots
-    fig.subplots_adjust(left=0.10, right=0.90, bottom=0.11, top=0.97, wspace=0.05, hspace=0.08)
+    fig.subplots_adjust(
+        left=0.10, right=0.90, bottom=0.11, top=0.97, wspace=0.05, hspace=0.08
+    )
 
     if save:
         save_plot(fig, func_name=f"time_series_plot_DOG{DOG_num}", subdir=path)
@@ -396,7 +405,7 @@ def range_residual(
 ):
     """Plot residual range errors along the track."""
     times_hours = GPS_clock / 3600  # Convert seconds to hours
-    range_residuals = (CDOG_full - GPS_full) * ESV * 100  # Convert to cm
+    range_residuals = (CDOG_full - GPS_full) * 1515 * 100  # Convert to cm
     calculated_range = np.linalg.norm(transponder_coordinates - CDOG, axis=1)
     mu_rr, std_rr = norm.fit(range_residuals)
 
@@ -428,15 +437,30 @@ def range_residual(
     )
     x = np.linspace(mu_rr - 3 * std_rr, mu_rr + 3 * std_rr, 100)
     p = norm.pdf(x, mu_rr, std_rr)
-    axes[1].plot(
-        p, x, "k", linewidth=2, label=f"Normal fit: mean={mu_rr:.2f}, std={std_rr:.2f}"
-    )
+    axes[1].plot(p, x, "k", linewidth=2)
     axes[1].axhline(-std_rr, color="r")
     axes[1].axhline(std_rr, color="r")
     axes[1].set_ylim([mu_rr - 3 * std_rr, mu_rr + 3 * std_rr])
     axes[1].set_xlabel("Density")
     axes[1].set_ylabel("")
-    axes[1].tick_params(axis="y", which="both", left=False, right=False, labelleft=False, labelright=False)
+    axes[1].tick_params(
+        axis="y",
+        which="both",
+        left=False,
+        right=False,
+        labelleft=False,
+        labelright=False,
+    )
+    axes[1].text(
+        1.06,
+        0.45,
+        f"$c\sigma$={std_rr:.2f} (cm)",
+        transform=axes[1].transAxes,
+        ha="left",
+        va="center",
+        clip_on=False,
+        rotation=270,
+    )
 
     if save:
         save_plot(fig, func_name=f"range_residual_DOG{DOG_num}", subdir=path)

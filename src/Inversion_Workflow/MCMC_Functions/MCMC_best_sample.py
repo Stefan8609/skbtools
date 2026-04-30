@@ -16,6 +16,19 @@ from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
     calculateTimesRayTracing_split,
 )
 
+plt.rcParams.update(
+    {
+        "text.usetex": True,
+        "font.family": "serif",
+        "font.serif": ["Computer Modern"],
+        "font.size": 20,  # change this freely
+        "mathtext.fontset": "cm",
+        "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
+        "\n"
+        r"\usepackage{textcomp}",
+    }
+)
+
 
 def load_min_logpost_params(npz_path, loglike=False):
     """

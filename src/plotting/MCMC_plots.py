@@ -17,10 +17,11 @@ plt.rcParams.update(
         "text.usetex": True,
         "font.family": "serif",
         "font.serif": ["Computer Modern"],
+        "font.size": 20,  # change this freely
         "mathtext.fontset": "cm",
         "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
         "\n"
-        r"\usepackage{textcomp}",
+        r"\usepackage{textcomp, amsmath}",
     }
 )
 
@@ -185,7 +186,6 @@ def trace_plot(
     """Plot traces of MCMC parameters, with per-DOG ESV bias mean-centered,
     including units. Also plots one DOG vertical (ENU Up) augment trace.
     (Time-bias traces removed.)"""
-    DOG_index_num = {0: 1, 1: 3, 2: 4}
 
     # Downsample
     lever = chain["lever"][::downsample]
@@ -246,46 +246,40 @@ def trace_plot(
         esv = esv.reshape(n_iter, 1, esv.shape[1])
     elif esv.ndim != 3:
         raise ValueError(f"esv_bias must be 1-, 2- or 3-D; got shape {esv.shape}")
-    n_dogs, n_splits = esv.shape[1], esv.shape[2]
+    n_splits = esv.shape[2]
 
     # Mean-center ESV (per DOG x split)
     esv_mean = esv.mean(axis=0)
     esv_centered = esv - esv_mean[np.newaxis, ...]
 
     # ---- Build subplots (+1 row for DOG-U), NO time-bias row ----
-    n_rows = 3 + 1 + n_dogs + 1  # lever(3) + dogU(1) + esv(n_dogs) + rmse(1)
+    n_rows = 3 + 1 + 1 + 1  # lever(3) + dogU(1) + esv(n_dogs) + rmse(1)
     fig, axes = plt.subplots(n_rows, 1, figsize=(16, 1.5 * n_rows), sharex=True)
 
     # Lever traces
     axes[0].plot(lever_cm[:, 0])
-    axes[0].set_ylabel("lever x (cm)")
+    axes[0].set_ylabel("lx")
     axes[1].plot(lever_cm[:, 1])
-    axes[1].set_ylabel("lever y (cm)")
+    axes[1].set_ylabel("ly")
     axes[2].plot(lever_cm[:, 2])
-    axes[2].set_ylabel("lever z (cm)")
+    axes[2].set_ylabel("lz")
 
     # DOG-U trace (one panel)
     ax_u = axes[3]
-    DOG_num = DOG_index_num.get(dog_u_index, dog_u_index + 1)
     ax_u.plot(dog_u_cm, linewidth=0.9)
-    ax_u.set_ylabel(f"DOG {DOG_num} U (cm)")
+    ax_u.set_ylabel("DOG U")
     if dog_u_center in ("init", "mean"):
         ax_u.axhline(0.0, color="r", ls="--", linewidth=0.7)
 
     # ESV traces
-    base = 4
-    for j in range(n_dogs):
-        ax = axes[base + j]
-        DOG_num = DOG_index_num.get(j, j + 1)
-        for k in range(n_splits):
-            ax.plot(esv_centered[:, j, k], linewidth=0.8, label=f"split {k + 1}")
-        ax.set_ylabel(f"ESV {DOG_num} (m/s)")
-        ax.legend(fontsize="x-small", ncol=min(n_splits, 3), loc="upper right")
+    for k in range(n_splits):
+        axes[4].plot(esv_centered[:, 0, k], linewidth=0.8, label=f"split {k + 1}")
+    axes[4].set_ylabel("$\delta c$")
+    axes[4].legend(fontsize="x-small", ncol=min(n_splits, 3), loc="upper right")
 
     # Log posterior / rmse line
-    axes[base + n_dogs].plot(rmse)
-    axes[base + n_dogs].set_ylabel("Log Posterior (ms)")
-
+    axes[5].plot(rmse)
+    axes[5].set_ylabel(r"$\log P(\boldsymbol{\theta}\mid \mathbf{T})$")
     # Initial lines for lever
     if initial_params:
         for i in range(3):
@@ -960,7 +954,7 @@ def corner_plot(
 
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
-    file_name = "mcmc_chain_1_26_one_dog"
+    file_name = "mcmc_chain_1_22_new_MCMC_long"
     loglike = False
     save = True
 
@@ -979,27 +973,27 @@ if __name__ == "__main__":
     trace_plot(
         chain,
         initial_params=initial_params,
-        downsample=5,
+        downsample=500,
         save=save,
         chain_name=chain_name,
     )
-    marginal_hists(
-        chain,
-        initial_params=initial_params,
-        prior_scales=prior_scales,
-        downsample=5,
-        save=save,
-        chain_name=chain_name,
-    )
-    corner_plot(
-        chain,
-        initial_params=initial_params,
-        prior_scales=prior_scales,
-        downsample=5,
-        save=save,
-        chain_name=chain_name,
-        loglike=loglike,
-    )
+    # marginal_hists(
+    #     chain,
+    #     initial_params=initial_params,
+    #     prior_scales=prior_scales,
+    #     downsample=5,
+    #     save=save,
+    #     chain_name=chain_name,
+    # )
+    # corner_plot(
+    #     chain,
+    #     initial_params=initial_params,
+    #     prior_scales=prior_scales,
+    #     downsample=5,
+    #     save=save,
+    #     chain_name=chain_name,
+    #     loglike=loglike,
+    # )
 
     # esv_split_posteriors(
     #     chain,

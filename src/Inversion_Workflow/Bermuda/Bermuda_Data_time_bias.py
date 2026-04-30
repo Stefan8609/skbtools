@@ -13,12 +13,6 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
-from plotting.Plot_Modular import (
-    time_series_plot,
-    range_residual,
-)
-from plotting.Analysis_Plots.metric_plots import plot_integer_pick_metrics_dog
-from geometry.ECEF_Geodetic import ECEF_Geodetic
 from data import gps_data_path, gps_output_path
 
 # -------------------------

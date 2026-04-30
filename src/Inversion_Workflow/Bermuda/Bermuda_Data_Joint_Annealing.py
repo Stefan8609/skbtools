@@ -1,23 +1,9 @@
 import numpy as np
 import scipy.io as sio
 
-from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
-    initial_bias_geiger,
-    final_bias_geiger,
-)
 from Inversion_Workflow.Inversion.Numba_xAline_Joint_Annealing_bias import (
     simulated_annealing_bias_joint,
 )
-from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
-    calculateTimesRayTracing_Bias_Real,
-)
-from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
-from plotting.Plot_Modular import (
-    time_series_plot,
-    range_residual,
-)
-from geometry.ECEF_Geodetic import ECEF_Geodetic
 from data import gps_data_path
 from numba.typed import List
 
@@ -131,7 +117,6 @@ best_lever, best_offset_list, inversion_result_list, rmse_list = (
 )
 
 
-
 # -------------------------
 # Summary + diagnostics
 # -------------------------
@@ -158,4 +143,6 @@ for i, DOG_num in enumerate(DOG_nums):
     )
     print("RMSE:", np.round(rmse_list[i] * 100 * 1515, 3), "cm")
 
-print("\nJoint objective (sum of DOG RMSE, cm):", np.round(joint_rmse_cm * 100 * 1515, 3))
+print(
+    "\nJoint objective (sum of DOG RMSE, cm):", np.round(joint_rmse_cm * 100 * 1515, 3)
+)
