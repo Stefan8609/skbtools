@@ -46,6 +46,11 @@ def time_series_plot(
     else:
         zoom_region = zoom_start
 
+    CDOG_clock = CDOG_clock / 3600.0
+    GPS_clock = GPS_clock / 3600.0
+    zoom_region = zoom_region / 3600.0
+    zoom_length = zoom_length / 3600.0
+
     # Plot axes to return
     fig, axes = plt.subplots(
         2,
@@ -108,7 +113,8 @@ def time_series_plot(
         zorder=1,
     )
     axes[0, 2].set_xlim(zoom_region, zoom_region + zoom_length)
-    axes[0, 2].legend(loc="upper right")
+    axes[0, 2].yaxis.tick_right()
+    axes[0, 2].yaxis.set_label_position("right")
 
     # Histogram and normal distributions
     data_ms = difference_data * 1000
@@ -132,7 +138,7 @@ def time_series_plot(
     # add horizontal lines for the noise and uncertainty
     axes[1, 0].axhline(-std, color="r", label="Observed Noise")
     axes[1, 0].axhline(std, color="r")
-    axes[1, 0].text(-0.1, std * 1.2, "$\\sigma_p$", va="center", color="r")
+    axes[1, 0].text(-0.1, std * 1.2, "$\sigma_\epsilon$", va="center", color="r")
 
     if position_noise != 0:
         axes[1, 0].axhline(
@@ -142,7 +148,7 @@ def time_series_plot(
         axes[1, 0].text(
             -0.2,
             position_noise / 1515 * 1000 * 0.5,
-            "$\\sigma_x$",
+            "$\sigma_d$",
             va="center",
             color="g",
         )
@@ -150,21 +156,21 @@ def time_series_plot(
     if time_noise != 0:
         axes[1, 0].axhline(-time_noise * 1000, color="y", label="Input Time Noise")
         axes[1, 0].axhline(time_noise * 1000, color="y")
-        axes[1, 0].text(-0.2, time_noise * 1000, "$\\sigma_t$", va="center", color="y")
+        axes[1, 0].text(-0.2, time_noise * 1000, "$\sigma_t$", va="center", color="y")
 
     # invert axis and plot
     axes[1, 0].set_ylabel(
-        f"Difference (ms) \n Std: {np.round(std, 3)} "
-        f"ms or {np.round(std * 1515 / 10, 2)} cm"
+        f"$\epsilon$ (ms) \n $\sigma_\epsilon$ = {np.round(std, 2)} "
+        f"ms $\sim$ {np.round(std * 1515 / 10, 2)} cm"
     )
-    axes[1, 0].set_xlabel("Normalized Frequency")
+    axes[1, 0].set_xlabel("Density")
     axes[1, 0].invert_xaxis()
 
     # Difference plot
     axes[1, 1].scatter(CDOG_clock, difference_data * 1000, s=1)
     axes[1, 1].axvline(zoom_region, color="k")
     axes[1, 1].axvline(zoom_region + zoom_length, color="k")
-    axes[1, 1].set_xlabel("Time (s)")
+    axes[1, 1].set_xlabel("Time (hours)")
     axes[1, 1].set_ylim([mu - 3 * std, mu + 3 * std])
     axes[1, 1].set_xlim(min(CDOG_clock), max(CDOG_clock))
     axes[1, 1].axhline(-std, color="r", label="Observed Noise")
@@ -184,7 +190,7 @@ def time_series_plot(
         difference_data[CDOG_mask] * 1000,
         s=1,
     )
-    axes[1, 2].set_xlabel("Time (s)")
+    axes[1, 2].set_xlabel("Time (hours)")
     axes[1, 2].set_ylim([mu - 3 * std, mu + 3 * std])
     axes[1, 2].set_xlim(zoom_region, zoom_region + zoom_length)
     axes[1, 2].axhline(mu_zoom - std_zoom, color="r", label="Observed Noise")
@@ -218,7 +224,7 @@ def time_series_plot(
     axes[1, 3].axhline(mu_zoom - std_zoom, color="r", label="Observed Noise")
     axes[1, 3].axhline(mu_zoom + std_zoom, color="r")
     axes[1, 3].text(
-        -0.1, mu_zoom + std_zoom * 1.2, "$\\sigma_p$", va="center", color="r"
+        -0.1, mu_zoom + std_zoom * 1.2, "$\sigma_\epsilon$", va="center", color="r"
     )
 
     if position_noise != 0:
@@ -229,7 +235,7 @@ def time_series_plot(
         axes[1, 3].text(
             -0.2,
             position_noise / 1515 * 1000 * 0.5,
-            "$\\sigma_x$",
+            "$\sigma_d$",
             va="center",
             color="g",
         )
@@ -237,21 +243,29 @@ def time_series_plot(
     if time_noise != 0:
         axes[1, 3].axhline(-time_noise * 1000, color="y", label="Input Time Noise")
         axes[1, 3].axhline(time_noise * 1000, color="y")
-        axes[1, 3].text(-0.2, time_noise * 1000, "$\\sigma_t$", va="center", color="y")
+        axes[1, 3].text(-0.2, time_noise * 1000, "$\sigma_t$", va="center", color="y")
 
     # invert axis and plot
     axes[1, 3].set_ylabel(
-        f"Difference (ms) \n Std: {np.round(std_zoom, 3)} "
-        f"ms or {np.round(std_zoom * 1515 / 10, 2)} cm"
+        f"$\sigma_\epsilon$ = {np.round(std_zoom, 2)} "
+        f"ms $\sim$ {np.round(std_zoom * 1515 / 10, 2)} cm"
     )
     axes[1, 3].yaxis.set_label_position("right")
     axes[1, 3].yaxis.tick_right()
     axes[1, 3].set_ylim([mu - 3 * std, mu + 3 * std])
-    axes[1, 3].set_xlabel("Normalized Frequency")
+    axes[1, 3].set_xlabel("Density")
     axes[1, 3].invert_xaxis()
 
+    # Hide Axes
+    for ax in (axes[0, 1], axes[0, 2]):
+        ax.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
+        ax.set_xlabel("")
+    for ax in (axes[1, 1], axes[1, 2]):
+        ax.tick_params(axis="y", which="both", left=False, right=False, labelleft=False, labelright=False)
+        ax.set_ylabel("")
+
     # Adjust spacing between subplots
-    plt.tight_layout()
+    fig.subplots_adjust(left=0.10, right=0.90, bottom=0.11, top=0.97, wspace=0.05, hspace=0.08)
 
     if save:
         save_plot(fig, func_name=f"time_series_plot_DOG{DOG_num}", subdir=path)
@@ -395,9 +409,9 @@ def range_residual(
     scatter = axes[0].scatter(
         calculated_range / 1000, range_residuals, s=1, c=times_hours, cmap="viridis"
     )
-    fig.colorbar(scatter, ax=axes[0], label="Elapsed Time (hours)")
-    axes[0].set_xlabel("Calculated Slant Range (km)")
-    axes[0].set_ylabel("Slant Range Residuals (cm)")
+    fig.colorbar(scatter, ax=axes[0], label="Time (hours)")
+    axes[0].set_xlabel("Slant Range (km)")
+    axes[0].set_ylabel("$c\epsilon$ (cm)")
     axes[0].axhline(-std_rr, color="r")
     axes[0].axhline(std_rr, color="r")
     axes[0].set_ylim([mu_rr - 3 * std_rr, mu_rr + 3 * std_rr])
@@ -421,8 +435,8 @@ def range_residual(
     axes[1].axhline(std_rr, color="r")
     axes[1].set_ylim([mu_rr - 3 * std_rr, mu_rr + 3 * std_rr])
     axes[1].set_xlabel("Density")
-    axes[1].set_ylabel("Slant Range Residuals (cm)")
-    axes[1].legend()
+    axes[1].set_ylabel("")
+    axes[1].tick_params(axis="y", which="both", left=False, right=False, labelleft=False, labelright=False)
 
     if save:
         save_plot(fig, func_name=f"range_residual_DOG{DOG_num}", subdir=path)

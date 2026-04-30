@@ -3,19 +3,6 @@ import matplotlib.pyplot as plt
 from numba import njit
 from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
 
-plt.rcParams.update(
-    {
-        "text.usetex": True,
-        "font.family": "serif",
-        "font.serif": ["Computer Modern"],
-        "mathtext.fontset": "cm",
-        "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
-        "\n"
-        r"\usepackage{textcomp}",
-    }
-)
-
-
 @njit(cache=True)
 def _rmse_cm_for_offset(
     offset,
@@ -142,20 +129,18 @@ def plot_integer_pick_metrics_dog(
     finite = np.isfinite(coh_obj)
     best_off = offsets[np.nanargmin(coh_obj)] if finite.any() else np.nan
 
-    fig, axes = plt.subplots(3, 1, sharex=True, figsize=(10, 9))
+    fig, axes = plt.subplots(2, 1, sharex=True, figsize=(12, 6))
 
     axes[0].plot(offsets, rmse)
-    axes[0].set_ylabel("RMSE (cm)")
+    axes[0].set_ylabel("$\mathcal{R}$ (cm)")
+    axes[0].ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
     axes[0].grid(True)
 
     axes[1].plot(offsets, coh_obj)
-    axes[1].set_ylabel("Circular Variance $(1 - R)/(sqrt(M))$")
+    axes[1].set_ylabel("$v_\circ$")
+    axes[1].ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
     axes[1].grid(True)
-
-    axes[2].plot(offsets, nmatch)
-    axes[2].set_ylabel("Matched Pairs (N)")
-    axes[2].set_xlabel("Timing Bias (s)")
-    axes[2].grid(True)
+    axes[1].set_xlabel("$\delta t$ (s)")
 
     # Annotate best by Circular Variance
     if np.isfinite(best_off):

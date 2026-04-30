@@ -10,6 +10,18 @@ from geometry.ECEF_Geodetic import ECEF_Geodetic
 from pymap3d import geodetic2enu
 from data import gps_output_path
 
+plt.rcParams.update(
+    {
+        "text.usetex": True,
+        "font.family": "serif",
+        "font.serif": ["Computer Modern"],
+        "font.size": 20,   # change this freely
+        "mathtext.fontset": "cm",
+        "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
+        "\n"
+        r"\usepackage{textcomp}",
+    }
+)
 
 def _plot_error_ellipse(
     ax,
@@ -76,8 +88,8 @@ def _add_xy_stats(ax, x, y, xlabel="x", ylabel="y"):
         0.02,
         0.98,
         (
-            f"{xlabel}: mean={mean_x:.2f}, std={std_x:.2f}\n"
-            f"{ylabel}: mean={mean_y:.2f}, std={std_y:.2f}"
+            f"{xlabel}: $\mu$={mean_x:.2f}, $\sigma$={std_x:.2f}\n"
+            f"{ylabel}: $\mu$={mean_y:.2f}, $\sigma$={std_y:.2f}"
         ),
         transform=ax.transAxes,
         ha="left",
@@ -190,7 +202,7 @@ def error_ellipse(num_points, time_noise, position_noise, downsample, generate=T
             estimate_converted[i] = np.squeeze(enu)
 
     else:
-        npzfile = np.load(gps_output_path("synthetic_error_ellipse.npz"))
+        npzfile = np.load(gps_output_path("Plot_Data/synthetic_error_ellipse.npz"))
         estimate_converted = npzfile["estimate_converted"]
         lever_diff_array = npzfile["lever_diff_array"]
         RMSE_array = npzfile["RMSE_array"]
@@ -272,7 +284,7 @@ def error_ellipse(num_points, time_noise, position_noise, downsample, generate=T
     _center_axes_at_zero(axs[1], x1, y1)
     axs[1].set_xlabel("Easting (cm)")
     axs[1].set_ylabel("Elevation (cm)")
-    axs[1].legend(loc="upper right")
+    axs[1].legend(loc="lower right")
     axs[1].axis("equal")
     axs[1].grid()
 
@@ -290,7 +302,7 @@ def error_ellipse(num_points, time_noise, position_noise, downsample, generate=T
         label=r"CDOG Estimates",
     )
     cbar2 = fig.colorbar(sc2, ax=axs[2])
-    cbar2.set_label("RMSE (cm)")
+    cbar2.set_label("$c\sigma_\epsilon$ (cm)")
     axs[2].scatter(0, 0, s=100, color="red", marker="o", label="CDOG Actual")
     for std in range(1, 3):
         _plot_error_ellipse(
@@ -376,7 +388,7 @@ def error_ellipse(num_points, time_noise, position_noise, downsample, generate=T
     _center_axes_at_zero(axs[1], x4, y4)
     axs[1].set_xlabel("x Lever Error (cm)")
     axs[1].set_ylabel("z Lever Error (cm)")
-    axs[1].legend(loc="upper right")
+    axs[1].legend(loc="lower right")
     axs[1].axis("equal")
     axs[1].grid()
 
@@ -394,7 +406,7 @@ def error_ellipse(num_points, time_noise, position_noise, downsample, generate=T
         label=r"Lever Errors",
     )
     cbar5 = fig.colorbar(sc5, ax=axs[2])
-    cbar5.set_label("RMSE (cm)")
+    cbar5.set_label("$c\sigma_\epsilon$ (cm)")
     axs[2].scatter(0, 0, s=100, color="red", marker="o", label="Lever Actual")
     for std in range(1, 3):
         _plot_error_ellipse(
@@ -417,7 +429,7 @@ def error_ellipse(num_points, time_noise, position_noise, downsample, generate=T
     plt.show()
 
     np.savez(
-        gps_output_path("synthetic_error_ellipse"),
+        gps_output_path("Plot_Data/synthetic_error_ellipse"),
         estimate_converted=estimate_converted,
         lever_diff_array=lever_diff_array,
         RMSE_array=RMSE_array,
@@ -432,7 +444,7 @@ if __name__ == "__main__":
     generate = False
     error_ellipse(num_points, time_noise, position_noise, downsample, generate=generate)
 
-    npzfile = np.load(gps_output_path("synthetic_error_ellipse.npz"))
+    npzfile = np.load(gps_output_path("Plot_Data/synthetic_error_ellipse.npz"))
     estimate_converted = npzfile["estimate_converted"]
     lever_diff_array = npzfile["lever_diff_array"]
     RMSE_array = npzfile["RMSE_array"]

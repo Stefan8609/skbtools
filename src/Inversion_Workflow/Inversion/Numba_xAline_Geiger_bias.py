@@ -64,33 +64,37 @@ def initial_bias_geiger(
     offset = find_int_offset(
         CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
     )
-    print("Initial INT Offset: ", offset)
-
-    # The coherence offset puts us in the middle,
-    # so we try both +/- to get optimal offset
-    offset_m = offset - 0.5
-    offset_p = offset + 0.5
-
-    (_, CDOG_full_m, _, GPS_full_m, _, _) = two_pointer_index(
-        offset_m, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
-    )
-
-    (_, CDOG_full_p, _, GPS_full_p, _, _) = two_pointer_index(
-        offset_p, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
-    )
-
-    n_m = len(CDOG_full_m)
-    n_p = len(CDOG_full_p)
-
-    misfit_m = np.linalg.norm(GPS_full_m - CDOG_full_m) if n_m > 0 else 1e30
-    misfit_p = np.linalg.norm(GPS_full_p - CDOG_full_p) if n_p > 0 else 1e30
-
-    if (n_p > n_m) or ((n_p == n_m) and (misfit_p < misfit_m)):
-        offset = offset_p
-        print("USING +0.5", offset, "pairs:", n_p)
-    else:
-        offset = offset_m
-        print("USING -0.5", offset, "pairs:", n_m)
+    print("Initial Offset Estimate:", offset)
+    best_offset = offset
+    best_misfit = np.inf
+    for dt in range(-1, 2):
+        test_offset = offset + dt
+        print("Testing Offset:", test_offset)
+        test_offset = find_subint_offset(
+            test_offset,
+            CDOG_data,
+            GPS_data,
+            times_guess,
+            transponder_coordinates,
+            esv,
+        )
+        (_, CDOG_full, _, GPS_full, _, _) = two_pointer_index(
+            test_offset,
+            0.4,
+            CDOG_data,
+            GPS_data,
+            times_guess,
+            transponder_coordinates,
+            esv,
+        )
+        test_misfit = np.sqrt(np.nanmean((GPS_full - CDOG_full) ** 2)) *1515 * 100
+        if test_misfit < best_misfit:
+            best_misfit = test_misfit
+            best_offset = test_offset
+        print("TEST",test_offset, test_misfit)
+        print("BEST",best_offset, best_misfit, "\n")
+    offset = best_offset
+    print("Initial Offset Estimate:", offset)
 
     while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
@@ -142,7 +146,6 @@ def initial_bias_geiger(
         transponder_coordinates,
         esv,
     )
-    print("Refined SUB-INT Offset: ", offset)
     return estimate, offset
 
 

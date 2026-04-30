@@ -109,7 +109,7 @@ def modular_synthetic(
         GPS_data = GPS_data[::downsample]
         true_transponder_coordinates = true_transponder_coordinates[::downsample]
         z_sample = True
-    print("True Offset")
+    print("True Offset", true_offset)
     # Choose Inversion_Workflow Type
     #   0: Just xAline Geiger
     #   1: xAline Geiger with Simulated Annealing
@@ -271,8 +271,8 @@ if __name__ == "__main__":
     modular_synthetic(
         2 * 10**-5,
         2 * 10**-2,
-        0,
-        0,
+        1,
+        1,
         "global_table_esv",
         "global_table_esv_realistic_perturbed",
         downsample=downsample,
