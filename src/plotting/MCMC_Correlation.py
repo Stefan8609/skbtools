@@ -19,8 +19,8 @@ plt.rcParams.update(
         "mathtext.fontset": "cm",
         "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
         "\n"
-        r"\usepackage{textcomp}",
-        "font.size": 12,
+        r"\usepackage{textcomp, amsmath}",
+        "font.size": 17,
     }
 )
 
@@ -113,6 +113,14 @@ def corner_plot_with_corr(
     # ----- parameter keys -----
     key_esv = "mean esv"  # native units
     key_tb = "tb"  # ms
+
+    display_labels = {
+        key_esv: r"$\bar{\delta_c}$",
+        key_tb: r"$\delta t$",
+    }
+
+    def _display_label(key: str) -> str:
+        return display_labels.get(key, key)
 
     pars = {
         "DOG E": cdog_enu_m[:, 0] * 100.0,  # cm
@@ -214,8 +222,14 @@ def corner_plot_with_corr(
         key_esv: float(esv_lim_native),
     }
 
+    cm_keys = [k for k in keys if k not in (key_tb, key_esv)]
+
     def _get_lim(key: str) -> float:
-        return axis_limits.get(key, common_lim)
+        if key in axis_limits:
+            return axis_limits[key]
+
+        # For cm-scale position/lever-arm plots, make room for ticks at -75, 0, 75.
+        return max(common_lim, 75.0)
 
     n = len(keys)
     fig, axes = plt.subplots(n, n, figsize=(14, 10))
@@ -276,11 +290,11 @@ def corner_plot_with_corr(
             ax.text(
                 0.02,
                 0.98,
-                rf"$\sigma = {stats[key_i]['std']:.3g}$",
+                rf"$\sigma = {stats[key_i]['std']:.2g}$",
                 transform=ax.transAxes,
                 ha="left",
                 va="top",
-                fontsize=10,
+                fontsize=13,
                 bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="0.8"),
             )
             ax.set_xlim(-lim_i, lim_i)  # NEW
@@ -386,7 +400,7 @@ def corner_plot_with_corr(
                     f"{r:+.2f}",
                     ha="center",
                     va="center",
-                    fontsize=12,
+                    fontsize=14,
                     color="black",
                     bbox=dict(
                         facecolor="white",
@@ -397,9 +411,25 @@ def corner_plot_with_corr(
                 )
 
         if i == n - 1:
-            ax.set_xlabel(f"{key_j}")
+            ax.set_xlabel(_display_label(key_j))
         if j == 0:
-            ax.set_ylabel(f"{key_i}")
+            ax.set_ylabel(_display_label(key_i))
+
+    # Set cm-scale axes to show -75, 0, 75 where appropriate.
+    for ii in range(n):
+        for jj in range(n):
+            ax_ij = axes[ii, jj]
+
+            key_i = keys[ii]
+            key_j = keys[jj]
+
+            # x-axis corresponds to key_j for diagonal/lower-triangle panels
+            if key_j in cm_keys and jj <= ii:
+                ax_ij.set_xticks([-75, 0, 75])
+
+            # y-axis corresponds to key_i for lower-triangle panels
+            if key_i in cm_keys and jj < ii:
+                ax_ij.set_yticks([-75, 0, 75])
 
     # Only show tick numbers on outside boxes (same as original)
     for ii in range(n):
@@ -431,17 +461,25 @@ def corner_plot_with_corr(
     fig.legend(
         handles=[sample_h, prior_h, post_h, init_h],
         loc="upper center",
-        bbox_to_anchor=(0.5, 0.92),
+        bbox_to_anchor=(0.425, 0.925),
         ncol=4,
         fontsize="small",
         frameon=False,
     )
 
-    label = "log likelihood" if loglike else "log posterior"
+    label = (
+        "log likelihood" if loglike else r"$\log P(\boldsymbol{\theta}\mid \mathbf{T})$"
+    )
     if sc is not None:
         fig.colorbar(
             sc, ax=axes[:, :], label=label, location="right", shrink=0.9, extend="max"
         )
+
+    for i in range(n):
+        axes[i, 0].yaxis.set_label_coords(-0.47, 0.5)
+
+    for ax in axes.ravel():
+        ax.tick_params(axis="both", which="major", labelsize=12)
 
     if save:
         save_plot(
@@ -450,6 +488,7 @@ def corner_plot_with_corr(
         print("Saved corner plot with correlations with chain name:", chain_name)
 
     plt.show()
+
     return corr, keys
 
 
