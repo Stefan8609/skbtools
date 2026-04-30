@@ -18,7 +18,7 @@ plt.rcParams.update(
         "text.usetex": True,
         "font.family": "serif",
         "font.serif": ["Computer Modern"],
-        "font.size": 20,  # change this freely
+        "font.size": 16,  # change this freely
         "mathtext.fontset": "cm",
         "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
         "\n"
@@ -302,7 +302,7 @@ def _add_schematic_inset(
     ax,
     segments,
     box=(0.02, 0.10, 0.40, 0.80),
-    line_color="0.7",
+    line_color="0.4",
     line_width=0.8,
     scale=1.0,
     box_coord="axes",
@@ -751,7 +751,12 @@ def RV_Plot(
         ax.plot([x1, x2], [y1, y2], color=SEGMENT_COLOR, linewidth=1.2, zorder=10)
 
     # Top view insets (positions fixed as before)
-    GPS_labels = {1: "GPS 1", 2: "GPS 2", 3: "GPS 3", 4: "GPS 4"}
+    GPS_labels = {
+        1: "$\mathbf{x}^\mathrm{S}_1$",
+        2: "$\mathbf{x}^\mathrm{S}_2$",
+        3: "$\mathbf{x}^\mathrm{S}_3$",
+        4: "$\mathbf{x}^\mathrm{S}_4$",
+    }
     for idx, (pts, c) in enumerate(zip(gps_xy_list, centroids), start=1):
         w = 2.0
         h = 2.5
@@ -810,18 +815,18 @@ def RV_Plot(
             zorder=4,
         )
         if idx == 1:
-            text_offset = [-0.8, -0.3]
+            text_offset = [-0.6, -1]
         if idx == 2:
-            text_offset = [-0.8, 0.0]
+            text_offset = [-0.6, 0.0]
         if idx == 3:
-            text_offset = [0.8, 0.0]
+            text_offset = [0.6, 0.0]
         if idx == 4:
-            text_offset = [0.8, -0.5]
+            text_offset = [0.6, -1.4]
         ax.text(
             cx + text_offset[0],
             cy + text_offset[1],
             GPS_labels[idx],
-            fontsize=8,
+            fontsize=18,
             ha="center",
             va="bottom",
         )
@@ -1040,7 +1045,13 @@ def RV_Plot(
     ).tolist()
 
     # Prepare table contents (rounded to 0.1 cm)
-    row_labels = ["GPS1", "GPS2", "GPS3", "GPS4", "XDCR"]
+    row_labels = [
+        "$\mathbf{x}^\mathrm{S}_1$",
+        "$\mathbf{x}^\mathrm{S}_2$",
+        "$\mathbf{x}^\mathrm{S}_3$",
+        "$\mathbf{x}^\mathrm{S}_4$",
+        "$\mathbf{x}^\mathrm{T}$",
+    ]
     cell_text = [
         [
             f"{gps_std_rows[0][0]:.1f}",
@@ -1071,7 +1082,7 @@ def RV_Plot(
         cellText=cell_text,
         rowLabels=row_labels,
         colLabels=col_labels,
-        bbox=[0.68, 0.13, 0.24, 0.34],
+        bbox=[0.63, 0.02, 0.32, 0.55],
         colLoc="center",
         rowLoc="left",
         cellLoc="center",
@@ -1079,8 +1090,14 @@ def RV_Plot(
     )
     # Style the table to be compact and readable
     tbl.auto_set_font_size(False)
-    tbl.set_fontsize(8)
-    tbl.scale(0.9, 0.9)
+    tbl.set_fontsize(12)
+    tbl.scale(1.15, 1.5)
+
+    tbl.set_zorder(20)
+    for _key, cell in tbl.get_celld().items():
+        cell.set_facecolor("white")
+        cell.set_alpha(1.0)
+        cell.set_zorder(20)
 
     # Auto-size columns to content and minimize padding so columns use only needed space
     try:
@@ -1098,9 +1115,9 @@ def RV_Plot(
     for _key, cell in tbl.get_celld().items():
         # Smaller padding yields tighter columns while preserving readability
         if hasattr(cell, "PAD"):
-            cell.PAD = 0.08
+            cell.PAD = 0.12
 
-    CDOG_label = {0: "CDOG 1", 1: "CDOG 3", 2: "CDOG 4"}
+    CDOG_label = {0: "DOG 1", 1: "DOG 3", 2: "DOG 4"}
     for i in range(3):
         CDOG_aug = CDOG_augs[:, i]
         init = aug_init[i]
@@ -1163,70 +1180,70 @@ def RV_Plot(
     # Add text to plots
     ax.text(
         0.6,
-        0.45,
+        0.435,
         "bridge",
         transform=ax.transAxes,
         ha="center",
         va="bottom",
-        fontsize=10,
+        fontsize=14,
     )
     ax.text(
-        0.224,
-        0.477,
+        0.155,
+        0.43,
         "bridge",
         transform=ax.transAxes,
         ha="center",
         va="bottom",
-        fontsize=8,
-        color="0.3",
+        fontsize=14,
+        color="0.2",
     )
     ax.text(
-        0.063,
-        0.765,
+        0.058,
+        0.755,
         "moonpool",
         transform=ax.transAxes,
         ha="center",
         va="bottom",
-        fontsize=10,
+        fontsize=14,
     )
     ax.text(
-        0.12,
-        0.538,
+        0.097,
+        0.518,
         "moonpool",
         transform=ax.transAxes,
         ha="center",
         va="bottom",
-        fontsize=8,
-        color="0.3",
+        fontsize=14,
+        color="0.2",
     )
 
     ax_side.text(
         0.6,
-        0.87,
+        0.88,
         "bridge",
         transform=ax_side.transAxes,
         ha="center",
         va="bottom",
-        fontsize=10,
+        fontsize=14,
     )
     ax_side.text(
-        0.20,
-        0.481,
+        0.137,
+        0.451,
         "bridge",
         transform=ax_side.transAxes,
         ha="center",
         va="bottom",
-        fontsize=8,
-        color="0.3",
+        fontsize=14,
+        color="0.2",
     )
     ax_side.text(
         0.07,
-        0.02,
+        0.012,
         "moonpool",
         transform=ax_side.transAxes,
         ha="center",
         va="bottom",
-        fontsize=10,
+        fontsize=14,
     )
     ax_side.text(
         0.1387,
@@ -1235,31 +1252,40 @@ def RV_Plot(
         transform=ax_side.transAxes,
         ha="center",
         va="bottom",
-        fontsize=8,
-        color="0.3",
+        fontsize=14,
+        color="0.2",
     )
 
     # Add plot letters
     ax.text(
-        0.005, 1.04, "A", transform=ax.transAxes, ha="left", va="top", fontweight="bold"
+        0.005,
+        1.07,
+        r"\textbf{A}",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontweight="bold",
+        fontsize=20,
     )
     ax_side.text(
         0.005,
-        1.055,
-        "B",
+        1.095,
+        r"\textbf{B}",
         transform=ax_side.transAxes,
         ha="left",
         va="top",
         fontweight="bold",
+        fontsize=20,
     )
     ax3[0].text(
-        0.02,
-        1.075,
-        "C",
+        -0.05,
+        1.3,
+        r"\textbf{C}",
         transform=ax3[0].transAxes,
         ha="left",
         va="top",
         fontweight="bold",
+        fontsize=20,
     )
     if save:
         save_plot(fig, func_name="RV_Plot", subdir="Figs", ext="pdf")
