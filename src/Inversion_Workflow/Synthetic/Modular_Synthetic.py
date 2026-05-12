@@ -216,7 +216,7 @@ def modular_synthetic(
             angle_array_inversion,
             esv_matrix_inversion,
             real_data=real_data,
-            initial_offset=1987,
+            initial_offset=true_offset,
             z_sample=z_sample,
         )
         inversion_guess = inversion_result[:3]
@@ -283,10 +283,10 @@ if __name__ == "__main__":
     downsample = 1
 
     modular_synthetic(
-        2 * 10**-5,
-        2 * 10**-2,
-        1,
-        1,
+        0,
+        0,
+        0,
+        0,
         "global_table_esv",
         "global_table_esv_realistic_perturbed",
         downsample=downsample,
