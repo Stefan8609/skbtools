@@ -29,7 +29,3 @@ GPS_Coordinates = data["GPS_Coordinates"]
 GPS_data = data["GPS_data"]
 CDOG_data = data["CDOG_data"]
 ```
-
-## Note
-
-This is a reduced sample of the processed field data. It is included so the repository contains a lightweight example with the same format as the full processed data file.
