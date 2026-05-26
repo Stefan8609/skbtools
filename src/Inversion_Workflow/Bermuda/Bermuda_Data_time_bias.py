@@ -280,3 +280,33 @@ if save:
     )
 
     print(f"Saved integer-pick metric plot data to: {plot_data_path}")
+
+# -------------------------
+# Save small repo sample
+# -------------------------
+save_repo_sample = True
+
+if save_repo_sample:
+    repo_sample_dir = gps_output_path("Paper_Data")
+    os.makedirs(repo_sample_dir, exist_ok=True)
+
+    n_repo_samples = 1000
+
+    # Use the first 1000 samples, preserving the same imported-file structure
+    GPS_Coordinates_sample = GPS_Coordinates[:n_repo_samples]
+    GPS_data_sample = GPS_data[:n_repo_samples]
+    CDOG_data_sample = CDOG_data[:n_repo_samples]
+
+    repo_sample_path = os.path.join(
+        repo_sample_dir,
+        f"Processed_GPS_Receivers_DOG_{DOG_num}_sample.npz",
+    )
+
+    np.savez_compressed(
+        repo_sample_path,
+        GPS_Coordinates=GPS_Coordinates_sample,
+        GPS_data=GPS_data_sample,
+        CDOG_data=CDOG_data_sample,
+    )
+
+    print(f"Saved repo sample data to: {repo_sample_path}")
