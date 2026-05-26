@@ -66,6 +66,10 @@ def modular_synthetic(
     if generate_type == 0:
         # Generate Unaligned Realistic Data
         true_offset = np.random.rand() * 9000 + 1000
+        gps1_to_others = np.array(
+            [[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64
+        )
+        gps1_to_transponder = np.array([-10.0, 3.0, -15.0])
         print(true_offset)
         (
             CDOG_data,
@@ -76,22 +80,28 @@ def modular_synthetic(
         ) = generateUnaligned(
             20000,
             time_noise,
+            position_noise,
             true_offset,
             in_esv_bias,
             in_time_bias,
             dz_array_generate,
             angle_array_generate,
             esv_matrix_generate,
-        )
-        GPS_Coordinates += np.random.normal(
-            0, position_noise, (len(GPS_Coordinates), 4, 3)
-        )
-        gps1_to_others = np.array(
-            [[0, 0, 0], [10, 1, -1], [11, 9, 1], [-1, 11, 0]], dtype=np.float64
+            gps1_to_others=gps1_to_others,
+            gps1_to_transponder=gps1_to_transponder,
         )
         z_sample = False
     else:
         # Use Bermuda Dataset
+        gps1_to_others = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [-2.4054, -4.20905, 0.060621],
+                [-12.1105, -0.956145, 0.00877],
+                [-8.70446831, 5.165195, 0.04880436],
+            ]
+        )
+        gps1_to_transponder = np.array([-12.4659, 9.6021, -13.2993])
         true_offset = np.random.rand() * 9000 + 1000
         (
             CDOG_data,
@@ -109,14 +119,8 @@ def modular_synthetic(
             esv_matrix_generate,
             offset=true_offset,
             DOG_num=DOG_num,
-        )
-        gps1_to_others = np.array(
-            [
-                [0.0, 0.0, 0.0],
-                [-2.4054, -4.20905, 0.060621],
-                [-12.1105, -0.956145, 0.00877],
-                [-8.70446831, 5.165195, 0.04880436],
-            ]
+            gps1_to_others=gps1_to_others,
+            gps1_to_transponder=gps1_to_transponder,
         )
 
         GPS_Coordinates = GPS_Coordinates[::downsample]
@@ -131,14 +135,7 @@ def modular_synthetic(
     initial_guess = CDOG + np.random.normal(0, 50, 3)
     if inversion_type == 0:
         # Just xAline Geiger
-        lever = (
-            np.array([-10.0, 3.0, -15.0])
-            if generate_type == 0
-            else np.array([-12.48862757, 0.22622633, -15.89601934])
-        )
-
-        # Add some randomness to the lever
-        lever += np.random.normal(0, 3, 3)
+        lever = gps1_to_transponder
 
         transponder_coordinates = findTransponder(
             GPS_Coordinates, gps1_to_others, lever
@@ -157,6 +154,8 @@ def modular_synthetic(
         inversion_guess = inversion_result[:3]
         time_bias = inversion_result[3]
         esv_bias = inversion_result[4]
+
+        offset = true_offset
 
         print(
             "INT Offset: {:.4f}".format(offset),
@@ -197,11 +196,7 @@ def modular_synthetic(
         )
 
     else:
-        real_lever = (
-            np.array([-10.0, 3.0, -15.0])
-            if generate_type == 0
-            else np.array([-12.4659, 9.6021, -13.2993])
-        )
+        real_lever = gps1_to_transponder
         initial_lever = real_lever - np.random.normal(0, 3, 3)
 
         lever, offset, inversion_result = simulated_annealing_bias(
@@ -283,14 +278,14 @@ if __name__ == "__main__":
     downsample = 1
 
     modular_synthetic(
-        0,
-        0,
+        2 * 10**-5,
+        2 * 10**-2,
         0,
         0,
         "global_table_esv",
         "global_table_esv_realistic_perturbed",
         downsample=downsample,
         generate_type=1,
-        inversion_type=1,
+        inversion_type=0,
         DOG_num=3,
     )

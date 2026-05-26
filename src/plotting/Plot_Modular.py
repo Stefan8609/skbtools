@@ -66,7 +66,7 @@ def time_series_plot(
         CDOG_clock,
         CDOG_full,
         s=5,
-        label="Observed Travel Times",
+        label="Observed",
         alpha=0.6,
         marker="o",
         color="b",
@@ -76,7 +76,7 @@ def time_series_plot(
         GPS_clock,
         GPS_full,
         s=10,
-        label="Modelled Travel Times",
+        label="Modelled",
         alpha=1,
         marker="x",
         color="r",
@@ -87,7 +87,12 @@ def time_series_plot(
     axes[0, 1].set_ylabel("Travel Time (s)")
     axes[0, 1].legend(loc="upper right")
     axes[0, 1].set_xlim(min(CDOG_clock), max(CDOG_clock))
-
+    axes[0, 1].set_ylim(
+        [
+            min(min(CDOG_full), min(GPS_full)) - 0.2,
+            max(max(CDOG_full), max(GPS_full)) + 0.2,
+        ]
+    )
     # Zoomed in plot
     CDOG_mask = (CDOG_clock >= zoom_region) & (CDOG_clock <= zoom_region + zoom_length)
     GPS_mask = (GPS_clock >= zoom_region) & (GPS_clock <= zoom_region + zoom_length)
@@ -113,7 +118,13 @@ def time_series_plot(
         zorder=1,
     )
     axes[0, 2].set_xlim(zoom_region, zoom_region + zoom_length)
-    axes[0, 2].yaxis.tick_right()
+    axes[0, 2].set_ylim(
+        [
+            min(min(CDOG_full), min(GPS_full)) - 0.2,
+            max(max(CDOG_full), max(GPS_full)) + 0.2,
+        ]
+    )
+    axes[0, 2].set_yticks([])
     axes[0, 2].yaxis.set_label_position("right")
 
     # Histogram and normal distributions
@@ -128,17 +139,27 @@ def time_series_plot(
     )
 
     x = np.linspace(mu - 3 * std, mu + 3 * std, 100)
-    axes[1, 0].set_xlim([n.min() * 1.4, n.max() * 1.4])
-    axes[1, 0].set_ylim([mu - 3 * std, mu + 3 * std])
+    xmin_hist = n.min() * 1.4
+    xmax_hist = n.max() * 1.4
+    axes[1, 0].set_xlim([xmin_hist, xmax_hist])
+
+    ymin_hist = mu - 3 * std
+    ymax_hist = mu + 3 * std
+    axes[1, 0].set_ylim([ymin_hist, ymax_hist])
     p = norm.pdf(x, mu, std)
     point1, point2 = norm.pdf(np.array([-std, std]), mu, std)
     axes[1, 0].plot(p, x, "k", linewidth=2, label="Normal Distribution of Differences")
-    axes[1, 0].scatter([point1, point2], [-std, std], s=10, color="r", zorder=1)
 
     # add horizontal lines for the noise and uncertainty
     axes[1, 0].axhline(-std, color="r", label="Observed Noise")
     axes[1, 0].axhline(std, color="r")
-    axes[1, 0].text(-0.1, std * 1.2, "$\sigma_\epsilon$", va="center", color="r")
+    axes[1, 0].text(
+        xmax_hist * 0.9,
+        mu + std + ymax_hist * 0.13,
+        "$\sigma_\epsilon$",
+        va="center",
+        color="r",
+    )
 
     if position_noise != 0:
         axes[1, 0].axhline(
@@ -146,8 +167,8 @@ def time_series_plot(
         )
         axes[1, 0].axhline(position_noise / 1515 * 1000, color="g")
         axes[1, 0].text(
-            -0.2,
-            position_noise / 1515 * 1000 * 0.5,
+            xmax_hist * 0.9,
+            position_noise / 1515 * 1000 - ymax_hist * 0.06,
             "$\sigma_d$",
             va="center",
             color="g",
@@ -156,12 +177,20 @@ def time_series_plot(
     if time_noise != 0:
         axes[1, 0].axhline(-time_noise * 1000, color="y", label="Input Time Noise")
         axes[1, 0].axhline(time_noise * 1000, color="y")
-        axes[1, 0].text(-0.2, time_noise * 1000, "$\sigma_t$", va="center", color="y")
+        axes[1, 0].text(
+            xmax_hist * 0.9,
+            -time_noise * 1000 - ymax_hist * 0.06,
+            "$\sigma_t$",
+            va="center",
+            color="y",
+        )
 
     # invert axis and plot
-    axes[1, 0].set_ylabel(
-        f"$\epsilon$ (ms) \n $\sigma_\epsilon$ = {np.round(std, 2)} "
-        f"ms $\sim$ {np.round(std * 1515 / 10, 2)} cm"
+    axes[1, 0].set_ylabel("Residuals $\epsilon$ (ms)")
+    axes[1, 0].set_title(
+        rf"$\sigma_\epsilon$ = {np.round(std, 2)} ms $\sim$"
+        rf"{np.round(std * 1515 / 10, 2)} cm",
+        fontsize=16,
     )
     axes[1, 0].set_xlabel("Density")
     axes[1, 0].invert_xaxis()
@@ -209,22 +238,24 @@ def time_series_plot(
     )
 
     x_zoom = np.linspace(mu_zoom - 3 * std_zoom, mu_zoom + 3 * std_zoom, 100)
-    axes[1, 3].set_xlim([n_zoom.min() * 1.4, n_zoom.max() * 1.4])
-    axes[1, 3].set_ylim([mu_zoom - 3 * std_zoom, mu_zoom + 3 * std_zoom])
+    xmin_zoom_hist = n_zoom.min() * 1.4
+    xmax_zoom_hist = n_zoom.max() * 1.4
+    axes[1, 3].set_xlim([xmin_zoom_hist, xmax_zoom_hist])
     p_zoom = norm.pdf(x_zoom, mu_zoom, std_zoom)
     point1, point2 = norm.pdf(np.array([-std_zoom, std_zoom]), mu_zoom, std_zoom)
     axes[1, 3].plot(
         p_zoom, x_zoom, "k", linewidth=2, label="Normal Distribution of Differences"
-    )
-    axes[1, 3].scatter(
-        [point1, point2], [-std_zoom, std_zoom], s=10, color="r", zorder=1
     )
 
     # add horizontal lines for the noise and uncertainty
     axes[1, 3].axhline(mu_zoom - std_zoom, color="r", label="Observed Noise")
     axes[1, 3].axhline(mu_zoom + std_zoom, color="r")
     axes[1, 3].text(
-        -0.1, mu_zoom + std_zoom * 1.2, "$\sigma_\epsilon$", va="center", color="r"
+        xmax_zoom_hist * 0.9,
+        mu_zoom + std_zoom + ymax_hist * 0.13,
+        "$\sigma_\epsilon$",
+        va="center",
+        color="r",
     )
 
     if position_noise != 0:
@@ -233,8 +264,8 @@ def time_series_plot(
         )
         axes[1, 3].axhline(position_noise / 1515 * 1000, color="g")
         axes[1, 3].text(
-            -0.2,
-            position_noise / 1515 * 1000 * 0.5,
+            xmax_zoom_hist * 0.9,
+            position_noise / 1515 * 1000 - ymax_hist * 0.06,
             "$\sigma_d$",
             va="center",
             color="g",
@@ -243,15 +274,23 @@ def time_series_plot(
     if time_noise != 0:
         axes[1, 3].axhline(-time_noise * 1000, color="y", label="Input Time Noise")
         axes[1, 3].axhline(time_noise * 1000, color="y")
-        axes[1, 3].text(-0.2, time_noise * 1000, "$\sigma_t$", va="center", color="y")
+        axes[1, 3].text(
+            xmax_zoom_hist * 0.9,
+            -time_noise * 1000 - ymax_hist * 0.06,
+            "$\sigma_t$",
+            va="center",
+            color="y",
+        )
 
     # invert axis and plot
-    axes[1, 3].set_ylabel(
-        f"$\sigma_\epsilon$ = {np.round(std_zoom, 2)} "
-        f"ms $\sim$ {np.round(std_zoom * 1515 / 10, 2)} cm"
+    axes[1, 3].set_title(
+        rf"$\sigma_\epsilon$ = {np.round(std_zoom, 2)} "
+        rf"ms $\sim$ {np.round(std_zoom * 1515 / 10, 2)} cm",
+        fontsize=16,
     )
     axes[1, 3].yaxis.set_label_position("right")
     axes[1, 3].yaxis.tick_right()
+    axes[1, 3].set_yticks([])
     axes[1, 3].set_ylim([mu - 3 * std, mu + 3 * std])
     axes[1, 3].set_xlabel("Density")
     axes[1, 3].invert_xaxis()
@@ -454,7 +493,7 @@ def range_residual(
     axes[1].text(
         1.06,
         0.45,
-        f"$c\sigma$={std_rr:.2f} (cm)",
+        f"$c\sigma_\epsilon$={std_rr:.2f} (cm)",
         transform=axes[1].transAxes,
         ha="left",
         va="center",
