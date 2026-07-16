@@ -1,7 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import scipy.io as sio
-from pymap3d import ecef2geodetic
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
@@ -53,7 +51,7 @@ def bermuda_trajectory(
         gps1_to_transponder = np.array([-12.4659, 9.6021, -13.2993])
 
     CDOG_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
-    CDOG_augment = np.array([974.12667502, -80.98121315, -805.07870249])
+    CDOG_augment = np.array([236.428385, -1307.98390221, -2189.21991698])
     CDOG = CDOG_base + CDOG_augment
 
     data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
@@ -85,6 +83,9 @@ def bermuda_trajectory(
 
 
 if __name__ == "__main__":
+    from plotting.Plot_Modular import trajectory_plot
+    from geometry.ECEF_Geodetic import ECEF_Geodetic
+
     esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
     dz_array = esv_table["distance"].flatten()
     angle_array = esv_table["angle"].flatten()
@@ -103,43 +104,26 @@ if __name__ == "__main__":
         time_noise, position_noise, 0, 0, dz_array, angle_array, esv_matrix
     )
 
-    lat = sio.loadmat(gps_data_path("GPS_Data/Unit1-camp_bis.mat"))["lat"].flatten()
-    lon = sio.loadmat(gps_data_path("GPS_Data/Unit1-camp_bis.mat"))["lon"].flatten()
-    elev = sio.loadmat(gps_data_path("GPS_Data/Unit1-camp_bis.mat"))["elev"].flatten()
-    times = sio.loadmat(gps_data_path("GPS_Data/Unit1-camp_bis.mat"))["times"].flatten()
-    days = (
-        sio.loadmat(gps_data_path("GPS_Data/Unit1-camp_bis.mat"))["days"].flatten()
-        - 59015
+    leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
+    leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
+    leg_mask = leg1 | leg2
+    GPS_Coordinates = GPS_Coordinates[leg_mask]
+    GPS_data = GPS_data[leg_mask]
+
+    CDOG_guess_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
+    CDOGs = np.array(
+        [
+            [-398.16, 371.90, 773.02],
+            [825.182985, -111.05670221, -734.10011698],
+            [236.428385, -1307.98390221, -2189.21991698],
+        ]
     )
+    CDOGs += CDOG_guess_base
+    CDOGs_lat, CDOGs_lon, CDOGs_height = ECEF_Geodetic(CDOGs)
+    GPS_lat, GPS_lon, GPS_height = ECEF_Geodetic(GPS_Coordinates[:, 0, :])
 
-    datetimes = (days * 24 * 3600) + times
-    condition_GNSS = (datetimes / 3600 >= 25) & (datetimes / 3600 <= 40.9)
-
-    datetimes = datetimes[condition_GNSS]
-    lat = lat[condition_GNSS]
-    lon = lon[condition_GNSS]
-    elev = elev[condition_GNSS]
-
-    points = len(lat)
-    colors = plt.cm.viridis(np.linspace(0, 1, points))
-
-    CDOG_lat, CDOG_lon, CDOG_depth = ecef2geodetic(CDOG[0], CDOG[1], CDOG[2])
-    CDOG_lon += 360
-
-    # Calculate time values in hours for proper colorbar range
-    times_hours = datetimes / 3600  # Convert seconds to hours
-    min_time = np.min(times_hours)
-    max_time = np.max(times_hours)
-
-    scatter = plt.scatter(
-        lon, lat, s=1, c=times_hours, cmap="viridis", label="Surface Vessel"
+    trajectory_plot(
+        np.array([GPS_lon, GPS_lat, GPS_height]).T,
+        GPS_data,
+        np.array([CDOGs_lon, CDOGs_lat, CDOGs_height]).T,
     )
-    plt.scatter(CDOG_lon, CDOG_lat, marker="x", s=5, label="CDOG")
-    plt.colorbar(scatter, label="Elapsed Time (hours)")
-    plt.clim(min_time, max_time)  # Set the colorbar to actual time range
-    plt.title("Plot of Bermuda Trajectory and CDOG location")
-    plt.xlabel("Longitude")
-    plt.ylabel("Latitude")
-    plt.legend()
-    plt.show()
-    print(CDOG_data, GPS_data)

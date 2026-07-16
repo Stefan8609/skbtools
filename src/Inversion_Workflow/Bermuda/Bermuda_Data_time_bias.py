@@ -14,11 +14,13 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
 )
 from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
 from data import gps_data_path, gps_output_path
+from plotting.Plot_Modular import time_series_plot, range_residual
+
 
 # -------------------------
 # Config
 # -------------------------
-DOG_num = 3
+DOG_num = 1
 simulated_annealing = True
 save = True
 downsample = 1
@@ -51,22 +53,37 @@ gps1_to_others = np.array(
 initial_lever_guess = np.array([-12.69796149, 9.51739301, -15.0743129])
 
 # -------------------------
-# Initial guesses by DOG
+# Initial guesses by DOG and trajectory masking
 # -------------------------
 if DOG_num == 1:
     CDOG_guess_augment = np.array([-398.16, 371.90, 773.02])
     offset_hint = 1866.0
+    leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
+    leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
 elif DOG_num == 3:
     CDOG_guess_augment = np.array([825.182985, -111.05670221, -734.10011698])
     offset_hint = 3175.0
+    # leg1 = (GPS_data / 3600 >= 8.7) & (GPS_data / 3600 <= 11)
+    # leg2 = (GPS_data / 3600 >= 15.75) & (GPS_data / 3600 <= 18.15)
+    leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
+    leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
 elif DOG_num == 4:
     CDOG_guess_augment = np.array([236.428385, -1307.98390221, -2189.21991698])
     offset_hint = 1939.0
+    leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
+    leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
+    # leg1 = (GPS_data / 3600 >= 8.7) & (GPS_data / 3600 <= 11)
+    # leg2 = (GPS_data / 3600 >= 15.75) & (GPS_data / 3600 <= 18.15)
+    # This is not a true leg, as the GPS data was corrupted overlying DOG_4
 else:
     CDOG_guess_augment = np.zeros(3)
     offset_hint = 0.0
 
 CDOG_guess = CDOG_guess_base + CDOG_guess_augment
+
+leg_mask = leg1 | leg2
+GPS_Coordinates = GPS_Coordinates[leg_mask]
+GPS_data = GPS_data[leg_mask]
 
 if simulated_annealing:
     print("\n ---------Using Simulated Annealing--------- \n")
@@ -175,7 +192,7 @@ print("RMSE:", np.round(RMSE_cm, 3), "cm")
 # -------------------------
 # Plots
 # -------------------------
-DOG_name = {1: "DOG1", 3: "DOG3", 4: "DOG4"}
+DOG_name = {1: "1", 3: "3", 4: "4"}
 save_path = "Figs/Inversion_Workflow"
 file_tag = (
     DOG_name[DOG_num] + "_SimAnn"
@@ -183,15 +200,15 @@ file_tag = (
     else DOG_name[DOG_num] + "_Geiger"
 )
 
-# time_series_plot(
-#     CDOG_clock,
-#     CDOG_full,
-#     GPS_clock,
-#     GPS_full,
-#     save=save,
-#     path=save_path,
-#     zoom_start=35000,
-# )
+time_series_plot(
+    CDOG_clock,
+    CDOG_full,
+    GPS_clock,
+    GPS_full,
+    save=save,
+    path=save_path,
+    DOG_num=file_tag,
+)
 
 # Range residual plot inputs: recompute travel times at final estimate
 times_guess, esv = calculateTimesRayTracing_Bias_Real(
@@ -215,16 +232,16 @@ CDOG_clock_ex, CDOG_full_ex, GPS_clock_ex, GPS_full_ex, trans_coords_full, esv_f
     )
 )
 
-# range_residual(
-#     trans_coords_full,
-#     esv_full,
-#     inversion_guess,
-#     CDOG_full_ex,
-#     GPS_full_ex,
-#     GPS_clock_ex,
-#     save=save,
-#     path=save_path,
-# )
+range_residual(
+    trans_coords_full,
+    esv_full,
+    inversion_guess,
+    CDOG_full_ex,
+    GPS_full_ex,
+    GPS_clock_ex,
+    save=save,
+    path=save_path,
+)
 
 # Elevation-angle residuals
 # depth_arr = ECEF_Geodetic(trans_coords_full)[2]

@@ -40,8 +40,8 @@ def modular_synthetic(
     in_time_bias,
     esv1="global_table_esv",
     esv2="global_table_esv_perturbed",
-    generate_type=0,
-    inversion_type=0,
+    generate_type=1,
+    inversion_type=1,
     plot=True,
     DOG_num=3,
     downsample=50,
@@ -123,9 +123,16 @@ def modular_synthetic(
             gps1_to_transponder=gps1_to_transponder,
         )
 
-        GPS_Coordinates = GPS_Coordinates[::downsample]
-        GPS_data = GPS_data[::downsample]
-        true_transponder_coordinates = true_transponder_coordinates[::downsample]
+        leg1 = (GPS_data / 3600 >= 8.7) & (GPS_data / 3600 <= 11.5)
+        leg2 = (GPS_data / 3600 >= 12.2) & (GPS_data / 3600 <= 15)
+        leg_mask = leg1 | leg2
+        GPS_Coordinates = GPS_Coordinates[leg_mask]
+        GPS_data = GPS_data[leg_mask]
+        true_transponder_coordinates = true_transponder_coordinates[leg_mask]
+
+        # GPS_Coordinates = GPS_Coordinates[::downsample]
+        # GPS_data = GPS_data[::downsample]
+        # true_transponder_coordinates = true_transponder_coordinates[::downsample]
         z_sample = True
     print("True Offset", true_offset)
     # Choose Inversion_Workflow Type

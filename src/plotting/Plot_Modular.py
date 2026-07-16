@@ -42,7 +42,8 @@ def time_series_plot(
     # Get range of times for zoom in
     zoom_length = 1200
     if zoom_start == -1:
-        zoom_region = np.random.randint(min(CDOG_clock), max(CDOG_clock) - zoom_length)
+        valid_zoom_starts = CDOG_clock[CDOG_clock <= max(CDOG_clock) - zoom_length]
+        zoom_region = np.random.choice(valid_zoom_starts)
     else:
         zoom_region = zoom_start
 
@@ -188,7 +189,7 @@ def time_series_plot(
     # invert axis and plot
     axes[1, 0].set_ylabel("Residuals $\epsilon$ (ms)")
     axes[1, 0].set_title(
-        rf"$\sigma_\epsilon$ = {np.round(std, 2)} ms $\sim$"
+        rf"$\sigma_\epsilon$ = {np.round(std, 2)} ms $\sim$ "
         rf"{np.round(std * 1515 / 10, 2)} cm",
         fontsize=16,
     )
@@ -336,6 +337,8 @@ def trajectory_plot(
     min_time = np.min(times_hours)
     max_time = np.max(times_hours)
 
+    CDOGs = np.atleast_2d(CDOGs)
+
     scatter = plt.scatter(
         coordinates[:, 0],
         coordinates[:, 1],
@@ -345,6 +348,7 @@ def trajectory_plot(
         label="Surface Vessel",
     )
     nums = {0: "1", 1: "3", 2: "4"}
+    colors = {0: "r", 1: "g", 2: "b"}  # Assign colors to each CDOG
     for i in range(len(CDOGs)):
         plt.scatter(
             CDOGs[i, 0],
@@ -352,7 +356,7 @@ def trajectory_plot(
             marker="x",
             s=20,
             label=f"CDOG {nums[i]}",
-            color="k",
+            color=colors[i],
         )
     plt.colorbar(scatter, label="Elapsed Time (hours)")
     plt.clim(min_time, max_time)  # Set the colorbar to actual time range
@@ -568,14 +572,8 @@ if __name__ == "__main__":
     GPS_data = data["GPS_data"]
 
     GPS_lat, GPS_lon, GPS_height = ECEF_Geodetic(GPS_Coordinates[:, 0, :])
-    # trajectory_plot(
-    #     np.array([GPS_lon, GPS_lat, GPS_height]).T,
-    #     GPS_data,
-    #     np.array([CDOGs_lon, CDOGs_lat, CDOGs_height]).T,
-    # )
-    split_trajectory_plot(
+    trajectory_plot(
         np.array([GPS_lon, GPS_lat, GPS_height]).T,
+        GPS_data,
         np.array([CDOGs_lon, CDOGs_lat, CDOGs_height]).T,
-        10,
-        save=True,
     )
