@@ -57,7 +57,6 @@ def load_min_logpost_params(npz_path, loglike=False):
 
     return {
         "lever": data["lever"][idx_min],
-        "gps1_grid": data["gps1_grid"][idx_min],
         "CDOG_aug": data["CDOG_aug"][idx_min],
         "esv_bias": data["esv_bias"][idx_min],
         "time_bias": data["time_bias"][idx_min],
@@ -145,7 +144,6 @@ def plot_best_sample(
     best = load_min_logpost_params(npz_path, loglike=loglike)
 
     lever_guess = best["lever"]
-    gps1_grid_guess = best["gps1_grid"]
     CDOG_augments = best["CDOG_aug"]
     esv_bias = best["esv_bias"]
     time_bias = best["time_bias"]
@@ -157,15 +155,23 @@ def plot_best_sample(
     print("==============================")
     print("Best parameters:")
     print("Lever guess:", lever_guess)
-    print("GPS1 grid guess:", gps1_grid_guess)
     print("CDOG augment:", CDOG_augments)
     print("ESV bias:", esv_bias)
     print("Time bias:", time_bias)
     print("Log posterior:", logpost)
     print("Log likelihood:", loglikelihood)
 
+    gps1_grid = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [-2.393414, -4.223503, 0.029415],
+            [-12.095685, -0.945685, 0.004397],
+            [-8.686741, 5.169188, -0.024993],
+        ]
+    )
+
     split_esv = (esv_bias.ndim == 2) and (esv_bias.shape[1] > 1)
-    trans_coords = findTransponder(GPS_Coordinates, gps1_grid_guess, lever_guess)
+    trans_coords = findTransponder(GPS_Coordinates, gps1_grid, lever_guess)
 
     inv_guess = CDOG_guess + CDOG_augments[CDOG_index]
     CDOG_data = CDOG_all_data[CDOG_index]
@@ -238,9 +244,10 @@ if __name__ == "__main__":
     # split_samples("7_individual_splits_esv_20250806_165630", 7)
 
     loglike = False
-    file_name = "mcmc_chain_1_22_new_MCMC_long.npz"
+    # file_name = "mcmc_chain_1_22_new_MCMC_long.npz"
+    file_name = "mcmc_chain_7_16.npz"
     chain_name = ("loglike_" if loglike else "logpost_") + file_name[:-4]
-    DOG_num = 3
+    DOG_num = 1
     timestamp = f"{file_name[:-4]}_best_DOG_{DOG_num}"
 
     esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"))
@@ -253,6 +260,12 @@ if __name__ == "__main__":
     GPS_Coordinates = data["GPS_Coordinates"][::downsample]
     GPS_data = data["GPS_data"][::downsample]
     CDOG_guess = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
+
+    leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
+    leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
+    leg_mask = leg1 | leg2
+    GPS_Coordinates = GPS_Coordinates[leg_mask]
+    GPS_data = GPS_data[leg_mask]
 
     CDOG_all_data = []
     for i in (1, 3, 4):

@@ -493,9 +493,22 @@ def corner_plot_with_corr(
 
 
 if __name__ == "__main__":
-    file_name = "mcmc_chain_1_22_new_MCMC_long"
+    file_name = "mcmc_chain_7_16"
     chain_name = "logpost_" + file_name
     chain = np.load(gps_output_path(f"{file_name}.npz"))
+
+    # burn_in = 120000
+
+    # with np.load(gps_output_path(f"{file_name}.npz")) as data:
+    #     n_samples = data["logpost"].shape[0]
+
+    #     chain = {
+    #         key: data[key][burn_in:]
+    #         if data[key].ndim > 0 and data[key].shape[0] == n_samples
+    #         else data[key].copy()
+    #         for key in data.files
+    #     }
+
     initial_params, prior_scales, proposal_scales = get_init_params_and_prior(chain)
 
     corner_plot_with_corr(

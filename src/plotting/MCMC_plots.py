@@ -954,13 +954,26 @@ def corner_plot(
 
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
-    file_name = "mcmc_chain_1_22_new_MCMC_long"
+    # file_name = "mcmc_chain_1_22_new_MCMC_long"
+    file_name = "mcmc_chain_7_16"
     loglike = False
     save = True
 
     chain_name = ("loglike_" if loglike else "logpost_") + file_name
 
     chain = np.load(gps_output_path(f"{file_name}.npz"))
+
+    # burn_in = 120000
+
+    # with np.load(gps_output_path(f"{file_name}.npz")) as data:
+    #     n_samples = data["logpost"].shape[0]
+
+    #     chain = {
+    #         key: data[key][burn_in:]
+    #         if data[key].ndim > 0 and data[key].shape[0] == n_samples
+    #         else data[key].copy()
+    #         for key in data.files
+    #     }
 
     initial_params, prior_scales, proposal_scales = get_init_params_and_prior(chain)
 
@@ -973,27 +986,27 @@ if __name__ == "__main__":
     trace_plot(
         chain,
         initial_params=initial_params,
-        downsample=500,
+        downsample=50,
         save=save,
         chain_name=chain_name,
     )
-    # marginal_hists(
-    #     chain,
-    #     initial_params=initial_params,
-    #     prior_scales=prior_scales,
-    #     downsample=5,
-    #     save=save,
-    #     chain_name=chain_name,
-    # )
-    # corner_plot(
-    #     chain,
-    #     initial_params=initial_params,
-    #     prior_scales=prior_scales,
-    #     downsample=5,
-    #     save=save,
-    #     chain_name=chain_name,
-    #     loglike=loglike,
-    # )
+    marginal_hists(
+        chain,
+        initial_params=initial_params,
+        prior_scales=prior_scales,
+        downsample=50,
+        save=save,
+        chain_name=chain_name,
+    )
+    corner_plot(
+        chain,
+        initial_params=initial_params,
+        prior_scales=prior_scales,
+        downsample=50,
+        save=save,
+        chain_name=chain_name,
+        loglike=loglike,
+    )
 
     # esv_split_posteriors(
     #     chain,
