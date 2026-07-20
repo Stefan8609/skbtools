@@ -20,7 +20,7 @@ from plotting.Plot_Modular import time_series_plot, range_residual
 # -------------------------
 # Config
 # -------------------------
-DOG_num = 1
+DOG_num = 4
 simulated_annealing = True
 save = True
 downsample = 1

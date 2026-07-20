@@ -244,8 +244,8 @@ if __name__ == "__main__":
     # split_samples("7_individual_splits_esv_20250806_165630", 7)
 
     loglike = False
-    # file_name = "mcmc_chain_1_22_new_MCMC_long.npz"
-    file_name = "mcmc_chain_7_16.npz"
+    file_name = "mcmc_chain_1_22_new_MCMC_long.npz"
+    # file_name = "mcmc_chain_7_16.npz"
     chain_name = ("loglike_" if loglike else "logpost_") + file_name[:-4]
     DOG_num = 1
     timestamp = f"{file_name[:-4]}_best_DOG_{DOG_num}"
@@ -261,11 +261,11 @@ if __name__ == "__main__":
     GPS_data = data["GPS_data"][::downsample]
     CDOG_guess = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
 
-    leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
-    leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
-    leg_mask = leg1 | leg2
-    GPS_Coordinates = GPS_Coordinates[leg_mask]
-    GPS_data = GPS_data[leg_mask]
+    # leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
+    # leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
+    # leg_mask = leg1 | leg2
+    # GPS_Coordinates = GPS_Coordinates[leg_mask]
+    # GPS_data = GPS_data[leg_mask]
 
     CDOG_all_data = []
     for i in (1, 3, 4):
