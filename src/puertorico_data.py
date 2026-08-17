@@ -5,7 +5,7 @@ from pathlib import Path
 # Path to the repository root directory
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # Path to the GPS data directory located at the repository root
-GPS_DATA_PATH = PROJECT_ROOT / "Data"
+GPS_DATA_PATH = PROJECT_ROOT / "PuertoRico_Data"
 
 
 def gps_data_path(*paths: str | Path) -> Path:

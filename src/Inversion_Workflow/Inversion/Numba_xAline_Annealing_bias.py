@@ -26,7 +26,7 @@ from data import gps_data_path
 from numba import njit
 
 
-@njit(cache=True)
+@njit()
 def simulated_annealing_bias(
     iter,
     CDOG_data,
@@ -41,6 +41,7 @@ def simulated_annealing_bias(
     initial_offset=0,
     real_data=False,
     z_sample=True,
+    enforce_offset=False,
 ):
     """Estimate lever arm and biases using simulated annealing."""
     # Working state
@@ -96,6 +97,9 @@ def simulated_annealing_bias(
         offset, 0.5, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
     )[1:4]
     best_rmse = np.sqrt(np.nanmean((GPS_full - CDOG_full) ** 2))
+
+    if enforce_offset:
+        offset = initial_offset  # Keep offset fixed during annealing if specified
 
     # ---- annealing loop ----
     k = 0

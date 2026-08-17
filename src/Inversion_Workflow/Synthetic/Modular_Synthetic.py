@@ -123,8 +123,8 @@ def modular_synthetic(
             gps1_to_transponder=gps1_to_transponder,
         )
 
-        leg1 = (GPS_data / 3600 >= 8.7) & (GPS_data / 3600 <= 11.5)
-        leg2 = (GPS_data / 3600 >= 12.2) & (GPS_data / 3600 <= 15)
+        leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
+        leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
         leg_mask = leg1 | leg2
         GPS_Coordinates = GPS_Coordinates[leg_mask]
         GPS_data = GPS_data[leg_mask]
@@ -294,5 +294,5 @@ if __name__ == "__main__":
         downsample=downsample,
         generate_type=1,
         inversion_type=0,
-        DOG_num=3,
+        DOG_num=1,
     )

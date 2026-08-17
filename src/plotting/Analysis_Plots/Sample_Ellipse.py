@@ -1,14 +1,20 @@
 import numpy as np
+import scipy.io as sio
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 
-from Inversion_Workflow.Synthetic.Modular_Synthetic import (
-    modular_synthetic,
+from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
+    bermuda_trajectory,
 )
+from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
+from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
+    simulated_annealing_bias,
+)
+from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import final_bias_geiger
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 
 from pymap3d import geodetic2enu
-from data import gps_output_path
+from data import gps_data_path, gps_output_path
 
 plt.rcParams.update(
     {
@@ -114,7 +120,14 @@ def _center_axes_at_zero(ax, x, y, pad_fraction=0.08):
     ax.set_ylim(-max_abs, max_abs)
 
 
-def error_ellipse(num_points, time_noise, position_noise, downsample, generate=True):
+def error_ellipse(
+    num_points,
+    time_noise,
+    position_noise,
+    downsample,
+    generate=True,
+    DOG_num=1,
+):
     """Plot error ellipses from Monte Carlo samples.
 
     Parameters
@@ -122,9 +135,15 @@ def error_ellipse(num_points, time_noise, position_noise, downsample, generate=T
     num_points : int
         Number of Monte Carlo iterations to run.
     time_noise : float
-        Standard deviation of timing noise.
+        Standard deviation of timing noise in seconds.
     position_noise : float
-        Standard deviation of position noise in metres.
+        Standard deviation of GNSS position noise in metres.
+    downsample : int
+        Downsampling interval applied to the clean GNSS trajectory.
+    generate : bool, optional
+        Generate new Monte Carlo results when True, otherwise load saved results.
+    DOG_num : int, optional
+        Bermuda DOG data set used for the synthetic trajectory.
 
     Returns
     -------
@@ -132,39 +151,137 @@ def error_ellipse(num_points, time_noise, position_noise, downsample, generate=T
         Displays plots of the estimated CDOG positions and lever errors.
     """
 
-    # Real Lever
     real_lever = np.array([-12.4659, 9.6021, -13.2993])
 
     if generate:
+        gps1_to_others = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [-2.39341409, -4.22350344, 0.02941493],
+                [-12.09568416, -0.94568462, 0.0043972],
+                [-8.68674054, 5.16918806, 0.02499322],
+            ]
+        )
+
+        esv_table_generate = sio.loadmat(
+            gps_data_path("ESV_Tables/global_table_esv.mat")
+        )
+        dz_array_generate = esv_table_generate["distance"].flatten()
+        angle_array_generate = esv_table_generate["angle"].flatten()
+        esv_matrix_generate = esv_table_generate["matrice"]
+
+        esv_table_inversion = sio.loadmat(
+            gps_data_path("ESV_Tables/global_table_esv_perturbed.mat")
+        )
+        dz_array_inversion = esv_table_inversion["distance"].flatten()
+        angle_array_inversion = esv_table_inversion["angle"].flatten()
+        esv_matrix_inversion = esv_table_inversion["matrice"]
+
+        true_offset = np.random.rand() * 9000 + 1000
+
+        (
+            correct_CDOG_data,
+            CDOG,
+            correct_GPS_Coordinates,
+            correct_GPS_data,
+            _,
+        ) = bermuda_trajectory(
+            0,
+            0,
+            0,
+            0,
+            dz_array_generate,
+            angle_array_generate,
+            esv_matrix_generate,
+            offset=true_offset,
+            DOG_num=DOG_num,
+            gps1_to_others=gps1_to_others,
+            gps1_to_transponder=real_lever,
+        )
+
+        leg1 = (correct_GPS_data / 3600 >= 9.0) & (correct_GPS_data / 3600 <= 11.0)
+        leg2 = (correct_GPS_data / 3600 >= 12.4) & (correct_GPS_data / 3600 <= 15.0)
+        leg_mask = leg1 | leg2
+
+        correct_GPS_Coordinates = correct_GPS_Coordinates[leg_mask][::downsample]
+        correct_GPS_data = correct_GPS_data[leg_mask][::downsample]
+        # correct_GPS_Coordinates = correct_GPS_Coordinates[::downsample]
+        # correct_GPS_data = correct_GPS_data[::downsample]
+        correct_CDOG_time = correct_CDOG_data[:, 0] + correct_CDOG_data[:, 1]
+
+        print("True Offset:", true_offset)
+
         estimate_array = np.zeros((num_points, 3))
         lever_diff_array = np.zeros((num_points, 3))
         RMSE_array = np.zeros(num_points)
+
         for i in range(num_points):
             try:
+                GPS_Coordinates = correct_GPS_Coordinates + np.random.normal(
+                    0,
+                    position_noise,
+                    correct_GPS_Coordinates.shape,
+                )
+                GPS_data = correct_GPS_data.copy()
+
+                CDOG_time = correct_CDOG_time + np.random.normal(
+                    0,
+                    time_noise,
+                    len(correct_CDOG_time),
+                )
+                CDOG_remain, CDOG_int = np.modf(CDOG_time)
+                CDOG_data = np.column_stack((CDOG_int, CDOG_remain))
+
+                initial_guess = CDOG + np.random.normal(0, 30, 3)
+                initial_lever = real_lever - np.random.normal(0, 2, 3)
+
+                lever, offset, inversion_result = simulated_annealing_bias(
+                    300,
+                    CDOG_data,
+                    GPS_data,
+                    GPS_Coordinates,
+                    gps1_to_others,
+                    initial_guess,
+                    initial_lever,
+                    dz_array_inversion,
+                    angle_array_inversion,
+                    esv_matrix_inversion,
+                    real_data=True,
+                    initial_offset=true_offset,
+                    z_sample=True,
+                    enforce_offset=True,
+                )
+
+                inversion_guess = inversion_result[:3]
+                time_bias = inversion_result[3]
+                esv_bias = inversion_result[4]
+
+                transponder_coordinates = findTransponder(
+                    GPS_Coordinates,
+                    gps1_to_others,
+                    lever,
+                )
+
                 (
                     inversion_result,
-                    CDOG_data,
                     CDOG_full,
-                    GPS_data,
                     GPS_full,
                     CDOG_clock,
                     GPS_clock,
-                    CDOG,
+                ) = final_bias_geiger(
+                    inversion_guess,
+                    CDOG_data,
+                    GPS_data,
                     transponder_coordinates,
-                    GPS_Coordinates,
                     offset,
-                    lever,
-                ) = modular_synthetic(
-                    time_noise,
-                    position_noise,
-                    0,
-                    0,
-                    esv1="global_table_esv",
-                    esv2="global_table_esv_perturbed",
-                    generate_type=1,
-                    inversion_type=1,
-                    plot=False,
+                    esv_bias,
+                    time_bias,
+                    dz_array_inversion,
+                    angle_array_inversion,
+                    esv_matrix_inversion,
+                    real_data=True,
                 )
+
                 diff_data = (CDOG_full - GPS_full) * 1000
                 RMSE = np.sqrt(np.nanmean(diff_data**2)) / 1000 * 1515 * 100
 
@@ -178,18 +295,20 @@ def error_ellipse(num_points, time_noise, position_noise, downsample, generate=T
                 estimate_array[i] = inversion_result[:3]
                 lever_diff_array[i] = lever - real_lever
                 RMSE_array[i] = RMSE
-                print(f"\n{i + 1}/{num_points} iterations complete")
+                print(
+                    f"\n{i + 1}/{num_points} iterations complete "
+                    f"(offset error: {abs(offset - true_offset):.4f} s)"
+                )
+
             except Exception as e:
                 print(f"\n{i + 1}/{num_points} iteration failed: {e}")
                 estimate_array[i] = np.nan
                 lever_diff_array[i] = np.nan
                 RMSE_array[i] = np.nan
 
-        # Convert to geodetic
         CDOG_lat, CDOG_lon, CDOG_height = ECEF_Geodetic(np.array([CDOG]))
         estimate_lat, estimate_lon, estimate_height = ECEF_Geodetic(estimate_array)
 
-        # Convert to ENU coordinates
         estimate_converted = np.zeros((num_points, 3))
         for i in range(num_points):
             enu = geodetic2enu(
@@ -281,7 +400,7 @@ def error_ellipse(num_points, time_noise, position_noise, downsample, generate=T
             edgecolor="black",
             linestyle="--",
         )
-    _add_xy_stats(axs[1], x1, y1, "E", "Z")
+    _add_xy_stats(axs[1], x1, y1, "E", "U")
     _center_axes_at_zero(axs[1], x1, y1)
     axs[1].set_xlabel("Easting (cm)")
     axs[1].set_ylabel("Elevation (cm)")
@@ -315,7 +434,7 @@ def error_ellipse(num_points, time_noise, position_noise, downsample, generate=T
             edgecolor="black",
             linestyle="--",
         )
-    _add_xy_stats(axs[2], x2, y2, "N", "Z")
+    _add_xy_stats(axs[2], x2, y2, "N", "U")
     _center_axes_at_zero(axs[2], x2, y2)
     axs[2].set_xlabel("Northing (cm)")
     axs[2].set_ylabel("Elevation (cm)")
@@ -441,8 +560,8 @@ if __name__ == "__main__":
     num_points = 1000
     time_noise = 2 * 10**-5
     position_noise = 2 * 10**-2
-    downsample = 50
-    generate = False
+    downsample = 5
+    generate = True
     error_ellipse(num_points, time_noise, position_noise, downsample, generate=generate)
 
     npzfile = np.load(gps_output_path("Plot_Data/synthetic_error_ellipse.npz"))

@@ -20,7 +20,8 @@ wheels/
 *.egg-info/
 
 # Project specific
-Data/
+Bermuda_Data/
+PuertoRico_Data/
 ecco_access/
 Data/Figs/
 

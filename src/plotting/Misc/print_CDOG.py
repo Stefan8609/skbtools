@@ -4,9 +4,7 @@ from pymap3d import geodetic2enu
 
 # Add in the comparison to split inversion
 
-CDOG_guess_base = np.array(
-    [1976671.618715, -5069622.53769779, 3306330.69611698]
-)
+CDOG_guess_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
 
 methods = {
     "Full Trajectory MCMC": np.array(
@@ -74,9 +72,9 @@ for i in range(len(names)):
 
             print(
                 f"DOG {DOG_NAME[dog]}: "
-                f"E={100*east:8.1f} cm, "
-                f"N={100*north:8.1f} cm, "
-                f"U={100*up:8.1f} cm, "
-                f"horizontal={100*horizontal:8.1f} cm, "
-                f"3D={100*distance_3d:8.1f} cm"
+                f"E={100 * east:8.1f} cm, "
+                f"N={100 * north:8.1f} cm, "
+                f"U={100 * up:8.1f} cm, "
+                f"horizontal={100 * horizontal:8.1f} cm, "
+                f"3D={100 * distance_3d:8.1f} cm"
             )
