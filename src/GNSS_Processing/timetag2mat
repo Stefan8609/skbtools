@@ -6,9 +6,48 @@ from scipy.io import savemat
 from puertorico_data import gps_data_path
 
 
-def timetags_to_mat(input_files, output_file):
+BIG_JUMP_THRESHOLD_S = 1000.0
+
+
+def sort_by_tags(tags, utc_time):
     """
-    Combine all timetag text files into one MAT file.
+    Sort chronologically by:
+        1. whole seconds
+        2. nanoseconds
+    """
+
+    order = np.lexsort(
+        (
+            tags[:, 1],  # secondary: nanoseconds
+            tags[:, 0],  # primary: whole seconds
+        )
+    )
+
+    return tags[order], utc_time[order]
+
+
+def save_timetags(output_file, tags, utc_time):
+    savemat(
+        output_file,
+        {
+            "tags": tags,
+            "utc_time": utc_time,
+        },
+        do_compression=True,
+    )
+
+    print(f"Wrote {output_file}")
+    print(f"Rows: {len(tags):,}")
+
+
+def timetags_to_mat(
+    input_files,
+    output_file_before,
+    output_file_after,
+):
+    """
+    Combine timetag text files, split at the large clock jump,
+    sort each clock segment chronologically, and save two MAT files.
 
     Output variables
     ----------------
@@ -21,13 +60,6 @@ def timetags_to_mat(input_files, output_file):
         Column 1: day
         Column 2: month
         Column 3: year
-
-    Example input row:
-        5858,982216300,$GPZDA,234629.00,16,01,2023,+00,00*40
-
-    becomes:
-        tags     = [5858, 982216300]
-        utc_time = [234629.00, 16, 1, 2023]
     """
 
     tags = []
@@ -53,7 +85,8 @@ def timetags_to_mat(input_files, output_file):
 
                 if fields[2] != "$GPZDA":
                     raise ValueError(
-                        f"Unexpected record in {input_file}:{line_number}: {line}"
+                        f"Unexpected record in "
+                        f"{input_file}:{line_number}: {line}"
                     )
 
                 hhmmss = float(fields[3])
@@ -83,17 +116,80 @@ def timetags_to_mat(input_files, output_file):
     tags = np.asarray(tags, dtype=np.int32)
     utc_time = np.asarray(utc_time, dtype=np.float64)
 
-    savemat(
-        output_file,
-        {
-            "tags": tags,
-            "utc_time": utc_time,
-        },
-        do_compression=True,
+    # ---------------------------------------------------------
+    # Find the major backward clock jump in ORIGINAL file order
+    # ---------------------------------------------------------
+
+    tag_seconds = (
+        tags[:, 0].astype(np.float64)
+        + tags[:, 1].astype(np.float64) / 1e9
     )
 
-    print(f"Wrote {output_file}")
-    print(f"Rows: {len(tags):,}")
+    jumps = np.diff(tag_seconds)
+
+    big_jumps = np.where(
+        jumps < -BIG_JUMP_THRESHOLD_S
+    )[0]
+
+    if len(big_jumps) == 0:
+        raise ValueError(
+            "No large backward timetag jump was found."
+        )
+
+    if len(big_jumps) > 1:
+        raise ValueError(
+            f"Found {len(big_jumps)} large backward timetag jumps."
+        )
+
+    jump_index = big_jumps[0]
+
+    print()
+    print("Large clock jump found:")
+    print(
+        f"  {tag_seconds[jump_index]:.9f} -> "
+        f"{tag_seconds[jump_index + 1]:.9f} s"
+    )
+    print(
+        f"  jump = {jumps[jump_index]:.9f} s"
+    )
+    print()
+
+    # The reset occurs BETWEEN jump_index and jump_index + 1.
+    tags_before = tags[: jump_index + 1]
+    utc_before = utc_time[: jump_index + 1]
+
+    tags_after = tags[jump_index + 1 :]
+    utc_after = utc_time[jump_index + 1 :]
+
+    # ---------------------------------------------------------
+    # Sort each continuous clock segment independently
+    # ---------------------------------------------------------
+
+    tags_before, utc_before = sort_by_tags(
+        tags_before,
+        utc_before,
+    )
+
+    tags_after, utc_after = sort_by_tags(
+        tags_after,
+        utc_after,
+    )
+
+    # ---------------------------------------------------------
+    # Save
+    # ---------------------------------------------------------
+
+    save_timetags(
+        output_file_before,
+        tags_before,
+        utc_before,
+    )
+
+    save_timetags(
+        output_file_after,
+        tags_after,
+        utc_after,
+    )
 
 
 if __name__ == "__main__":
@@ -104,9 +200,17 @@ if __name__ == "__main__":
         input_path.glob("File*.txt"),
         key=lambda p: int(p.stem.replace("File", "")),
     )
-    
-    OUTPUT_FILE = output_path / "DOG1-camp.mat"
 
-    print(INPUT_FILES)
-    
-    timetags_to_mat(INPUT_FILES, OUTPUT_FILE)
+    OUTPUT_FILE_BEFORE = (
+        output_path / "DOG1-camp-before-clock-loss.mat"
+    )
+
+    OUTPUT_FILE_AFTER = (
+        output_path / "DOG1-camp-after-clock-loss.mat"
+    )
+
+    timetags_to_mat(
+        INPUT_FILES,
+        OUTPUT_FILE_BEFORE,
+        OUTPUT_FILE_AFTER,
+    )
