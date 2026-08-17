@@ -14,7 +14,7 @@ import scipy.io as sio
 from typing import Optional
 import logging
 
-from data import gps_data_path, gps_output_path
+from bermuda_data import gps_data_path, gps_output_path
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from Inversion_Workflow.Synthetic.Generate_Unaligned import generateUnaligned
 from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (

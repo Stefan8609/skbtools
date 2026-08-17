@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 from geometry.ECEF_Geodetic import ECEF_Geodetic
-from data import gps_data_path
+from bermuda_data import gps_data_path
 from plotting.save import save_plot
 
 """Enable this for paper plots"""

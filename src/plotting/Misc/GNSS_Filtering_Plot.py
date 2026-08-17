@@ -3,7 +3,7 @@ import scipy.io as sio
 import matplotlib.pyplot as plt
 from matplotlib import colors
 
-from data import gps_data_path, gps_output_path
+from bermuda_data import gps_data_path, gps_output_path
 
 
 def running_median(data, window=50):

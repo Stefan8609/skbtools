@@ -5,7 +5,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from geometry.Numba_RigidBodyMovementProblem import findRotationAndDisplacement
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 
 def bermuda_trajectory(

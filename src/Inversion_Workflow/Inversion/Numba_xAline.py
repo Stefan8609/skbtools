@@ -215,7 +215,7 @@ if __name__ == "__main__":
         bermuda_trajectory,
     )
     from Inversion_Workflow.Synthetic.Generate_Unaligned import generateUnaligned
-    from data import gps_data_path
+    from bermuda_data import gps_data_path
     from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
     from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
         calculateTimesRayTracing_Bias_Real,

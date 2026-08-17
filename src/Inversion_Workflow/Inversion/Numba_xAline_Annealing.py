@@ -18,7 +18,7 @@ from Inversion_Workflow.Synthetic.Generate_Unaligned import (
     generateUnaligned,
 )
 import scipy.io as sio
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 """
 Maybe try to implement the more complicated schematic

@@ -4,7 +4,7 @@ from acoustics.ray_tracing import ray_trace_locate, ray_tracing
 import matplotlib.pyplot as plt
 import scipy.io as sio
 from time import time
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 
 depth = np.ascontiguousarray(

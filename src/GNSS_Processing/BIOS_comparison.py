@@ -1,7 +1,7 @@
 from GNSS_Processing.ppp2mat import save_mat
 import numpy as np
 import matplotlib.pyplot as plt
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 Antenna_num = 4
 

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
 
-from data import gps_data_path, gps_output_path
+from bermuda_data import gps_data_path, gps_output_path
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import find_esv
 from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index

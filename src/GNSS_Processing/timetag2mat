@@ -1,0 +1,177 @@
+from pathlib import Path
+
+import numpy as np
+from scipy.io import savemat
+from data import gps_data_path
+
+
+def nmea_checksum_valid(sentence):
+    if not sentence.startswith("$") or "*" not in sentence:
+        return False
+
+    body, checksum_text = sentence[1:].rsplit("*", 1)
+
+    checksum = 0
+    for character in body:
+        checksum ^= ord(character)
+
+    try:
+        expected = int(checksum_text, 16)
+    except ValueError:
+        return False
+
+    return checksum == expected
+
+
+def timetags_to_mat(input_files, output_file):
+    tags = []
+
+    utc_hour = []
+    utc_minute = []
+    utc_second = []
+    utc_day = []
+    utc_month = []
+    utc_year = []
+
+    local_zone_hour = []
+    local_zone_minute = []
+
+    zda_checksum = []
+    zda_valid = []
+
+    for input_file in input_files:
+        with input_file.open("r", encoding="ascii", errors="replace") as file:
+            for line_number, raw_line in enumerate(file, 1):
+                line = raw_line.strip()
+
+                if not line:
+                    continue
+
+                fields = line.split(",", 2)
+
+                if len(fields) != 3:
+                    raise ValueError(
+                        f"Unexpected row in {input_file}:{line_number}: {line}"
+                    )
+
+                whole_seconds = int(fields[0])
+                nanoseconds = int(fields[1])
+
+                sentence = fields[2]
+                zda = sentence.split(",")
+
+                if len(zda) != 7 or zda[0] != "$GPZDA":
+                    raise ValueError(
+                        f"Unexpected GPZDA record in "
+                        f"{input_file}:{line_number}: {sentence}"
+                    )
+
+                checksum_parts = zda[6].split("*", 1)
+
+                if len(checksum_parts) != 2:
+                    raise ValueError(
+                        f"Missing GPZDA checksum in "
+                        f"{input_file}:{line_number}: {sentence}"
+                    )
+
+                time_text = zda[1]
+                day_text = zda[2]
+                month_text = zda[3]
+                year_text = zda[4]
+                zone_hour_text = zda[5]
+                zone_minute_text = checksum_parts[0]
+
+                try:
+                    checksum_value = int(checksum_parts[1], 16)
+                except ValueError:
+                    checksum_value = np.nan
+
+                valid_time = not (
+                    time_text == "000000.00"
+                    and day_text == "00"
+                    and month_text == "00"
+                    and year_text == "0000"
+                )
+
+                if valid_time:
+                    try:
+                        hour = int(time_text[0:2])
+                        minute = int(time_text[2:4])
+                        second = float(time_text[4:])
+
+                        day = int(day_text)
+                        month = int(month_text)
+                        year = int(year_text)
+                    except ValueError:
+                        valid_time = False
+
+                if valid_time:
+                    utc_hour.append(hour)
+                    utc_minute.append(minute)
+                    utc_second.append(second)
+                    utc_day.append(day)
+                    utc_month.append(month)
+                    utc_year.append(year)
+                else:
+                    utc_hour.append(np.nan)
+                    utc_minute.append(np.nan)
+                    utc_second.append(np.nan)
+                    utc_day.append(np.nan)
+                    utc_month.append(np.nan)
+                    utc_year.append(np.nan)
+
+                try:
+                    zone_hour = float(zone_hour_text)
+                    zone_minute = float(zone_minute_text)
+                except ValueError:
+                    zone_hour = np.nan
+                    zone_minute = np.nan
+
+                tags.append((whole_seconds, nanoseconds))
+
+                local_zone_hour.append(zone_hour)
+                local_zone_minute.append(zone_minute)
+
+                zda_checksum.append(checksum_value)
+                zda_valid.append(
+                    int(valid_time and nmea_checksum_valid(sentence))
+                )
+
+    if not tags:
+        raise ValueError("No timetag rows were read.")
+
+    def column(values, dtype=np.float64):
+        return np.asarray(values, dtype=dtype).reshape(-1, 1)
+
+    savemat(
+        output_file,
+        {
+            "tags": np.asarray(tags, dtype=np.int32),
+            "utc_hour": column(utc_hour),
+            "utc_minute": column(utc_minute),
+            "utc_second": column(utc_second),
+            "utc_day": column(utc_day),
+            "utc_month": column(utc_month),
+            "utc_year": column(utc_year),
+            "local_zone_hour": column(local_zone_hour),
+            "local_zone_minute": column(local_zone_minute),
+            "zda_checksum": column(zda_checksum),
+            "zda_valid": column(zda_valid, dtype=np.uint8),
+        },
+        do_compression=True,
+    )
+
+    print(f"Wrote {output_file}")
+    print(f"Rows: {len(tags):,}")
+
+
+if __name__ == "__main__":
+    INPUT_FILES = [
+        Path("File2.txt"),
+        Path("File3.txt"),
+        Path("File4.txt"),
+    ]
+
+    OUTPUT_FILE = Path("DOG1-camp.mat")
+
+    timetags_to_mat(INPUT_FILES, OUTPUT_FILE)

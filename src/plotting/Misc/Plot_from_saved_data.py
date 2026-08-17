@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from data import gps_output_path
+from bermuda_data import gps_output_path
 from plotting.Plot_Modular import time_series_plot
 
 plt.rcParams.update(

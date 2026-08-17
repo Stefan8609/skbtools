@@ -10,7 +10,7 @@ from numba.typed import List
 
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import find_esv
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-from data import gps_data_path, gps_output_path
+from bermuda_data import gps_data_path, gps_output_path
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 
 

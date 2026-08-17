@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 
 def load_simple(path_mat):

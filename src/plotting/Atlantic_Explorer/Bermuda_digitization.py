@@ -2,7 +2,7 @@ import os
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 
 def _get_points_matplotlib(image):

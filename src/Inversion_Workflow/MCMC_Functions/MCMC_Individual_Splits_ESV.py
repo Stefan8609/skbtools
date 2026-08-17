@@ -4,7 +4,7 @@ from datetime import datetime
 import os
 from numba.typed import List
 from Inversion_Workflow.MCMC_Functions.MCMC_sampler import mcmc_sampler
-from data import gps_data_path, gps_output_path
+from bermuda_data import gps_data_path, gps_output_path
 
 
 def individual_splits_esv(

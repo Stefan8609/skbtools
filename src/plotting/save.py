@@ -1,5 +1,5 @@
 import os
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 
 def _safe_filename(name: str) -> str:

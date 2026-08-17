@@ -1,5 +1,5 @@
 import numpy as np
-from data import gps_data_path
+from bermuda_data import gps_data_path
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 import matplotlib.pyplot as plt
 from plotting.save import save_plot

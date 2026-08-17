@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io as sio
 
-from data import gps_data_path, gps_output_path
+from bermuda_data import gps_data_path, gps_output_path
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from Inversion_Workflow.MCMC_Functions.MCMC_best_sample import load_min_logpost_params
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder

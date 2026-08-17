@@ -1,7 +1,7 @@
 from pathlib import Path
 import numpy as np
 from scipy.io import savemat
-from data import gps_data_path
+from bermuda_data import gps_data_path
 import matplotlib.pyplot as plt
 
 

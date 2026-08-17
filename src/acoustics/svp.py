@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 """
 Equations of State found here: http://resource.npl.co.uk/acoustics/techguides/soundseawater/underlying-phys.html

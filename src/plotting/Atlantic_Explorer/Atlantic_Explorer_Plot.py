@@ -11,7 +11,7 @@ from plotting.Misc.KDE_MCMC_plot import plot_kde_mcmc
 from plotting.save import save_plot
 
 from geometry.rigid_body import findRotationAndDisplacement
-from data import gps_output_path, gps_data_path
+from bermuda_data import gps_output_path, gps_data_path
 
 plt.rcParams.update(
     {

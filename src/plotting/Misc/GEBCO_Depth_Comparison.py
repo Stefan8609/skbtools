@@ -1,6 +1,6 @@
 import numpy as np
 from geometry.ECEF_Geodetic import ECEF_Geodetic
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 # Find the geodetic coordinates of the CDOG locations
 from pymap3d import geodetic2enu

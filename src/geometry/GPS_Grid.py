@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from geometry.fit_plane import fitPlane
 from geometry.project_to_plane import projectToPlane
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 np.set_printoptions(suppress=True)
 

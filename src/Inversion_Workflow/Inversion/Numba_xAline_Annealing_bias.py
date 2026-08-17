@@ -22,7 +22,7 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     final_bias_geiger,
 )
 from plotting.Plot_Modular import time_series_plot
-from data import gps_data_path
+from bermuda_data import gps_data_path
 from numba import njit
 
 

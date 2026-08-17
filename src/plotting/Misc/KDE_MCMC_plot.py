@@ -4,7 +4,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from pymap3d import geodetic2enu
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from scipy.stats import gaussian_kde
-from data import gps_output_path
+from bermuda_data import gps_output_path
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
 from plotting.Ellipses.Error_Ellipse import compute_error_ellipse
 from plotting.MCMC_plots import get_init_params_and_prior

@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from data import gps_data_path
+from bermuda_data import gps_data_path
 from plotting.save import save_plot
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 
-from Inversion_Workflow.Bermuda.Initialize_Bermuda_Data import (
+from Inversion_Workflow.Bermuda.Initialize_bermuda_data import (
     running_median,
     running_abs_dev,
     load_and_process_data,

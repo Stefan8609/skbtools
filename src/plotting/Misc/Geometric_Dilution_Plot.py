@@ -11,7 +11,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
 from Inversion_Workflow.Synthetic.Modular_Synthetic import (
     modular_synthetic,
 )
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 
 def geometric_dilution(interval):

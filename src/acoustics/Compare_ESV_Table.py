@@ -9,7 +9,7 @@ from Inversion_Workflow.Inversion.Numba_Geiger import (
     generateRealistic,
 )
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 
 def compare_tables(esv_table1, esv_table2):

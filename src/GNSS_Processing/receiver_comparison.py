@@ -1,5 +1,5 @@
 import numpy as np
-from data import gps_data_path
+from bermuda_data import gps_data_path
 import scipy.io as sio
 import matplotlib.pyplot as plt
 

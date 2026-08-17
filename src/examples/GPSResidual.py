@@ -2,7 +2,7 @@ import numpy as np
 from geometry.fit_plane import fitPlane
 import scipy.io as sio
 import matplotlib.pyplot as plt
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 
 def load_and_process_data(path):

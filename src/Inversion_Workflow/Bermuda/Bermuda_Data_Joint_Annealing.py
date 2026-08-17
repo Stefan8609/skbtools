@@ -4,7 +4,7 @@ import scipy.io as sio
 from Inversion_Workflow.Inversion.Numba_xAline_Joint_Annealing_bias import (
     simulated_annealing_bias_joint,
 )
-from data import gps_data_path
+from bermuda_data import gps_data_path
 from numba.typed import List
 
 # -------------------------

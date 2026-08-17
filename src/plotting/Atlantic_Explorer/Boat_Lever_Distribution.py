@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 from scipy.stats import chi2
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 
 def plot_2d_projection_side(
@@ -570,7 +570,7 @@ def plot_lever_arms_3d(
 
 if __name__ == "__main__":
     # Example lever arms in ship-fixed coordinates
-    from data import gps_output_path
+    from bermuda_data import gps_output_path
 
     chain = np.load(gps_output_path("mcmc_chain_8-7.npz"))
 

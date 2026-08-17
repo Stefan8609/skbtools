@@ -1,6 +1,6 @@
 from GNSS_Processing.ppp2mat import save_mat
 from GNSS_Processing.PRIDE_plots import plot_GNSS
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 from pathlib import Path
 

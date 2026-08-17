@@ -8,10 +8,10 @@ from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
     simulated_annealing_bias,
 )
-from Inversion_Workflow.Bermuda.Initialize_Bermuda_Data import (
+from Inversion_Workflow.Bermuda.Initialize_bermuda_data import (
     initialize_bermuda,
 )
-from data import gps_data_path, gps_output_path
+from bermuda_data import gps_data_path, gps_output_path
 
 
 def grid_search_annealing(xl, xh, yl, yh, zl, zh, iter):

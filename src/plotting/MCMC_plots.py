@@ -5,7 +5,7 @@ from matplotlib import patches as mpatches
 from matplotlib import lines as mlines
 from pymap3d import geodetic2enu
 from geometry.ECEF_Geodetic import ECEF_Geodetic
-from data import gps_output_path
+from bermuda_data import gps_output_path
 from scipy.stats import norm
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
 from plotting.save import save_plot

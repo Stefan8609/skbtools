@@ -1,7 +1,7 @@
 import numpy as np
 
 from plotting.MCMC_plots import corner_plot, get_init_params_and_prior
-from data import gps_output_path
+from bermuda_data import gps_output_path
 
 
 def threshold_posterior(

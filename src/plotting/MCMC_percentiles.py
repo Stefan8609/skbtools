@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from data import gps_output_path
+from bermuda_data import gps_output_path
 
 from plotting.MCMC_plots import get_init_params_and_prior, corner_plot
 

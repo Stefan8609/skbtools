@@ -1,5 +1,5 @@
 from pdf2image import convert_from_path
-from data import gps_data_path
+from bermuda_data import gps_data_path
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt

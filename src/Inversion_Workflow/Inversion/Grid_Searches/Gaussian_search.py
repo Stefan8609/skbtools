@@ -5,7 +5,7 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     final_bias_geiger,
 )
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-from data import gps_data_path, gps_output_path
+from bermuda_data import gps_data_path, gps_output_path
 
 
 def gaussian_search_individual(

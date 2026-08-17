@@ -31,7 +31,7 @@ def print_MCMC_inputs(npz_path):
 
 
 if __name__ == "__main__":
-    from data import gps_output_path
+    from bermuda_data import gps_output_path
 
     file_name = "mcmc_chain_9-9_large_aug_prior.npz"
     npz_path = gps_output_path(file_name)

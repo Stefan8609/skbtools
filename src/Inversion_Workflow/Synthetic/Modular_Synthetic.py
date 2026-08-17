@@ -17,7 +17,7 @@ from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
     simulated_annealing_bias,
 )
 from plotting.Plot_Modular import time_series_plot
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 plt.rcParams.update(
     {

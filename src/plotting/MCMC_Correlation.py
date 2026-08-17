@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import itertools
 from plotting.MCMC_plots import get_init_params_and_prior, cdog_aug_ecef_to_enu
-from data import gps_output_path
+from bermuda_data import gps_output_path
 from plotting.save import save_plot
 import matplotlib as mpl
 from matplotlib import patches as mpatches

@@ -2,7 +2,7 @@ import numpy as np
 from numba import njit
 import matplotlib.pyplot as plt
 
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 depth = np.ascontiguousarray(np.genfromtxt(gps_data_path("depth_cast2_smoothed.txt")))
 cz = np.ascontiguousarray(np.genfromtxt(gps_data_path("cz_cast2_smoothed.txt")))

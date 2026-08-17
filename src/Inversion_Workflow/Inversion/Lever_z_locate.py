@@ -10,7 +10,7 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
 from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
     bermuda_trajectory,
 )
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 esv_table_generate = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
 dz_array_generate = esv_table_generate["distance"].flatten()

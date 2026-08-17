@@ -10,7 +10,7 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger import (
 
 import matplotlib.pyplot as plt
 
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
 dz_array = esv_table["distance"].flatten()

@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 from numba import njit
 from time import time
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 
 @njit

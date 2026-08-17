@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.io as sio
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 
 def load_and_process_data(path, GNSS_start, GNSS_end):

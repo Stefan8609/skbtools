@@ -6,7 +6,7 @@ import timeit
 
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Forward_Model.Calculate_Times import calculateTimesRayTracing
-from data import gps_data_path
+from bermuda_data import gps_data_path
 
 
 @njit

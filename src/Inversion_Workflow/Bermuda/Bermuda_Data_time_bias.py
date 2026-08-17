@@ -13,7 +13,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
-from data import gps_data_path, gps_output_path
+from bermuda_data import gps_data_path, gps_output_path
 from plotting.Plot_Modular import time_series_plot, range_residual
 
 

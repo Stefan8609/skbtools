@@ -14,7 +14,7 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import final_bias_gei
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 
 from pymap3d import geodetic2enu
-from data import gps_data_path, gps_output_path
+from bermuda_data import gps_data_path, gps_output_path
 
 plt.rcParams.update(
     {

@@ -10,7 +10,7 @@ from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Real_Annealing import (
     simulated_annealing_real,
 )
-from data import gps_data_path, gps_output_path
+from bermuda_data import gps_data_path, gps_output_path
 
 
 def grid_search_annealing(

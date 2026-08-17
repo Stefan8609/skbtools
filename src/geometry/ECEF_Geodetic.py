@@ -53,7 +53,7 @@ def ECEF_Geodetic(coords):
 
 if __name__ == "__main__":
     from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-    from data import gps_data_path
+    from bermuda_data import gps_data_path
     import timeit
 
     def load_and_process_data(path):

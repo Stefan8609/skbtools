@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.io as sio
-from data import gps_data_path
+from bermuda_data import gps_data_path
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
 )
