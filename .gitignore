@@ -20,6 +20,7 @@ wheels/
 *.egg-info/
 
 # Project specific
+revision/
 Bermuda_Data/
 PuertoRico_Data/
 Jacksonville_Data/
