@@ -127,6 +127,7 @@ def error_ellipse(
     downsample,
     generate=True,
     DOG_num=1,
+    use_leg_mask=False,
 ):
     """Plot error ellipses from Monte Carlo samples.
 
@@ -144,6 +145,9 @@ def error_ellipse(
         Generate new Monte Carlo results when True, otherwise load saved results.
     DOG_num : int, optional
         Bermuda DOG data set used for the synthetic trajectory.
+    use_leg_mask : bool, optional
+        Keep only the 9-11 h and 12.4-15 h legs (sensitivity test). Paper I
+        uses the full trajectory (False).
 
     Returns
     -------
@@ -199,14 +203,17 @@ def error_ellipse(
             gps1_to_transponder=real_lever,
         )
 
-        leg1 = (correct_GPS_data / 3600 >= 9.0) & (correct_GPS_data / 3600 <= 11.0)
-        leg2 = (correct_GPS_data / 3600 >= 12.4) & (correct_GPS_data / 3600 <= 15.0)
-        leg_mask = leg1 | leg2
-
-        correct_GPS_Coordinates = correct_GPS_Coordinates[leg_mask][::downsample]
-        correct_GPS_data = correct_GPS_data[leg_mask][::downsample]
-        # correct_GPS_Coordinates = correct_GPS_Coordinates[::downsample]
-        # correct_GPS_data = correct_GPS_data[::downsample]
+        # Paper I synthetics use the full trajectory; the leg mask (9-11 h and
+        # 12.4-15 h) is a sensitivity test only.
+        if use_leg_mask:
+            hours = correct_GPS_data / 3600
+            leg_mask = ((hours >= 9.0) & (hours <= 11.0)) | (
+                (hours >= 12.4) & (hours <= 15.0)
+            )
+            correct_GPS_Coordinates = correct_GPS_Coordinates[leg_mask]
+            correct_GPS_data = correct_GPS_data[leg_mask]
+        correct_GPS_Coordinates = correct_GPS_Coordinates[::downsample]
+        correct_GPS_data = correct_GPS_data[::downsample]
         correct_CDOG_time = correct_CDOG_data[:, 0] + correct_CDOG_data[:, 1]
 
         print("True Offset:", true_offset)

@@ -45,6 +45,7 @@ def modular_synthetic(
     plot=True,
     DOG_num=3,
     downsample=50,
+    use_leg_mask=False,
 ):
     np.set_printoptions(suppress=True)
     # Choose ESV table for generation and to run synthetic
@@ -123,16 +124,17 @@ def modular_synthetic(
             gps1_to_transponder=gps1_to_transponder,
         )
 
-        leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
-        leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
-        leg_mask = leg1 | leg2
-        GPS_Coordinates = GPS_Coordinates[leg_mask]
-        GPS_data = GPS_data[leg_mask]
-        true_transponder_coordinates = true_transponder_coordinates[leg_mask]
-
-        # GPS_Coordinates = GPS_Coordinates[::downsample]
-        # GPS_data = GPS_data[::downsample]
-        # true_transponder_coordinates = true_transponder_coordinates[::downsample]
+        # Paper I synthetics use the full trajectory, downsampled. The leg mask
+        # (9-11 h and 12.4-15 h, not downsampled) is a sensitivity test only.
+        if use_leg_mask:
+            leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
+            leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
+            keep = leg1 | leg2
+        else:
+            keep = slice(None, None, downsample)
+        GPS_Coordinates = GPS_Coordinates[keep]
+        GPS_data = GPS_data[keep]
+        true_transponder_coordinates = true_transponder_coordinates[keep]
         z_sample = True
     print("True Offset", true_offset)
     # Choose Inversion_Workflow Type
