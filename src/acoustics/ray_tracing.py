@@ -103,9 +103,11 @@ def ray_trace_locate(z_a, z_b, target_x, depth, cz):
 
 if __name__ == "__main__":
     depth = np.ascontiguousarray(
-        np.genfromtxt(gps_data_path("depth_cast2_smoothed.txt"))
+        np.genfromtxt(gps_data_path("SVP_Data/depth_cast2_smoothed.txt"))
     )
-    cz = np.ascontiguousarray(np.genfromtxt(gps_data_path("cz_cast2_smoothed.txt")))
+    cz = np.ascontiguousarray(
+        np.genfromtxt(gps_data_path("SVP_Data/cz_cast2_smoothed.txt"))
+    )
 
     start_time = time()
     for _ in range(10):

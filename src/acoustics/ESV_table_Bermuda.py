@@ -7,50 +7,6 @@ from time import time
 from bermuda_data import gps_data_path
 
 
-depth = np.ascontiguousarray(
-    np.genfromtxt(gps_data_path("SVP_Data/depth_cast2_smoothed.txt"))[::20]
-)
-cz = np.ascontiguousarray(
-    np.genfromtxt(gps_data_path("SVP_Data/cz_cast2_smoothed.txt"))[::20]
-)
-
-dz_native = float(np.median(np.diff(depth)))
-z_max_current = float(depth[-1])
-z_target_max = 5300.0
-window_m = 10.0
-mask = depth >= (z_max_current - window_m)
-m_local, b_local = np.polyfit(depth[mask], cz[mask], 1)
-
-# Extrapolate linearly at native spacing
-new_depth = np.arange(
-    np.nextafter(z_max_current, np.inf), z_target_max + 0.5 * dz_native, dz_native
-)
-
-cz_tail = cz[-1] + m_local * (new_depth - z_max_current)
-
-depth_ext = np.concatenate([depth, new_depth])
-cz_ext = np.concatenate([cz, cz_tail])
-
-depth, cz = depth_ext, cz_ext
-
-# Keep arrays contiguous for numba calls that follow
-depth = np.ascontiguousarray(depth)
-cz = np.ascontiguousarray(cz)
-
-# Quick sanity plot (optional)
-plt.figure()
-plt.plot(cz, depth, label="Extended SVP")
-plt.gca().invert_yaxis()
-plt.xlabel("Sound Speed (m/s)")
-plt.ylabel("Depth (m)")
-plt.legend()
-plt.title("SVP extended to 5300 m")
-plt.show()
-
-print(f"New depth range: {depth.min():.1f} to {depth.max():.1f} m")
-print(f"Deep gradient used: {m_local * 1000:.2f} m/s per km")
-
-
 @njit
 def construct_esv(depth, cz):
     """Generate an effective sound velocity lookup table."""
@@ -80,6 +36,49 @@ def construct_esv(depth, cz):
 
 
 if __name__ == "__main__":
+    depth = np.ascontiguousarray(
+        np.genfromtxt(gps_data_path("SVP_Data/depth_cast2_smoothed.txt"))[::20]
+    )
+    cz = np.ascontiguousarray(
+        np.genfromtxt(gps_data_path("SVP_Data/cz_cast2_smoothed.txt"))[::20]
+    )
+
+    dz_native = float(np.median(np.diff(depth)))
+    z_max_current = float(depth[-1])
+    z_target_max = 5300.0
+    window_m = 10.0
+    mask = depth >= (z_max_current - window_m)
+    m_local, b_local = np.polyfit(depth[mask], cz[mask], 1)
+
+    # Extrapolate linearly at native spacing
+    new_depth = np.arange(
+        np.nextafter(z_max_current, np.inf), z_target_max + 0.5 * dz_native, dz_native
+    )
+
+    cz_tail = cz[-1] + m_local * (new_depth - z_max_current)
+
+    depth_ext = np.concatenate([depth, new_depth])
+    cz_ext = np.concatenate([cz, cz_tail])
+
+    depth, cz = depth_ext, cz_ext
+
+    # Keep arrays contiguous for numba calls that follow
+    depth = np.ascontiguousarray(depth)
+    cz = np.ascontiguousarray(cz)
+
+    # Quick sanity plot (optional)
+    plt.figure()
+    plt.plot(cz, depth, label="Extended SVP")
+    plt.gca().invert_yaxis()
+    plt.xlabel("Sound Speed (m/s)")
+    plt.ylabel("Depth (m)")
+    plt.legend()
+    plt.title("SVP extended to 5300 m")
+    plt.show()
+
+    print(f"New depth range: {depth.min():.1f} to {depth.max():.1f} m")
+    print(f"Deep gradient used: {m_local * 1000:.2f} m/s per km")
+
     z_a = 2.0
     print(z_a)
     print(cz[-1])

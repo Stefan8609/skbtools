@@ -5,42 +5,6 @@ from bermuda_data import gps_data_path
 # Find the geodetic coordinates of the CDOG locations
 from pymap3d import geodetic2enu
 
-init_aug = np.array(
-    [
-        [-396.91, 369.80, 774.24],
-        [826.22, -112.94, -733.06],
-        [236.20, -1306.98, -2189.99],
-    ]
-)
-
-CDOG_augments = [
-    [-396.73685216, 369.21165118, 774.34118812],
-    [826.22200156, -112.71197144, -733.58577345],
-    [235.88302714, -1306.08869213, -2190.76178745],
-]
-
-
-CDOG_reference = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
-CDOG_Locations = CDOG_augments + CDOG_reference
-lat, lon, alt = ECEF_Geodetic(CDOG_Locations)
-
-CDOG_aug = init_aug + CDOG_reference
-lat2, lon2, alt2 = ECEF_Geodetic(CDOG_aug)
-
-for i in range(len(CDOG_Locations)):
-    e, n, u = geodetic2enu(lat2[i], lon2[i], alt2[i], lat[i], lon[i], alt[i])
-    print(
-        f"Difference from prior to MCMC best fit for Location {i + 1}:"
-        f" East: {e * 100:.2f} cm, North: {n * 100:.2f} cm, Up: {u * 100:.2f} cm"
-    )
-
-print("CDOG Locations in Geodetic Coordinates:")
-for i in range(len(CDOG_Locations)):
-    print(
-        f"Location {i + 1}: Latitude: {lat[i]:.6f}, Longitude: {lon[i]:.6f},"
-        f"Altitude: {alt[i]:.2f} m"
-    )
-
 
 # Quick check against GEBCO data for the same location
 def read_arc_ascii_grid(path):
@@ -90,15 +54,53 @@ def query_depth_nearest(grid, lat, lon):
     return elev, depth
 
 
-grid = read_arc_ascii_grid(
-    gps_data_path("gebco_2025_n31.47_s31.42_w-68.71_e-68.68_ascii.asc")
-)
-
-for i in range(len(CDOG_Locations)):
-    elev, depth = query_depth_nearest(grid, lat=lat[i], lon=lon[i])
-    print(
-        f"Location {i + 1}: Latitude: {lat[i]:.6f},"
-        f"Longitude: {lon[i]:.6f}, Depth: {-depth:.2f} m"
+if __name__ == "__main__":
+    init_aug = np.array(
+        [
+            [-396.91, 369.80, 774.24],
+            [826.22, -112.94, -733.06],
+            [236.20, -1306.98, -2189.99],
+        ]
     )
-    diff = alt[i] + depth
-    print(f"Difference between GPS altitude and GEBCO depth: {diff:.2f} m")
+
+    CDOG_augments = [
+        [-396.73685216, 369.21165118, 774.34118812],
+        [826.22200156, -112.71197144, -733.58577345],
+        [235.88302714, -1306.08869213, -2190.76178745],
+    ]
+
+
+    CDOG_reference = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
+    CDOG_Locations = CDOG_augments + CDOG_reference
+    lat, lon, alt = ECEF_Geodetic(CDOG_Locations)
+
+    CDOG_aug = init_aug + CDOG_reference
+    lat2, lon2, alt2 = ECEF_Geodetic(CDOG_aug)
+
+    for i in range(len(CDOG_Locations)):
+        e, n, u = geodetic2enu(lat2[i], lon2[i], alt2[i], lat[i], lon[i], alt[i])
+        print(
+            f"Difference from prior to MCMC best fit for Location {i + 1}:"
+            f" East: {e * 100:.2f} cm, North: {n * 100:.2f} cm, Up: {u * 100:.2f} cm"
+        )
+
+    print("CDOG Locations in Geodetic Coordinates:")
+    for i in range(len(CDOG_Locations)):
+        print(
+            f"Location {i + 1}: Latitude: {lat[i]:.6f}, Longitude: {lon[i]:.6f},"
+            f"Altitude: {alt[i]:.2f} m"
+        )
+
+
+    grid = read_arc_ascii_grid(
+        gps_data_path("gebco_2025_n31.47_s31.42_w-68.71_e-68.68_ascii.asc")
+    )
+
+    for i in range(len(CDOG_Locations)):
+        elev, depth = query_depth_nearest(grid, lat=lat[i], lon=lon[i])
+        print(
+            f"Location {i + 1}: Latitude: {lat[i]:.6f},"
+            f"Longitude: {lon[i]:.6f}, Depth: {-depth:.2f} m"
+        )
+        diff = alt[i] + depth
+        print(f"Difference between GPS altitude and GEBCO depth: {diff:.2f} m")

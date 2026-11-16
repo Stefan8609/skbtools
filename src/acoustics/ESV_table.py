@@ -8,32 +8,6 @@ from acoustics.ray_tracing import ray_trace_locate, ray_tracing
 from puertorico_data import gps_data_path
 
 
-transducer_depth = 60.0
-minimum_dog_depth = 2950.0
-maximum_dog_depth = 3050.0
-dog_depth_step = 1.0
-# This SVP has no finite direct-ray solution below 12 degrees at these depths.
-minimum_elevation_angle = 12.0
-maximum_elevation_angle = 89.75
-angle_step = 0.25
-table_name = "PuertoRico_table_transducer_60_DOG_2950_3050.mat"
-
-
-depth = np.ascontiguousarray(
-    np.genfromtxt(gps_data_path("SVP_Data/depth_PuertoRico_DelGrosso.txt"))
-)
-cz = np.ascontiguousarray(
-    np.genfromtxt(gps_data_path("SVP_Data/cz_PuertoRico_DelGrosso.txt"))
-)
-
-print(f"SVP depth range: {depth.min():.1f} to {depth.max():.1f} m")
-if depth.max() < maximum_dog_depth:
-    raise ValueError(
-        f"SVP only reaches {depth.max():.1f} m, but the ESV table requires "
-        f"{maximum_dog_depth:.0f} m."
-    )
-
-
 @njit
 def construct_esv(depth, cz, transducer_depth, dog_depths, beta_array):
     """Generate ESV for each DOG depth and elevation angle."""
@@ -72,6 +46,31 @@ def construct_esv(depth, cz, transducer_depth, dog_depths, beta_array):
 
 
 if __name__ == "__main__":
+    transducer_depth = 60.0
+    minimum_dog_depth = 2950.0
+    maximum_dog_depth = 3050.0
+    dog_depth_step = 1.0
+    # This SVP has no finite direct-ray solution below 12 degrees at these depths.
+    minimum_elevation_angle = 12.0
+    maximum_elevation_angle = 89.75
+    angle_step = 0.25
+    table_name = "PuertoRico_table_transducer_60_DOG_2950_3050.mat"
+
+
+    depth = np.ascontiguousarray(
+        np.genfromtxt(gps_data_path("SVP_Data/depth_PuertoRico_DelGrosso.txt"))
+    )
+    cz = np.ascontiguousarray(
+        np.genfromtxt(gps_data_path("SVP_Data/cz_PuertoRico_DelGrosso.txt"))
+    )
+
+    print(f"SVP depth range: {depth.min():.1f} to {depth.max():.1f} m")
+    if depth.max() < maximum_dog_depth:
+        raise ValueError(
+            f"SVP only reaches {depth.max():.1f} m, but the ESV table requires "
+            f"{maximum_dog_depth:.0f} m."
+        )
+
     beta_array = np.arange(
         minimum_elevation_angle,
         maximum_elevation_angle + angle_step / 2,
