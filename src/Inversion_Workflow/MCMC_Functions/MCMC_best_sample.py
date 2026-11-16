@@ -15,8 +15,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
     calculateTimesRayTracing_split,
 )
 
-# from bermuda_data import gps_data_path, gps_output_path
-from puertorico_data import gps_data_path, gps_output_path
+from bermuda_data import gps_data_path, gps_output_path
 
 
 plt.rcParams.update(

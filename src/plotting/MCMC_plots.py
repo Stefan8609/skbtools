@@ -10,11 +10,6 @@ from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
 from plotting.save import save_plot
 import itertools
 
-# from bermuda_data import gps_output_path
-from puertorico_data import gps_output_path
-
-
-
 """Enable this for paper plots"""
 plt.rcParams.update(
     {
@@ -957,9 +952,13 @@ def corner_plot(
 
 
 if __name__ == "__main__":
-    # Initial Parameters for adding to plot
-    # file_name = "mcmc_chain_1_22_new_MCMC_long"
+    # Fig. 7 of Paper I: campaign = "bermuda", "mcmc_chain_1_22_new_MCMC_long".
+    campaign = "puertorico"
     file_name = "mcmc_chain_puertorico_cross"
+    if campaign == "bermuda":
+        from bermuda_data import gps_output_path
+    else:
+        from puertorico_data import gps_output_path
     loglike = False
     save = True
 
