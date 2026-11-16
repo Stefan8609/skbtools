@@ -8,7 +8,7 @@ from geometry.ECEF_Geodetic import (
 from geometry.Numba_RigidBodyMovementProblem import (
     findRotationAndDisplacement,
 )
-from Inversion_Workflow.Inversion import Numba_Geiger as ng
+from Inversion_Workflow.Inversion.Numba_Geiger_bias import compute_Jacobian_biased
 
 
 def test_ecef_geodetic_against_pymap3d():
@@ -77,13 +77,28 @@ def test_find_transponder_simple():
     assert np.allclose(result, expected, atol=1e-6)
 
 
-def test_compute_jacobian_ray_tracing():
-    guess = np.array([0.0, 0.0, 0.0])
-    receivers = np.array([[1.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 3.0]])
-    speed = np.full(3, 1500.0)
-    dist = np.linalg.norm(receivers - guess, axis=1)
-    times = dist / speed
+def test_compute_jacobian_biased_matches_finite_differences():
+    """Residual is (|x_T - x_R| / (c + dc) - dt) - T_obs for a constant ESV c."""
+    c = 1500.0
+    transducers = np.array(
+        [[3000.0, 0.0, 0.0], [0.0, -2500.0, 10.0], [-1500.0, 1800.0, -5.0]]
+    )
+    theta = np.array([10.0, -20.0, -5200.0, 0.01, -0.3])
 
-    jac = ng.computeJacobianRayTracing(guess, receivers, times, speed)
-    expected = -(receivers - guess) / (dist[:, None] * speed[:, None])
-    assert np.allclose(jac, expected, atol=1e-6)
+    def residuals(p):
+        ranges = np.linalg.norm(transducers - p[:3], axis=1)
+        return ranges / (c + p[4]) - p[3]
+
+    esv = np.full(3, c + theta[4])
+    times = np.linalg.norm(transducers - theta[:3], axis=1) / esv
+    jac = compute_Jacobian_biased(theta[:3], transducers, times, esv, theta[4])
+
+    step = np.array([1e-3, 1e-3, 1e-3, 1e-6, 1e-4])
+    expected = np.zeros((3, 5))
+    for k in range(5):
+        offset = np.zeros(5)
+        offset[k] = step[k]
+        expected[:, k] = (residuals(theta + offset) - residuals(theta - offset)) / (
+            2 * step[k]
+        )
+    assert np.allclose(jac, expected, rtol=1e-6, atol=1e-12)
