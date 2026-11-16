@@ -2,20 +2,6 @@ import os
 from bermuda_data import gps_data_path
 
 
-def _safe_filename(name: str) -> str:
-    """Return a filesystem-safe version of *name* for use in filenames.
-
-    Replaces any path separators and backslashes with underscores and trims
-    surrounding whitespace. Leaves other characters intact to preserve
-    readability.
-    """
-    if name is None:
-        return ""
-    # Replace common path separators to avoid accidental subdirectories
-    safe = name.replace("/", "_").replace("\\", "_")
-    return safe.strip()
-
-
 def save_plot(
     fig,
     func_name,
