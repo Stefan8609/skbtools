@@ -241,6 +241,7 @@ range_residual(
     GPS_clock_ex,
     save=save,
     path=save_path,
+    DOG_num=file_tag,
 )
 
 # Elevation-angle residuals

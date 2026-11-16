@@ -306,7 +306,7 @@ def plot_kde_mcmc(
 
     plt.tight_layout()
     if save:
-        save_plot(fig, chain_name, "plot_kde_mcmc", subdir=path)
+        save_plot(fig, func_name="plot_kde_mcmc", chain_name=chain_name, subdir=path)
     if return_axes:
         return fig, ax1, ax2
     plt.show()

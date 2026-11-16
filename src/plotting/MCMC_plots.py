@@ -501,7 +501,7 @@ def esv_split_posteriors(
             suffix += "_centered"
         elif center_mode == "init":
             suffix += "_initcentered"
-        save_plot(fig, chain_name, suffix, subdir=f"Figs/MCMC/{chain_name}")
+        save_plot(fig, func_name=suffix, subdir=f"Figs/MCMC/{chain_name}")
 
     plt.show()
 

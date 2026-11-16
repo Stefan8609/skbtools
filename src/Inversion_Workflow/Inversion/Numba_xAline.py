@@ -178,7 +178,7 @@ def find_int_offset(
 
             CDOG_full, GPS_clock, GPS_full = two_pointer_index(
                 lag_r,
-                0.5,
+                OFFSET_SEARCH_THRESHOLD_SECONDS,
                 CDOG_data,
                 GPS_data,
                 travel_times,
@@ -224,7 +224,7 @@ def find_subint_offset(
             # Index data using lag
             CDOG_full, GPS_clock, GPS_full = two_pointer_index(
                 lag,
-                0.5,
+                OFFSET_SEARCH_THRESHOLD_SECONDS,
                 CDOG_data,
                 GPS_data,
                 travel_times,
