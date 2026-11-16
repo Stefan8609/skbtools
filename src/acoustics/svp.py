@@ -167,7 +167,8 @@ if __name__ == "__main__":
     if depth_native[-1] < minimum_native_depth:
         raise ValueError(
             f"Selected GLORYS profile only reaches {depth_native[-1]:.1f} m. "
-            f"Use a deeper GLORYS cell that reaches at least {minimum_native_depth:.0f} m."
+            "Use a deeper GLORYS cell that reaches at least "
+            f"{minimum_native_depth:.0f} m."
         )
 
     # Add the surface at exactly 0 m.

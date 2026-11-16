@@ -4,7 +4,7 @@ import scipy.io as sio
 from itertools import combinations
 from scipy.stats import norm
 
-from jacksonville_data import gps_data_path, gps_output_path
+from jacksonville_data import gps_data_path
 
 
 # Plot settings
