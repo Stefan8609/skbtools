@@ -6,9 +6,10 @@ from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
 )
 from Inversion_Workflow.Synthetic.Generate_Unaligned import generateUnaligned
 from Inversion_Workflow.Inversion.Numba_xAline import (
-    two_pointer_index,
+    filter_close_receptions,
     find_int_offset,
     find_subint_offset,
+    two_pointer_index,
 )
 from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
     compute_Jacobian_biased,
@@ -23,6 +24,23 @@ from plotting.Plot_Modular import time_series_plot
 from bermuda_data import gps_data_path
 
 
+@njit(cache=True)
+def residual_inliers(residuals, sigma=6.0):
+    """Keep residuals within a conservative median-based limit."""
+    if len(residuals) < 5:
+        return np.ones(len(residuals), dtype=np.bool_)
+
+    center = np.median(residuals)
+    scale = 1.4826 * np.median(np.abs(residuals - center))
+    if scale == 0.0:
+        return np.ones(len(residuals), dtype=np.bool_)
+
+    inliers = np.abs(residuals - center) <= sigma * scale
+    if np.sum(inliers) < 5:
+        return np.ones(len(residuals), dtype=np.bool_)
+    return inliers
+
+
 @njit(cache=True, fastmath=True)
 def initial_bias_geiger(
     guess,
@@ -33,6 +51,7 @@ def initial_bias_geiger(
     angle_array,
     esv_matrix,
     real_data=False,
+    initial_offset=np.nan,
 ):
     """Initial inversion including time and ESV bias parameters."""
     epsilon = 10**-5
@@ -61,35 +80,29 @@ def initial_bias_geiger(
             angle_array,
             esv_matrix,
         )
-    offset = find_int_offset(
-        CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
+    offset_data = filter_close_receptions(CDOG_data)
+    if np.isnan(initial_offset):
+        offset = find_int_offset(
+            offset_data, GPS_data, times_guess, transponder_coordinates, esv
+        )
+    else:
+        offset = find_int_offset(
+            offset_data,
+            GPS_data,
+            times_guess,
+            transponder_coordinates,
+            esv,
+            offset=np.round(initial_offset),
+            halfwindow=0.5,
+        )
+    offset = find_subint_offset(
+        offset,
+        offset_data,
+        GPS_data,
+        times_guess,
+        transponder_coordinates,
+        esv,
     )
-    best_offset = offset
-    best_misfit = np.inf
-    for dt in range(-1, 2):
-        test_offset = offset + dt
-        test_offset = find_subint_offset(
-            test_offset,
-            CDOG_data,
-            GPS_data,
-            times_guess,
-            transponder_coordinates,
-            esv,
-        )
-        (_, CDOG_full, _, GPS_full, _, _) = two_pointer_index(
-            test_offset,
-            0.4,
-            CDOG_data,
-            GPS_data,
-            times_guess,
-            transponder_coordinates,
-            esv,
-        )
-        test_misfit = np.sqrt(np.nanmean((GPS_full - CDOG_full) ** 2)) * 1515 * 100
-        if test_misfit < best_misfit:
-            best_misfit = test_misfit
-            best_offset = test_offset
-    offset = best_offset
 
     while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
@@ -120,22 +133,27 @@ def initial_bias_geiger(
             transponder_coordinates_full,
             esv_full,
         ) = two_pointer_index(
-            offset, 0.6, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
+            offset, 0.2, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
         )
+        residuals = (GPS_full - time_bias) - CDOG_full
+        inliers = residual_inliers(residuals)
         J = compute_Jacobian_biased(
-            guess, transponder_coordinates_full, GPS_full, esv_full, esv_bias
+            guess,
+            transponder_coordinates_full[inliers],
+            GPS_full[inliers],
+            esv_full[inliers],
+            esv_bias,
         )
-        delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ ((GPS_full - time_bias) - CDOG_full)
+        delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ residuals[inliers]
         estimate = estimate + delta
         guess = estimate[:3]
         time_bias = estimate[3]
         esv_bias = estimate[4]
-        offset -= time_bias
         k += 1
     """Refine offset in local region"""
     offset = find_subint_offset(
         offset,
-        CDOG_data,
+        offset_data,
         GPS_data,
         times_guess,
         transponder_coordinates,
@@ -182,7 +200,7 @@ def final_bias_geiger(
         esv_full,
     ) = two_pointer_index(
         offset,
-        0.6,
+        0.05,
         CDOG_data,
         GPS_data,
         times_guess,
@@ -211,10 +229,16 @@ def final_bias_geiger(
                 esv_matrix,
             )
 
+        residuals = (GPS_full - time_bias) - CDOG_full
+        inliers = residual_inliers(residuals)
         J = compute_Jacobian_biased(
-            guess, transponder_coordinates_full, GPS_full, esv_full, esv_bias
+            guess,
+            transponder_coordinates_full[inliers],
+            GPS_full[inliers],
+            esv_full[inliers],
+            esv_bias,
         )
-        delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ ((GPS_full - time_bias) - CDOG_full)
+        delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ residuals[inliers]
         estimate = estimate + delta
         guess = estimate[:3]
         time_bias = estimate[3]
@@ -241,14 +265,21 @@ def final_bias_geiger(
         esv_full,
     ) = two_pointer_index(
         offset,
-        0.6,
+        0.05,
         CDOG_data,
         GPS_data - time_bias,
         times_guess,
         transponder_coordinates,
         esv,
     )
-    return estimate, CDOG_full, GPS_full, CDOG_clock, GPS_clock
+    inliers = residual_inliers(GPS_full - CDOG_full)
+    return (
+        estimate,
+        CDOG_full[inliers],
+        GPS_full[inliers],
+        CDOG_clock[inliers],
+        GPS_clock[inliers],
+    )
 
 
 if __name__ == "__main__":

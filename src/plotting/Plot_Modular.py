@@ -320,6 +320,7 @@ def time_series_plot(
         save_plot(fig, func_name=f"time_series_plot_DOG{DOG_num}", subdir=path)
 
     plt.show(block=block)
+    return fig, axes
 
 
 def trajectory_plot(
@@ -445,6 +446,7 @@ def range_residual(
     save=False,
     path="Figs",
     DOG_num=None,
+    block=True,
 ):
     """Plot residual range errors along the track."""
     times_hours = GPS_clock / 3600  # Convert seconds to hours
@@ -509,7 +511,8 @@ def range_residual(
         save_plot(fig, func_name=f"range_residual_DOG{DOG_num}", subdir=path)
 
     plt.tight_layout()
-    plt.show()
+    plt.show(block=block)
+    return fig, axes
 
 
 def elevation_angle_residual(

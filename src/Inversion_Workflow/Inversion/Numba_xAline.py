@@ -2,6 +2,9 @@ import numpy as np
 from numba import njit
 
 
+OFFSET_SEARCH_THRESHOLD_SECONDS = 0.5
+
+
 @njit(cache=True)
 def two_pointer_index(
     offset,
@@ -47,24 +50,36 @@ def two_pointer_index(
     transponder_coordinates_full = np.zeros((max_len, 3))
     esv_full = np.zeros(max_len)
 
-    CDOG_pointer, GPS_pointer, count = 0, 0, 0
+    CDOG_pointer, count = 0, 0
 
-    # Main loop
-    while CDOG_pointer < len(CDOG_data) and GPS_pointer < len(GPS_data):
-        if abs(GPS_times[GPS_pointer] - CDOG_times[CDOG_pointer]) < threshhold:
-            CDOG_clock[count] = CDOG_times[CDOG_pointer]
+    for GPS_pointer in range(len(GPS_data)):
+        lower = GPS_times[GPS_pointer] - threshhold
+        upper = GPS_times[GPS_pointer] + threshhold
+
+        while CDOG_pointer < len(CDOG_data) and CDOG_times[CDOG_pointer] <= lower:
+            CDOG_pointer += 1
+        if CDOG_pointer == len(CDOG_data):
+            break
+
+        candidate = CDOG_pointer
+        best_pointer = -1
+        best_difference = np.inf
+        while candidate < len(CDOG_data) and CDOG_times[candidate] < upper:
+            difference = abs(GPS_times[GPS_pointer] - CDOG_times[candidate])
+            if difference < best_difference:
+                best_pointer = candidate
+                best_difference = difference
+            candidate += 1
+
+        if best_pointer >= 0:
             GPS_clock[count] = GPS_times[GPS_pointer]
             GPS_full[count] = GPS_travel_times[GPS_pointer]
             transponder_coordinates_full[count] = transponder_coordinates[GPS_pointer]
             esv_full[count] = esv[GPS_pointer]
 
-            CDOG_pointer += 1
-            GPS_pointer += 1
+            CDOG_clock[count] = CDOG_times[best_pointer]
+            CDOG_pointer = best_pointer + 1
             count += 1
-        elif GPS_times[GPS_pointer] < CDOG_times[CDOG_pointer]:
-            GPS_pointer += 1
-        else:
-            CDOG_pointer += 1
 
     # Trim arrays to actual size
     CDOG_clock = CDOG_clock[:count]
@@ -84,6 +99,18 @@ def two_pointer_index(
         transponder_coordinates_full,
         esv_full,
     )
+
+
+@njit(cache=True)
+def filter_close_receptions(CDOG_data, minimum_interval=0.95):
+    """Remove both receptions bordering intervals shorter than expected."""
+    keep = np.ones(len(CDOG_data), dtype=np.bool_)
+    times = CDOG_data[:, 0] + CDOG_data[:, 1]
+    for index in range(len(CDOG_data) - 1):
+        if times[index + 1] - times[index] < minimum_interval:
+            keep[index] = False
+            keep[index + 1] = False
+    return CDOG_data[keep]
 
 
 @njit(cache=True)
@@ -131,12 +158,19 @@ def find_int_offset(
     circular variance (1 - R)/sqrt(N)
     over progressively smaller step sizes.
     """
-    lower = offset - halfwindow
-    upper = offset + halfwindow
+    search_lower = offset - halfwindow
+    search_upper = offset + halfwindow
+    lower = search_lower
+    upper = search_upper
     intervals = np.array([10.0, 1.0, 0.1, 0.01, 0.001, 0.0001])
     best_offset = offset
-    best_score = np.inf
     for interval in intervals:
+        if interval > 2.0 * halfwindow:
+            continue
+
+        best_score = np.inf
+        level_best_offset = best_offset
+
         # scan window
         lag = lower
         while lag <= upper + 1e-15:
@@ -156,13 +190,13 @@ def find_int_offset(
 
             if score < best_score:
                 best_score = score
-                best_offset = lag_r
+                level_best_offset = lag_r
 
             lag += interval
 
-        # tighten bounds for next level
-        lower = best_offset - interval
-        upper = best_offset + interval
+        best_offset = level_best_offset
+        lower = max(search_lower, best_offset - interval)
+        upper = min(search_upper, best_offset + interval)
 
     return best_offset
 
@@ -173,14 +207,16 @@ def find_subint_offset(
 ):
     """Search for the fractional time offset with minimum RMSE."""
     # Initialize values for loop
-    lower, upper = offset - 0.5, offset + 0.5
+    search_lower, search_upper = offset - 0.5, offset + 0.5
+    lower, upper = search_lower, search_upper
     intervals = np.array(
         [0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001]
     )
     best_offset = offset
-    best_RMSE = np.inf
 
     for interval in intervals:
+        best_RMSE = np.inf
+        level_best_offset = best_offset
         for lag in np.arange(lower, upper + interval, interval):
             # Round to prevent numpy float errors
             lag = np.round(lag, 8)  # Adjust precision based on your interval
@@ -202,10 +238,11 @@ def find_subint_offset(
 
             # Update best offset if RMSE is improved
             if RMSE < best_RMSE:
-                best_offset = lag
+                level_best_offset = lag
                 best_RMSE = RMSE
-        # Narrow search bounds for the next iteration
-        lower, upper = best_offset - interval, best_offset + interval
+        best_offset = level_best_offset
+        lower = max(search_lower, best_offset - interval)
+        upper = min(search_upper, best_offset + interval)
     return best_offset
 
 

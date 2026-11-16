@@ -19,11 +19,11 @@ def compute_Jacobian_biased(guess, transponder_coordinates, times, esv, esv_bias
     J = np.zeros((len(transponder_coordinates), 5))
 
     # Compute different partial derivatives
-    J[:, 0] = -diffs[:, 0] / (times[:] * (esv[:] + esv_bias) ** 2)
-    J[:, 1] = -diffs[:, 1] / (times[:] * (esv[:] + esv_bias) ** 2)
-    J[:, 2] = -diffs[:, 2] / (times[:] * (esv[:] + esv_bias) ** 2)
+    J[:, 0] = -diffs[:, 0] / (times[:] * (esv[:] ** 2))
+    J[:, 1] = -diffs[:, 1] / (times[:] * (esv[:] ** 2))
+    J[:, 2] = -diffs[:, 2] / (times[:] * (esv[:] ** 2))
     J[:, 3] = -1.0
-    J[:, 4] = -times[:] / (esv[:] + esv_bias)
+    J[:, 4] = -times[:] / esv[:]
 
     return J
 

@@ -9,8 +9,9 @@ from Inversion_Workflow.Synthetic.Generate_Unaligned import (
 )
 
 from Inversion_Workflow.Inversion.Numba_xAline import (
-    two_pointer_index,
+    filter_close_receptions,
     find_subint_offset,
+    two_pointer_index,
 )
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias,
@@ -67,6 +68,7 @@ def simulated_annealing_bias(
         angle_array,
         esv_matrix,
         real_data,
+        initial_offset,
     )
 
     inversion_guess = inversion_estimate[:3]
@@ -176,7 +178,7 @@ def simulated_annealing_bias(
                 )
             offset = find_subint_offset(
                 offset,
-                CDOG_data,
+                filter_close_receptions(CDOG_data),
                 GPS_data,
                 times_guess,
                 best_transponder_coordinates,

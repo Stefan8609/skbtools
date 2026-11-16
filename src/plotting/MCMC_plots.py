@@ -5,11 +5,15 @@ from matplotlib import patches as mpatches
 from matplotlib import lines as mlines
 from pymap3d import geodetic2enu
 from geometry.ECEF_Geodetic import ECEF_Geodetic
-from bermuda_data import gps_output_path
 from scipy.stats import norm
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
 from plotting.save import save_plot
 import itertools
+
+# from bermuda_data import gps_output_path
+from puertorico_data import gps_output_path
+
+
 
 """Enable this for paper plots"""
 plt.rcParams.update(
@@ -955,7 +959,7 @@ def corner_plot(
 if __name__ == "__main__":
     # Initial Parameters for adding to plot
     # file_name = "mcmc_chain_1_22_new_MCMC_long"
-    file_name = "mcmc_chain_7_16"
+    file_name = "mcmc_chain_puertorico_cross"
     loglike = False
     save = True
 
@@ -986,7 +990,7 @@ if __name__ == "__main__":
     trace_plot(
         chain,
         initial_params=initial_params,
-        downsample=50,
+        downsample=100,
         save=save,
         chain_name=chain_name,
     )
@@ -994,7 +998,7 @@ if __name__ == "__main__":
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        downsample=50,
+        downsample=100,
         save=save,
         chain_name=chain_name,
     )
@@ -1002,7 +1006,7 @@ if __name__ == "__main__":
         chain,
         initial_params=initial_params,
         prior_scales=prior_scales,
-        downsample=50,
+        downsample=100,
         save=save,
         chain_name=chain_name,
         loglike=loglike,

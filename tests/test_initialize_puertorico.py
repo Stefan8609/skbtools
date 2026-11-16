@@ -1,11 +1,27 @@
 import numpy as np
+from pymap3d import Ellipsoid, ecef2geodetic
 
 from Inversion_Workflow.PuertoRico.Initialize_PuertoRico_Data import (
+    CDOG_guess,
     find_valid_receivers,
     gps1_to_others,
     initial_lever_guess,
+    load_cdog_data,
     reconstruct_gps_grid,
 )
+
+
+def test_cdog_guess_matches_before_inversion_estimate():
+    latitude, longitude, elevation = ecef2geodetic(
+        *CDOG_guess,
+        ell=Ellipsoid.from_name("grs80"),
+    )
+
+    assert np.allclose(
+        [latitude, longitude, elevation],
+        [18.88839612, -66.25572919, -2999.87393207],
+        atol=1e-6,
+    )
 
 
 def rotation_z(angle):
@@ -33,7 +49,7 @@ def test_schematic_geometry_matches_surveyed_ranges():
         assert np.isclose(separation, distance, atol=2e-4)
 
     assert np.allclose(initial_lever_guess[:2], [-0.948182, 0.633095])
-    assert initial_lever_guess[2] == 0.0
+    assert initial_lever_guess[2] == 0.3
 
 
 def test_four_receiver_preference_and_triplet_fallback():
@@ -69,3 +85,20 @@ def test_triplet_reconstructs_four_receiver_grid():
     expected = (rotation @ gps1_to_others.T).T + translation
 
     assert np.allclose(fitted[0], expected, atol=1e-9)
+
+
+def test_cdog_clock_segments_have_separate_adjustments():
+    before = load_cdog_data("before")
+    after = load_cdog_data("after")
+
+    before_data, before_bounds, before_adjustment, before_spread = before
+    after_data, after_bounds, after_adjustment, after_spread = after
+
+    assert np.all(np.diff(before_data.sum(axis=1)) >= 0)
+    assert np.all(np.diff(after_data.sum(axis=1)) >= 0)
+    assert np.isclose(before_adjustment, 166130.6585374, rtol=0, atol=1e-6)
+    assert np.isclose(after_adjustment, 277222.6099865, rtol=0, atol=1e-6)
+    assert np.allclose(before_bounds, [5858.3414626, 111028.3414626])
+    assert np.allclose(after_bounds, [6066.3900135, 88271.3900135])
+    assert np.isclose(before_spread, 0.2575852)
+    assert np.isclose(after_spread, 0.3022043)

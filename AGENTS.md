@@ -26,6 +26,9 @@ scientific behavior unless the task explicitly calls for a change.
   few obvious lines elsewhere.
 - Introduce a helper when it names a meaningful operation, removes real repetition, or
   isolates complexity. Do not pursue DRY at the expense of readability.
+- Absorb one-use, few-line transformations into the calling workflow when the result
+  remains easy to follow. Avoid wrapper helpers that exist only to feed another helper
+  or hide a single NumPy expression.
 - Prefer direct data structures and function parameters over configuration classes,
   registries, factories, or other framework-like abstractions.
 - Do not turn one campaign script into a standalone framework. Campaign initializers
@@ -64,6 +67,9 @@ scientific behavior unless the task explicitly calls for a change.
 - Centralize campaign-specific geometry, thresholds, and paths as editable constants or
   explicit function arguments.
 - Record filtering criteria and enough metadata to reproduce derived products.
+- Store DOG position estimates as ECEF XYZ metres in initialized data. Keep the
+  latitude, longitude, depth, ellipsoid, and bathymetry source near the estimate as
+  provenance.
 
 ## Testing and Changes
 

@@ -2,48 +2,21 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 import numpy as np
+from pymap3d import Ellipsoid, geodetic2ecef
 from scipy.io import savemat
-from puertorico_data import gps_data_path
+
+from jacksonville_data import gps_data_path
 
 
-GRS80_A = 6378137.0
-GRS80_INV_F = 298.257222101
 MJD_EPOCH = date(1858, 11, 17)
+SITES = ["JAX1", "JAX2", "JAX3", "JAX4"]
+DOYS = [163, 164]
 
 
 def dms_to_decimal(degrees, minutes, seconds):
     sign = -1.0 if degrees < 0.0 else 1.0
 
-    return sign * (
-        abs(degrees)
-        + minutes / 60.0
-        + seconds / 3600.0
-    )
-
-
-def geodetic_to_ecef(lat_deg, lon_deg, height_m):
-    flattening = 1.0 / GRS80_INV_F
-    eccentricity_squared = flattening * (2.0 - flattening)
-
-    lat = np.deg2rad(lat_deg)
-    lon = np.deg2rad(lon_deg)
-
-    sin_lat = np.sin(lat)
-    cos_lat = np.cos(lat)
-    sin_lon = np.sin(lon)
-    cos_lon = np.cos(lon)
-
-    radius = GRS80_A / np.sqrt(
-        1.0 - eccentricity_squared * sin_lat**2
-    )
-
-    x = (radius + height_m) * cos_lat * cos_lon
-    y = (radius + height_m) * cos_lat * sin_lon
-    z = (
-        radius * (1.0 - eccentricity_squared) + height_m
-    ) * sin_lat
-
-    return x, y, z
+    return sign * (abs(degrees) + minutes / 60.0 + seconds / 3600.0)
 
 
 def read_csrs_pos(path):
@@ -84,6 +57,9 @@ def read_csrs_pos(path):
                     "lat": lat,
                     "lon": lon,
                     "elev": float(fields[22]),
+                    "sig_n": float(fields[13]),
+                    "sig_e": float(fields[14]),
+                    "sig_u": float(fields[15]),
                 }
             )
 
@@ -91,6 +67,7 @@ def read_csrs_pos(path):
 
 
 def gnss_to_mat(pos_files, output_file):
+    """Save CSRS-PPP epochs as UTC MJD, seconds of day, and GRS80 ECEF metres."""
     rows = []
 
     for pos_file in pos_files:
@@ -138,8 +115,14 @@ def gnss_to_mat(pos_files, output_file):
 
     nsv = np.asarray([row["nsv"] for row in rows], dtype=np.float64)
     gdop = np.asarray([row["gdop"] for row in rows], dtype=np.float64)
+    sig_n = np.asarray([row["sig_n"] for row in rows], dtype=np.float64)
+    sig_e = np.asarray([row["sig_e"] for row in rows], dtype=np.float64)
+    sig_u = np.asarray([row["sig_u"] for row in rows], dtype=np.float64)
 
-    x, y, z = geodetic_to_ecef(lat, lon_signed, elev)
+    x, y, z = geodetic2ecef(lat, lon_signed, elev, ell=Ellipsoid.from_name("grs80"))
+
+    output_file = Path(output_file)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
 
     savemat(
         output_file,
@@ -154,6 +137,9 @@ def gnss_to_mat(pos_files, output_file):
             "z": z.reshape(1, -1),
             "nsv": nsv.reshape(1, -1),
             "gdop": gdop.reshape(1, -1),
+            "sig_n": sig_n.reshape(1, -1),
+            "sig_e": sig_e.reshape(1, -1),
+            "sig_u": sig_u.reshape(1, -1),
         },
         do_compression=True,
     )
@@ -164,17 +150,12 @@ def gnss_to_mat(pos_files, output_file):
 
 if __name__ == "__main__":
     base_path = gps_data_path("GPS_Data")
-    SITES = ["STPF", "STSF", "STPA", "STSA"]
-    DOYS = [15, 16, 17, 18, 19]
 
     for SITE in SITES:
         raw_path = base_path / "Raw" / SITE
 
-        POS_FILES = [
-            raw_path / f"{SITE.lower()}{doy:03d}0.pos"
-            for doy in DOYS
-        ]
+        POS_FILES = [raw_path / f"{SITE.lower()}{doy:03d}0.pos" for doy in DOYS]
 
-        OUTPUT_FILE = base_path / f"{SITE}-camp_bis.mat"
+        OUTPUT_FILE = base_path / f"{SITE}.mat"
 
         gnss_to_mat(POS_FILES, OUTPUT_FILE)

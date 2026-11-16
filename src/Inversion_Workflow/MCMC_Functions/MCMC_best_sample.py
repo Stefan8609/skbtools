@@ -1,5 +1,4 @@
 from scipy import io as sio
-from bermuda_data import gps_data_path, gps_output_path
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -15,6 +14,10 @@ from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
     calculateTimesRayTracing_split,
 )
+
+# from bermuda_data import gps_data_path, gps_output_path
+from puertorico_data import gps_data_path, gps_output_path
+
 
 plt.rcParams.update(
     {

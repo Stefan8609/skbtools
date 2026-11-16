@@ -1,32 +1,19 @@
 import numpy as np
-import numpy.typing as npt
 from numba import njit
 from time import time
 from bermuda_data import gps_data_path
 
 
 @njit
-def ray_tracing(
-    iga: float, z_a: float, z_b: float, depth: npt.NDArray, cz: npt.NDArray
-) -> tuple:
-    """Ray trace a path through a stratified sound speed profile.
+def ray_tracing(iga, z_a, z_b, depth, cz):
+    """Return horizontal range, vertical separation (m), and travel time (s)."""
+    if depth.ndim != 1 or cz.ndim != 1 or depth.size != cz.size or depth.size < 2:
+        raise ValueError(
+            "depth and cz must be matching 1D arrays with at least 2 points"
+        )
+    if not depth[0] <= z_a < z_b <= depth[-1]:
+        raise ValueError("Source and receiver depths must lie within the SVP")
 
-    Parameters
-    ----------
-    iga : float
-        Initial grazing angle in degrees.
-    z_a, z_b : float
-        Source and receiver depths in metres.
-    depth, cz : ndarray
-        Discrete depth array and corresponding sound speed.
-
-    Returns
-    -------
-    tuple
-        ``(x, z, time)`` where ``x`` is the horizontal distance in metres,
-        ``z`` is the final depth and ``time`` is the travel time in seconds.
-    """
-    # Find nearest indices without using NumPy helpers that are unsupported by numba
     z_b_closest = 0
     diff = abs(depth[0] - z_b)
     for i in range(1, depth.size):
@@ -43,9 +30,16 @@ def ray_tracing(
             diff = d
             z_a_closest = i
 
-    # Pre-calculate all required arrays
-    depth_slice = depth[z_a_closest:z_b_closest]
-    cz_slice = cz[z_a_closest:z_b_closest]
+    if depth[z_a_closest] > z_a:
+        z_a_closest -= 1
+    if depth[z_b_closest] < z_b:
+        z_b_closest += 1
+
+    depth_slice = depth[z_a_closest : z_b_closest + 1].astype(np.float64)
+    cz_slice = cz[z_a_closest : z_b_closest + 1].astype(np.float64)
+    depth_slice[0], depth_slice[-1] = z_a, z_b
+    cz_slice[0] = np.interp(z_a, depth, cz)
+    cz_slice[-1] = np.interp(z_b, depth, cz)
     dz = depth_slice[1:] - depth_slice[:-1]
 
     # Initial conditions
@@ -55,18 +49,17 @@ def ray_tracing(
     # Pre-calculate sine of theta
     sin_theta = np.sin(theta)
 
-    # Vectorized calculation of next angles
-    c_ratios = cz_slice[1:] / c
-    thetas = np.arcsin(c_ratios * sin_theta)
-
     # Check for total internal reflection
-    if np.any(thetas > np.pi / 2):
-        return np.nan, np.nan, np.nan
+    if np.any(cz_slice * sin_theta / c >= 1.0):
+        return np.nan, z_b - z_a, np.nan
+
+    c_ratios = 0.5 * (cz_slice[1:] + cz_slice[:-1]) / c
+    thetas = np.arcsin(c_ratios * sin_theta)
 
     # Vectorized calculations for distance and time
     dx = dz * np.tan(thetas)
     ds = np.sqrt(dx**2 + dz**2)
-    dt = ds / cz_slice[:-1]
+    dt = ds / (c_ratios * c)
 
     # Sum up the results
     x = np.sum(dx)
@@ -76,26 +69,15 @@ def ray_tracing(
 
 
 @njit
-def ray_trace_locate(
-    z_a: float, z_b: float, target_x: float, depth: npt.NDArray, cz: npt.NDArray
-) -> float:
-    """Locate the launch angle that yields the desired range using bisection.
+def ray_trace_locate(z_a, z_b, target_x, depth, cz):
+    """Locate the launch angle (degrees) for a horizontal range in metres."""
+    if not np.isfinite(target_x) or target_x < 0.0:
+        raise ValueError("Horizontal range must be finite and nonnegative")
+    if target_x == 0.0:
+        ray_tracing(90.0, z_a, z_b, depth, cz)
+        return 90.0
 
-    Parameters
-    ----------
-    z_a, z_b : float
-        Source and receiver depths in metres.
-    target_x : float
-        Horizontal range between source and receiver in metres.
-    depth, cz : ndarray
-        Discrete depth array and corresponding sound speed profile.
-
-    Returns
-    -------
-    float
-        Angle in degrees that achieves ``target_x`` or ``NaN`` if none is found.
-    """
-    left = 1.0
+    left = 0.0
     right = 90.0
     tolerance = 0.0001
     max_iterations = 50
@@ -106,16 +88,13 @@ def ray_trace_locate(
         x_curr, _, _ = ray_tracing(alpha, z_a, z_b, depth, cz)
 
         if np.isnan(x_curr):
-            right = alpha
+            left = alpha
         elif abs(x_curr - target_x) < tolerance:
             return alpha
         elif x_curr < target_x:
             right = alpha
         else:
             left = alpha
-
-        if right - left < tolerance:
-            return alpha
 
         iteration += 1
 
