@@ -32,7 +32,9 @@ short configuration block under `if __name__ == "__main__":`.
    `Inversion/Numba_xAline_Geiger_bias.py` (Gauss-Newton) and
    `Inversion/Numba_xAline_Annealing_bias.py` (simulated annealing for the
    lever arm).
-4. **MCMC:** `Inversion_Workflow/MCMC_Functions/MCMC_sampler.py`.
+4. **MCMC:** `Inversion_Workflow/MCMC_Functions/MCMC_sampler.py` (one chain per
+   process; see "Running on Adroit"). `run_local_chains.py` in the same folder
+   runs a few chains in parallel on one machine.
 5. **Plots:** see the figure map below.
 
 The Puerto Rico workflow follows the same order in `Inversion_Workflow/PuertoRico/`
@@ -74,6 +76,95 @@ revision happens on `development`. Table 1 is reproduced by `master` with:
 
 The Fig. 7 chain (`Output/mcmc_chain_1_22_new_MCMC_long.npz`) was produced by
 `MCMC_sampler.py` as of commit 8f54e33.
+
+## Running on Adroit
+
+The MCMC runs one chain per Slurm array task. `SLURM_ARRAY_TASK_ID` sets each
+chain's seed, overdispersed start point and output file, and the environment
+variable `MCMC_RUN` picks a run variant (`iid_fixed`, `iid`, `ar1`, `ar1_drift`;
+see `RUN_VARIANTS` in `MCMC_sampler.py`). Everything else, including priors,
+iteration counts and thinning, is the `CONFIG` block at the top of
+`MCMC_sampler.py`. Edit it before submitting, not while jobs are queued: tasks
+read the file when they start. Each chain records its configuration and git
+commit, and a resumed chain refuses a changed configuration.
+
+**1. Clone** (on the Adroit login node):
+
+```bash
+git clone <REPOSITORY URL> skbtools
+cd skbtools
+git checkout development
+mkdir -p slurm/logs
+```
+
+**2. Copy the data.** The data folders are not in git. The sampler reads only
+these files (paths relative to the repository root):
+
+- `Bermuda_Data/ESV_Tables/global_table_esv_extended.mat`
+- `Bermuda_Data/GPS_Data/Processed_GPS_Receivers_DOG_1.npz`
+- `Bermuda_Data/CDOG_Data/DOG1-camp.mat`
+- `Bermuda_Data/CDOG_Data/DOG3-camp.mat`
+- `Bermuda_Data/CDOG_Data/DOG4-camp.mat`
+
+From your laptop's repository root:
+
+```bash
+rsync -avR Bermuda_Data/ESV_Tables/global_table_esv_extended.mat Bermuda_Data/GPS_Data/Processed_GPS_Receivers_DOG_1.npz Bermuda_Data/CDOG_Data/DOG1-camp.mat Bermuda_Data/CDOG_Data/DOG3-camp.mat Bermuda_Data/CDOG_Data/DOG4-camp.mat <NETID>@adroit.princeton.edu:skbtools/
+```
+
+Each chain stores the SHA-256 of these files in its metadata.
+
+**3. Environment** (Python 3.9-3.11):
+
+```bash
+module load anaconda3/<VERSION>
+python -m venv .venv
+.venv/bin/pip install -e ".[test]"
+.venv/bin/python -m pytest -q tests/test_mcmc_sampler.py tests/test_find_esv.py
+```
+
+Fill in the placeholders in `slurm/mcmc_warmup.sh` and `slurm/mcmc_array.sh`:
+account, partition, time, memory (2G is ample) and environment activation.
+
+**4. Submit.** The warm-up job compiles the Numba kernels once. The arrays wait
+for it, so their tasks do not all compile at the same time.
+
+```bash
+warmup=$(sbatch --parsable slurm/mcmc_warmup.sh)
+sbatch --dependency=afterok:$warmup --export=ALL,MCMC_RUN=ar1 slurm/mcmc_array.sh
+sbatch --dependency=afterok:$warmup --export=ALL,MCMC_RUN=ar1_drift slurm/mcmc_array.sh
+```
+
+Change the array size with `--array=0-15`. A task on a node with a different CPU
+type may recompile, which takes under a minute.
+
+**5. Monitor.** Each task logs its acceptance rate, log posterior, sigma and speed
+every `log_every` iterations, and the end of every adaptation window:
+
+```bash
+squeue -u $USER
+tail -f slurm/logs/skb-mcmc-<JOBID>_<TASK>.out
+sacct -j <JOBID> --format=JobID,State,Elapsed,MaxRSS
+```
+
+Chains are written to `Bermuda_Data/Output/MCMC_Chains/<MCMC_RUN>/chain_<NN>.npz`
+every `checkpoint_every` iterations. `n_done` and `n_total` in the file give
+progress.
+
+**6. Resume.** If tasks hit the time limit, resubmit the same command, or only
+the unfinished indices, e.g. `--array=3,5`. Each task continues from its last
+checkpoint and reproduces an uninterrupted run exactly; finished chains exit
+immediately. To start a run over, use a new `run_name` or delete its folder.
+
+**7. Copy the chains back:**
+
+```bash
+rsync -av <NETID>@adroit.princeton.edu:skbtools/Bermuda_Data/Output/MCMC_Chains/ Bermuda_Data/Output/MCMC_Chains/
+```
+
+Numba caches compiled functions next to the source files and does not notice
+changes in called functions. After pulling changes to the forward model, clear
+the cache with `find src -name "*.nbi" -delete -o -name "*.nbc" -delete`.
 
 ## Tests
 

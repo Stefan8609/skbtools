@@ -265,17 +265,21 @@ RUN_VARIANTS = {
 }
 
 
-def run_config(run_name, overrides=None):
-    """Return CONFIG with the named run variant and any overrides applied."""
-    if run_name not in RUN_VARIANTS:
+def run_config(variant, overrides=None):
+    """Return CONFIG with a run variant and any overrides applied.
+
+    The run is named after the variant unless the overrides set ``run_name``;
+    outputs go to ``Output/MCMC_Chains/<run_name>/``.
+    """
+    if variant not in RUN_VARIANTS:
         raise ValueError(
-            f"Unknown run {run_name!r}; expected one of {list(RUN_VARIANTS)}"
+            f"Unknown run variant {variant!r}; expected one of {list(RUN_VARIANTS)}"
         )
     return {
         **CONFIG,
-        **RUN_VARIANTS[run_name],
+        **RUN_VARIANTS[variant],
+        "run_name": variant,
         **(overrides or {}),
-        "run_name": run_name,
     }
 
 

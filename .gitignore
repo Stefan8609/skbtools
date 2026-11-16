@@ -50,3 +50,6 @@ uv.lock
 !Paper_Data/*.npz
 
 AGENTS.md
+
+# Slurm logs
+slurm/logs/
