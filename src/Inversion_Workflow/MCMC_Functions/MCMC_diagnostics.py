@@ -51,6 +51,45 @@ def load_run(run_name):
     return chains
 
 
+def pooled_run(run_name):
+    """All saved draws of a run pooled into one dict, for plotting.
+
+    Uses the per-draw keys of the chain files (``lever``, ``CDOG_aug``,
+    ``esv_bias``, ``dt`` in the Eq. 6 convention, ``drift_rate``, ``sigma_cm``,
+    ``phi``, ``loglike``, ``logpost``, ``theta_samples``) concatenated over the
+    chains, plus the run-level keys of the first chain. ``time_bias`` is added in
+    the internal convention (offset - dt) for older plotting code.
+    """
+    chains = load_run(run_name)
+    per_draw = (
+        "lever",
+        "CDOG_aug",
+        "esv_bias",
+        "dt",
+        "drift_rate",
+        "sigma_cm",
+        "phi",
+        "loglike",
+        "logpost",
+        "theta_samples",
+    )
+    pooled = {key: np.concatenate([chain[key] for chain in chains]) for key in per_draw}
+    for key in (
+        "param_names",
+        "prior_center",
+        "prior_sd",
+        "offsets_s",
+        "CDOG_reference",
+        "config_json",
+        "t_mid_s",
+        "fixed_phi",
+    ):
+        pooled[key] = chains[0][key]
+    pooled["time_bias"] = pooled["offsets_s"] - pooled["dt"]
+    pooled["run_name"] = run_name
+    return pooled
+
+
 def stack_draws(chains, key="theta_samples"):
     """Draws as (n_chains, n_draws, ...) truncated to the shortest chain."""
     n_draws = min(chain[key].shape[0] for chain in chains)

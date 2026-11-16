@@ -39,7 +39,9 @@ short configuration block under `if __name__ == "__main__":`.
    acceptance, trace and autocorrelation plots); `MCMC_posterior_summary.py`
    writes the posterior tables (Table 1 layout, lever arm against its prior,
    prior sensitivity) and the linearized comparison at the MAP. Both write to
-   `Output/MCMC_Chains/<run>/analysis/`.
+   `Output/MCMC_Chains/<run>/analysis/`. `plotting/MCMC_model_comparison.py`
+   overlays the vertical, dt and dc posteriors of runs with different noise
+   models. The Fig. 7-9 scripts read a pooled run with `pooled_run(<run>)`.
 5. **Plots:** see the figure map below.
 
 The Puerto Rico workflow follows the same order in `Inversion_Workflow/PuertoRico/`

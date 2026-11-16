@@ -4,10 +4,10 @@ from matplotlib.colors import LinearSegmentedColormap
 from pymap3d import geodetic2enu
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from scipy.stats import gaussian_kde
-from bermuda_data import gps_output_path
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
 from plotting.Ellipses.Error_Ellipse import compute_error_ellipse
 from plotting.MCMC_plots import get_init_params_and_prior
+from Inversion_Workflow.MCMC_Functions.MCMC_diagnostics import pooled_run
 from plotting.save import save_plot
 
 
@@ -313,10 +313,12 @@ def plot_kde_mcmc(
 
 
 if __name__ == "__main__":
-    file = "mcmc_chain_1_20_new_inversion"
-    chain = np.load(gps_output_path(f"{file}.npz"))
+    # A run of the reworked sampler, all chains pooled; DOG_num is the index into
+    # the run's dogs (0 is DOG 1).
+    file = "ar1"
+    chain = pooled_run(file)
     DOG_num = 0
-    sample = chain["CDOG_aug"][::100, DOG_num]
+    sample = chain["CDOG_aug"][::20, DOG_num]
 
     initial_params, prior_scales, _ = get_init_params_and_prior(chain)
     init_aug = initial_params["CDOG_aug"]

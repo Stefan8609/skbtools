@@ -7,6 +7,7 @@ from scipy.stats import gaussian_kde
 from plotting.Ellipses.Error_Ellipse import compute_error_ellipse
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
 from plotting.MCMC_plots import get_init_params_and_prior
+from Inversion_Workflow.MCMC_Functions.MCMC_diagnostics import pooled_run
 from plotting.Misc.KDE_MCMC_plot import plot_kde_mcmc
 from plotting.save import save_plot
 
@@ -1333,9 +1334,13 @@ if __name__ == "__main__":
 
     top_down_scale = 0.054715
 
-    chain = np.load(gps_output_path("mcmc_chain_1_22_new_MCMC_long.npz"))
-    levers = chain["lever"][::5000]
-    CDOG_augs = chain["CDOG_aug"][::5000]
+    # A run of the reworked sampler, all chains pooled. Its prior centers are the
+    # moon-pool lever arm and the DOG starting guesses, so the prior ellipse is
+    # drawn at the moon pool.
+    RUN_NAME = "ar1"
+    chain = pooled_run(RUN_NAME)
+    levers = chain["lever"][::20]
+    CDOG_augs = chain["CDOG_aug"][::20]
 
     init_params, prior_scales, _ = get_init_params_and_prior(chain)
 
@@ -1397,8 +1402,9 @@ if __name__ == "__main__":
     side_segments = side_ship_segments + side_moonpool_segments
 
     plot_data_dir = gps_output_path("Plot_Data")
-    plot_data_path = f"{plot_data_dir}/Atlantic_RV_Plot_Data.npz"
-    load = True
+    plot_data_path = f"{plot_data_dir}/Atlantic_RV_Plot_Data_{RUN_NAME}.npz"
+    # True replots the cached Fig. 8 (default cache); False rebuilds from RUN_NAME.
+    load = False
 
     if load:
         fig, axes = RV_Plot_from_cache(

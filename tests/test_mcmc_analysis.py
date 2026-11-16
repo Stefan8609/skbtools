@@ -85,3 +85,24 @@ def test_reported_quantities_follow_the_paper_conventions():
     for axis in "ENU":
         assert value[f"DOG3_{axis}_minus_Table1"] == pytest.approx(0.0, abs=1e-6)
     assert value["lever_z_minus_DOG3_U"] == pytest.approx(theta[2], abs=1e-6)
+
+
+def test_old_plot_helpers_read_the_new_prior():
+    import json
+
+    import matplotlib as mpl
+
+    with mpl.rc_context():  # MCMC_plots switches on usetex when imported
+        from plotting.MCMC_plots import get_init_params_and_prior
+
+    config = ms.run_config("ar1")
+    chain = {"prior_center": np.zeros(1), "config_json": np.array(json.dumps(config))}
+
+    centers, scales, proposals = get_init_params_and_prior(chain)
+
+    assert centers["lever"].tolist() == [-13.1, 9.7, -14.0]
+    assert centers["CDOG_aug"].shape == (3, 3)
+    assert np.all(centers["time_bias"] == 0.0)
+    assert scales["lever"].tolist() == [0.5, 0.5, 2.0]
+    assert scales["esv_mean"] == pytest.approx(2.0 / np.sqrt(4))
+    assert proposals == {}

@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -37,8 +39,35 @@ def get_init_params_and_prior(chain):
     Returns
     -------
     tuple
-        Initial parameters and prior scales.
+        Initial parameters and prior scales. For chains of the reworked sampler
+        (they store ``prior_center``), the "initial parameters" are the prior
+        centers from the run configuration, ``time_bias`` is the dt deviation
+        from the alignment offset (prior center 0), and there are no proposal
+        scales (adaptive; the proposal covariance is saved in each chain).
     """
+    if "prior_center" in chain:
+        config = json.loads(str(chain["config_json"]))
+        n_dogs = len(config["dogs"])
+        n_splits = config["num_esv_splits"]
+        initial_params = {
+            "lever": np.array(config["prior_lever_center_m"]),
+            "gps_grid": np.array(config["gps1_to_others"]),
+            "CDOG_aug": np.array(config["prior_CDOG_aug_center_m"]),
+            "esv_bias": np.full(
+                (n_dogs, n_splits), config["prior_esv_bias_center_m_s"]
+            ),
+            "time_bias": np.zeros(n_dogs),
+        }
+        prior_scales = {
+            "lever": np.array(config["prior_lever_sd_m"]),
+            "gps_grid": 0.0,
+            "CDOG_aug": config["prior_CDOG_aug_sd_m"],
+            "esv_bias": config["prior_esv_bias_sd_m_s"],
+            "esv_mean": config["prior_esv_bias_sd_m_s"] / np.sqrt(n_splits),
+            "time_bias": config["prior_dt_sd_s"],
+        }
+        return initial_params, prior_scales, {}
+
     try:
         init_lever = chain["init_lever"]
         init_gps_grid = chain["init_gps_grid"]

@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import itertools
 from plotting.MCMC_plots import get_init_params_and_prior, cdog_aug_ecef_to_enu
-from bermuda_data import gps_output_path
+from Inversion_Workflow.MCMC_Functions.MCMC_diagnostics import pooled_run
 from plotting.save import save_plot
 import matplotlib as mpl
 from matplotlib import patches as mpatches
@@ -82,7 +82,11 @@ def corner_plot_with_corr(
     lever = np.asarray(chain["lever"][::downsample])[order]  # (T,3)
     cdog_aug = np.asarray(chain["CDOG_aug"][::downsample])[order]  # (T,D,3)
     esv = _as_TDS(chain["esv_bias"][::downsample])[order]  # (T,D,S)
-    tb = np.asarray(chain["time_bias"][::downsample])[order]  # (T,...) dims vary
+    if "dt" in chain:
+        # Eq. 6 clock offset minus the alignment offset (its prior center).
+        tb = np.asarray(chain["dt"][::downsample])[order] - chain["offsets_s"]
+    else:
+        tb = np.asarray(chain["time_bias"][::downsample])[order]  # (T,...) dims vary
 
     # ----- DOG ENU (meters) -----
     cdog_aug_samples = cdog_aug[:, d, :]  # (T,3) ECEF offsets for this DOG
@@ -493,9 +497,12 @@ def corner_plot_with_corr(
 
 
 if __name__ == "__main__":
-    file_name = "mcmc_chain_7_16"
-    chain_name = "logpost_" + file_name
-    chain = np.load(gps_output_path(f"{file_name}.npz"))
+    # A run of the reworked sampler (Output/MCMC_Chains/<RUN_NAME>), all chains
+    # pooled. For an old single-file chain use np.load(gps_output_path(...)).
+    RUN_NAME = "ar1"
+    DOG_NUM = 1
+    chain_name = "logpost_" + RUN_NAME
+    chain = pooled_run(RUN_NAME)
 
     # burn_in = 120000
 
@@ -515,8 +522,8 @@ if __name__ == "__main__":
         chain,
         initial_params,
         prior_scales=prior_scales,
-        DOG_num=1,
-        downsample=500,
+        DOG_num=DOG_NUM,
+        downsample=20,
         save=True,
         chain_name=chain_name,
         loglike=False,

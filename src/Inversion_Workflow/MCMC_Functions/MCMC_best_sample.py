@@ -1,4 +1,5 @@
-from scipy import io as sio
+import json
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -15,7 +16,9 @@ from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
     calculateTimesRayTracing_split,
 )
 
-from bermuda_data import gps_data_path, gps_output_path
+from Inversion_Workflow.MCMC_Functions import MCMC_sampler as ms
+from Inversion_Workflow.MCMC_Functions.MCMC_diagnostics import pooled_run
+from bermuda_data import gps_output_path
 
 
 plt.rcParams.update(
@@ -241,55 +244,93 @@ def plot_best_sample(
     )
 
 
-# Example usage:
-if __name__ == "__main__":
-    # split_samples("7_individual_splits_esv_20250806_165630", 7)
+def plot_run_best_sample(run_name, DOG_num, loglike=False):
+    """Fig. 9 for a run of the reworked sampler: residuals at the best draw.
 
-    loglike = False
-    file_name = "mcmc_chain_1_22_new_MCMC_long.npz"
-    # file_name = "mcmc_chain_7_16.npz"
-    chain_name = ("loglike_" if loglike else "logpost_") + file_name[:-4]
-    DOG_num = 1
-    timestamp = f"{file_name[:-4]}_best_DOG_{DOG_num}"
+    Uses the sampler's own fixed pairs and forward model (``setup_bermuda`` and
+    ``residuals_cm``), so the residuals are exactly those the likelihood saw,
+    including any clock drift. ``GPS_full`` is the modelled travel time,
+    ``CDOG_full`` the observed one (modelled plus residual), and the clocks are
+    the GPS epoch plus the travel time, as ``two_pointer_index`` returns them.
+    """
+    chain = pooled_run(run_name)
+    config = json.loads(str(chain["config_json"]))
+    model, problem = ms.setup_bermuda(config)
+    if chain["fixed_phi"].size:
+        model["fixed_phi"] = chain["fixed_phi"]
+    best = np.argmax(chain["loglike"] if loglike else chain["logpost"])
+    theta = chain["theta_samples"][best]
+    j = config["dogs"].index(DOG_num)
+    pairs = problem["pair_slices"][j]
 
-    esv = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"))
-    dz_array = esv["distance"].flatten()
-    angle_array = esv["angle"].flatten()
-    esv_matrix = esv["matrice"]
-
-    downsample = 1
-    data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
-    GPS_Coordinates = data["GPS_Coordinates"][::downsample]
-    GPS_data = data["GPS_data"][::downsample]
-    CDOG_guess = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
-
-    # leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
-    # leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
-    # leg_mask = leg1 | leg2
-    # GPS_Coordinates = GPS_Coordinates[leg_mask]
-    # GPS_data = GPS_data[leg_mask]
-
-    CDOG_all_data = []
-    for i in (1, 3, 4):
-        tmp = sio.loadmat(gps_data_path(f"CDOG_Data/DOG{i}-camp.mat"))["tags"].astype(
-            float
+    params = ms.unpack(theta, model)
+    trans = (problem["R_stacked"] @ params["lever"]).reshape(-1, 3) + problem["d"]
+    DOG_position = problem["CDOG_reference"] + params["CDOG_aug"][j]
+    if model["num_splits"] > 1:
+        times, esv = calculateTimesRayTracing_split(
+            DOG_position,
+            trans,
+            params["esv_bias"][j],
+            problem["dz_array"],
+            problem["angle_array"],
+            problem["esv_matrix"],
         )
-        tmp[:, 1] /= 1e9
-        CDOG_all_data.append(tmp)
+    else:
+        times, esv = calculateTimesRayTracing_Bias_Real(
+            DOG_position,
+            trans,
+            params["esv_bias"][j, 0],
+            problem["dz_array"],
+            problem["angle_array"],
+            problem["esv_matrix"],
+        )
+    residual_s = ms.residuals_cm(theta, model, problem)[pairs] / ms.RANGE_CM_PER_S
+    gps_index = problem["pair_gps_index"][pairs]
+    gps_time = problem["pair_t_from_mid"][pairs] + problem["t_mid"][j]
 
-    offsets = np.array([1866.016, 3175.017, 1939.0178])
-    plot_best_sample(
-        gps_output_path(file_name),
-        GPS_Coordinates,
-        GPS_data,
-        CDOG_guess,
-        CDOG_all_data,
-        offsets,
-        dz_array,
-        angle_array,
-        esv_matrix,
-        CDOG_num=DOG_num,
-        timestamp=timestamp,
-        loglike=loglike,
-        chain_name=chain_name,
+    GPS_full = times[gps_index]
+    GPS_clock = gps_time + GPS_full
+    CDOG_full = GPS_full + residual_s
+    CDOG_clock = GPS_clock + residual_s
+
+    sigma, phi = ms.noise_parameters(theta, model)
+    print(
+        f"Run {run_name}, DOG {DOG_num}: best draw {best}, "
+        f"c*sigma {sigma[j]:.2f} cm, phi {phi[j]:.3f}, "
+        f"residual rms {np.sqrt(np.mean((residual_s * ms.RANGE_CM_PER_S) ** 2)):.2f} cm"
     )
+    path = f"Figs/MCMC/{('loglike_' if loglike else 'logpost_') + run_name}"
+    time_series_plot(
+        CDOG_clock,
+        CDOG_full,
+        GPS_clock,
+        GPS_full,
+        position_noise=0,
+        time_noise=0,
+        block=True,
+        save=True,
+        path=path,
+        zoom_start=35000,
+        DOG_num=DOG_num,
+    )
+    range_residual(
+        trans[gps_index],
+        esv[gps_index],
+        DOG_position,
+        CDOG_full,
+        GPS_full,
+        GPS_clock,
+        save=True,
+        path=path,
+        DOG_num=DOG_num,
+    )
+
+
+if __name__ == "__main__":
+    # A run of the reworked sampler (Output/MCMC_Chains/<RUN_NAME>), all chains
+    # pooled. plot_best_sample above still reads old single-file chains.
+    RUN_NAME = "ar1"
+    DOG_NUM = 1
+    LOGLIKE = False
+
+    plot_run_best_sample(RUN_NAME, DOG_NUM, loglike=LOGLIKE)
