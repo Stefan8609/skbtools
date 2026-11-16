@@ -22,6 +22,10 @@ from plotting.Plot_Modular import time_series_plot, range_residual
 # -------------------------
 DOG_num = 1
 simulated_annealing = True
+# Paper I (Table 1, Figs. 5, 6, C12-C15) uses the full trajectory. The leg mask
+# (9-11 h and 12.4-15 h) is a sensitivity test: it lowers c*sigma to ~8 cm but
+# moves the DOG depths by metres.
+use_leg_mask = False
 save = True
 downsample = 1
 
@@ -53,37 +57,32 @@ gps1_to_others = np.array(
 initial_lever_guess = np.array([-12.69796149, 9.51739301, -15.0743129])
 
 # -------------------------
-# Initial guesses by DOG and trajectory masking
+# Initial guesses by DOG
 # -------------------------
 if DOG_num == 1:
     CDOG_guess_augment = np.array([-398.16, 371.90, 773.02])
     offset_hint = 1866.0
-    leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
-    leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
 elif DOG_num == 3:
     CDOG_guess_augment = np.array([825.182985, -111.05670221, -734.10011698])
     offset_hint = 3175.0
-    # leg1 = (GPS_data / 3600 >= 8.7) & (GPS_data / 3600 <= 11)
-    # leg2 = (GPS_data / 3600 >= 15.75) & (GPS_data / 3600 <= 18.15)
-    leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
-    leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
 elif DOG_num == 4:
     CDOG_guess_augment = np.array([236.428385, -1307.98390221, -2189.21991698])
     offset_hint = 1939.0
-    leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
-    leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
-    # leg1 = (GPS_data / 3600 >= 8.7) & (GPS_data / 3600 <= 11)
-    # leg2 = (GPS_data / 3600 >= 15.75) & (GPS_data / 3600 <= 18.15)
-    # This is not a true leg, as the GPS data was corrupted overlying DOG_4
 else:
     CDOG_guess_augment = np.zeros(3)
     offset_hint = 0.0
 
 CDOG_guess = CDOG_guess_base + CDOG_guess_augment
 
-leg_mask = leg1 | leg2
-GPS_Coordinates = GPS_Coordinates[leg_mask]
-GPS_data = GPS_data[leg_mask]
+if use_leg_mask:
+    # Same legs for every DOG. Earlier alternative for DOGs 3 and 4:
+    # 8.7-11 h and 15.75-18.15 h (not a true leg for DOG 4, as the GPS data
+    # were corrupted overlying DOG 4).
+    leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
+    leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
+    leg_mask = leg1 | leg2
+    GPS_Coordinates = GPS_Coordinates[leg_mask]
+    GPS_data = GPS_data[leg_mask]
 
 if simulated_annealing:
     print("\n ---------Using Simulated Annealing--------- \n")

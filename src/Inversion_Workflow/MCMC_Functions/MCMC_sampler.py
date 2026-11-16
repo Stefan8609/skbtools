@@ -641,17 +641,19 @@ if __name__ == "__main__":
     esv_matrix = esv["matrice"]
 
     downsample = 1
+    # Full trajectory as in Paper I; the leg mask is a sensitivity test only.
+    use_leg_mask = False
 
     data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
     GPS_Coordinates = data["GPS_Coordinates"]
     GPS_data = data["GPS_data"]
 
-    leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
-    leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
-    leg_mask = leg1 | leg2
-
-    GPS_Coordinates = GPS_Coordinates[leg_mask]
-    GPS_data = GPS_data[leg_mask]
+    if use_leg_mask:
+        leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
+        leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
+        leg_mask = leg1 | leg2
+        GPS_Coordinates = GPS_Coordinates[leg_mask]
+        GPS_data = GPS_data[leg_mask]
 
     GPS_Coordinates = GPS_Coordinates[::downsample]
     GPS_data = GPS_data[::downsample]
