@@ -142,7 +142,6 @@ def initial_bias_geiger(
             transponder_coordinates_full[inliers],
             GPS_full[inliers],
             esv_full[inliers],
-            esv_bias,
         )
         delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ residuals[inliers]
         estimate = estimate + delta
@@ -236,7 +235,6 @@ def final_bias_geiger(
             transponder_coordinates_full[inliers],
             GPS_full[inliers],
             esv_full[inliers],
-            esv_bias,
         )
         delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ residuals[inliers]
         estimate = estimate + delta

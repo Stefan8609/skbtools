@@ -3,8 +3,13 @@ from numba import njit
 
 
 @njit(cache=True)
-def compute_Jacobian_biased(guess, transponder_coordinates, times, esv, esv_bias):
-    """Jacobian of travel times with respect to state and bias terms."""
+def compute_Jacobian_biased(guess, transponder_coordinates, times, esv):
+    """Jacobian of the travel-time residual with respect to (x, y, z, dt, dc).
+
+    ``esv`` must already include the ESV bias (c_eff + dc), as returned by
+    ``calculateTimesRayTracing_Bias(_Real)``. The residual is
+    (T_mod - time_bias) - T_obs with T_mod = range / esv.
+    """
     diffs = transponder_coordinates - guess
 
     J = np.zeros((len(transponder_coordinates), 5))

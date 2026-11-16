@@ -91,7 +91,7 @@ def test_compute_jacobian_biased_matches_finite_differences():
 
     esv = np.full(3, c + theta[4])
     times = np.linalg.norm(transducers - theta[:3], axis=1) / esv
-    jac = compute_Jacobian_biased(theta[:3], transducers, times, esv, theta[4])
+    jac = compute_Jacobian_biased(theta[:3], transducers, times, esv)
 
     step = np.array([1e-3, 1e-3, 1e-3, 1e-6, 1e-4])
     expected = np.zeros((3, 5))

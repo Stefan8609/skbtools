@@ -72,9 +72,7 @@ def geometric_dilution(interval):
         coords_inter = transponder_coordinates[i : i + interval]
         times_inter = times[i : i + interval]
         esv_inter = esv[i : i + interval]
-        J = compute_Jacobian_biased(
-            CDOG_guess, coords_inter, times_inter, esv_inter, esv_bias
-        )
+        J = compute_Jacobian_biased(CDOG_guess, coords_inter, times_inter, esv_inter)
         Q = np.linalg.inv(J.T @ J)
         GDOP_array[idx] = np.sqrt(np.trace(Q))
         idx += 1
