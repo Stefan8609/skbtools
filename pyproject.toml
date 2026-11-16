@@ -25,6 +25,13 @@ dev = [
     "pre-commit>=3.0",
     "ruff>=0.4",
     "opencv-python>=4.8.0",
+    "pdf2image>=1.16",
+]
+# Puerto Rico sound-speed profile download and processing (acoustics/svp.py,
+# acoustics/download_PuertoRico_profile.py).
+puertorico = [
+    "xarray>=2023.1",
+    "copernicusmarine>=2.0",
 ]
 [build-system]
 requires = ["hatchling"]
@@ -34,12 +41,11 @@ build-backend = "hatchling.build"
 packages = [
     "src/Inversion_Workflow",
     "src/acoustics",
-    "src/ecco",
     "src/geometry",
     "src/plotting",
     "src/GNSS_Processing",
 ]
-include = ["*.py", "src/data.py"]
+include = ["*.py"]
 
 [tool.black]
 line-length = 88
