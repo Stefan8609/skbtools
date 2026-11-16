@@ -34,7 +34,12 @@ short configuration block under `if __name__ == "__main__":`.
    lever arm).
 4. **MCMC:** `Inversion_Workflow/MCMC_Functions/MCMC_sampler.py` (one chain per
    process; see "Running on Adroit"). `run_local_chains.py` in the same folder
-   runs a few chains in parallel on one machine.
+   runs a few chains in parallel on one machine. `MCMC_diagnostics.py` combines
+   the chains of a run (rank-normalized split R-hat, bulk and tail ESS,
+   acceptance, trace and autocorrelation plots); `MCMC_posterior_summary.py`
+   writes the posterior tables (Table 1 layout, lever arm against its prior,
+   prior sensitivity) and the linearized comparison at the MAP. Both write to
+   `Output/MCMC_Chains/<run>/analysis/`.
 5. **Plots:** see the figure map below.
 
 The Puerto Rico workflow follows the same order in `Inversion_Workflow/PuertoRico/`

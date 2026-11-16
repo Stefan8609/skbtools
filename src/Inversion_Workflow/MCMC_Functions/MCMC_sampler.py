@@ -755,6 +755,26 @@ def residual_noise_estimates(residuals, problem):
     return sigma, phi
 
 
+def residual_jacobian(theta, model, problem):
+    """Central finite-difference Jacobian of residuals_cm, (n_pairs, n_geometric).
+
+    Columns are the geometric parameters (lever, DOG positions, dc, time bias,
+    drift), in cm of range per unit of each parameter.
+    """
+    n_geo = model["geometric_end"]
+    jacobian = np.empty((problem["pair_dog"].shape[0], n_geo))
+    for k in range(n_geo):
+        step = model["fd_step"][k]
+        plus = theta.copy()
+        minus = theta.copy()
+        plus[k] += step
+        minus[k] -= step
+        jacobian[:, k] = (
+            residuals_cm(plus, model, problem) - residuals_cm(minus, model, problem)
+        ) / (2 * step)
+    return jacobian
+
+
 def laplace_approximation(model, problem, max_iterations=8):
     """Posterior mode estimate and Gaussian approximation, for starting the chains.
 
@@ -768,7 +788,6 @@ def laplace_approximation(model, problem, max_iterations=8):
     config = model["config"]
     mode = config["likelihood"]
     geo = slice(0, model["geometric_end"])
-    n_geo = model["geometric_end"]
     precision = 1.0 / model["prior_sd"][geo] ** 2
     center = model["prior_center"][geo]
     low, high = config["prior_phi_bounds"]
@@ -793,16 +812,7 @@ def laplace_approximation(model, problem, max_iterations=8):
     def whitened_system(theta_point):
         residuals = residuals_cm(theta_point, model, problem)
         sigma, phi = noise_for_whitening(residuals)
-        jacobian = np.empty((residuals.shape[0], n_geo))
-        for k in range(n_geo):
-            step = model["fd_step"][k]
-            plus = theta_point.copy()
-            minus = theta_point.copy()
-            plus[k] += step
-            minus[k] -= step
-            jacobian[:, k] = (
-                residuals_cm(plus, model, problem) - residuals_cm(minus, model, problem)
-            ) / (2 * step)
+        jacobian = residual_jacobian(theta_point, model, problem)
         args = (problem["segment_start"], problem["pair_dog"], sigma, phi)
         w, _ = whiten_ar1(residuals, *args)
         J_w, _ = whiten_ar1(jacobian, *args)

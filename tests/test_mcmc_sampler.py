@@ -306,3 +306,13 @@ def test_iid_fixed_reproduces_reference_log_likelihood():
 
     assert result.returncode == 0, result.stdout[-2000:] + result.stderr[-2000:]
     assert result.stdout.strip().endswith("ok")
+
+
+def test_residual_jacobian_time_bias_column_is_the_range_scale():
+    config, problem = synthetic_problem()
+    model = ms.build_model(config)
+
+    jacobian = ms.residual_jacobian(model["start_theta"], model, problem)
+
+    time_bias_column = jacobian[:, model["layout"]["time_bias"].start]
+    np.testing.assert_allclose(time_bias_column, ms.RANGE_CM_PER_S, rtol=1e-6)
