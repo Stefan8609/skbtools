@@ -44,13 +44,18 @@ def simulated_annealing_bias(
     initial_offset=0,
     real_data=False,
     z_sample=True,
-    enforce_offset=False,
+    clock_drift=False,
 ):
-    """Estimate lever arm and biases using simulated annealing."""
+    """Estimate lever arm and biases using simulated annealing.
+
+    With ``clock_drift`` the estimate carries ``drift_rate`` (s/s, Eq. 6 convention)
+    as a sixth entry, as in ``final_bias_geiger``.
+    """
     # Working state
     inversion_guess = initial_guess
     time_bias = 0.0
     esv_bias = 0.0
+    drift_rate = 0.0
 
     best_lever = initial_lever
     best_rmse = np.inf
@@ -70,11 +75,14 @@ def simulated_annealing_bias(
         esv_matrix,
         real_data,
         initial_offset,
+        clock_drift,
     )
 
     inversion_guess = inversion_estimate[:3]
     time_bias = inversion_estimate[3]
     esv_bias = inversion_estimate[4]
+    if clock_drift:
+        drift_rate = inversion_estimate[5]
 
     # Evaluate RMSE at this solution
     if not real_data:
@@ -100,9 +108,6 @@ def simulated_annealing_bias(
         offset, 0.5, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
     )[1:4]
     best_rmse = np.sqrt(np.nanmean((GPS_full - CDOG_full) ** 2))
-
-    if enforce_offset:
-        offset = initial_offset  # Keep offset fixed during annealing if specified
 
     # ---- annealing loop ----
     k = 0
@@ -133,6 +138,8 @@ def simulated_annealing_bias(
             angle_array,
             esv_matrix,
             real_data,
+            clock_drift,
+            drift_rate,
         )
 
         RMSE = np.sqrt(np.nanmean((GPS_full_k - CDOG_full_k) ** 2))
@@ -146,6 +153,8 @@ def simulated_annealing_bias(
             inversion_guess = inversion_estimate_k[:3]
             time_bias = inversion_estimate_k[3]
             esv_bias = inversion_estimate_k[4]
+            if clock_drift:
+                drift_rate = inversion_estimate_k[5]
 
         if k % 10 == 0:
             print(
@@ -217,6 +226,8 @@ def simulated_annealing_bias(
                 angle_array,
                 esv_matrix,
                 real_data,
+                clock_drift,
+                drift_rate,
             )
 
             RMSE = np.sqrt(np.nanmean((GPS_full_k - CDOG_full_k) ** 2))
@@ -229,6 +240,8 @@ def simulated_annealing_bias(
                 inversion_guess = inversion_estimate_k[:3]
                 time_bias = inversion_estimate_k[3]
                 esv_bias = inversion_estimate_k[4]
+                if clock_drift:
+                    drift_rate = inversion_estimate_k[5]
 
         best_lever = best_lever_new
 
@@ -248,6 +261,8 @@ def simulated_annealing_bias(
         angle_array,
         esv_matrix,
         real_data,
+        clock_drift,
+        drift_rate,
     )
 
     return best_lever, offset, inversion_estimate
@@ -267,6 +282,7 @@ def anneal_with_offset_search(
     esv_matrix,
     real_data=False,
     z_sample=True,
+    clock_drift=False,
 ):
     """Anneal when the DOG clock offset is unknown.
 
@@ -289,6 +305,7 @@ def anneal_with_offset_search(
         angle_array,
         esv_matrix,
         real_data,
+        clock_drift=clock_drift,
     )
 
     best_rmse = np.inf
@@ -310,6 +327,7 @@ def anneal_with_offset_search(
             initial_offset=aligned_offset + shift,
             real_data=real_data,
             z_sample=z_sample,
+            clock_drift=clock_drift,
         )
         rmse = misfit_rms(
             estimate,
@@ -321,6 +339,7 @@ def anneal_with_offset_search(
             angle_array,
             esv_matrix,
             real_data,
+            clock_drift,
         )
         if rmse < best_rmse:
             best_rmse = rmse

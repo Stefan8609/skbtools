@@ -23,7 +23,6 @@ from puertorico_data import gps_data_path, gps_output_path
 
 # Config
 clock_segment = "after"  # Change to "before" for the first clock segment.
-ENFORCE_OFFSET = True
 
 if clock_segment == "before":
     initial_offset = -19.32
@@ -141,7 +140,6 @@ def run_inversion():
             initial_offset=offset_center,
             real_data=True,
             z_sample=annealing_z_sample,
-            enforce_offset=ENFORCE_OFFSET,
         )
         transponder_coordinates = findTransponder(
             GPS_Coordinates,

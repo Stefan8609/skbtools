@@ -8,7 +8,7 @@ from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
 )
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
-    simulated_annealing_bias,
+    anneal_with_offset_search,
 )
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import final_bias_geiger
 from geometry.ECEF_Geodetic import ECEF_Geodetic
@@ -242,7 +242,7 @@ def error_ellipse(
                 initial_guess = CDOG + np.random.normal(0, 30, 3)
                 initial_lever = real_lever - np.random.normal(0, 2, 3)
 
-                lever, offset, inversion_result = simulated_annealing_bias(
+                lever, offset, inversion_result = anneal_with_offset_search(
                     300,
                     CDOG_data,
                     GPS_data,
@@ -254,9 +254,7 @@ def error_ellipse(
                     angle_array_inversion,
                     esv_matrix_inversion,
                     real_data=True,
-                    initial_offset=true_offset,
                     z_sample=True,
-                    enforce_offset=True,
                 )
 
                 inversion_guess = inversion_result[:3]
@@ -302,9 +300,10 @@ def error_ellipse(
                 estimate_array[i] = inversion_result[:3]
                 lever_diff_array[i] = lever - real_lever
                 RMSE_array[i] = RMSE
+                offset_error = offset - inversion_result[3] - true_offset
                 print(
                     f"\n{i + 1}/{num_points} iterations complete "
-                    f"(offset error: {abs(offset - true_offset):.4f} s)"
+                    f"(offset error: {offset_error:.4f} s)"
                 )
 
             except Exception as e:

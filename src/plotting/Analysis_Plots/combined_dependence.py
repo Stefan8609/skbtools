@@ -6,9 +6,8 @@ from Inversion_Workflow.Synthetic.Modular_Synthetic import (
 )
 from bermuda_data import gps_output_path
 
-"""Do both mapping to RMSE and mapping to average distance from real CDOG
-Requires that offset is enforced as integer ambiguity was not working
-at time of running
+"""Do both mapping to RMSE and mapping to average distance from real CDOG.
+The clock offset is recovered from the data, not given.
 """
 
 
