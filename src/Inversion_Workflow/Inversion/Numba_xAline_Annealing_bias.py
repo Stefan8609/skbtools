@@ -21,6 +21,8 @@ from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     initial_bias_geiger,
     final_bias_geiger,
+    misfit_rms,
+    INT_OFFSET_SHIFT_SECONDS,
 )
 from plotting.Plot_Modular import time_series_plot
 from bermuda_data import gps_data_path
@@ -49,7 +51,6 @@ def simulated_annealing_bias(
     inversion_guess = initial_guess
     time_bias = 0.0
     esv_bias = 0.0
-    offset = initial_offset
 
     best_lever = initial_lever
     best_rmse = np.inf
@@ -252,6 +253,83 @@ def simulated_annealing_bias(
     return best_lever, offset, inversion_estimate
 
 
+@njit()
+def anneal_with_offset_search(
+    iter,
+    CDOG_data,
+    GPS_data,
+    GPS_Coordinates,
+    gps1_to_others,
+    initial_guess,
+    initial_lever,
+    dz_array,
+    angle_array,
+    esv_matrix,
+    real_data=False,
+    z_sample=True,
+):
+    """Anneal when the DOG clock offset is unknown.
+
+    A wrong integer second is partly absorbed by the lever arm during annealing, so
+    the fit cannot tell it from the right one until the lever arm is good. The data
+    are aligned at the initial lever arm, every integer second within
+    ``INT_OFFSET_SHIFT_SECONDS`` of that offset is annealed in full, and the lowest
+    final RMS wins. Returns ``(lever, offset, estimate)`` like
+    ``simulated_annealing_bias``.
+    """
+    transponder_coordinates = findTransponder(
+        GPS_Coordinates, gps1_to_others, initial_lever
+    )
+    aligned_estimate, aligned_offset = initial_bias_geiger(
+        initial_guess,
+        CDOG_data,
+        GPS_data,
+        transponder_coordinates,
+        dz_array,
+        angle_array,
+        esv_matrix,
+        real_data,
+    )
+
+    best_rmse = np.inf
+    best_lever = initial_lever
+    best_offset = aligned_offset
+    best_estimate = aligned_estimate
+    for shift in range(-INT_OFFSET_SHIFT_SECONDS, INT_OFFSET_SHIFT_SECONDS + 1):
+        lever, offset, estimate = simulated_annealing_bias(
+            iter,
+            CDOG_data,
+            GPS_data,
+            GPS_Coordinates,
+            gps1_to_others,
+            initial_guess,
+            initial_lever,
+            dz_array,
+            angle_array,
+            esv_matrix,
+            initial_offset=aligned_offset + shift,
+            real_data=real_data,
+            z_sample=z_sample,
+        )
+        rmse = misfit_rms(
+            estimate,
+            offset,
+            CDOG_data,
+            GPS_data,
+            findTransponder(GPS_Coordinates, gps1_to_others, lever),
+            dz_array,
+            angle_array,
+            esv_matrix,
+            real_data,
+        )
+        if rmse < best_rmse:
+            best_rmse = rmse
+            best_lever = lever
+            best_offset = offset
+            best_estimate = estimate
+    return best_lever, best_offset, best_estimate
+
+
 if __name__ == "__main__":
     import numpy as np
     import scipy.io as sio
@@ -344,11 +422,10 @@ if __name__ == "__main__":
 
     # --- Annealing params ---
     SA_iter = 300  # temperature schedule control (your "iter" argument)
-    initial_offset = 0.0  # let initial_bias_geiger find it inside annealing
     z_sample = True
 
     print("\n------ Starting Simulated Annealing ------\n")
-    lever_est, offset_est, inversion_est = simulated_annealing_bias(
+    lever_est, offset_est, inversion_est = anneal_with_offset_search(
         SA_iter,
         CDOG_data,
         GPS_data,
@@ -359,7 +436,6 @@ if __name__ == "__main__":
         dz_array,
         angle_array,
         esv_matrix,
-        initial_offset=initial_offset,
         real_data=real,
         z_sample=z_sample,
     )

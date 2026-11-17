@@ -41,8 +41,13 @@ def residual_inliers(residuals, sigma=6.0):
     return inliers
 
 
+# Largest integer-second shift tried per pass when re-selecting the offset.
+INT_OFFSET_SHIFT_SECONDS = 3
+MAX_INT_OFFSET_PASSES = 20
+
+
 @njit(cache=True, fastmath=True)
-def initial_bias_geiger(
+def _geiger_at_offset(
     guess,
     CDOG_data,
     GPS_data,
@@ -50,10 +55,15 @@ def initial_bias_geiger(
     dz_array,
     angle_array,
     esv_matrix,
-    real_data=False,
-    initial_offset=np.nan,
+    real_data,
+    initial_offset,
 ):
-    """Initial inversion including time and ESV bias parameters."""
+    """Alignment and Gauss-Newton fit for one starting offset.
+
+    With ``initial_offset=None`` the offset is searched over the full range with the
+    circular-variance score at ``guess``; otherwise only within 0.5 s of the rounded
+    ``initial_offset``.
+    """
     epsilon = 10**-5
     k = 0
     delta = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
@@ -81,7 +91,7 @@ def initial_bias_geiger(
             esv_matrix,
         )
     offset_data = filter_close_receptions(CDOG_data)
-    if np.isnan(initial_offset):
+    if initial_offset is None:
         offset = find_int_offset(
             offset_data, GPS_data, times_guess, transponder_coordinates, esv
         )
@@ -158,6 +168,121 @@ def initial_bias_geiger(
         transponder_coordinates,
         esv,
     )
+    return estimate, offset
+
+
+@njit(cache=True, fastmath=True)
+def misfit_rms(
+    estimate,
+    offset,
+    CDOG_data,
+    GPS_data,
+    transponder_coordinates,
+    dz_array,
+    angle_array,
+    esv_matrix,
+    real_data,
+):
+    """RMS travel-time misfit (s) of the final fit at ``offset``."""
+    result = final_bias_geiger(
+        estimate[:3],
+        CDOG_data,
+        GPS_data,
+        transponder_coordinates,
+        offset,
+        estimate[4],
+        estimate[3],
+        dz_array,
+        angle_array,
+        esv_matrix,
+        real_data,
+    )
+    misfit = result[1] - result[2]
+    if len(misfit) < 5:
+        return np.inf
+    return np.sqrt(np.mean(misfit**2))
+
+
+@njit(cache=True, fastmath=True)
+def initial_bias_geiger(
+    guess,
+    CDOG_data,
+    GPS_data,
+    transponder_coordinates,
+    dz_array,
+    angle_array,
+    esv_matrix,
+    real_data=False,
+    initial_offset=None,
+):
+    """Initial inversion including time and ESV bias parameters.
+
+    Returns ``(estimate, offset)`` with ``estimate = [x, y, z, time_bias, esv_bias]``.
+    The clock offset of Eq. 6 is ``offset - time_bias``.
+
+    With ``initial_offset`` the alignment is searched within 0.5 s of it. Without
+    one, the integer second picked by the circular-variance score at ``guess`` is
+    biased by about the position error divided by the vessel speed, so it is
+    re-selected with the converged fit: shifts of up to
+    ``INT_OFFSET_SHIFT_SECONDS`` are refitted around the best offset until none
+    lowers the misfit RMS.
+    """
+    estimate, offset = _geiger_at_offset(
+        guess,
+        CDOG_data,
+        GPS_data,
+        transponder_coordinates,
+        dz_array,
+        angle_array,
+        esv_matrix,
+        real_data,
+        initial_offset,
+    )
+    if initial_offset is not None:
+        return estimate, offset
+
+    best_rms = misfit_rms(
+        estimate,
+        offset,
+        CDOG_data,
+        GPS_data,
+        transponder_coordinates,
+        dz_array,
+        angle_array,
+        esv_matrix,
+        real_data,
+    )
+    for _ in range(MAX_INT_OFFSET_PASSES):
+        center_estimate, center_offset = estimate, offset
+        for shift in range(-INT_OFFSET_SHIFT_SECONDS, INT_OFFSET_SHIFT_SECONDS + 1):
+            if shift == 0:
+                continue
+            candidate, candidate_offset = _geiger_at_offset(
+                center_estimate[:3],
+                CDOG_data,
+                GPS_data,
+                transponder_coordinates,
+                dz_array,
+                angle_array,
+                esv_matrix,
+                real_data,
+                center_offset + shift,
+            )
+            rms = misfit_rms(
+                candidate,
+                candidate_offset,
+                CDOG_data,
+                GPS_data,
+                transponder_coordinates,
+                dz_array,
+                angle_array,
+                esv_matrix,
+                real_data,
+            )
+            if rms < best_rms:
+                best_rms, estimate, offset = rms, candidate, candidate_offset
+        if offset == center_offset:
+            break
     return estimate, offset
 
 
