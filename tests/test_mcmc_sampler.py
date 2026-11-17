@@ -316,3 +316,96 @@ def test_residual_jacobian_time_bias_column_is_the_range_scale():
 
     time_bias_column = jacobian[:, model["layout"]["time_bias"].start]
     np.testing.assert_allclose(time_bias_column, ms.RANGE_CM_PER_S, rtol=1e-6)
+
+
+def test_ar1_white_likelihood_matches_dense_gaussian():
+    # Two segments ([0:4] and [4:6]); AR(1) sd 3 cm, phi 0.7, white-noise sd 1.5 cm.
+    residuals = np.array([1.0, 2.5, -0.5, 0.8, 3.0, 1.0])
+    segment_start = np.array([True, False, False, False, True, False])
+    problem = {"segment_start": segment_start, "pair_dog": np.zeros(6, dtype=np.int64)}
+    sigma, phi, white = np.array([3.0]), np.array([0.7]), np.array([1.5])
+    cov = np.zeros((6, 6))
+    for block in (range(0, 4), range(4, 6)):
+        for i in block:
+            for k in block:
+                cov[i, k] = sigma[0] ** 2 * phi[0] ** abs(i - k)
+    cov += white[0] ** 2 * np.eye(6)
+    expected = -0.5 * (
+        np.linalg.slogdet(cov)[1] + residuals @ np.linalg.solve(cov, residuals)
+    )
+
+    whitened, innovation_sd = ms.whiten_residuals(residuals, problem, sigma, phi, white)
+    value = -0.5 * np.dot(whitened, whitened) - np.sum(np.log(innovation_sd))
+
+    assert value == pytest.approx(expected, rel=1e-12)
+
+
+def test_ar1_white_reduces_to_ar1_and_to_iid():
+    rng = np.random.default_rng(3)
+    residuals = rng.normal(0.0, 10.0, 40)
+    pair_dog = np.repeat([0, 1], 20).astype(np.int64)
+    segment_start = np.zeros(40, dtype=bool)
+    segment_start[[0, 12, 20]] = True
+    problem = {"segment_start": segment_start, "pair_dog": pair_dog}
+    sigma, phi = np.array([8.0, 12.0]), np.array([0.6, 0.9])
+
+    def loglike(w, sd):
+        return -0.5 * np.dot(w, w) - np.sum(np.log(sd))
+
+    no_white = loglike(*ms.whiten_residuals(residuals, problem, sigma, phi, 0 * sigma))
+    ar1 = ms.ar1_log_likelihood(residuals, segment_start, pair_dog, sigma, phi)
+    assert no_white == pytest.approx(ar1, rel=1e-12)
+
+    white = np.array([3.0, 4.0])
+    no_phi = loglike(*ms.whiten_residuals(residuals, problem, sigma, 0 * phi, white))
+    total_sd = np.sqrt(sigma**2 + white**2)[pair_dog]
+    iid = -0.5 * np.sum((residuals / total_sd) ** 2) - np.sum(np.log(total_sd))
+    assert no_phi == pytest.approx(iid, rel=1e-12)
+
+
+def test_ar1_white_and_split_variants_leave_older_runs_unchanged():
+    for variant in ("iid_fixed", "iid", "ar1", "ar1_drift"):
+        assert "prior_log_sigma_white_center" not in ms.run_config(variant)
+        assert ms.run_config(variant)["num_esv_splits"] == 4
+
+    layout, names = ms.parameter_layout(ms.run_config("ar1_white_splits8"))
+    assert layout["esv_bias"].stop - layout["esv_bias"].start == 3 * 8
+    assert names[layout["log_sigma_white"]][0] == "log_sigma_white_cm_DOG1"
+    assert ms.run_config("ar1_splits16")["n_samples"] == 400000
+
+
+def test_ar1_white_chain_runs_and_resumes(tmp_path):
+    config, problem = synthetic_problem()
+    config = {**config, **ms.RUN_VARIANTS["ar1_white"], "num_esv_splits": 1}
+    ms.run_chain(0, ms.build_model(config), problem, tmp_path / "full.npz")
+    for stop_at in (35, None):
+        ms.run_chain(
+            0,
+            ms.build_model(config),
+            problem,
+            tmp_path / "resumed.npz",
+            stop_at=stop_at,
+        )
+    full = np.load(tmp_path / "full.npz")
+    resumed = np.load(tmp_path / "resumed.npz")
+
+    assert full["sigma_white_cm"].shape == (30, 1)
+    assert np.all(np.isfinite(full["logpost"]))
+    np.testing.assert_array_equal(full["theta_samples"], resumed["theta_samples"])
+
+
+def test_atanh_phi_prior_is_uniform_in_phi():
+    model = ms.build_model(ms.run_config("ar1_white"))
+    index = model["layout"]["atanh_phi"].start
+    theta = np.where(np.isfinite(model["prior_center"]), model["prior_center"], 0.0)
+
+    def log_prior_at(phi):
+        moved = theta.copy()
+        moved[index] = np.arctanh(phi)
+        return ms.log_prior(moved, model)
+
+    # Density in atanh(phi) = uniform density in phi times d phi / d atanh(phi).
+    assert log_prior_at(0.99) - log_prior_at(0.5) == pytest.approx(
+        np.log(1 - 0.99**2) - np.log(1 - 0.5**2)
+    )
+    assert log_prior_at(0.99995) == -np.inf

@@ -143,6 +143,14 @@ def posterior_summary(theta, logpost, model, offsets, CDOG_reference):
         if "log_sigma" in layout:
             sigma = np.exp(theta[:, layout["log_sigma"].start + j])
             rows.append(percentile_row(f"DOG{dog}_c_sigma", "cm", sigma, sigma[best]))
+        if "atanh_phi" in layout:
+            phi = np.tanh(theta[:, layout["atanh_phi"].start + j])
+            rows.append(percentile_row(f"DOG{dog}_phi", "", phi, phi[best]))
+        if "log_sigma_white" in layout:
+            white = np.exp(theta[:, layout["log_sigma_white"].start + j])
+            rows.append(
+                percentile_row(f"DOG{dog}_c_sigma_white", "cm", white, white[best])
+            )
         aug = (
             theta[
                 :,
@@ -170,11 +178,13 @@ def table1_markdown(rows, model, run_name):
 
     has_drift = "drift_rate" in model["layout"]
     has_sigma = "log_sigma" in model["layout"]
-    has_phi = "phi" in model["layout"]
+    has_phi = "phi" in model["layout"] or "atanh_phi" in model["layout"]
+    has_white = "log_sigma_white" in model["layout"]
     header = ["DOG", "xR (m)", "lat, lon (deg), height (m)", "δt (s)", "δ̄c (m/s)"]
     header += ["drift (ns/s)"] if has_drift else []
-    header += ["cσε (cm)"] if has_sigma else []
+    header += ["cσε (cm)" if not has_white else "cσ AR(1) (cm)"] if has_sigma else []
     header += ["φ"] if has_phi else []
+    header += ["cσ white (cm)"] if has_white else []
     lines = [
         f"Posterior mean ± sd, run `{run_name}`.",
         "",
@@ -201,6 +211,8 @@ def table1_markdown(rows, model, run_name):
             cells.append(fmt(f"DOG{dog}_c_sigma", 2))
         if has_phi:
             cells.append(fmt(f"DOG{dog}_phi", 3))
+        if has_white:
+            cells.append(fmt(f"DOG{dog}_c_sigma_white", 2))
         lines.append("| " + " | ".join(cells) + " |")
     lever = ", ".join(fmt(f"lever_{a}", 3) for a in "xyz")
     lines.append("| Joint p (m) | " + f"[{lever}]" + " |" * (len(header) - 1))
@@ -284,17 +296,25 @@ def linearized_comparison(theta, logpost, model, problem, offsets, CDOG_referenc
 
     Returns standard-deviation rows, correlation rows for the pairs discussed in
     Sec. 6.2, and the condition numbers. The formal covariance has no prior;
-    "iid" weights residuals by the MAP sigma of each DOG, "ar1" also whitens
-    them with the MAP phi (equal to "iid" when phi is not sampled).
+    "iid" weights residuals by the MAP marginal sd of each DOG; "model" whitens
+    them with the run's own noise model at the MAP (AR(1), or AR(1) plus white
+    noise; equal to "iid" for the iid modes).
     """
     best = int(np.argmax(logpost))
     theta_map = theta[best]
     n_geo = model["geometric_end"]
     jacobian = ms.residual_jacobian(theta_map, model, problem)
     sigma, phi = ms.noise_parameters(theta_map, model)
-    args = (problem["segment_start"], problem["pair_dog"], sigma)
+    sigma_white = ms.white_noise_sd(theta_map, model)
+    marginal_sd = sigma if sigma_white is None else np.sqrt(sigma**2 + sigma_white**2)
 
-    J_iid, _ = ms.whiten_ar1(jacobian, *args, np.zeros_like(phi))
+    J_iid, _ = ms.whiten_ar1(
+        jacobian,
+        problem["segment_start"],
+        problem["pair_dog"],
+        marginal_sd,
+        np.zeros_like(phi),
+    )
     normal_matrix = J_iid.T @ J_iid
     scaling = 1.0 / np.sqrt(np.diag(normal_matrix))
     condition = {
@@ -303,10 +323,10 @@ def linearized_comparison(theta, logpost, model, problem, offsets, CDOG_referenc
             normal_matrix * np.outer(scaling, scaling)
         ),
     }
-    J_ar1, _ = ms.whiten_ar1(jacobian, *args, phi)
+    J_model, _ = ms.whiten_residuals(jacobian, problem, sigma, phi, sigma_white)
     formal = {
         "iid": np.linalg.inv(normal_matrix),
-        "ar1": np.linalg.inv(J_ar1.T @ J_ar1),
+        "model": np.linalg.inv(J_model.T @ J_model),
     }
 
     q_names, units, A, _ = reported_quantities(model, offsets, CDOG_reference)
@@ -396,11 +416,11 @@ def summarize_run(run_name, linearized=True):
             f"cond(J^T W J): {condition['cond_JTWJ_raw_units']:.3g} raw units, "
             f"{condition['cond_JTWJ_unit_columns']:.3g} with unit columns"
         )
-        print("Correlations: posterior / formal iid / formal AR(1)")
+        print("Correlations: posterior / formal iid / formal (run's noise model)")
         for row in correlation_rows:
             print(
                 f"  {row['pair']:45s} {row['posterior']:+.3f} "
-                f"{row['formal_iid']:+.3f} {row['formal_ar1']:+.3f}"
+                f"{row['formal_iid']:+.3f} {row['formal_model']:+.3f}"
             )
     print(f"wrote {out_dir}")
 

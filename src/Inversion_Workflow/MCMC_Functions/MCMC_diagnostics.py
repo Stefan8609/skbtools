@@ -69,11 +69,16 @@ def pooled_run(run_name):
         "drift_rate",
         "sigma_cm",
         "phi",
+        "sigma_white_cm",
         "loglike",
         "logpost",
         "theta_samples",
     )
-    pooled = {key: np.concatenate([chain[key] for chain in chains]) for key in per_draw}
+    pooled = {
+        key: np.concatenate([chain[key] for chain in chains])
+        for key in per_draw
+        if key in chains[0]  # sigma_white_cm exists only for "ar1_white" runs
+    }
     for key in (
         "param_names",
         "prior_center",

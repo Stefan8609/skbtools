@@ -1,7 +1,7 @@
 """Vertical and clock posteriors of the Bermuda MCMC under different noise models.
 
-Overlays the marginal posteriors of runs with different likelihoods (e.g. iid,
-AR(1), AR(1) + drift) for the vertical lever arm and, per DOG, the up
+Compares runs with different noise models (iid, AR(1), AR(1) + white noise,
+drift) and numbers of ESV splits, for the vertical lever arm and, per DOG, the up
 coordinate (relative to the submitted Table 1 position), the Eq. 6 clock offset
 dt (relative to the alignment offset) and the mean ESV bias. When these move
 between models by more than their posterior widths, the widths understate the
@@ -93,14 +93,74 @@ def noise_model_comparison(runs, save=True, bins=60):
     return fig
 
 
+def model_summary_plot(runs, save=True):
+    """Posterior mean +- sd of each quantity across runs, one panel per quantity.
+
+    Readable for many runs (e.g. the noise-model x ESV-split grid). runs maps run
+    names to labels, in plotting order.
+    """
+    results = {name: run_quantities(name) for name in runs}
+    dogs, offsets, _ = next(iter(results.values()))
+    panels = [("lever_z", "lever z (m)", 1.0, 0.0)] + [
+        (
+            template.format(dog=dog),
+            f"DOG {dog}: {label}",
+            scale,
+            offsets[j] if relative else 0.0,
+        )
+        for template, label, scale, relative in ROWS
+        for j, dog in enumerate(dogs)
+    ]
+    n_cols = len(dogs)
+    n_rows = -(-len(panels) // n_cols)
+    fig, axes = plt.subplots(
+        n_rows,
+        n_cols,
+        figsize=(4.2 * n_cols, 0.4 * len(runs) * n_rows + 2.0),
+        squeeze=False,
+    )
+    positions = range(len(runs))
+    for ax, (key, label, scale, offset) in zip(axes.ravel(), panels):
+        for y, name in zip(positions, runs):
+            draws = (results[name][2][key] - offset) * scale
+            ax.errorbar(
+                draws.mean(), y, xerr=draws.std(ddof=1), fmt="o", ms=4, capsize=3
+            )
+        ax.set_yticks(list(positions))
+        ax.set_yticklabels(list(runs.values()), fontsize=7)
+        ax.invert_yaxis()
+        ax.set_xlabel(label, fontsize=8)
+        ax.grid(axis="x", alpha=0.3)
+    for ax in axes.ravel()[len(panels) :]:
+        ax.axis("off")
+    fig.tight_layout()
+    if save:
+        save_plot(fig, func_name="noise_model_summary", subdir="Figs/MCMC")
+    return fig
+
+
 if __name__ == "__main__":
-    # Run folder -> legend label. Replace iid_local with the cluster iid run once
-    # it exists (iid_local is the 2-chain, 20k-iteration smoke run).
-    RUNS = {
-        "iid_local": "iid (smoke run)",
+    # Run folder -> label, in plotting order. Missing runs must be removed first.
+    # Overlaid histograms for a few runs; the summary plot for the full grid of
+    # noise models (iid, AR(1), AR(1) + white noise) and ESV splits per DOG.
+    HISTOGRAM_RUNS = {
+        "iid": "iid",
         "ar1": "AR(1)",
-        "ar1_drift": "AR(1) + drift",
+        "ar1_white": "AR(1) + white",
+    }
+    SUMMARY_RUNS = {
+        "iid": "iid, 4 splits",
+        "ar1_splits1": "AR(1), 1 split",
+        "ar1": "AR(1), 4 splits",
+        "ar1_splits8": "AR(1), 8 splits",
+        "ar1_splits16": "AR(1), 16 splits",
+        "ar1_drift": "AR(1) + drift, 4 splits",
+        "ar1_white_splits1": "AR(1) + white, 1 split",
+        "ar1_white": "AR(1) + white, 4 splits",
+        "ar1_white_splits8": "AR(1) + white, 8 splits",
+        "ar1_white_splits16": "AR(1) + white, 16 splits",
     }
 
-    noise_model_comparison(RUNS)
+    noise_model_comparison(HISTOGRAM_RUNS)
+    model_summary_plot(SUMMARY_RUNS)
     plt.show()

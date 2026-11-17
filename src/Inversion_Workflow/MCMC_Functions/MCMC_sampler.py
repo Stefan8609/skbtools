@@ -8,8 +8,15 @@ Parameters, in the order of the sampled vector ``theta``:
   block of GPS epochs (blocks as in ``np.array_split``).
 - ``time_bias`` (n_dogs): internal clock correction, s (see sign convention below).
 - ``drift_rate`` (n_dogs, optional): clock drift, s/s, Eq. 6 convention.
-- ``log_sigma`` (n_dogs, modes "iid" and "ar1"): log of the residual sd in cm.
-- ``phi`` (n_dogs, mode "ar1" unless fixed): lag-one residual autocorrelation.
+- ``log_sigma`` (n_dogs, modes "iid", "ar1", "ar1_white"): log of the residual sd
+  in cm; in "ar1_white" the sd of the slowly varying AR(1) component.
+- ``phi`` (n_dogs, modes "ar1" and "ar1_white" unless fixed): lag-one
+  autocorrelation of the AR(1) component.
+- ``log_sigma_white`` (n_dogs, mode "ar1_white"): log of the white-noise sd in cm.
+- ``atanh_phi`` (n_dogs, mode "ar1_white" unless phi is fixed): phi is sampled as
+  atanh(phi). Its posterior sits close to 1, where log sigma depends on phi
+  along a curve that a random walk follows poorly; in atanh(phi) that relation
+  is nearly linear. The prior on phi itself stays uniform (Jacobian term).
 
 Time-bias sign convention. The code models the observed travel time of a pair as
 ``T_obs = (t_DOG - offset) - t_GPS + time_bias``, so ``time_bias`` is added to the
@@ -56,7 +63,7 @@ from bermuda_data import PROJECT_ROOT, gps_data_path, gps_output_path
 from geometry.Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 
 RANGE_CM_PER_S = 1515.0 * 100.0
-LIKELIHOOD_MODES = ("iid_fixed", "iid", "ar1")
+LIKELIHOOD_MODES = ("iid_fixed", "iid", "ar1", "ar1_white")
 
 # Lever-arm prior, vessel body frame, metres from GPS1. The horizontal center is
 # the moon-pool center from the R/V Atlantic Explorer General Arrangement drawings
@@ -257,11 +264,36 @@ def compute_log_likelihood(
     )
 
 
+# AR(1) + white noise: residuals are a slowly varying AR(1) component plus
+# independent ping-to-ping noise. The white-noise sd gets the same weak prior as
+# sigma. phi may come closer to 1 because the slow component decorrelates over
+# minutes (hundreds of pairs). phi near 1 mixes slowly, so burn-in is longer.
+AR1_WHITE = {
+    "likelihood": "ar1_white",
+    "prior_log_sigma_white_center": float(np.log(20.0)),
+    "prior_log_sigma_white_sd": 1.0,
+    "prior_phi_bounds": [-0.9999, 0.9999],
+    "n_burn": 40000,
+}
+# 16 ESV splits per DOG roughly double the dimension: burn in and sample longer.
+# With white noise as well, the 20k-iteration smoke runs had not converged.
+LONG_RUN = {"n_burn": 40000, "n_samples": 400000}
+WHITE_LONG_RUN = {"n_burn": 80000, "n_samples": 600000}
+
 RUN_VARIANTS = {
     "iid_fixed": {"likelihood": "iid_fixed"},
     "iid": {"likelihood": "iid"},
     "ar1": {"likelihood": "ar1"},
     "ar1_drift": {"likelihood": "ar1", "clock_drift": True},
+    # ESV-split test with AR(1) noise (ar1 itself has 4 splits).
+    "ar1_splits1": {"likelihood": "ar1", "num_esv_splits": 1},
+    "ar1_splits8": {"likelihood": "ar1", "num_esv_splits": 8},
+    "ar1_splits16": {"likelihood": "ar1", "num_esv_splits": 16, **LONG_RUN},
+    # AR(1) + white noise, alone (4 splits) and with the ESV-split test.
+    "ar1_white": AR1_WHITE,
+    "ar1_white_splits1": {**AR1_WHITE, "num_esv_splits": 1},
+    "ar1_white_splits8": {**AR1_WHITE, "num_esv_splits": 8},
+    "ar1_white_splits16": {**AR1_WHITE, "num_esv_splits": 16, **WHITE_LONG_RUN},
 }
 
 
@@ -526,6 +558,12 @@ def parameter_layout(config):
         blocks.append(("log_sigma", [f"log_sigma_cm_DOG{dog}" for dog in dogs]))
     if config["likelihood"] == "ar1" and not config["fix_phi"]:
         blocks.append(("phi", [f"phi_DOG{dog}" for dog in dogs]))
+    if config["likelihood"] == "ar1_white":
+        if not config["fix_phi"]:
+            blocks.append(("atanh_phi", [f"atanh_phi_DOG{dog}" for dog in dogs]))
+        blocks.append(
+            ("log_sigma_white", [f"log_sigma_white_cm_DOG{dog}" for dog in dogs])
+        )
 
     layout = {}
     names = []
@@ -571,6 +609,9 @@ def build_model(config):
     if "log_sigma" in layout:
         center[layout["log_sigma"]] = config["prior_log_sigma_center"]
         sd[layout["log_sigma"]] = config["prior_log_sigma_sd"]
+    if "log_sigma_white" in layout:
+        center[layout["log_sigma_white"]] = config["prior_log_sigma_white_center"]
+        sd[layout["log_sigma_white"]] = config["prior_log_sigma_white_sd"]
     if not np.all(sd[np.isfinite(sd)] > 0):
         raise ValueError("Prior sds must be positive")
 
@@ -580,6 +621,8 @@ def build_model(config):
     start[layout["esv_bias"]] = np.repeat(config["start_esv_bias"], num_splits)
     if "log_sigma" in layout:
         start[layout["log_sigma"]] = config["prior_log_sigma_center"]
+    if "log_sigma_white" in layout:
+        start[layout["log_sigma_white"]] = config["prior_log_sigma_white_center"]
 
     # Finite-difference steps for the residual Jacobian of the geometric block.
     fd_step = np.zeros(n_params)
@@ -618,8 +661,10 @@ def unpack(theta, model):
         "esv_bias": theta[layout["esv_bias"]].reshape(num_dogs, model["num_splits"]),
         "time_bias": theta[layout["time_bias"]],
     }
-    for block in ("drift_rate", "log_sigma", "phi"):
+    for block in ("drift_rate", "log_sigma", "phi", "log_sigma_white"):
         params[block] = theta[layout[block]] if block in layout else np.zeros(num_dogs)
+    if "atanh_phi" in layout:
+        params["phi"] = np.tanh(theta[layout["atanh_phi"]])
     return params
 
 
@@ -671,6 +716,70 @@ def ar1_log_likelihood(residuals, segment_start, pair_dog, sigma_cm, phi):
     return -0.5 * np.dot(whitened, whitened) - np.sum(np.log(innovation_sd))
 
 
+@njit(cache=True)
+def kalman_whiten(x, segment_start, pair_dog, sigma_cm, phi, sigma_white_cm):
+    """Standardized innovations of an AR(1) plus white-noise model, per column.
+
+    Each residual is ``e_t = a_t + w_t``: ``a_t`` is AR(1) with lag-one
+    correlation phi and marginal sd sigma, restarting at each segment start, and
+    ``w_t`` is white noise with sd sigma_white. A scalar Kalman filter predicts
+    each residual from the previous ones; its gain does not depend on the data,
+    so the same linear map whitens residuals and Jacobian columns alike.
+
+    x is (n, k), time-ordered within each DOG. Returns the innovations divided by
+    their sd, (n, k), and the innovation variances (n,), in cm^2. With
+    sigma_white = 0 this is whiten_ar1; with phi = 0 it is iid with variance
+    sigma^2 + sigma_white^2.
+    """
+    n, k = x.shape
+    whitened = np.empty((n, k))
+    innovation_var = np.empty(n)
+    state_mean = np.zeros(k)
+    state_var = 0.0
+    for t in range(n):
+        j = pair_dog[t]
+        slow_var = sigma_cm[j] * sigma_cm[j]
+        if segment_start[t]:
+            state_mean[:] = 0.0
+            state_var = slow_var
+        else:
+            state_mean *= phi[j]
+            state_var = phi[j] * phi[j] * state_var + slow_var * (1.0 - phi[j] * phi[j])
+        total_var = state_var + sigma_white_cm[j] * sigma_white_cm[j]
+        gain = state_var / total_var
+        scale = np.sqrt(total_var)
+        for c in range(k):
+            innovation = x[t, c] - state_mean[c]
+            whitened[t, c] = innovation / scale
+            state_mean[c] += gain * innovation
+        state_var -= gain * state_var
+        innovation_var[t] = total_var
+    return whitened, innovation_var
+
+
+def whiten_residuals(x, problem, sigma_cm, phi, sigma_white_cm=None):
+    """Whiten residuals (n,) or Jacobian columns (n, k) under the noise model.
+
+    AR(1) (``whiten_ar1``) when sigma_white_cm is None, otherwise AR(1) plus white
+    noise (``kalman_whiten``). Returns the whitened array and the innovation sds.
+    """
+    segment_start, pair_dog = problem["segment_start"], problem["pair_dog"]
+    if sigma_white_cm is None:
+        return whiten_ar1(x, segment_start, pair_dog, sigma_cm, phi)
+    columns = np.ascontiguousarray(x.reshape(x.shape[0], -1))
+    whitened, innovation_var = kalman_whiten(
+        columns, segment_start, pair_dog, sigma_cm, phi, sigma_white_cm
+    )
+    return whitened.reshape(x.shape), np.sqrt(innovation_var)
+
+
+def white_noise_sd(theta, model):
+    """White-noise sd (cm) per DOG in mode "ar1_white", otherwise None."""
+    if "log_sigma_white" not in model["layout"]:
+        return None
+    return np.exp(theta[model["layout"]["log_sigma_white"]])
+
+
 def noise_parameters(theta, model):
     """Residual sd (cm) and phi per DOG used by the likelihood at theta."""
     params = unpack(theta, model)
@@ -679,7 +788,7 @@ def noise_parameters(theta, model):
         sigma = np.full(model["num_dogs"], float(config["fixed_sigma_cm"]))
     else:
         sigma = np.exp(params["log_sigma"])
-    if config["likelihood"] != "ar1":
+    if config["likelihood"] not in ("ar1", "ar1_white"):
         phi = np.zeros(model["num_dogs"])
     elif config["fix_phi"]:
         phi = model["fixed_phi"]
@@ -690,14 +799,22 @@ def noise_parameters(theta, model):
 
 def log_prior(theta, model):
     """Log prior density up to a constant; -inf when phi is out of bounds."""
-    if "phi" in model["layout"]:
-        low, high = model["config"]["prior_phi_bounds"]
-        phi = theta[model["layout"]["phi"]]
-        if np.any(phi <= low) or np.any(phi >= high):
-            return -np.inf
+    layout = model["layout"]
+    low, high = model["config"]["prior_phi_bounds"]
+    jacobian = 0.0
+    if "phi" in layout:
+        phi = theta[layout["phi"]]
+    elif "atanh_phi" in layout:
+        phi = np.tanh(theta[layout["atanh_phi"]])
+        # Uniform prior on phi, expressed in atanh(phi): d phi / d atanh = 1 - phi^2.
+        jacobian = np.sum(np.log1p(-phi * phi))
+    else:
+        phi = None
+    if phi is not None and (np.any(phi <= low) or np.any(phi >= high)):
+        return -np.inf
     g = model["gaussian"]
     z = (theta[g] - model["prior_center"][g]) / model["prior_sd"][g]
-    return -0.5 * np.dot(z, z)
+    return -0.5 * np.dot(z, z) + jacobian
 
 
 def log_likelihood(theta, model, problem):
@@ -721,6 +838,12 @@ def log_likelihood(theta, model, problem):
         )
         return value
     sigma, phi = noise_parameters(theta, model)
+    sigma_white = white_noise_sd(theta, model)
+    if sigma_white is not None:
+        whitened, innovation_sd = whiten_residuals(
+            residuals_cm(theta, model, problem), problem, sigma, phi, sigma_white
+        )
+        return -0.5 * np.dot(whitened, whitened) - np.sum(np.log(innovation_sd))
     return ar1_log_likelihood(
         residuals_cm(theta, model, problem),
         problem["segment_start"],
@@ -753,6 +876,31 @@ def residual_noise_estimates(residuals, problem):
         sigma[j] = np.sqrt(np.mean(r * r))
         phi[j] = np.sum(r[later] * r[later - 1]) / np.sum(r[later - 1] ** 2)
     return sigma, phi
+
+
+def ar1_white_noise_estimates(residuals, problem, phi_high):
+    """Per-DOG slow sd (cm), phi and white-noise sd (cm) from residual moments.
+
+    Within segments, the AR(1) plus white-noise model has autocovariances
+    c0 = s^2 + w^2, c1 = phi s^2 and c2 = phi^2 s^2 at lags of 0, 1 and 2 pairs,
+    so phi = c2 / c1, s^2 = c1 / phi and w^2 = c0 - s^2. The values only start
+    the mode search; they are kept inside the prior support.
+    """
+    num_dogs = len(problem["pair_slices"])
+    sigma, phi, sigma_white = np.empty(num_dogs), np.empty(num_dogs), np.empty(num_dogs)
+    start = problem["segment_start"]
+    for j, sel in enumerate(problem["pair_slices"]):
+        r = residuals[sel]
+        lag1 = np.flatnonzero(~start[sel])
+        lag2 = lag1[(lag1 >= 2) & ~start[sel][np.maximum(lag1 - 1, 0)]]
+        c0 = np.mean(r * r)
+        c1 = np.mean(r[lag1] * r[lag1 - 1])
+        c2 = np.mean(r[lag2] * r[lag2 - 2])
+        phi[j] = np.clip(c2 / c1, 0.0, phi_high - 1e-6) if c1 > 0 else 0.0
+        slow_var = min(c1 / phi[j], 0.99 * c0) if phi[j] > 0 else 0.5 * c0
+        sigma[j] = np.sqrt(slow_var)
+        sigma_white[j] = np.sqrt(max(c0 - slow_var, 0.01 * c0))
+    return sigma, phi, sigma_white
 
 
 def residual_jacobian(theta, model, problem):
@@ -794,41 +942,40 @@ def laplace_approximation(model, problem, max_iterations=8):
     theta = model["start_theta"].copy()
 
     def noise_for_whitening(residuals):
+        if mode == "ar1_white":
+            return ar1_white_noise_estimates(residuals, problem, high)
         sigma, phi = residual_noise_estimates(residuals, problem)
         if mode == "iid_fixed":
             sigma = np.full(model["num_dogs"], float(config["fixed_sigma_cm"]))
         if mode != "ar1":
             phi = np.zeros(model["num_dogs"])
-        return sigma, np.clip(phi, low + 1e-6, high - 1e-6)
+        return sigma, np.clip(phi, low + 1e-6, high - 1e-6), None
 
-    def objective(theta_trial, sigma, phi):
+    def objective(theta_trial, noise):
         residuals = residuals_cm(theta_trial, model, problem)
-        w, _ = whiten_ar1(
-            residuals, problem["segment_start"], problem["pair_dog"], sigma, phi
-        )
+        w, _ = whiten_residuals(residuals, problem, *noise)
         z = theta_trial[geo] - center
         return 0.5 * np.dot(w, w) + 0.5 * np.dot(precision * z, z)
 
     def whitened_system(theta_point):
         residuals = residuals_cm(theta_point, model, problem)
-        sigma, phi = noise_for_whitening(residuals)
+        noise = noise_for_whitening(residuals)
         jacobian = residual_jacobian(theta_point, model, problem)
-        args = (problem["segment_start"], problem["pair_dog"], sigma, phi)
-        w, _ = whiten_ar1(residuals, *args)
-        J_w, _ = whiten_ar1(jacobian, *args)
+        w, _ = whiten_residuals(residuals, problem, *noise)
+        J_w, _ = whiten_residuals(jacobian, problem, *noise)
         hessian = J_w.T @ J_w + np.diag(precision)
         gradient = J_w.T @ w + precision * (theta_point[geo] - center)
-        return hessian, gradient, sigma, phi
+        return hessian, gradient, noise
 
     for iteration in range(max_iterations):
-        hessian, gradient, sigma, phi = whitened_system(theta)
+        hessian, gradient, noise = whitened_system(theta)
         step = -np.linalg.solve(hessian, gradient)
-        current = objective(theta, sigma, phi)
+        current = objective(theta, noise)
         accepted = False
         for fraction in (1.0, 0.5, 0.25, 0.125, 0.0625):
             trial = theta.copy()
             trial[geo] += fraction * step
-            if objective(trial, sigma, phi) < current:
+            if objective(trial, noise) < current:
                 theta = trial
                 accepted = True
                 break
@@ -841,7 +988,7 @@ def laplace_approximation(model, problem, max_iterations=8):
         if not accepted or newton_decrement < 1e-3:
             break
 
-    hessian, _, sigma, phi = whitened_system(theta)
+    hessian, _, (sigma, phi, sigma_white) = whitened_system(theta)
     n_params = theta.shape[0]
     cov = np.zeros((n_params, n_params))
     cov[geo, geo] = np.linalg.inv(hessian)
@@ -854,6 +1001,17 @@ def laplace_approximation(model, problem, max_iterations=8):
     if "phi" in layout:
         theta[layout["phi"]] = phi
         cov[layout["phi"], layout["phi"]] = np.diag((1.0 - phi**2) / pair_counts)
+    if "atanh_phi" in layout:
+        theta[layout["atanh_phi"]] = np.arctanh(phi)
+        # var(phi) ~ (1 - phi^2) / n, and d atanh(phi) / d phi = 1 / (1 - phi^2).
+        cov[layout["atanh_phi"], layout["atanh_phi"]] = np.diag(
+            1.0 / (pair_counts * (1.0 - phi**2))
+        )
+    if "log_sigma_white" in layout:
+        theta[layout["log_sigma_white"]] = np.log(sigma_white)
+        cov[layout["log_sigma_white"], layout["log_sigma_white"]] = np.diag(
+            1.0 / (2 * pair_counts)
+        )
     return theta, cov, sigma, phi
 
 
@@ -934,6 +1092,8 @@ def derived_outputs(theta_samples, model, problem):
         sigma[i], phi[i] = noise_parameters(theta_samples[i], model)
     out["sigma_cm"] = sigma
     out["phi"] = phi
+    if "log_sigma_white" in layout:
+        out["sigma_white_cm"] = np.exp(theta_samples[:, layout["log_sigma_white"]])
     return out
 
 
@@ -1063,7 +1223,7 @@ def initial_state(
     laplace_theta, laplace_cov, sigma_hat, phi_hat = laplace_approximation(
         model, problem
     )
-    if config["likelihood"] == "ar1" and config["fix_phi"]:
+    if config["likelihood"] in ("ar1", "ar1_white") and config["fix_phi"]:
         model["fixed_phi"] = phi_hat
     print(
         "Mode estimate: sigma_cm",
@@ -1318,6 +1478,12 @@ def warm_up_numba(config):
     """Compile and cache the Numba kernels once, before parallel chains start."""
     model, problem = setup_bermuda({**config, "likelihood": "ar1", "clock_drift": True})
     log_posterior(model["start_theta"], model, problem)
+    white = build_model({**config, **AR1_WHITE})
+    log_posterior(white["start_theta"], white, problem)
+    sigma = np.ones(white["num_dogs"])
+    whiten_residuals(
+        np.ones((problem["pair_dog"].shape[0], 2)), problem, sigma, 0.5 * sigma, sigma
+    )
     fixed = build_model({**config, "likelihood": "iid_fixed", "clock_drift": False})
     log_posterior(fixed["start_theta"], fixed, problem)
     print(

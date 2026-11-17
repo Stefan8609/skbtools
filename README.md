@@ -88,8 +88,13 @@ The Fig. 7 chain (`Output/mcmc_chain_1_22_new_MCMC_long.npz`) was produced by
 
 The MCMC runs one chain per Slurm array task. `SLURM_ARRAY_TASK_ID` sets each
 chain's seed, overdispersed start point and output file, and the environment
-variable `MCMC_RUN` picks a run variant (`iid_fixed`, `iid`, `ar1`, `ar1_drift`;
-see `RUN_VARIANTS` in `MCMC_sampler.py`). Everything else, including priors,
+variable `MCMC_RUN` picks a run variant from `RUN_VARIANTS` in `MCMC_sampler.py`:
+the noise models `iid_fixed`, `iid`, `ar1`, `ar1_drift` and `ar1_white` (AR(1)
+plus white noise), and the ESV-split test `ar1_splits{1,8,16}` and
+`ar1_white_splits{1,8,16}` (the default is 4 splits per DOG). The white-noise
+variants burn in for 40k iterations and the 16-split variants run longer
+(`ar1_white_splits16`: 680k iterations, about 6 h per chain on Adroit).
+Everything else, including priors,
 iteration counts and thinning, is the `CONFIG` block at the top of
 `MCMC_sampler.py`. Edit it before submitting, not while jobs are queued: tasks
 read the file when they start. Each chain records its configuration and git
