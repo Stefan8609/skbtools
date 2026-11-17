@@ -29,6 +29,8 @@ def _evaluate_single_dog(
     angle_array,
     esv_matrix,
     real_data,
+    clock_drift=False,
+    drift_rate=0.0,
 ):
     """
     Run one DOG's final refinement and return updated state + RMSE.
@@ -51,6 +53,8 @@ def _evaluate_single_dog(
         angle_array,
         esv_matrix,
         real_data,
+        clock_drift,
+        drift_rate,
     )
 
     rmse = np.sqrt(np.nanmean((GPS_full - CDOG_full) ** 2))
@@ -72,14 +76,18 @@ def simulated_annealing_bias_joint(
     initial_offset_list,  # shape: (n_dogs,)
     real_data=False,
     z_sample=True,
+    clock_drift=False,
 ):
     """
     Joint simulated annealing:
     - shared lever arm across all DOGs
     - each DOG has its own x_R, time bias, esv bias, and offset
+    - with clock_drift, each DOG also has a drift_rate (s/s, Eq. 6 convention),
+      the sixth column of the returned estimates
     - objective = sum of individual DOG RMSE values
     """
     n_dogs = len(CDOG_data_array)
+    n_params = 6 if clock_drift else 5
 
     # Shared SA state
     best_lever = initial_lever.copy()
@@ -87,9 +95,10 @@ def simulated_annealing_bias_joint(
 
     # Per-DOG state
     inversion_guesses = np.empty((n_dogs, 3))
-    inversion_estimates = np.empty((n_dogs, 5))
+    inversion_estimates = np.empty((n_dogs, n_params))
     time_biases = np.zeros(n_dogs)
     esv_biases = np.zeros(n_dogs)
+    drift_rates = np.zeros(n_dogs)
     offsets = initial_offset_list.copy()
 
     # ----- initial solve for all DOGs at initial lever -----
@@ -108,12 +117,15 @@ def simulated_annealing_bias_joint(
             angle_array,
             esv_matrix,
             real_data,
+            clock_drift=clock_drift,
         )
 
         inversion_estimates[j] = inversion_estimate_j
         inversion_guesses[j] = inversion_estimate_j[:3]
         time_biases[j] = inversion_estimate_j[3]
         esv_biases[j] = inversion_estimate_j[4]
+        if clock_drift:
+            drift_rates[j] = inversion_estimate_j[5]
         offsets[j] = offset_j
 
         if not real_data:
@@ -166,6 +178,7 @@ def simulated_annealing_bias_joint(
     best_inversion_guesses = inversion_guesses.copy()
     best_time_biases = time_biases.copy()
     best_esv_biases = esv_biases.copy()
+    best_drift_rates = drift_rates.copy()
     best_offsets = offsets.copy()
 
     # ----- annealing loop -----
@@ -181,7 +194,7 @@ def simulated_annealing_bias_joint(
 
         candidate_total_rmse = 0.0
         candidate_inversion_guesses = np.empty((n_dogs, 3))
-        candidate_inversion_estimates = np.empty((n_dogs, 5))
+        candidate_inversion_estimates = np.empty((n_dogs, n_params))
         candidate_rmse_list = np.empty(n_dogs)
 
         for j in range(n_dogs):
@@ -204,6 +217,8 @@ def simulated_annealing_bias_joint(
                 angle_array,
                 esv_matrix,
                 real_data,
+                clock_drift,
+                best_drift_rates[j],
             )
 
             candidate_inversion_estimates[j] = inversion_estimate_j
@@ -220,6 +235,8 @@ def simulated_annealing_bias_joint(
             for j in range(n_dogs):
                 best_time_biases[j] = candidate_inversion_estimates[j, 3]
                 best_esv_biases[j] = candidate_inversion_estimates[j, 4]
+                if clock_drift:
+                    best_drift_rates[j] = candidate_inversion_estimates[j, 5]
 
         if k % 10 == 0:
             print("\nIteration", k)
@@ -282,7 +299,7 @@ def simulated_annealing_bias_joint(
 
             candidate_total_rmse = 0.0
             candidate_inversion_guesses = np.empty((n_dogs, 3))
-            candidate_inversion_estimates = np.empty((n_dogs, 5))
+            candidate_inversion_estimates = np.empty((n_dogs, n_params))
 
             for j in range(n_dogs):
                 (
@@ -304,6 +321,8 @@ def simulated_annealing_bias_joint(
                     angle_array,
                     esv_matrix,
                     real_data,
+                    clock_drift,
+                    best_drift_rates[j],
                 )
 
                 candidate_inversion_estimates[j] = inversion_estimate_j
@@ -318,6 +337,8 @@ def simulated_annealing_bias_joint(
                 for j in range(n_dogs):
                     best_time_biases[j] = candidate_inversion_estimates[j, 3]
                     best_esv_biases[j] = candidate_inversion_estimates[j, 4]
+                    if clock_drift:
+                        best_drift_rates[j] = candidate_inversion_estimates[j, 5]
 
         best_lever = best_lever_new
 
@@ -326,7 +347,7 @@ def simulated_annealing_bias_joint(
         GPS_Coordinates, gps1_to_others, best_lever
     )
 
-    final_inversion_estimates = np.empty((n_dogs, 5))
+    final_inversion_estimates = np.empty((n_dogs, n_params))
     final_rmses = np.empty(n_dogs)
 
     for j in range(n_dogs):
@@ -349,6 +370,8 @@ def simulated_annealing_bias_joint(
             angle_array,
             esv_matrix,
             real_data,
+            clock_drift,
+            best_drift_rates[j],
         )
 
         final_inversion_estimates[j] = inversion_estimate_j

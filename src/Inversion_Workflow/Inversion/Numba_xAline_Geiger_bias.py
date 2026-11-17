@@ -41,6 +41,37 @@ def residual_inliers(residuals, sigma=6.0):
     return inliers
 
 
+@njit(cache=True)
+def paired_time_mid(emission_times):
+    """Reference epoch t_mid (s) of the clock drift.
+
+    Half-way between the first and last paired GPS emission times of the DOG, as
+    in the MCMC (``MCMC_sampler``): ``dt(t) = dt0 + drift_rate * (t - t_mid)``.
+    """
+    return 0.5 * (emission_times[0] + emission_times[-1])
+
+
+@njit(cache=True)
+def drift_step(J, residuals, t_from_mid):
+    """Gauss-Newton step for (x, y, z, time_bias, esv_bias, drift_rate).
+
+    ``J`` is the 5-column Jacobian of ``compute_Jacobian_biased``. The residual is
+    ``(T_mod - time_bias + drift_rate * (t - t_mid)) - T_obs`` (internal
+    ``time_bias - drift_rate * (t - t_mid)``), so the drift column is
+    ``+(t - t_mid)``. It is up to ~4e4 s against ~1e-9 s/s, so it is divided by
+    the largest ``|t - t_mid|`` (the solved parameter is then the accumulated clock
+    error at the survey end, s) and the step is a least-squares solve rather than
+    an inverse of ``J.T @ J``.
+    """
+    half_span = np.max(np.abs(t_from_mid))
+    J_drift = np.empty((J.shape[0], 6))
+    J_drift[:, :5] = J
+    J_drift[:, 5] = t_from_mid / half_span
+    delta = np.linalg.lstsq(J_drift, -residuals, rcond=-1.0)[0]
+    delta[5] = delta[5] / half_span
+    return delta
+
+
 # Largest integer-second shift tried per pass when re-selecting the offset.
 INT_OFFSET_SHIFT_SECONDS = 3
 MAX_INT_OFFSET_PASSES = 20
@@ -57,6 +88,7 @@ def _geiger_at_offset(
     esv_matrix,
     real_data,
     initial_offset,
+    clock_drift,
 ):
     """Alignment and Gauss-Newton fit for one starting offset.
 
@@ -69,7 +101,10 @@ def _geiger_at_offset(
     delta = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
     time_bias = 0.0
     esv_bias = 0.0
+    drift_rate = 0.0
     estimate = np.array([guess[0], guess[1], guess[2], time_bias, esv_bias])
+    if clock_drift:
+        estimate = np.append(estimate, drift_rate)
 
     # Initial offset estimate
     if not real_data:
@@ -146,6 +181,12 @@ def _geiger_at_offset(
             offset, 0.2, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
         )
         residuals = (GPS_full - time_bias) - CDOG_full
+        t_from_mid = np.zeros(len(residuals))
+        if clock_drift:
+            # Pairs change between iterations here, so t_mid follows them.
+            emission_times = GPS_clock - GPS_full
+            t_from_mid = emission_times - paired_time_mid(emission_times)
+            residuals = residuals + drift_rate * t_from_mid
         inliers = residual_inliers(residuals)
         J = compute_Jacobian_biased(
             guess,
@@ -153,11 +194,16 @@ def _geiger_at_offset(
             GPS_full[inliers],
             esv_full[inliers],
         )
-        delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ residuals[inliers]
+        if clock_drift:
+            delta = drift_step(J, residuals[inliers], t_from_mid[inliers])
+        else:
+            delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ residuals[inliers]
         estimate = estimate + delta
         guess = estimate[:3]
         time_bias = estimate[3]
         esv_bias = estimate[4]
+        if clock_drift:
+            drift_rate = estimate[5]
         k += 1
     """Refine offset in local region"""
     offset = find_subint_offset(
@@ -182,8 +228,10 @@ def misfit_rms(
     angle_array,
     esv_matrix,
     real_data,
+    clock_drift=False,
 ):
     """RMS travel-time misfit (s) of the final fit at ``offset``."""
+    drift_rate = estimate[5] if clock_drift else 0.0
     result = final_bias_geiger(
         estimate[:3],
         CDOG_data,
@@ -196,6 +244,8 @@ def misfit_rms(
         angle_array,
         esv_matrix,
         real_data,
+        clock_drift,
+        drift_rate,
     )
     misfit = result[1] - result[2]
     if len(misfit) < 5:
@@ -214,11 +264,15 @@ def initial_bias_geiger(
     esv_matrix,
     real_data=False,
     initial_offset=None,
+    clock_drift=False,
 ):
     """Initial inversion including time and ESV bias parameters.
 
     Returns ``(estimate, offset)`` with ``estimate = [x, y, z, time_bias, esv_bias]``.
-    The clock offset of Eq. 6 is ``offset - time_bias``.
+    The clock offset of Eq. 6 is ``offset - time_bias``. With ``clock_drift`` the
+    estimate gets a sixth entry, ``drift_rate`` (s/s, Eq. 6 convention), and
+    ``offset - time_bias`` is dt0, the offset at ``t_mid`` (see
+    ``paired_time_mid``).
 
     With ``initial_offset`` the alignment is searched within 0.5 s of it. Without
     one, the integer second picked by the circular-variance score at ``guess`` is
@@ -237,6 +291,7 @@ def initial_bias_geiger(
         esv_matrix,
         real_data,
         initial_offset,
+        clock_drift,
     )
     if initial_offset is not None:
         return estimate, offset
@@ -251,6 +306,7 @@ def initial_bias_geiger(
         angle_array,
         esv_matrix,
         real_data,
+        clock_drift,
     )
     for _ in range(MAX_INT_OFFSET_PASSES):
         center_estimate, center_offset = estimate, offset
@@ -267,6 +323,7 @@ def initial_bias_geiger(
                 esv_matrix,
                 real_data,
                 center_offset + shift,
+                clock_drift,
             )
             rms = misfit_rms(
                 candidate,
@@ -278,6 +335,7 @@ def initial_bias_geiger(
                 angle_array,
                 esv_matrix,
                 real_data,
+                clock_drift,
             )
             if rms < best_rms:
                 best_rms, estimate, offset = rms, candidate, candidate_offset
@@ -299,12 +357,20 @@ def final_bias_geiger(
     angle_array,
     esv_matrix,
     real_data=False,
+    clock_drift=False,
+    drift_rate=0.0,
 ):
-    """Final bias-aware inversion with fixed offset."""
+    """Final bias-aware inversion with fixed offset.
+
+    With ``clock_drift`` the estimate gets a sixth entry, ``drift_rate`` (s/s, Eq. 6
+    convention), started from ``drift_rate``; t_mid is set by the pairs made here.
+    """
     epsilon = 10**-5
     k = 0
     delta = np.array([1.0, 1.0, 1.0])
     estimate = np.array([guess[0], guess[1], guess[2], time_bias, esv_bias])
+    if clock_drift:
+        estimate = np.append(estimate, drift_rate)
 
     if not real_data:
         times_guess, esv = calculateTimesRayTracing_Bias(
@@ -331,6 +397,12 @@ def final_bias_geiger(
         transponder_coordinates,
         esv,
     )
+    t_mid = 0.0
+    t_from_mid = np.zeros(len(GPS_clock))
+    if clock_drift:
+        emission_times = GPS_clock - GPS_full
+        t_mid = paired_time_mid(emission_times)
+        t_from_mid = emission_times - t_mid
 
     while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
@@ -354,6 +426,8 @@ def final_bias_geiger(
             )
 
         residuals = (GPS_full - time_bias) - CDOG_full
+        if clock_drift:
+            residuals = residuals + drift_rate * t_from_mid
         inliers = residual_inliers(residuals)
         J = compute_Jacobian_biased(
             guess,
@@ -361,11 +435,16 @@ def final_bias_geiger(
             GPS_full[inliers],
             esv[inliers],
         )
-        delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ residuals[inliers]
+        if clock_drift:
+            delta = drift_step(J, residuals[inliers], t_from_mid[inliers])
+        else:
+            delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ residuals[inliers]
         estimate = estimate + delta
         guess = estimate[:3]
         time_bias = estimate[3]
         esv_bias = estimate[4]
+        if clock_drift:
+            drift_rate = estimate[5]
         k += 1
 
     if not real_data:
@@ -379,6 +458,11 @@ def final_bias_geiger(
 
     """Note doing GPS_data - time_bias to include time_bias
        in offset when calculating travel times"""
+    shifted_GPS_data = GPS_data - time_bias
+    if clock_drift:
+        # The drift moves arrivals by ~40 us at most, far inside the 0.05 s gate,
+        # but is included so the returned pairs carry the fitted clock model.
+        shifted_GPS_data = shifted_GPS_data + drift_rate * (GPS_data - t_mid)
     (
         CDOG_clock,
         CDOG_full,
@@ -390,7 +474,7 @@ def final_bias_geiger(
         offset,
         0.05,
         CDOG_data,
-        GPS_data - time_bias,
+        shifted_GPS_data,
         times_guess,
         transponder_coordinates,
         esv,
