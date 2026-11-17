@@ -20,7 +20,7 @@ from plotting.Plot_Modular import time_series_plot, range_residual
 # -------------------------
 # Config
 # -------------------------
-DOG_num = 1
+DOG_num = 4
 simulated_annealing = True
 # Paper I (Table 1, Figs. 5, 6, C12-C15) uses the full trajectory. The leg mask
 # (9-11 h and 12.4-15 h) is a sensitivity test: it lowers c*sigma to ~8 cm but

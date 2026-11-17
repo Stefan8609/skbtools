@@ -10,26 +10,24 @@
 # Submit from the repository root, after the warm-up job (README, "Running on Adroit"):
 #   sbatch --dependency=afterok:<warmup job id> --export=ALL,MCMC_RUN=ar1 slurm/mcmc_array.sh
 #
-# ---- PLACEHOLDERS: fill in for Adroit before submitting --------------------------
-#SBATCH --account=<ACCOUNT>
-#SBATCH --partition=<PARTITION>
-#SBATCH --time=<HH:MM:SS>
-#SBATCH --mem=<MEMORY, e.g. 2G>
-# -----------------------------------------------------------------------------------
+# --time: set from a timing test (about 220k iterations per chain, plus margin).
+#SBATCH --time=12:00:00
+#SBATCH --mem=4G
 #SBATCH --job-name=skb-mcmc
 #SBATCH --array=0-7
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --output=slurm/logs/%x-%A_%a.out
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=sk8609@princeton.edu
+
+module purge
+module load anaconda3/2024.10
+conda activate geodesy
 
 set -euo pipefail
 
-# ---- PLACEHOLDER: environment activation -------------------------------------------
-# module purge
-# module load anaconda3/<VERSION>
-# source "$SLURM_SUBMIT_DIR/.venv/bin/activate"
-# -----------------------------------------------------------------------------------
 
 # One thread per chain: the parallelism is across array tasks.
 export NUMBA_NUM_THREADS=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1

@@ -19,7 +19,7 @@ from plotting.Plot_Modular import (
 # ------------------------------------------------------------
 # Settings
 # ------------------------------------------------------------
-CHAIN_FILE = "mcmc_esv_time_chain.npz"
+CHAIN_FILE = "ar1_drift/chain_00.npz"
 
 # Use 1, 3, or 4.
 # Set to None to plot every DOG present in the chain.
