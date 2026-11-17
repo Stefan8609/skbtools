@@ -13,6 +13,10 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
 from bermuda_data import gps_data_path
 from numba import njit
 
+# Fraction of DOG tags dropped in total (App. B.3: "10-20%").
+MIN_DROP_FRACTION = 0.10
+MAX_DROP_FRACTION = 0.20
+
 
 @njit
 def generateUnaligned(
@@ -36,11 +40,16 @@ def generateUnaligned(
     n : int
         Number of points along the synthetic path.
     time_noise : float
-        Standard deviation of arrival time noise.
+        Standard deviation of arrival time noise, s.
+    position_noise : float
+        Standard deviation of the noise added to each GNSS receiver coordinate, m.
     offset : float
         Base offset applied to DOG times.
     esv_bias, time_bias : float
-        Bias values applied to ESV and times.
+        Bias values applied to ESV and times. The DOG clock reads
+        ``t + T + offset + time_bias``, so the offset of Eq. 6 is
+        ``offset + time_bias`` and the inversion recovers
+        ``offset_est - time_bias_est = offset + time_bias``.
     dz_array, angle_array, esv_matrix : ndarray
         Lookup table for the ESV.
     gps1_to_others, gps1_to_transponder : ndarray, optional
@@ -125,29 +134,18 @@ def generateUnaligned(
 
     CDOG_mat = np.stack((CDOG_int, CDOG_remain), axis=1)
 
-    # Remove random contiguous segments from CDOG_mat
-    # (indices are recomputed each iteration to respect the shrinking array)
-    num_segments = 5
-    for _ in range(num_segments):
-        if len(CDOG_mat) == 0:
-            break
-        # Use conservative bounds when the array becomes short
-        max_len = min(500, max(1, len(CDOG_mat)))
-        min_len = min(200, max(1, len(CDOG_mat)))
-        if max_len < min_len:
-            seg_len = max_len
-        else:
-            seg_len = np.random.randint(min_len, max_len + 1)
-        if len(CDOG_mat) - seg_len <= 0:
-            start_index = 0
-        else:
-            start_index = np.random.randint(0, len(CDOG_mat) - seg_len + 1)
-        mask = np.ones(len(CDOG_mat), dtype=np.bool_)
-        mask[start_index : start_index + seg_len] = False
-        CDOG_mat = CDOG_mat[mask]
-        GPS_Coordinates += np.random.normal(
-            0, position_noise, (len(GPS_Coordinates), 4, 3)
-        )
+    # Dropped arrivals (App. B.3): 10-20 % of the tags in total, as isolated random
+    # tags plus contiguous blocks of 200-500 tags (blocks may overlap).
+    drop_fraction = np.random.uniform(MIN_DROP_FRACTION, MAX_DROP_FRACTION)
+    keep = np.random.random(len(CDOG_mat)) >= drop_fraction / 2
+    while np.sum(~keep) < drop_fraction * len(CDOG_mat):
+        block_len = min(np.random.randint(200, 501), len(CDOG_mat))
+        start_index = np.random.randint(0, len(CDOG_mat) - block_len + 1)
+        keep[start_index : start_index + block_len] = False
+    CDOG_mat = CDOG_mat[keep]
+
+    # Independent noise on every receiver, applied once.
+    GPS_Coordinates += np.random.normal(0, position_noise, GPS_Coordinates.shape)
 
     return CDOG_mat, CDOG, GPS_Coordinates, GPS_time, transponder_coordinates
 
