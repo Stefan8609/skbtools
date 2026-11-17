@@ -12,6 +12,8 @@ from numba.typed import List
 # -------------------------
 DOG_nums = [1, 3, 4]
 downsample = 10
+# Linear clock drift per DOG (theme T5), as config["clock_drift"] in the MCMC.
+clock_drift = False
 
 # -------------------------
 # Known data
@@ -113,6 +115,7 @@ best_lever, best_offset_list, inversion_result_list, rmse_list = (
         initial_offset_list=initial_offset_list,
         real_data=True,
         z_sample=True,
+        clock_drift=clock_drift,
     )
 )
 
@@ -137,6 +140,8 @@ for i, DOG_num in enumerate(DOG_nums):
 
     print(f"\nDOG {DOG_num}")
     print(f"Estimate: {np.round(inversion_result, 4)}")
+    if clock_drift:
+        print(f"Drift rate: {inversion_result[5]:.4e} s/s (Eq. 6 convention)")
     print(
         f"Offset: {np.round(best_offset_eff, 4)}, "
         f"Inversion Guess (from base): {np.round(inversion_guess - CDOG_guess_base, 5)}"

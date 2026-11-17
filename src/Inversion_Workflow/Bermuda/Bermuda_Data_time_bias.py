@@ -28,6 +28,11 @@ simulated_annealing = True
 use_leg_mask = False
 save = True
 downsample = 1
+# Linear clock drift (theme T5), as config["clock_drift"] in the MCMC. The estimate
+# then gets drift_rate (s/s, Eq. 6 convention) as a sixth entry, and the reported
+# offset is dt0, the offset at t_mid (half-way between the first and last paired
+# GPS epochs).
+clock_drift = False
 
 # -------------------------
 # Known data
@@ -100,6 +105,7 @@ if simulated_annealing:
         initial_offset=offset_hint,
         real_data=True,
         z_sample=True,
+        clock_drift=clock_drift,
     )
 
     transponder_coordinates = findTransponder(
@@ -118,6 +124,8 @@ if simulated_annealing:
         angle_array,
         esv_matrix,
         real_data=True,
+        clock_drift=clock_drift,
+        drift_rate=inversion_result[5] if clock_drift else 0.0,
     )
 
     inversion_guess = inversion_result[:3]
@@ -141,6 +149,7 @@ else:
         angle_array,
         esv_matrix,
         real_data=True,
+        clock_drift=clock_drift,
     )
     print("\nInitial complete. Offset =", best_offset)
 
@@ -161,6 +170,8 @@ else:
         angle_array,
         esv_matrix,
         real_data=True,
+        clock_drift=clock_drift,
+        drift_rate=inversion_result[5] if clock_drift else 0.0,
     )
     print("\nFinal complete.")
 
@@ -175,6 +186,7 @@ else:
 # -------------------------
 # Keep your original convention (fold time_bias into offset for reporting)
 best_offset_eff = best_offset - time_bias
+drift_rate = inversion_result[5] if clock_drift else 0.0
 
 diff_data_ms = (CDOG_full - GPS_full) * 1000.0
 RMSE_cm = (np.sqrt(np.nanmean(diff_data_ms**2)) / 1000.0) * 1515.0 * 100.0
@@ -186,6 +198,8 @@ print(
     f"Inversion Guess (from base): {np.round(inversion_guess - CDOG_guess_base, 5)}"
 )
 print("RMSE:", np.round(RMSE_cm, 3), "cm")
+if clock_drift:
+    print(f"Drift rate: {drift_rate:.4e} s/s (Eq. 6 convention)")
 
 
 # -------------------------
@@ -288,6 +302,8 @@ if save:
         inversion_result=inversion_result,
         esv_bias=esv_bias,
         time_bias=time_bias,
+        clock_drift=clock_drift,
+        drift_rate_s_per_s=drift_rate,
         CDOG_data=CDOG_data,
         GPS_data=GPS_data,
         times_guess=times_guess,
