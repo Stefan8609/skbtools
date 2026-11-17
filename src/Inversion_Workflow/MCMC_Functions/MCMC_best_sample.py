@@ -310,7 +310,7 @@ def plot_run_best_sample(run_name, DOG_num, loglike=False):
         block=True,
         save=True,
         path=path,
-        zoom_start=35000,
+        zoom_start=40000,
         DOG_num=DOG_num,
     )
     range_residual(

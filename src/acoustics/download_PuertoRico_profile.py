@@ -67,9 +67,7 @@ if __name__ == "__main__":
 
             north_km = (latitude - dog_latitude) * 111.0
             east_km = (
-                (longitude - dog_longitude)
-                * 111.0
-                * np.cos(np.deg2rad(dog_latitude))
+                (longitude - dog_longitude) * 111.0 * np.cos(np.deg2rad(dog_latitude))
             )
             distance_km = np.sqrt(north_km**2 + east_km**2)
 

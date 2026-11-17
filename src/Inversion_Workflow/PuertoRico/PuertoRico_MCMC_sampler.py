@@ -47,10 +47,7 @@ def find_fixed_pair_indices(
         lower = GPS_times[gps_pointer] - threshold
         upper = GPS_times[gps_pointer] + threshold
 
-        while (
-            cdog_pointer < CDOG_data.shape[0]
-            and CDOG_times[cdog_pointer] <= lower
-        ):
+        while cdog_pointer < CDOG_data.shape[0] and CDOG_times[cdog_pointer] <= lower:
             cdog_pointer += 1
 
         if cdog_pointer == CDOG_data.shape[0]:
@@ -59,9 +56,7 @@ def find_fixed_pair_indices(
         candidate = cdog_pointer
         best_pointer = -1
         best_difference = np.inf
-        while (
-            candidate < CDOG_data.shape[0] and CDOG_times[candidate] < upper
-        ):
+        while candidate < CDOG_data.shape[0] and CDOG_times[candidate] < upper:
             difference = abs(GPS_times[gps_pointer] - CDOG_times[candidate])
             if difference < best_difference:
                 best_pointer = candidate
@@ -257,9 +252,7 @@ def compute_log_prior(
     lp = 0.0
     lp += -0.5 * np.sum(((lever_guess - initial_lever_base) / lever_scale) ** 2)
     lp += -0.5 * np.sum(((gps1_grid_guess - initial_gps_grid) / gps_grid_scale) ** 2)
-    lp += -0.5 * np.sum(
-        ((CDOG_augment - initial_CDOG_augment) / CDOG_aug_scale) ** 2
-    )
+    lp += -0.5 * np.sum(((CDOG_augment - initial_CDOG_augment) / CDOG_aug_scale) ** 2)
     lp += -0.5 * np.sum(((esv_bias - initial_esv_bias) / esv_bias_scale) ** 2)
     lp += -0.5 * np.sum(((time_bias - initial_time_bias) / time_bias_scale) ** 2)
     return lp
@@ -422,9 +415,7 @@ def mcmc_sampler(
     acc_tb = 0
 
     lever_active = (
-        proposal_lever[0] > 0.0
-        or proposal_lever[1] > 0.0
-        or proposal_lever[2] > 0.0
+        proposal_lever[0] > 0.0 or proposal_lever[1] > 0.0 or proposal_lever[2] > 0.0
     )
 
     for iteration in range(n_iters):
@@ -439,9 +430,7 @@ def mcmc_sampler(
 
             trans_prop = np.empty_like(trans_curr)
             for epoch in range(GPS_Coordinates.shape[0]):
-                trans_prop[epoch] = (
-                    rotations[epoch] @ lever_prop + displacements[epoch]
-                )
+                trans_prop[epoch] = rotations[epoch] @ lever_prop + displacements[epoch]
 
             travel_times_prop, esv_values_prop = calculate_travel_times(
                 trans_prop,
@@ -574,9 +563,7 @@ def mcmc_sampler(
                 for split in range(num_splits):
                     block_size = base + (1 if split < remainder else 0)
                     block_end = block_start + block_size
-                    esv_change = (
-                        ebias_prop[survey, split] - ebias_curr[survey, split]
-                    )
+                    esv_change = ebias_prop[survey, split] - ebias_curr[survey, split]
 
                     for epoch in range(block_start, block_end):
                         esv_values_prop[epoch] += esv_change
@@ -750,8 +737,7 @@ if __name__ == "__main__":
     for survey, survey_name in enumerate(survey_names):
         data = np.load(
             gps_data_path(
-                f"GPS_Data/Processed_GPS_Receivers_DOG_1_"
-                f"{survey_name}_clock_loss.npz"
+                f"GPS_Data/Processed_GPS_Receivers_DOG_1_{survey_name}_clock_loss.npz"
             )
         )
         GPS_Coordinates = data["GPS_Coordinates"]
@@ -764,9 +750,7 @@ if __name__ == "__main__":
             CDOG_reference = data["CDOG_guess"]
             gps1_to_others = data["gps1_to_others"]
 
-        time_mask = (GPS_data >= GPS_time_bounds[0]) & (
-            GPS_data <= GPS_time_bounds[1]
-        )
+        time_mask = (GPS_data >= GPS_time_bounds[0]) & (GPS_data <= GPS_time_bounds[1])
 
         trajectory_mask = time_mask
         if trajectory_mode == "cross":

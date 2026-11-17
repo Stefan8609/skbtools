@@ -118,7 +118,7 @@ def test_drift_off_ignores_the_drift_start_value():
     default = final_bias_geiger(*args, real_data=False)
     ignored = final_bias_geiger(*args, real_data=False, drift_rate=1e-6)
     assert default[0].shape == (5,)
-    for a, b in zip(default, ignored):
+    for a, b in zip(default, ignored, strict=False):
         assert np.array_equal(a, b)
 
 

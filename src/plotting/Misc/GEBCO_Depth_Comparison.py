@@ -69,7 +69,6 @@ if __name__ == "__main__":
         [235.88302714, -1306.08869213, -2190.76178745],
     ]
 
-
     CDOG_reference = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
     CDOG_Locations = CDOG_augments + CDOG_reference
     lat, lon, alt = ECEF_Geodetic(CDOG_Locations)
@@ -90,7 +89,6 @@ if __name__ == "__main__":
             f"Location {i + 1}: Latitude: {lat[i]:.6f}, Longitude: {lon[i]:.6f},"
             f"Altitude: {alt[i]:.2f} m"
         )
-
 
     grid = read_arc_ascii_grid(
         gps_data_path("gebco_2025_n31.47_s31.42_w-68.71_e-68.68_ascii.asc")

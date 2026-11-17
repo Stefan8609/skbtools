@@ -33,4 +33,3 @@ def fitPlane(xs, ys, zs):
     left = svd[0]
     normVect = np.array(left[:, -1], dtype=np.float64)
     return normVect
-

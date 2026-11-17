@@ -365,7 +365,7 @@ if __name__ == "__main__":
     ax.legend(markerscale=8)
     ax.set_title("(ii)")
 
-    for ax, k in zip(axes[1], (-1, 1)):
+    for ax, k in zip(axes[1], (-1, 1), strict=False):
         fit = mechanism[k]
         ax.plot(fit["v"], fit["r"], ".", ms=1, color="C0" if k < 0 else "C3")
         vv = np.array([np.nanmin(fit["v"]), np.nanmax(fit["v"])])

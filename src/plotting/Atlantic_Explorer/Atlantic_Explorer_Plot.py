@@ -758,7 +758,7 @@ def RV_Plot(
         3: "$\mathbf{x}^\mathrm{S}_3$",
         4: "$\mathbf{x}^\mathrm{S}_4$",
     }
-    for idx, (pts, c) in enumerate(zip(gps_xy_list, centroids), start=1):
+    for idx, (pts, c) in enumerate(zip(gps_xy_list, centroids, strict=False), start=1):
         w = 2.0
         h = 2.5
         cx, cy = float(c[0]), float(c[1])
@@ -958,7 +958,9 @@ def RV_Plot(
 
     # Create square insets near each GPS centroid in X–Z, positioned below the
     # bridge line
-    for idx, (pts, c) in enumerate(zip(gps_xz_list, centroids_xz), start=1):
+    for idx, (pts, c) in enumerate(
+        zip(gps_xz_list, centroids_xz, strict=False), start=1
+    ):
         w = 2.0
         h = 5.0
         cx, cz = float(c[0]), float(c[1])

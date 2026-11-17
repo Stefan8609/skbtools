@@ -12,8 +12,10 @@ from Inversion_Workflow.MCMC_Functions.MCMC_diagnostics import (
 from Inversion_Workflow.MCMC_Functions.MCMC_posterior_summary import (
     SUBMITTED_TABLE1_AUG_M,
     enu_rotation,
+    linearized_comparison,
     reported_quantities,
 )
+from test_mcmc_sampler import synthetic_problem
 
 
 def ar1_chains(phi, n_chains=4, n_draws=4000, seed=0):
@@ -76,7 +78,7 @@ def test_reported_quantities_follow_the_paper_conventions():
         0.4,
     ]
 
-    value = dict(zip(names, A @ theta + b))
+    value = dict(zip(names, A @ theta + b, strict=False))
 
     # dt in the Eq. 6 convention: offset - time_bias.
     assert value["DOG1_dt_Eq6"] == pytest.approx(offsets[0] - 1e-4, abs=1e-12)
@@ -106,3 +108,32 @@ def test_old_plot_helpers_read_the_new_prior():
     assert scales["lever"].tolist() == [0.5, 0.5, 2.0]
     assert scales["esv_mean"] == pytest.approx(2.0 / np.sqrt(4))
     assert proposals == {}
+
+
+def test_linearized_comparison_leaves_out_an_esv_split_without_data():
+    # The DOG records only the 40 epochs before the gap, so the last of three
+    # ESV splits (epochs 40-59) has no pairs and a zero Jacobian column.
+    config, problem = synthetic_problem(num_esv_splits=3, n_arrivals=40)
+    model = ms.build_model(config)
+    rng = np.random.default_rng(0)
+    theta = model["start_theta"] + 1e-3 * rng.normal(
+        size=(200, model["start_theta"].size)
+    )
+    logpost = rng.normal(size=200)
+    offsets = np.array(config["offsets_s"])
+    CDOG_reference = np.array(config["CDOG_reference"])
+
+    # 40 s of a 1 km circle barely separates lever arm from DOG position, so the
+    # formal covariance is near-singular; only its NaN pattern is tested here.
+    with np.errstate(invalid="ignore"):
+        sd_rows, _, condition = linearized_comparison(
+            theta, logpost, model, problem, offsets, CDOG_reference
+        )
+
+    assert condition["unconstrained_parameters"] == ["esv_bias_DOG1_split2"]
+    assert np.isfinite(condition["cond_JTWJ_unit_columns"])
+    formal_sd = {row["quantity"]: row["formal_iid_sd"] for row in sd_rows}
+    for name in ("DOG1_dc_split2", "DOG1_dc_mean"):
+        assert np.isnan(formal_sd[name])
+    for name in ("lever_z", "DOG1_U_minus_Table1", "DOG1_dt_Eq6", "DOG1_dc_split0"):
+        assert np.isfinite(formal_sd[name])

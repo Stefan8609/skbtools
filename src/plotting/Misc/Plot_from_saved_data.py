@@ -56,14 +56,12 @@ if __name__ == "__main__":
     # angle_array = esv_table["angle"].flatten()
     # esv_matrix = esv_table["matrice"]
 
-
     # inversion_guess = data["inversion_result"][:3]
     # transponder_coordinates = data["transponder_coordinates"]
     # esv_bias = data["esv_bias"]
     # best_offset = data["best_offset"]
     # CDOG_data = data["CDOG_data"]
     # GPS_data = data["GPS_data"]
-
 
     # times_guess, esv = calculateTimesRayTracing_Bias_Real(
     #     inversion_guess,

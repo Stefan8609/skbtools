@@ -135,7 +135,7 @@ def posterior_summary(theta, logpost, model, offsets, CDOG_reference):
     best = int(np.argmax(logpost))
     rows = [
         percentile_row(n, u, quantities[:, k], quantities[best, k])
-        for k, (n, u) in enumerate(zip(names, units))
+        for k, (n, u) in enumerate(zip(names, units, strict=False))
     ]
 
     layout = model["layout"]
@@ -308,6 +308,12 @@ def linearized_comparison(theta, logpost, model, problem, offsets, CDOG_referenc
     sigma_white = ms.white_noise_sd(theta_map, model)
     marginal_sd = sigma if sigma_white is None else np.sqrt(sigma**2 + sigma_white**2)
 
+    # An ESV split with no fixed pairs (DOG 4 has gaps) has a zero Jacobian
+    # column: the data say nothing about it, so the prior-free formal covariance
+    # is computed over the data-constrained columns only, and any quantity that
+    # loads on an unconstrained column gets a NaN formal covariance.
+    constrained = np.any(jacobian != 0.0, axis=0)
+    jacobian = jacobian[:, constrained]
     J_iid, _ = ms.whiten_ar1(
         jacobian,
         problem["segment_start"],
@@ -322,6 +328,9 @@ def linearized_comparison(theta, logpost, model, problem, offsets, CDOG_referenc
         "cond_JTWJ_unit_columns": np.linalg.cond(
             normal_matrix * np.outer(scaling, scaling)
         ),
+        "unconstrained_parameters": [
+            model["names"][k] for k in np.flatnonzero(~constrained)
+        ],
     }
     J_model, _ = ms.whiten_residuals(jacobian, problem, sigma, phi, sigma_white)
     formal = {
@@ -334,8 +343,13 @@ def linearized_comparison(theta, logpost, model, problem, offsets, CDOG_referenc
     linear = np.flatnonzero(np.all(A[:, n_geo:] == 0.0, axis=1))
     posterior_cov = np.cov((theta @ A.T)[:, linear], rowvar=False)
     covariances = {"posterior": posterior_cov}
+    A_formal = A_geo[linear][:, constrained[:n_geo]]
+    unconstrained_quantity = np.any(A_geo[linear][:, ~constrained[:n_geo]], axis=1)
     for key, cov in formal.items():
-        covariances[f"formal_{key}"] = A_geo[linear] @ cov @ A_geo[linear].T
+        cov = A_formal @ cov @ A_formal.T
+        cov[unconstrained_quantity, :] = np.nan
+        cov[:, unconstrained_quantity] = np.nan
+        covariances[f"formal_{key}"] = cov
 
     sd_rows = []
     for i, k in enumerate(linear):
@@ -416,6 +430,11 @@ def summarize_run(run_name, linearized=True):
             f"cond(J^T W J): {condition['cond_JTWJ_raw_units']:.3g} raw units, "
             f"{condition['cond_JTWJ_unit_columns']:.3g} with unit columns"
         )
+        if condition["unconstrained_parameters"]:
+            print(
+                "No data constrain (left out of the formal covariance): "
+                + ", ".join(condition["unconstrained_parameters"])
+            )
         print("Correlations: posterior / formal iid / formal (run's noise model)")
         for row in correlation_rows:
             print(
@@ -426,7 +445,16 @@ def summarize_run(run_name, linearized=True):
 
 
 if __name__ == "__main__":
-    RUN_NAMES = ["ar1", "ar1_drift"]
+    RUN_NAMES = [
+        "iid",
+        "ar1_splits1",
+        "ar1_splits8",
+        "ar1_splits16",
+        "ar1_white",
+        "ar1_white_splits1",
+        "ar1_white_splits8",
+        "ar1_white_splits16",
+    ]
     LINEARIZED = True
 
     for run_name in RUN_NAMES:

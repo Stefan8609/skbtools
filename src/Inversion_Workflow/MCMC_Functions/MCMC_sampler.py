@@ -294,6 +294,11 @@ RUN_VARIANTS = {
     "ar1_white_splits1": {**AR1_WHITE, "num_esv_splits": 1},
     "ar1_white_splits8": {**AR1_WHITE, "num_esv_splits": 8},
     "ar1_white_splits16": {**AR1_WHITE, "num_esv_splits": 16, **WHITE_LONG_RUN},
+    # Linear clock drift under AR(1) + white noise, whose slow component could
+    # absorb a drift. No 16-split run: DOG 4 has two 16-split blocks with no pairs.
+    "ar1_white_drift": {**AR1_WHITE, "clock_drift": True},
+    "ar1_white_drift_splits1": {**AR1_WHITE, "clock_drift": True, "num_esv_splits": 1},
+    "ar1_white_drift_splits8": {**AR1_WHITE, "clock_drift": True, "num_esv_splits": 8},
 }
 
 

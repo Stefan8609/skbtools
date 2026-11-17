@@ -13,11 +13,12 @@ from plotting.Atlantic_Explorer.moon_pool_lever import moon_pool_center_body_fra
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def synthetic_problem():
+def synthetic_problem(num_esv_splits=1, n_arrivals=60):
     """One DOG 5 km below a vessel circling at 1 km radius, constant 1500 m/s ESV.
 
     Sixty 1 s epochs with a 100 s gap after epoch 40 (an AR(1) segment break) and
-    3 cm of range noise. Returns the configuration and the built problem.
+    3 cm of range noise; the DOG records the first n_arrivals of them. Returns
+    the configuration and the built problem.
     """
     CDOG_reference = np.array(ms.CONFIG["CDOG_reference"])
     up = CDOG_reference / np.linalg.norm(CDOG_reference)
@@ -50,6 +51,7 @@ def synthetic_problem():
     )
     noise_s = np.random.default_rng(7).normal(0.0, 2e-5, GPS_data.size)
     arrival = GPS_data + times + 100.0 + noise_s
+    arrival = arrival[:n_arrivals]
     CDOG_data = np.column_stack([np.floor(arrival), arrival - np.floor(arrival)])
 
     config = {
@@ -58,7 +60,7 @@ def synthetic_problem():
         "likelihood": "ar1",
         "clock_drift": True,
         "dogs": [1],
-        "num_esv_splits": 1,
+        "num_esv_splits": num_esv_splits,
         "offsets_s": [100.0],
         "outlier_mad_factor": None,
         "start_lever": (lever + 0.05).tolist(),
@@ -372,6 +374,16 @@ def test_ar1_white_and_split_variants_leave_older_runs_unchanged():
     assert layout["esv_bias"].stop - layout["esv_bias"].start == 3 * 8
     assert names[layout["log_sigma_white"]][0] == "log_sigma_white_cm_DOG1"
     assert ms.run_config("ar1_splits16")["n_samples"] == 400000
+
+    for variant, splits in (
+        ("ar1_white_drift", 4),
+        ("ar1_white_drift_splits1", 1),
+        ("ar1_white_drift_splits8", 8),
+    ):
+        config = ms.run_config(variant)
+        assert config["likelihood"] == "ar1_white" and config["clock_drift"]
+        assert config["num_esv_splits"] == splits
+        assert config["n_burn"] == 40000
 
 
 def test_ar1_white_chain_runs_and_resumes(tmp_path):

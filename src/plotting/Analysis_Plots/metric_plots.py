@@ -248,9 +248,7 @@ def plot_puertorico_metrics():
         CDOG_data = processed["CDOG_data"]
         schematic_lever = processed["initial_lever_guess"]
 
-        time_mask = (GPS_data >= GPS_time_bounds[0]) & (
-            GPS_data <= GPS_time_bounds[1]
-        )
+        time_mask = (GPS_data >= GPS_time_bounds[0]) & (GPS_data <= GPS_time_bounds[1])
         GPS_Coordinates = GPS_Coordinates[time_mask]
         GPS_data = GPS_data[time_mask]
 

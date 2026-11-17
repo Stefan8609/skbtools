@@ -614,7 +614,7 @@ def marginal_hists(
     # Compute statistics for centering and scaling (in cm)
     stats = {}
     all_arr_centered = []
-    for k, arr in zip(keys, data):
+    for k, arr in zip(keys, data, strict=False):
         arr_cm = np.asarray(arr) * 100.0
         # Center data at an empirical mode estimate (use median as a robust proxy)
         mode_cm = float(np.median(arr_cm))
@@ -632,7 +632,7 @@ def marginal_hists(
     # Track a common y-limit across all histograms/curves
     global_ymax = 0.0
 
-    for i, (k, arr_c, ax) in enumerate(zip(keys, all_arr_centered, axes)):
+    for i, (k, arr_c, ax) in enumerate(zip(keys, all_arr_centered, axes, strict=False)):
         std_cm = stats[k]["std_cm"]
         # Track max y for uniform y-axis
         local_ymax = 0.0

@@ -14,4 +14,3 @@ def test_trajectory_mode_selects_full_or_cross_epochs():
     )
 
     assert cross.tolist() == [False, True, False, True, False]
-

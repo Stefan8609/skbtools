@@ -105,11 +105,7 @@ def load_cdog_data(clock_segment):
     hours = np.floor(hhmmss / 10000)
     minutes = np.floor((hhmmss - hours * 10000) / 100)
     seconds_of_day = (
-        hours * 3600
-        + minutes * 60
-        + hhmmss
-        - hours * 10000
-        - minutes * 100
+        hours * 3600 + minutes * 60 + hhmmss - hours * 10000 - minutes * 100
     )
 
     if clock_segment == "before":
@@ -130,9 +126,7 @@ def load_cdog_data(clock_segment):
         ].astype(float)
         before_hhmmss = before[:, 0]
         before_hours = np.floor(before_hhmmss / 10000)
-        before_minutes = np.floor(
-            (before_hhmmss - before_hours * 10000) / 100
-        )
+        before_minutes = np.floor((before_hhmmss - before_hours * 10000) / 100)
         before_seconds = (
             before_hours * 3600
             + before_minutes * 60
@@ -167,12 +161,15 @@ def load_cdog_data(clock_segment):
     offsets = emission_times[valid_utc] - tag_seconds[valid_utc]
     clock_adjustment = np.median(offsets)
     clock_spread = np.median(np.abs(offsets - clock_adjustment))
-    GPS_time_bounds = np.array(
-        [
-            np.min(emission_times[valid_utc]),
-            np.max(emission_times[valid_utc]),
-        ]
-    ) - clock_adjustment
+    GPS_time_bounds = (
+        np.array(
+            [
+                np.min(emission_times[valid_utc]),
+                np.max(emission_times[valid_utc]),
+            ]
+        )
+        - clock_adjustment
+    )
     CDOG_data[:, 1] /= 1e9
 
     return CDOG_data, GPS_time_bounds, clock_adjustment, clock_spread

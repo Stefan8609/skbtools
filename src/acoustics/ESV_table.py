@@ -56,7 +56,6 @@ if __name__ == "__main__":
     angle_step = 0.25
     table_name = "PuertoRico_table_transducer_60_DOG_2950_3050.mat"
 
-
     depth = np.ascontiguousarray(
         np.genfromtxt(gps_data_path("SVP_Data/depth_PuertoRico_DelGrosso.txt"))
     )

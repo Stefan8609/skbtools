@@ -25,10 +25,7 @@ def load_and_process_data(path):
     sig_u = data["sig_u"].flatten()
     nsv = data["nsv"].flatten()
 
-    return (
-        time_GNSS, x, y, z, elev,
-        sig_n, sig_e, sig_u, nsv
-    )
+    return (time_GNSS, x, y, z, elev, sig_n, sig_e, sig_u, nsv)
 
 
 if __name__ == "__main__":
@@ -49,7 +46,6 @@ if __name__ == "__main__":
             [-8.68674054, 5.16918806, 0.02499322],
         ]
     )
-
 
     paths = [
         gps_data_path("GPS_Data/JAX1.mat"),
@@ -81,9 +77,7 @@ if __name__ == "__main__":
             dtype=int,
         )
 
-        filtered_data.append(
-            [np.asarray(values)[indices] for values in data]
-        )
+        filtered_data.append([np.asarray(values)[indices] for values in data])
 
     filtered_data = np.asarray(filtered_data)
 
@@ -131,23 +125,20 @@ if __name__ == "__main__":
 
     fig, axes = plt.subplots(2, 3, figsize=(16, 9), constrained_layout=True)
 
-    for ax, (i, j) in zip(axes.flat, combinations(range(4), 2)):
+    for ax, (i, j) in zip(axes.flat, combinations(range(4), 2), strict=False):
         distances = np.linalg.norm(
-            GPS_Coordinates_plot[:, i, :]
-            - GPS_Coordinates_plot[:, j, :],
+            GPS_Coordinates_plot[:, i, :] - GPS_Coordinates_plot[:, j, :],
             axis=1,
         )
         distances = distances[np.isfinite(distances)]
 
         if len(distances) < 2:
             raise ValueError(
-                f"Insufficient finite distances for GNSS {i+1}–GNSS {j+1}."
+                f"Insufficient finite distances for GNSS {i + 1}–GNSS {j + 1}."
             )
 
         mu, sigma = norm.fit(distances)
-        grid_distance = np.linalg.norm(
-            gps1_to_others[i] - gps1_to_others[j]
-        )
+        grid_distance = np.linalg.norm(gps1_to_others[i] - gps1_to_others[j])
 
         ax.hist(
             distances,
@@ -173,16 +164,16 @@ if __name__ == "__main__":
             label="Bermuda grid distance",
         )
         ax.text(
-            0.97, 0.97,
-            f"$\\sigma$ = {sigma * 100:.2f} cm\n"
-            f"$\\mu$ = {mu:.2f} m",
+            0.97,
+            0.97,
+            f"$\\sigma$ = {sigma * 100:.2f} cm\n$\\mu$ = {mu:.2f} m",
             transform=ax.transAxes,
             ha="right",
             va="top",
             bbox=dict(facecolor="white", alpha=0.9),
         )
 
-        ax.set_title(f"GNSS {i+1} – GNSS {j+1}")
+        ax.set_title(f"GNSS {i + 1} – GNSS {j + 1}")
         ax.set_xlabel("distance (m)")
         ax.set_ylabel("density")
         ax.legend(loc="upper left")
@@ -200,9 +191,7 @@ if __name__ == "__main__":
         fontsize=16,
     )
 
-    output_file = gps_data_path(
-        f"Figs/Jacksonville_GNSS_Comparison_{filter_label}.pdf"
-    )
+    output_file = gps_data_path(f"Figs/Jacksonville_GNSS_Comparison_{filter_label}.pdf")
     output_file.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_file, dpi=300, bbox_inches="tight")
     print(f"Saved {output_file}")

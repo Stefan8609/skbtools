@@ -27,7 +27,8 @@ def adiabatic_temperature_gradient(S, T, P):
             1.8741e-8
             + (-6.7795e-10 + (8.7330e-12 - 5.4481e-14 * T) * T) * T
             + (-1.1351e-10 + 2.7759e-12 * T) * dS
-        ) * P
+        )
+        * P
         + (-4.6206e-13 + (1.8676e-14 - 2.1687e-16 * T) * T) * P**2
     )
 
@@ -91,14 +92,24 @@ def DelGrosso_SV(S, T, P):
     P = P * 1.019716213  # bar -> kg/cm^2
 
     const = {
-        "C_T1": 5.012285, "C_T2": -0.551184e-1, "C_T3": 0.221649e-3,
-        "C_S1": 1.329530, "C_S2": 0.1288598e-3,
-        "C_P1": 0.1560592, "C_P2": 0.2449993e-4, "C_P3": -0.8833959e-8,
-        "C_ST": -0.1275936e-1, "C_TP": 0.6353509e-2,
-        "C_T2P2": 0.2656174e-7, "C_TP2": -0.1593895e-5,
-        "C_TP3": 0.5222483e-9, "C_T3P": -0.4383615e-6,
-        "C_S2P2": -0.1616745e-8, "C_ST2": 0.9688441e-4,
-        "C_S2TP": 0.4857614e-5, "C_STP": -0.3406824e-3,
+        "C_T1": 5.012285,
+        "C_T2": -0.551184e-1,
+        "C_T3": 0.221649e-3,
+        "C_S1": 1.329530,
+        "C_S2": 0.1288598e-3,
+        "C_P1": 0.1560592,
+        "C_P2": 0.2449993e-4,
+        "C_P3": -0.8833959e-8,
+        "C_ST": -0.1275936e-1,
+        "C_TP": 0.6353509e-2,
+        "C_T2P2": 0.2656174e-7,
+        "C_TP2": -0.1593895e-5,
+        "C_TP3": 0.5222483e-9,
+        "C_T3P": -0.4383615e-6,
+        "C_S2P2": -0.1616745e-8,
+        "C_ST2": 0.9688441e-4,
+        "C_S2TP": 0.4857614e-5,
+        "C_STP": -0.3406824e-3,
     }
 
     Delta_CT = const["C_T1"] * T + const["C_T2"] * T**2 + const["C_T3"] * T**3
@@ -106,11 +117,16 @@ def DelGrosso_SV(S, T, P):
     Delta_CP = const["C_P1"] * P + const["C_P2"] * P**2 + const["C_P3"] * P**3
 
     Delta_CSTP = (
-        const["C_TP"] * T * P + const["C_T3P"] * P * T**3
-        + const["C_TP2"] * T * P**2 + const["C_T2P2"] * T**2 * P**2
-        + const["C_TP3"] * T * P**3 + const["C_ST"] * S * T
-        + const["C_ST2"] * S * T**2 + const["C_STP"] * S * T * P
-        + const["C_S2TP"] * S**2 * T * P + const["C_S2P2"] * S**2 * P**2
+        const["C_TP"] * T * P
+        + const["C_T3P"] * P * T**3
+        + const["C_TP2"] * T * P**2
+        + const["C_T2P2"] * T**2 * P**2
+        + const["C_TP3"] * T * P**3
+        + const["C_ST"] * S * T
+        + const["C_ST2"] * S * T**2
+        + const["C_STP"] * S * T * P
+        + const["C_S2TP"] * S**2 * T * P
+        + const["C_S2P2"] * S**2 * P**2
     )
 
     return 1402.392 + Delta_CT + Delta_CS + Delta_CP + Delta_CSTP

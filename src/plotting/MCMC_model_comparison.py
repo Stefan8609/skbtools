@@ -36,7 +36,7 @@ def run_quantities(run_name):
         model, chain["offsets_s"], chain["CDOG_reference"]
     )
     values = chain["theta_samples"] @ A.T + b
-    return config["dogs"], chain["offsets_s"], dict(zip(names, values.T))
+    return config["dogs"], chain["offsets_s"], dict(zip(names, values.T, strict=False))
 
 
 def noise_model_comparison(runs, save=True, bins=60):
@@ -120,8 +120,8 @@ def model_summary_plot(runs, save=True):
         squeeze=False,
     )
     positions = range(len(runs))
-    for ax, (key, label, scale, offset) in zip(axes.ravel(), panels):
-        for y, name in zip(positions, runs):
+    for ax, (key, label, scale, offset) in zip(axes.ravel(), panels, strict=False):
+        for y, name in zip(positions, runs, strict=False):
             draws = (results[name][2][key] - offset) * scale
             ax.errorbar(
                 draws.mean(), y, xerr=draws.std(ddof=1), fmt="o", ms=4, capsize=3

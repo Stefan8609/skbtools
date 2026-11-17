@@ -289,7 +289,16 @@ def run_diagnostics(run_name, make_plots=True):
 
 
 if __name__ == "__main__":
-    RUN_NAMES = ["ar1", "ar1_drift"]
+    RUN_NAMES = [
+        "iid",
+        "ar1_splits1",
+        "ar1_splits8",
+        "ar1_splits16",
+        "ar1_white",
+        "ar1_white_splits1",
+        "ar1_white_splits8",
+        "ar1_white_splits16",
+    ]
 
     for run_name in RUN_NAMES:
         run_diagnostics(run_name)

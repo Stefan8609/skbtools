@@ -28,9 +28,7 @@ def test_crossover_mask_includes_both_legs_and_their_boundaries(
 def test_crossover_mask_uses_bounds_on_the_supplied_gps_timeline():
     clock_adjustment = 166130.6585374
     GPS_data = np.array([22.0, 22.5, 25.0, 28.5, 31.0]) * 3600.0
-    crossover_leg_GPS_bounds = (
-        CROSSOVER_LEG_UTC_BOUNDS["before"] - clock_adjustment
-    )
+    crossover_leg_GPS_bounds = CROSSOVER_LEG_UTC_BOUNDS["before"] - clock_adjustment
 
     mask = crossover_leg_mask(GPS_data, crossover_leg_GPS_bounds)
 

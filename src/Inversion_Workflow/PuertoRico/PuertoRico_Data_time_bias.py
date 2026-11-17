@@ -65,9 +65,7 @@ def run_inversion():
     initial_lever_guess = data["initial_lever_guess"]
     GPS_source_indices = np.arange(len(GPS_data))
 
-    time_mask = (GPS_data >= GPS_time_bounds[0]) & (
-        GPS_data <= GPS_time_bounds[1]
-    )
+    time_mask = (GPS_data >= GPS_time_bounds[0]) & (GPS_data <= GPS_time_bounds[1])
     GPS_Coordinates = GPS_Coordinates[time_mask]
     GPS_data = GPS_data[time_mask]
     GPS_source_indices = GPS_source_indices[time_mask]

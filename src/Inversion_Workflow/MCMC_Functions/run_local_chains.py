@@ -52,7 +52,7 @@ if __name__ == "__main__":
         results = pool.starmap(run_one, jobs)
 
     print("\nrun              chain  s/1000 it  burn-in windows  sampling acceptance")
-    for (config, index), (name, _, seconds) in zip(jobs, results):
+    for (config, index), (name, _, seconds) in zip(jobs, results, strict=False):
         with np.load(chain_output_path(config, index)) as chain:
             n_total = int(chain["n_total"])
             windows = np.round(chain["window_acceptance"], 2).tolist()

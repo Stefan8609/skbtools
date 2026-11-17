@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = [
     { name = "Stefan Kildal-Brandt", email = "sk8609@princeton.edu" }
 ]
-requires-python = ">=3.8,<3.12"
+requires-python = ">=3.10,<3.12"
 
 
 dependencies = [

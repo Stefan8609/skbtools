@@ -77,7 +77,7 @@ def segmented_gradient(values, times, maximum_gap=derivative_gap):
     boundaries = np.flatnonzero(np.diff(times) > maximum_gap) + 1
     starts = np.r_[0, boundaries]
     ends = np.r_[boundaries, len(times)]
-    for start, end in zip(starts, ends):
+    for start, end in zip(starts, ends, strict=False):
         if end - start >= 2:
             gradient[start:end] = np.gradient(values[start:end], times[start:end])
     return gradient
@@ -89,7 +89,7 @@ def circular_smooth(heading, times, window=61):
     boundaries = np.flatnonzero(np.diff(times) > derivative_gap) + 1
     starts = np.r_[0, boundaries]
     ends = np.r_[boundaries, len(times)]
-    for start, end in zip(starts, ends):
+    for start, end in zip(starts, ends, strict=False):
         count = end - start
         if count == 0:
             continue
@@ -130,7 +130,7 @@ def identify_legs(heading, times):
 
     boundaries = [
         0.5 * (times[first[1] - 1] + times[second[0]])
-        for first, second in zip(cores[:-1], cores[1:])
+        for first, second in zip(cores[:-1], cores[1:], strict=False)
     ]
     return np.searchsorted(boundaries, times), turn_rate
 
@@ -160,18 +160,22 @@ def load_diagnostic_data():
     )
 
     gps_indices = nearest_indices(processed["GPS_data"], inversion["GPS_data"])
-    if np.max(
-        np.abs(processed["GPS_data"][gps_indices] - inversion["GPS_data"])
-    ) > 1e-6:
+    if (
+        np.max(np.abs(processed["GPS_data"][gps_indices] - inversion["GPS_data"]))
+        > 1e-6
+    ):
         raise ValueError("Saved inversion epochs do not align with processed GNSS data")
 
     paired_gps_times = (
         inversion["GPS_clock"] - inversion["GPS_full"] + inversion["time_bias"]
     )
     observation_gps_indices = nearest_indices(inversion["GPS_data"], paired_gps_times)
-    if np.max(
-        np.abs(inversion["GPS_data"][observation_gps_indices] - paired_gps_times)
-    ) > 1e-6:
+    if (
+        np.max(
+            np.abs(inversion["GPS_data"][observation_gps_indices] - paired_gps_times)
+        )
+        > 1e-6
+    ):
         raise ValueError("Accepted acoustic observations do not align with GNSS epochs")
 
     tag_times = inversion["CDOG_data"][:, 0] + inversion["CDOG_data"][:, 1]
@@ -296,9 +300,7 @@ def binned_summary(x, y, bins):
 def harmonic_fit(angle, residual):
     """Measure first-harmonic residual dependence on a circular angle."""
     radians = np.radians(angle)
-    design = np.column_stack(
-        (np.ones(len(angle)), np.sin(radians), np.cos(radians))
-    )
+    design = np.column_stack((np.ones(len(angle)), np.sin(radians), np.cos(radians)))
     coefficients = np.linalg.lstsq(design, residual, rcond=None)[0]
     predicted = design @ coefficients
     ss_total = np.sum((residual - np.mean(residual)) ** 2)
@@ -361,9 +363,7 @@ def plot_radial_velocity(data):
 def plot_heading(data):
     """Plot residual against circular vessel heading."""
     bins = np.linspace(0, 360, 25)
-    centers, median, lower, upper = binned_summary(
-        data.heading, data.residual, bins
-    )
+    centers, median, lower, upper = binned_summary(data.heading, data.residual, bins)
     x = np.r_[centers[-1] - 360, centers, centers[0] + 360]
     med = np.r_[median[-1], median, median[0]]
     low = np.r_[lower[-1], lower, lower[0]]
@@ -397,9 +397,7 @@ def plot_heading(data):
 
 def plot_body_line_of_sight(data):
     """Fit and plot the body-frame line-of-sight lever diagnostic."""
-    design = np.column_stack(
-        (np.ones(len(data.residual)), data.body_line_of_sight)
-    )
+    design = np.column_stack((np.ones(len(data.residual)), data.body_line_of_sight))
     coefficients = np.linalg.lstsq(design, data.residual, rcond=None)[0]
     predicted = design @ coefficients
     corrected = data.residual - predicted
@@ -463,7 +461,7 @@ def plot_receiver_sets(data):
     colors = plt.get_cmap("tab10")(np.linspace(0, 1, len(statistics)))
 
     figure, axis = plt.subplots(figsize=(11, 5))
-    for color, label in zip(colors, statistics):
+    for color, label in zip(colors, statistics, strict=False):
         mask = data.receiver_labels == label
         axis.scatter(
             data.time_hours[mask],
@@ -510,8 +508,7 @@ def plot_four_receiver_comparison(data):
         color="tab:orange",
     )
     axes[1].set_title(
-        f"Four receivers only: N={four_stats.count:,}, "
-        f"RMSE={four_stats.rmse:.2f} m"
+        f"Four receivers only: N={four_stats.count:,}, RMSE={four_stats.rmse:.2f} m"
     )
     axes[1].set_xlabel("Time since first observation (h)")
     for axis in axes:
@@ -555,13 +552,11 @@ def leg_statistics(data):
 def plot_legs(data):
     """Plot residual diagnostics separated by automatically detected legs."""
     statistics = leg_statistics(data)
-    colors = plt.get_cmap("turbo")(
-        np.linspace(0.05, 0.95, len(statistics))
-    )
+    colors = plt.get_cmap("turbo")(np.linspace(0.05, 0.95, len(statistics)))
 
     figure, axes = plt.subplots(2, 1, figsize=(12, 8))
     distributions = []
-    for color, result in zip(colors, statistics):
+    for color, result in zip(colors, statistics, strict=False):
         mask = data.legs == result.leg
         axes[0].scatter(
             data.time_hours[mask], data.residual[mask], s=4, color=color, alpha=0.6
@@ -583,7 +578,7 @@ def plot_legs(data):
     leg_path = save_figure(figure, "residual_by_survey_leg.pdf")
 
     figure, axis = plt.subplots(figsize=(10, 6))
-    for color, result in zip(colors, statistics):
+    for color, result in zip(colors, statistics, strict=False):
         mask = data.legs == result.leg
         axis.scatter(
             data.slant_range[mask] / 1000,
@@ -651,7 +646,7 @@ def plot_range_branches(data):
 
     figure, axis = plt.subplots(figsize=(9, 5))
     colors = plt.get_cmap("tab10")(np.linspace(0, 1, len(receiver_sets)))
-    for color, label in zip(colors, receiver_sets):
+    for color, label in zip(colors, receiver_sets, strict=False):
         mask = data.receiver_labels == label
         axis.scatter(
             data.slant_range[mask] / 1000,
@@ -746,7 +741,7 @@ def plot_timing_metrics(metrics):
             axis.axvline(value, color=color, linestyle=style, label=label)
             axis.grid(alpha=0.25)
     handles, labels = axes[0].get_legend_handles_labels()
-    unique = dict(zip(labels, handles))
+    unique = dict(zip(labels, handles, strict=False))
     axes[0].legend(unique.values(), unique.keys(), ncol=2, fontsize=9)
     figure.tight_layout()
     offset_path = save_figure(figure, "timing_offset_metrics.pdf")
@@ -766,7 +761,7 @@ def plot_timing_metrics(metrics):
         metrics.rmse_index,
         metrics.coherence_index,
     )
-    for index, (_, label, color, _) in zip(selected_indices, markers):
+    for index, (_, label, color, _) in zip(selected_indices, markers, strict=False):
         axis.scatter(
             metrics.coherence[index],
             metrics.rmse[index],
@@ -877,17 +872,11 @@ def print_summary(
             f"median={stats.median: .3f}, RMSE={stats.rmse:.3f}, "
             f"sigma={stats.sigma:.3f}, robust={stats.robust_sigma:.3f} m"
         )
+    print(f"  all vs four-only RMSE: {all_stats.rmse:.4f} / {four_stats.rmse:.4f} m")
     print(
-        f"  all vs four-only RMSE: {all_stats.rmse:.4f} / {four_stats.rmse:.4f} m"
+        f"  all vs four-only median: {all_stats.median:.4f} / {four_stats.median:.4f} m"
     )
-    print(
-        f"  all vs four-only median: "
-        f"{all_stats.median:.4f} / {four_stats.median:.4f} m"
-    )
-    print(
-        f"  all vs four-only sigma: "
-        f"{all_stats.sigma:.4f} / {four_stats.sigma:.4f} m"
-    )
+    print(f"  all vs four-only sigma: {all_stats.sigma:.4f} / {four_stats.sigma:.4f} m")
 
     print("\nLEGS")
     for result in legs:

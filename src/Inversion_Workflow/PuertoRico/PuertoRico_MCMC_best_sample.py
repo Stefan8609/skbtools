@@ -65,8 +65,7 @@ def plot_best_sample(
 
     data = np.load(
         gps_data_path(
-            f"GPS_Data/Processed_GPS_Receivers_DOG_1_"
-            f"{clock_segment}_clock_loss.npz"
+            f"GPS_Data/Processed_GPS_Receivers_DOG_1_{clock_segment}_clock_loss.npz"
         )
     )
     GPS_Coordinates = data["GPS_Coordinates"]
@@ -144,9 +143,7 @@ def plot_best_sample(
         gps_indices,
     )
     CDOG_clock = (
-        CDOG_data[cdog_indices, 0]
-        + CDOG_data[cdog_indices, 1]
-        - offsets[survey]
+        CDOG_data[cdog_indices, 0] + CDOG_data[cdog_indices, 1] - offsets[survey]
     )
     GPS_full = times_guess[gps_indices]
     GPS_clock = GPS_data[gps_indices] - survey_time_bias + GPS_full

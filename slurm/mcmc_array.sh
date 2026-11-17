@@ -28,7 +28,6 @@ conda activate geodesy
 
 set -euo pipefail
 
-
 # One thread per chain: the parallelism is across array tasks.
 export NUMBA_NUM_THREADS=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 export MPLBACKEND=Agg
