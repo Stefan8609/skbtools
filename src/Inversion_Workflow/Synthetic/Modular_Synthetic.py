@@ -46,7 +46,15 @@ def modular_synthetic(
     DOG_num=3,
     downsample=50,
     use_leg_mask=False,
+    in_drift_rate=0.0,
+    clock_drift=False,
 ):
+    """Generate synthetic data and invert them.
+
+    ``in_drift_rate`` is the true clock drift (s/s, Eq. 6 convention) put into the
+    synthetic data; ``clock_drift`` adds drift_rate to the inversion as a sixth
+    entry of ``inversion_result``.
+    """
     np.set_printoptions(suppress=True)
     # Choose ESV table for generation and to run synthetic
     #   Perhaps make the file link a parameter of the function
@@ -90,6 +98,7 @@ def modular_synthetic(
             esv_matrix_generate,
             gps1_to_others=gps1_to_others,
             gps1_to_transponder=gps1_to_transponder,
+            drift_rate=in_drift_rate,
         )
         z_sample = False
     else:
@@ -122,6 +131,7 @@ def modular_synthetic(
             DOG_num=DOG_num,
             gps1_to_others=gps1_to_others,
             gps1_to_transponder=gps1_to_transponder,
+            drift_rate=in_drift_rate,
         )
 
         # Paper I synthetics use the full trajectory, downsampled. The leg mask
@@ -161,11 +171,13 @@ def modular_synthetic(
             angle_array_inversion,
             esv_matrix_inversion,
             real_data=real_data,
+            clock_drift=clock_drift,
         )
 
         inversion_guess = inversion_result[:3]
         time_bias = inversion_result[3]
         esv_bias = inversion_result[4]
+        drift_rate = inversion_result[5] if clock_drift else 0.0
 
         print("CDOG:", np.around(CDOG, 2))
         print("Inversion_Workflow:", np.round(inversion_result, 3))
@@ -191,6 +203,8 @@ def modular_synthetic(
             angle_array_inversion,
             esv_matrix_inversion,
             real_data=real_data,
+            clock_drift=clock_drift,
+            drift_rate=drift_rate,
         )
         inversion_guess = inversion_result[:3]
         time_bias = inversion_result[3]
@@ -218,10 +232,12 @@ def modular_synthetic(
             esv_matrix_inversion,
             real_data=real_data,
             z_sample=z_sample,
+            clock_drift=clock_drift,
         )
         inversion_guess = inversion_result[:3]
         time_bias = inversion_result[3]
         esv_bias = inversion_result[4]
+        drift_rate = inversion_result[5] if clock_drift else 0.0
         print("CDOG:", np.around(CDOG, 2))
         print("Inversion_Workflow:", np.round(inversion_result, 3))
         print(
@@ -252,9 +268,13 @@ def modular_synthetic(
             angle_array_inversion,
             esv_matrix_inversion,
             real_data=real_data,
+            clock_drift=clock_drift,
+            drift_rate=drift_rate,
         )
 
     print(f"Offset Error: {offset - inversion_result[3] - true_dt:.6f} s")
+    if clock_drift:
+        print(f"Drift Rate Error: {inversion_result[5] - in_drift_rate:.3e} s/s")
 
     if plot:
         time_series_plot(

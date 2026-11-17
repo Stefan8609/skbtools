@@ -32,6 +32,7 @@ def generateUnaligned(
     gps1_to_others=None,
     gps1_to_transponder=None,
     trajectory="realistic",
+    drift_rate=0.0,
 ):
     """Generate noisy travel times and corrupted CDOG tags for a realistic trajectory.
 
@@ -54,6 +55,10 @@ def generateUnaligned(
         Lookup table for the ESV.
     gps1_to_others, gps1_to_transponder : ndarray, optional
         Geometry offsets. Defaults are used if not provided.
+    drift_rate : float, optional
+        Clock drift, s/s, Eq. 6 convention: the DOG clock also gains
+        ``drift_rate * (t - t_mid)``, with ``t_mid`` half-way through the GPS
+        epochs (the inversion's ``t_mid`` uses the paired epochs instead).
 
     Returns
     -------
@@ -127,6 +132,7 @@ def generateUnaligned(
         + true_travel_times
         + np.random.normal(0.0, time_noise, len(GPS_time))
         + offset
+        + drift_rate * (GPS_time - 0.5 * (GPS_time[0] + GPS_time[-1]))
     )
 
     CDOG_int = np.floor(CDOG_time)

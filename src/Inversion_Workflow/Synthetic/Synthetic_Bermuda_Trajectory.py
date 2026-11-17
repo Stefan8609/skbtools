@@ -20,6 +20,7 @@ def bermuda_trajectory(
     gps1_to_others=None,
     gps1_to_transponder=None,
     DOG_num=3,
+    drift_rate=0.0,
 ):
     """Generate synthetic Bermuda trajectory and travel times.
 
@@ -33,6 +34,10 @@ def bermuda_trajectory(
         Effective sound velocity lookup tables.
     DOG_num : int, optional
         DOG data set to load (1–4).
+    drift_rate : float, optional
+        Clock drift, s/s, Eq. 6 convention: the DOG clock also gains
+        ``drift_rate * (t - t_mid)``, with ``t_mid`` half-way through the GPS
+        epochs (the inversion's ``t_mid`` uses the paired epochs instead).
 
     Returns
     -------
@@ -107,6 +112,7 @@ def bermuda_trajectory(
         + synthetic_travel_times
         + np.random.normal(0, time_noise, len(GPS_data))
         + offset
+        + drift_rate * (GPS_data - 0.5 * (GPS_data[0] + GPS_data[-1]))
     )
 
     CDOG_remain, CDOG_int = np.modf(CDOG_time)
