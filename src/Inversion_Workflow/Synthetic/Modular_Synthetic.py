@@ -14,7 +14,7 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     final_bias_geiger,
 )
 from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
-    simulated_annealing_bias,
+    anneal_with_offset_search,
 )
 from plotting.Plot_Modular import time_series_plot
 from bermuda_data import gps_data_path
@@ -136,7 +136,10 @@ def modular_synthetic(
         GPS_data = GPS_data[keep]
         true_transponder_coordinates = true_transponder_coordinates[keep]
         z_sample = True
-    print("True Offset", true_offset)
+    # The DOG clock offset of Eq. 6 is offset + time_bias at generation, and
+    # offset - time_bias at inversion; only this combination is identified.
+    true_dt = true_offset + in_time_bias
+    print("True clock offset", true_dt)
     # Choose Inversion_Workflow Type
     #   0: Just xAline Geiger
     #   1: xAline Geiger with Simulated Annealing
@@ -164,12 +167,6 @@ def modular_synthetic(
         time_bias = inversion_result[3]
         esv_bias = inversion_result[4]
 
-        offset = true_offset
-
-        print(
-            "INT Offset: {:.4f}".format(offset),
-            "DIFF: {:.4f}".format(offset - true_offset),
-        )
         print("CDOG:", np.around(CDOG, 2))
         print("Inversion_Workflow:", np.round(inversion_result, 3))
         print(
@@ -208,7 +205,7 @@ def modular_synthetic(
         real_lever = gps1_to_transponder
         initial_lever = real_lever - np.random.normal(0, 3, 3)
 
-        lever, offset, inversion_result = simulated_annealing_bias(
+        lever, offset, inversion_result = anneal_with_offset_search(
             300,
             CDOG_data,
             GPS_data,
@@ -220,7 +217,6 @@ def modular_synthetic(
             angle_array_inversion,
             esv_matrix_inversion,
             real_data=real_data,
-            initial_offset=true_offset,
             z_sample=z_sample,
         )
         inversion_guess = inversion_result[:3]
@@ -234,7 +230,6 @@ def modular_synthetic(
         print(
             f"Lever Error: {np.round(np.linalg.norm(lever - real_lever) * 100, 2)} cm"
         )
-        print(f"Offset Error: {np.round(np.abs(offset - true_offset), 2)} s")
 
         transponder_coordinates = findTransponder(
             GPS_Coordinates, gps1_to_others, lever
@@ -258,6 +253,8 @@ def modular_synthetic(
             esv_matrix_inversion,
             real_data=real_data,
         )
+
+    print(f"Offset Error: {offset - inversion_result[3] - true_dt:.6f} s")
 
     if plot:
         time_series_plot(
