@@ -64,3 +64,32 @@ def calculateTimesRayTracing_split(
         start = end
 
     return times, esv
+
+
+@njit(cache=True, fastmath=True)
+def calculateTimesRayTracing_windows(
+    guess,
+    transponder_coordinates,
+    window_biases,
+    epoch_window,
+    dz_array,
+    angle_array,
+    esv_matrix,
+):
+    """Ray trace times with an ESV bias per time window.
+
+    As ``calculateTimesRayTracing_Bias_Real``, but epoch i gets the bias
+    ``window_biases[epoch_window[i]]`` (m/s); ``epoch_window`` is an (N,) integer
+    array of window indices. Returns ``(times, esv)``.
+    """
+    abs_dist = np.sqrt(np.sum((transponder_coordinates - guess) ** 2, axis=1))
+    depth_arr = ECEF_Geodetic(transponder_coordinates)[2]
+
+    guess = guess[np.newaxis, :]
+    lat, lon, depth = ECEF_Geodetic(guess)
+    dz = depth_arr - depth
+    beta = np.arcsin(dz / abs_dist) * 180 / np.pi
+    esv = find_esv(beta, dz, dz_array, angle_array, esv_matrix)
+    esv = esv + window_biases[epoch_window]
+    times = abs_dist / esv
+    return times, esv

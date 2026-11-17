@@ -5,7 +5,18 @@ Parameters, in the order of the sampled vector ``theta``:
 - ``lever`` (3): GPS1 to transducer lever arm, vessel body frame, metres.
 - ``CDOG_aug`` (n_dogs, 3): DOG positions as ECEF offsets from ``CDOG_reference``, m.
 - ``esv_bias`` (n_dogs, n_splits): dc, additive ESV bias, m/s, one per consecutive
-  block of GPS epochs (blocks as in ``np.array_split``).
+  block of GPS epochs (blocks as in ``np.array_split`` over all epochs, so every
+  DOG shares the block edges). Default ``esv_model`` "splits".
+- ``esv_model`` "common_windows" replaces ``esv_bias`` by ``esv_offset`` (n_dogs)
+  and ``esv_common`` (n_windows - 1): dc of DOG j in window k is
+  ``esv_offset[j] + common[k]``, with one common series shared by all DOGs on
+  fixed GPS-time windows. The common series has zero mean over the windows (its
+  last window is minus the sum of the others), so ``esv_offset`` is each DOG's
+  mean dc. Windows are ``esv_window_s`` long from the first to the last paired
+  GPS time; a window with fewer than ``esv_window_min_pairs`` pairs (all DOGs)
+  is merged into a neighbour, so every window is constrained by data. The edges
+  are stored in the configuration (``esv_window_edges_s``) and saved with the
+  chain. No smoothness prior: each window has the same Gaussian prior as dc.
 - ``time_bias`` (n_dogs): internal clock correction, s (see sign convention below).
 - ``drift_rate`` (n_dogs, optional): clock drift, s/s, Eq. 6 convention.
 - ``log_sigma`` (n_dogs, modes "iid", "ar1", "ar1_white"): log of the residual sd
@@ -57,6 +68,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
 )
 from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
     calculateTimesRayTracing_split,
+    calculateTimesRayTracing_windows,
 )
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import residual_inliers
 from bermuda_data import PROJECT_ROOT, gps_data_path, gps_output_path
@@ -279,6 +291,16 @@ AR1_WHITE = {
 # With white noise as well, the 20k-iteration smoke runs had not converged.
 LONG_RUN = {"n_burn": 40000, "n_samples": 400000}
 WHITE_LONG_RUN = {"n_burn": 80000, "n_samples": 600000}
+# Sensitivity model (R1 3c, R2 #6): one dc(t) series shared by all DOGs on fixed
+# GPS-time windows plus a constant dc per DOG. The minimum of 300 pairs (all DOGs
+# together) is about 10 min of one DOG; a typical 30-min window holds 1000-4000.
+COMMON_WINDOWS = {
+    "esv_model": "common_windows",
+    "num_esv_splits": 1,
+    "esv_window_s": 1800.0,
+    "esv_window_min_pairs": 300,
+    "esv_window_edges_s": None,
+}
 
 RUN_VARIANTS = {
     "iid_fixed": {"likelihood": "iid_fixed"},
@@ -299,6 +321,20 @@ RUN_VARIANTS = {
     "ar1_white_drift": {**AR1_WHITE, "clock_drift": True},
     "ar1_white_drift_splits1": {**AR1_WHITE, "clock_drift": True, "num_esv_splits": 1},
     "ar1_white_drift_splits8": {**AR1_WHITE, "clock_drift": True, "num_esv_splits": 8},
+    # Common dc(t) on 30-min (about 28 windows) and 1-h windows, and with drift.
+    "ar1_common30": {"likelihood": "ar1", **COMMON_WINDOWS, **LONG_RUN},
+    "ar1_common30_drift": {
+        "likelihood": "ar1",
+        **COMMON_WINDOWS,
+        "clock_drift": True,
+        **LONG_RUN,
+    },
+    "ar1_common60": {
+        "likelihood": "ar1",
+        **COMMON_WINDOWS,
+        "esv_window_s": 3600.0,
+        **LONG_RUN,
+    },
 }
 
 
@@ -339,13 +375,31 @@ def vessel_rotations(GPS_Coordinates, gps1_to_others):
 
 
 def dog_travel_times(
-    DOG_position, trans_coords, esv_bias_row, dz_array, angle_array, esv_matrix
+    DOG_position,
+    trans_coords,
+    esv_bias_row,
+    dz_array,
+    angle_array,
+    esv_matrix,
+    epoch_window=None,
 ):
     """Modelled travel times (s) from the DOG to every transducer epoch.
 
-    Uses the split forward model for more than one ESV block, as in
-    ``compute_log_likelihood``.
+    With ``epoch_window`` (window index per epoch, "common_windows" model) epoch i
+    gets ``esv_bias_row[epoch_window[i]]``. Otherwise uses the split forward model
+    for more than one ESV block, as in ``compute_log_likelihood``.
     """
+    if epoch_window is not None:
+        times, _ = calculateTimesRayTracing_windows(
+            DOG_position,
+            trans_coords,
+            esv_bias_row,
+            epoch_window,
+            dz_array,
+            angle_array,
+            esv_matrix,
+        )
+        return times
     if esv_bias_row.shape[0] > 1:
         times, _ = calculateTimesRayTracing_split(
             DOG_position, trans_coords, esv_bias_row, dz_array, angle_array, esv_matrix
@@ -360,6 +414,47 @@ def dog_travel_times(
             esv_matrix,
         )
     return times
+
+
+def window_index(times, edges):
+    """Window of each time for GPS-time edges (s); the last window is closed.
+
+    Times before the first edge or after the last fall in the first or last
+    window (only unpaired epochs do, and they do not enter the likelihood).
+    """
+    edges = np.asarray(edges, dtype=float)
+    inside = np.searchsorted(edges, times, side="right") - 1
+    return np.clip(inside, 0, edges.size - 2).astype(np.int64)
+
+
+def common_window_edges(pair_gps_time, window_s, min_pairs):
+    """GPS-time edges (s) of the shared dc windows; every window holds data.
+
+    Windows of ``window_s`` seconds run from the first to the last paired GPS
+    time (all DOGs); the last one ends at the final pair and may be shorter. A
+    window with fewer than ``min_pairs`` pairs (all DOGs together) is merged into
+    the previous window (the first into the next) until none is left, so no
+    window value rests on the prior alone. Returns the edges and the number of
+    merges.
+    """
+    if window_s <= 0:
+        raise ValueError(f"esv_window_s must be positive; got {window_s}")
+    start, end = float(np.min(pair_gps_time)), float(np.max(pair_gps_time))
+    n_windows = max(1, int(np.ceil((end - start) / window_s)))
+    edges = list(start + window_s * np.arange(n_windows))
+    edges.append(end)
+    n_merged = 0
+    while len(edges) > 2:
+        counts = np.bincount(
+            window_index(pair_gps_time, edges), minlength=len(edges) - 1
+        )
+        sparse = np.flatnonzero(counts < min_pairs)
+        if sparse.size == 0:
+            break
+        k = int(sparse[0])
+        del edges[1 if k == 0 else k]
+        n_merged += 1
+    return edges, n_merged
 
 
 def load_bermuda_inputs(config):
@@ -508,6 +603,31 @@ def build_problem(
         starts = np.concatenate([[True], lag > config["ar1_gap_threshold_s"]])
         segment_start[sel] = starts
 
+    windows = {}
+    if config.get("esv_model", "splits") == "common_windows":
+        edges = config["esv_window_edges_s"]
+        if edges is None:
+            edges, n_merged = common_window_edges(
+                pair_gps_time,
+                float(config["esv_window_s"]),
+                int(config["esv_window_min_pairs"]),
+            )
+            print(f"dc windows: {len(edges) - 1}, {n_merged} merged", flush=True)
+        if np.any(np.diff(edges) <= 0):
+            raise ValueError("esv_window_edges_s must be increasing")
+        pair_window = window_index(pair_gps_time, edges)
+        counts = np.bincount(pair_window, minlength=len(edges) - 1)
+        if np.any(counts == 0):
+            raise ValueError(
+                f"dc windows {np.flatnonzero(counts == 0).tolist()} hold no pairs; "
+                "a window without data would rest on the prior alone"
+            )
+        windows = {
+            "esv_window_edges_s": [float(edge) for edge in edges],
+            "epoch_window": window_index(GPS_data, edges),
+            "pair_window": pair_window,
+        }
+
     print(
         "Fixed pairs per DOG:",
         pair_counts.tolist(),
@@ -538,7 +658,24 @@ def build_problem(
         "t_mid": t_mid,
         "dropped_pairs": dropped_pairs,
         "input_files": input_files or {},
+        **windows,
     }
+
+
+def num_esv_windows(config):
+    """Number of dc windows of a "common_windows" configuration."""
+    edges = config["esv_window_edges_s"]
+    if edges is None:
+        raise ValueError(
+            "esv_window_edges_s is not set: build the problem first (setup_bermuda "
+            "stores the edges in the configuration)"
+        )
+    return len(edges) - 1
+
+
+def common_series_matrix(n_windows):
+    """(n_windows, n_windows - 1) map from esv_common to the zero-mean series."""
+    return np.vstack([np.eye(n_windows - 1), -np.ones((1, n_windows - 1))])
 
 
 def parameter_layout(config):
@@ -547,16 +684,27 @@ def parameter_layout(config):
     blocks = [
         ("lever", [f"lever_{axis}" for axis in "xyz"]),
         ("CDOG_aug", [f"CDOG_aug_DOG{dog}_{axis}" for dog in dogs for axis in "xyz"]),
-        (
-            "esv_bias",
-            [
-                f"esv_bias_DOG{dog}_split{s}"
-                for dog in dogs
-                for s in range(config["num_esv_splits"])
-            ],
-        ),
-        ("time_bias", [f"time_bias_internal_DOG{dog}" for dog in dogs]),
     ]
+    if config.get("esv_model", "splits") == "common_windows":
+        blocks += [
+            ("esv_offset", [f"esv_offset_DOG{dog}" for dog in dogs]),
+            (
+                "esv_common",
+                [f"esv_common_w{k}" for k in range(num_esv_windows(config) - 1)],
+            ),
+        ]
+    else:
+        blocks.append(
+            (
+                "esv_bias",
+                [
+                    f"esv_bias_DOG{dog}_split{s}"
+                    for dog in dogs
+                    for s in range(config["num_esv_splits"])
+                ],
+            )
+        )
+    blocks.append(("time_bias", [f"time_bias_internal_DOG{dog}" for dog in dogs]))
     if config["clock_drift"]:
         blocks.append(("drift_rate", [f"drift_rate_DOG{dog}" for dog in dogs]))
     if config["likelihood"] != "iid_fixed":
@@ -591,9 +739,22 @@ def build_model(config):
         )
     if config["likelihood"] == "iid_fixed" and config["clock_drift"]:
         raise ValueError("iid_fixed reproduces the old likelihood, which has no drift")
+    common_windows = config.get("esv_model", "splits") == "common_windows"
+    if config.get("esv_model", "splits") not in ("splits", "common_windows"):
+        raise ValueError(
+            f"esv_model must be 'splits' or 'common_windows'; "
+            f"got {config['esv_model']!r}"
+        )
+    if common_windows and (
+        config["likelihood"] == "iid_fixed" or config["num_esv_splits"] != 1
+    ):
+        raise ValueError(
+            "common_windows needs a sampled-noise likelihood and num_esv_splits = 1"
+        )
 
     num_dogs = len(config["dogs"])
-    num_splits = config["num_esv_splits"]
+    # Columns of the per-DOG dc matrix: splits, or windows of the common series.
+    num_splits = num_esv_windows(config) if common_windows else config["num_esv_splits"]
     layout, names = parameter_layout(config)
     n_params = len(names)
 
@@ -603,8 +764,14 @@ def build_model(config):
     sd[layout["lever"]] = config["prior_lever_sd_m"]
     center[layout["CDOG_aug"]] = np.ravel(config["prior_CDOG_aug_center_m"])
     sd[layout["CDOG_aug"]] = config["prior_CDOG_aug_sd_m"]
-    center[layout["esv_bias"]] = config["prior_esv_bias_center_m_s"]
-    sd[layout["esv_bias"]] = config["prior_esv_bias_sd_m_s"]
+    if common_windows:
+        center[layout["esv_offset"]] = config["prior_esv_bias_center_m_s"]
+        sd[layout["esv_offset"]] = config["prior_esv_bias_sd_m_s"]
+        center[layout["esv_common"]] = 0.0
+        sd[layout["esv_common"]] = config["prior_esv_bias_sd_m_s"]
+    else:
+        center[layout["esv_bias"]] = config["prior_esv_bias_center_m_s"]
+        sd[layout["esv_bias"]] = config["prior_esv_bias_sd_m_s"]
     # dt = offset - time_bias is centered on the alignment offset.
     center[layout["time_bias"]] = 0.0
     sd[layout["time_bias"]] = config["prior_dt_sd_s"]
@@ -623,7 +790,10 @@ def build_model(config):
     start = np.zeros(n_params)
     start[layout["lever"]] = config["start_lever"]
     start[layout["CDOG_aug"]] = np.ravel(config["start_CDOG_aug"])
-    start[layout["esv_bias"]] = np.repeat(config["start_esv_bias"], num_splits)
+    if common_windows:
+        start[layout["esv_offset"]] = config["start_esv_bias"]
+    else:
+        start[layout["esv_bias"]] = np.repeat(config["start_esv_bias"], num_splits)
     if "log_sigma" in layout:
         start[layout["log_sigma"]] = config["prior_log_sigma_center"]
     if "log_sigma_white" in layout:
@@ -633,7 +803,9 @@ def build_model(config):
     fd_step = np.zeros(n_params)
     fd_step[layout["lever"]] = 1e-3
     fd_step[layout["CDOG_aug"]] = 1e-3
-    fd_step[layout["esv_bias"]] = 1e-3
+    for block in ("esv_bias", "esv_offset", "esv_common"):
+        if block in layout:
+            fd_step[layout[block]] = 1e-3
     fd_step[layout["time_bias"]] = 1e-6
     geometric_end = layout["time_bias"].stop
     if "drift_rate" in layout:
@@ -656,6 +828,22 @@ def build_model(config):
     }
 
 
+def esv_bias_matrix(theta, model):
+    """dc (m/s) per DOG and split or window, (..., n_dogs, num_splits).
+
+    theta is (n_params,) or (n_draws, n_params). In the "common_windows" model dc
+    of DOG j in window k is ``esv_offset[j] + common[k]``.
+    """
+    layout = model["layout"]
+    shape = theta.shape[:-1] + (model["num_dogs"], model["num_splits"])
+    if "esv_bias" in layout:
+        return theta[..., layout["esv_bias"]].reshape(shape)
+    common = (
+        theta[..., layout["esv_common"]] @ common_series_matrix(model["num_splits"]).T
+    )
+    return theta[..., layout["esv_offset"], None] + common[..., None, :]
+
+
 def unpack(theta, model):
     """Split theta into named arrays; absent blocks are returned as zeros."""
     layout = model["layout"]
@@ -663,7 +851,7 @@ def unpack(theta, model):
     params = {
         "lever": theta[layout["lever"]],
         "CDOG_aug": theta[layout["CDOG_aug"]].reshape(num_dogs, 3),
-        "esv_bias": theta[layout["esv_bias"]].reshape(num_dogs, model["num_splits"]),
+        "esv_bias": esv_bias_matrix(theta, model),
         "time_bias": theta[layout["time_bias"]],
     }
     for block in ("drift_rate", "log_sigma", "phi", "log_sigma_white"):
@@ -675,6 +863,9 @@ def unpack(theta, model):
 
 def residuals_cm(theta, model, problem):
     """Range residuals (cm), observed minus modelled, for all pairs in DOG order."""
+    epoch_window = problem.get("epoch_window")
+    if ("esv_offset" in model["layout"]) != (epoch_window is not None):
+        raise ValueError("Model and problem disagree on the esv_model")
     params = unpack(theta, model)
     trans = (problem["R_stacked"] @ params["lever"]).reshape(-1, 3) + problem["d"]
     residuals = np.empty(problem["pair_dog"].shape[0])
@@ -686,6 +877,7 @@ def residuals_cm(theta, model, problem):
             problem["dz_array"],
             problem["angle_array"],
             problem["esv_matrix"],
+            epoch_window,
         )
         residuals[sel] = (
             problem["pair_time_base"][sel]
@@ -1080,9 +1272,7 @@ def derived_outputs(theta_samples, model, problem):
     out = {
         "lever": theta_samples[:, layout["lever"]],
         "CDOG_aug": theta_samples[:, layout["CDOG_aug"]].reshape(n, num_dogs, 3),
-        "esv_bias": theta_samples[:, layout["esv_bias"]].reshape(
-            n, num_dogs, model["num_splits"]
-        ),
+        "esv_bias": esv_bias_matrix(theta_samples, model),
         # Eq. 6 clock offset: dt = offset - time_bias.
         "dt": problem["offsets"] - theta_samples[:, layout["time_bias"]],
         "drift_rate": (
@@ -1097,6 +1287,11 @@ def derived_outputs(theta_samples, model, problem):
         sigma[i], phi[i] = noise_parameters(theta_samples[i], model)
     out["sigma_cm"] = sigma
     out["phi"] = phi
+    if "esv_common" in layout:
+        # Common dc series (m/s) per window, zero mean over the windows.
+        out["esv_common"] = theta_samples[:, layout["esv_common"]] @ (
+            common_series_matrix(model["num_splits"]).T
+        )
     if "log_sigma_white" in layout:
         out["sigma_white_cm"] = np.exp(theta_samples[:, layout["log_sigma_white"]])
     return out
@@ -1462,6 +1657,9 @@ def setup_bermuda(config):
         inputs["esv_matrix"],
         input_files=inputs["input_files"],
     )
+    if "esv_window_edges_s" in problem:
+        # The windows depend on the pairs; keep them in the saved configuration.
+        config = {**config, "esv_window_edges_s": problem["esv_window_edges_s"]}
     return build_model(config), problem
 
 
@@ -1481,6 +1679,8 @@ def run_bermuda_chain(chain_index, config):
 
 def warm_up_numba(config):
     """Compile and cache the Numba kernels once, before parallel chains start."""
+    # The splits-model kernels, whatever the esv_model of the run.
+    config = {**config, "esv_model": "splits"}
     model, problem = setup_bermuda({**config, "likelihood": "ar1", "clock_drift": True})
     log_posterior(model["start_theta"], model, problem)
     white = build_model({**config, **AR1_WHITE})
@@ -1491,6 +1691,10 @@ def warm_up_numba(config):
     )
     fixed = build_model({**config, "likelihood": "iid_fixed", "clock_drift": False})
     log_posterior(fixed["start_theta"], fixed, problem)
+    common, common_problem = setup_bermuda(
+        {**config, "likelihood": "ar1", **COMMON_WINDOWS}
+    )
+    log_posterior(common["start_theta"], common, common_problem)
     print(
         "Numba kernels compiled; NUMBA_NUM_THREADS =",
         numba.config.NUMBA_NUM_THREADS,
