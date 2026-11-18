@@ -60,6 +60,8 @@ DOWNSAMPLE = 50
 # confidence test (delta chi^2 >= 50, white-noise formula) fails for about a quarter
 # of the "random" preset DOGs; at 10 it resolves them.
 OFFSET_SEARCH_DOWNSAMPLE = 10
+# A fit that keeps fewer pairs than this has diverged; it is recorded as failed.
+MIN_PAIRS = 100
 START_POSITION_SD_M = 20.0
 LEVER_START_SD_M = 0.3
 OUTPUT_DIR = PROJECT_ROOT / "revision/analysis/realistic_synthetic"
@@ -321,7 +323,11 @@ def residual_summary(estimate, pairs, transponder, GPS_data, clock_drift):
         columns.append(((t - 0.5 * (t.min() + t.max())) / 1e4)[:, None])
     J = np.hstack(columns)
     sigma = residual.std()
-    cov = sigma**2 * np.linalg.inv(J.T @ J)
+    # pinv: on a circle centred near a DOG the slant range barely changes, so the
+    # dt and dc columns are collinear; the condition number records it.
+    scale = np.linalg.norm(J, axis=0)
+    normal = (J / scale).T @ (J / scale)
+    cov = sigma**2 * np.linalg.pinv(normal) / np.outer(scale, scale)
     consecutive = np.diff(GPS_data[epoch]) == 1
     phi = np.corrcoef(residual[:-1][consecutive], residual[1:][consecutive])[0, 1]
     sd_white = np.sqrt(np.diag(cov)[:3]) * 100
@@ -331,6 +337,7 @@ def residual_summary(estimate, pairs, transponder, GPS_data, clock_drift):
     time_bins = np.arange(0.0, 15.0, 0.25)
     slant_bins = np.arange(5000.0, 13500.0, 500.0)
     return {
+        "condition_number": float(np.linalg.cond(normal)),
         "residual_rms_cm": float(residual_cm.std()),
         "residual_phi_1s": float(phi),
         "n_pairs": int(len(residual)),
@@ -380,13 +387,15 @@ def run_realization(task):
                 CDOG_data, GPS_Coordinates, GPS_data, start, lever_start, settings,
                 tables_inv,
             )  # fmt: skip
+            if len(pairs[0]) < MIN_PAIRS:
+                raise ValueError(f"{len(pairs[0])} pairs after the final fit")
+            summary = residual_summary(
+                estimate, pairs, transponder, GPS_data, settings["clock_drift"]
+            )
         except (ValueError, np.linalg.LinAlgError) as error:
             row["failed"] = str(error)[:80]
             rows.append(row)
             continue
-        summary = residual_summary(
-            estimate, pairs, transponder, GPS_data, settings["clock_drift"]
-        )
         error_enu_cm = to_enu @ (estimate[:3] - CDOG) * 100
         row.update(
             {
@@ -411,6 +420,7 @@ def run_realization(task):
                 "residual_phi_1s": summary["residual_phi_1s"],
                 "n_pairs": summary["n_pairs"],
                 "elevation_min_deg": summary["elevation_min_deg"],
+                "condition_number": summary["condition_number"],
             }
         )
         for name, delay in truth["delay_s"].items():
