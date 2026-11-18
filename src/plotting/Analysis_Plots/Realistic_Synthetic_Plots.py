@@ -177,7 +177,10 @@ def geometry_figure():
     """FIG-7: horizontal and vertical error per track, lever fixed vs free."""
     paper_style.apply()
     data = pd.read_csv(RESULTS / "geometry.csv")
-    data = data[data["failed"].fillna("") == ""]
+    data = data[(data["failed"].fillna("") == "") & (data["wrong_second"] == 0)]
+    # A single circle leaves dt, dc and U inseparable: the paper's model is singular
+    # there (stated in the caption), so only solvable tracks are plotted.
+    data = data[~data["cell"].str.startswith("circle")]
     fig, axes = paper_style.figure("double", 60.0, ncols=2)
     cells = list(
         dict.fromkeys(data["cell"].str.replace(r"_lever_(fixed|free)$", "", regex=True))
@@ -207,9 +210,11 @@ def geometry_figure():
     for ax, label in zip(
         axes, ("rms horizontal error (cm)", "rms vertical error (cm)"), strict=True
     ):
-        ax.set_xticks(x, [c.replace("_lost", "\n−quadrant") for c in cells])
+        ax.set_xticks(
+            x, [c.capitalize().replace("_lost", "\nlost quadrant") for c in cells]
+        )
         ax.set_ylabel(label)
-        ax.set_yscale("log")
+        ax.set_ylim(bottom=0)
     axes[0].legend()
     for ax, letter in zip(axes, "ab", strict=True):
         paper_style.panel_label(ax, letter)
