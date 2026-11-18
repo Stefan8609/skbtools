@@ -217,6 +217,13 @@ def experiment_cells(experiment):
                     knobs["lost_quadrant"] = lost
                     name = f"{track}{'_lost' if lost else ''}_{lever}"
                     cells.append((name, knobs, {"lever": lever, "clock_drift": False}))
+    elif experiment == "halfsplit":
+        # Each half of the survey inverted alone (lever free), as the real-data
+        # half-split (R4 5): is the half-to-half spread a fair measure of the error?
+        for preset in PRESETS:
+            for half in (1, 2):
+                settings = {"lever": "lever_free", "clock_drift": False, "half": half}
+                cells.append((f"{preset}_half{half}", full_preset(preset), settings))
     elif experiment == "currents":
         for speed in (0.0, 0.02, 0.05, 0.10):
             for direction_deg in (0, 90, 180, 270):
@@ -363,6 +370,11 @@ def run_realization(task):
         if settings["lever"] == "lever_free":
             lever_start += rng.normal(0.0, LEVER_START_SD_M, 3)
         row = {"experiment": experiment, "cell": cell, "seed": seed, "DOG": DOG_num}
+        if settings.get("half"):
+            # Split at the median GPS epoch; the DOG still hears every ping.
+            first = GPS_data < np.median(GPS_data)
+            half = first if settings["half"] == 1 else ~first
+            GPS_Coordinates, GPS_data = GPS_Coordinates[half], GPS_data[half]
         try:
             estimate, offset, lever, pairs, transponder = invert(
                 CDOG_data, GPS_Coordinates, GPS_data, start, lever_start, settings,
@@ -441,7 +453,8 @@ def run_experiment(experiment, n_realizations, first_seed=0, n_workers=N_WORKERS
     with Pool(n_workers) as pool:
         rows = [row for result in pool.imap(run_realization, tasks) for row in result]
     columns = list(dict.fromkeys(key for row in rows for key in row))
-    path = OUTPUT_DIR / f"{experiment}.csv"
+    suffix = f"_seed{first_seed:04d}" if first_seed else ""
+    path = OUTPUT_DIR / f"{experiment}{suffix}.csv"
     with open(path, "w", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=columns)
         writer.writeheader()
@@ -453,4 +466,10 @@ def run_experiment(experiment, n_realizations, first_seed=0, n_workers=N_WORKERS
 if __name__ == "__main__":
     os.environ.setdefault("NUMBA_NUM_THREADS", "1")
     Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
-    run_experiment(EXPERIMENT, N_REALIZATIONS, FIRST_SEED)
+    # slurm/realistic_synthetic_array.sh sets these; locally the config above is used.
+    experiment = os.environ.get("RS_EXPERIMENT", EXPERIMENT)
+    n_realizations = int(os.environ.get("RS_SEEDS_PER_TASK", N_REALIZATIONS))
+    task = int(os.environ.get("SLURM_ARRAY_TASK_ID", "0"))
+    first_seed = FIRST_SEED + task * n_realizations
+    n_workers = int(os.environ.get("RS_WORKERS", N_WORKERS))
+    run_experiment(experiment, n_realizations, first_seed, n_workers)

@@ -48,6 +48,12 @@ def apply():
     """Set the matplotlib rcParams of the paper style."""
     mpl.rcParams.update(
         {
+            # Some plotting modules turn LaTeX on at import; the paper figures use
+            # matplotlib text (Unicode, editable in the PDF).
+            "text.usetex": False,
+            "font.family": "sans-serif",
+            "font.sans-serif": ["DejaVu Sans"],
+            "mathtext.fontset": "dejavusans",
             "font.size": FONT_SIZE_PT,
             "axes.titlesize": FONT_SIZE_PT,
             "axes.labelsize": FONT_SIZE_PT,
