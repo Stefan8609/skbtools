@@ -109,6 +109,4 @@ if __name__ == "__main__":
         "transducer_depth": z_a,
     }
     # New file: global_table_esv_extended.mat is kept as it was.
-    sio.savemat(
-        gps_data_path("ESV_Tables/global_table_esv_extended.mat"), data_to_save
-    )
+    sio.savemat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"), data_to_save)

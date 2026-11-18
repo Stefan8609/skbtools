@@ -305,7 +305,7 @@ def trace_plot(
     # ESV traces
     for k in range(n_splits):
         axes[4].plot(esv_centered[:, 0, k], linewidth=0.8, label=f"split {k + 1}")
-    axes[4].set_ylabel("$\delta c$")
+    axes[4].set_ylabel(r"$\delta c$")
     axes[4].legend(fontsize="x-small", ncol=min(n_splits, 3), loc="upper right")
 
     # Log posterior / rmse line
@@ -897,7 +897,7 @@ def corner_plot(
                 prior68.set_edgecolor("blue")
                 prior68.set_linewidth(1.5)
                 prior68.set_facecolor("none")
-                prior68.set_label("Prior 68\%")
+                prior68.set_label("Prior 68%")
                 ax.add_patch(prior68)
 
             # 68% POSTERIOR Gaussian ellipse (centered at 0, covariance from samples)
@@ -909,7 +909,7 @@ def corner_plot(
             post68.set_edgecolor("red")
             post68.set_linewidth(1.5)
             post68.set_facecolor("none")
-            post68.set_label("Posterior 68\% (Gaussian)")
+            post68.set_label("Posterior 68% (Gaussian)")
             ax.add_patch(post68)
 
             if key_j in flat_init and key_i in flat_init:
@@ -947,13 +947,13 @@ def corner_plot(
         [], [], linestyle="none", marker="o", markersize=4, label="Posterior (samples)"
     )
     prior_h = mpatches.Patch(
-        edgecolor="blue", facecolor="none", linewidth=1.5, label="Prior 68\%"
+        edgecolor="blue", facecolor="none", linewidth=1.5, label="Prior 68%"
     )
     post_h = mpatches.Patch(
         edgecolor="red",
         facecolor="none",
         linewidth=1.5,
-        label="Posterior 68\% (Gaussian)",
+        label="Posterior 68% (Gaussian)",
     )
     init_h = mlines.Line2D(
         [], [], color="red", marker="x", linestyle="none", markersize=6, label="Initial"
