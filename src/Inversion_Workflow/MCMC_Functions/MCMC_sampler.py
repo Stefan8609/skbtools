@@ -103,6 +103,9 @@ CONFIG = {
     "ar1_gap_threshold_s": 30.0,
     # Linear clock drift per DOG (theme T5).
     "clock_drift": False,
+    # GPS-time window [start, end] (s) of the epochs used; None uses all. For the
+    # half-split repeatability runs (R4 5).
+    "gps_time_window_s": None,
     # Data (paths inside Bermuda_Data). The GPS epochs of the DOG 1 file are used
     # for all DOGs, as in the inversion of the joint model.
     "dogs": [1, 3, 4],
@@ -336,6 +339,31 @@ RUN_VARIANTS = {
         **LONG_RUN,
     },
 }
+# Repeatability (R4 5, N5). Halves of the survey split at the median GPS epoch of the
+# DOG 1 file (47135 s), each with the 30-min common dc(t), and each DOG alone (its
+# own lever arm) with the 4-split model of "ar1".
+HALF_SPLIT_GPS_S = 47135.0
+RUN_VARIANTS["ar1_common30_half1"] = {
+    **RUN_VARIANTS["ar1_common30"],
+    "gps_time_window_s": [0.0, HALF_SPLIT_GPS_S],
+}
+RUN_VARIANTS["ar1_common30_half2"] = {
+    **RUN_VARIANTS["ar1_common30"],
+    "gps_time_window_s": [HALF_SPLIT_GPS_S, np.inf],
+}
+
+
+def single_dog(dog):
+    """Overrides that keep one DOG of CONFIG (per-DOG entries sliced)."""
+    j = CONFIG["dogs"].index(dog)
+    per_dog = ("offsets_s", "start_CDOG_aug", "start_esv_bias")
+    overrides = {key: [CONFIG[key][j]] for key in per_dog}
+    overrides["prior_CDOG_aug_center_m"] = [CONFIG["prior_CDOG_aug_center_m"][j]]
+    return {"dogs": [dog], **overrides}
+
+
+for _dog in (1, 3, 4):
+    RUN_VARIANTS[f"ar1_dog{_dog}"] = {"likelihood": "ar1", **single_dog(_dog)}
 
 
 def run_config(variant, overrides=None):
@@ -1647,6 +1675,13 @@ def run_chain(chain_index, model, problem, out_path, stop_at=None):
 def setup_bermuda(config):
     """Load the Bermuda data and build the sampler model and fixed pairs."""
     inputs = load_bermuda_inputs(config)
+    window = config.get("gps_time_window_s")
+    if window is not None:
+        if len(window) != 2 or not window[0] < window[1]:
+            raise ValueError(f"gps_time_window_s must be [start, end]; got {window}")
+        keep = (inputs["GPS_data"] >= window[0]) & (inputs["GPS_data"] < window[1])
+        inputs["GPS_data"] = inputs["GPS_data"][keep]
+        inputs["GPS_Coordinates"] = inputs["GPS_Coordinates"][keep]
     problem = build_problem(
         config,
         inputs["GPS_Coordinates"],

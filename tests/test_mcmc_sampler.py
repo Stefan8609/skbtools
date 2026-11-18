@@ -430,3 +430,20 @@ def test_atanh_phi_prior_is_uniform_in_phi():
         np.log(1 - 0.99**2) - np.log(1 - 0.5**2)
     )
     assert log_prior_at(0.99995) == -np.inf
+
+
+def test_single_dog_variants_keep_that_dogs_entries():
+    """Per-DOG runs (own lever arm, R4 5) slice every per-DOG entry of CONFIG."""
+    config = ms.run_config("ar1_dog3")
+    j = ms.CONFIG["dogs"].index(3)
+    assert config["dogs"] == [3]
+    assert config["offsets_s"] == [ms.CONFIG["offsets_s"][j]]
+    assert config["start_CDOG_aug"] == [ms.CONFIG["start_CDOG_aug"][j]]
+    assert config["prior_CDOG_aug_center_m"] == [
+        ms.CONFIG["prior_CDOG_aug_center_m"][j]
+    ]
+    model = ms.build_model(config)
+    assert model["num_dogs"] == 1
+    halves = [ms.run_config(f"ar1_common30_half{k}") for k in (1, 2)]
+    assert halves[0]["gps_time_window_s"][1] == halves[1]["gps_time_window_s"][0]
+    assert ms.CONFIG["gps_time_window_s"] is None
