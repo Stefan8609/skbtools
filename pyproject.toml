@@ -47,6 +47,13 @@ packages = [
 ]
 include = ["*.py"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: full inversions or MCMC chains (minutes each with the JIT off); run with -m slow",
+]
+addopts = "-m 'not slow'"
+
 [tool.black]
 line-length = 88
 

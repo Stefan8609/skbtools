@@ -54,8 +54,9 @@ def reported_quantities(model, offsets, CDOG_reference):
     Returns names, units, the matrix A (n_quantities, n_params) and the constant
     b, so that quantities = theta @ A.T + b. Covers the lever arm, each DOG's
     ECEF offset and ENU change since Table 1, Eq. 6 dt, each ESV split and their
-    mean, drift, sigma and phi (log sigma is exponentiated separately), and the
-    paper's lever_z - DOG U.
+    mean (for "common_windows": the common series, each DOG's dc per window and
+    its offset, the mean over windows), drift, sigma and phi (log sigma is
+    exponentiated separately), and the paper's lever_z - DOG U.
     """
     layout = model["layout"]
     n_params = len(model["names"])
@@ -73,6 +74,19 @@ def reported_quantities(model, offsets, CDOG_reference):
 
     for a, axis in enumerate("xyz"):
         add(f"lever_{axis}", "m", [(layout["lever"].start + a, 1.0)])
+    splits = model["num_splits"]
+    if "esv_common" in layout:
+        # dc of DOG j in window k = esv_offset[j] + common[k]; common has zero mean.
+        common_map = ms.common_series_matrix(splits)
+        common_terms = [
+            [
+                (layout["esv_common"].start + i, common_map[k, i])
+                for i in range(splits - 1)
+            ]
+            for k in range(splits)
+        ]
+        for k in range(splits):
+            add(f"common_dc_w{k}", "m/s", common_terms[k])
     for j, dog in enumerate(dogs):
         aug_start = layout["CDOG_aug"].start + 3 * j
         for a, axis in enumerate("xyz"):
@@ -91,15 +105,20 @@ def reported_quantities(model, offsets, CDOG_reference):
         add(
             f"DOG{dog}_dt_Eq6", "s", [(layout["time_bias"].start + j, -1.0)], offsets[j]
         )
-        splits = model["num_splits"]
-        esv_start = layout["esv_bias"].start + splits * j
-        for s in range(splits):
-            add(f"DOG{dog}_dc_split{s}", "m/s", [(esv_start + s, 1.0)])
-        add(
-            f"DOG{dog}_dc_mean",
-            "m/s",
-            [(esv_start + s, 1.0 / splits) for s in range(splits)],
-        )
+        if "esv_common" in layout:
+            offset = (layout["esv_offset"].start + j, 1.0)
+            for k in range(splits):
+                add(f"DOG{dog}_dc_w{k}", "m/s", [offset] + common_terms[k])
+            add(f"DOG{dog}_dc_mean", "m/s", [offset])
+        else:
+            esv_start = layout["esv_bias"].start + splits * j
+            for s in range(splits):
+                add(f"DOG{dog}_dc_split{s}", "m/s", [(esv_start + s, 1.0)])
+            add(
+                f"DOG{dog}_dc_mean",
+                "m/s",
+                [(esv_start + s, 1.0 / splits) for s in range(splits)],
+            )
         if "drift_rate" in layout:
             add(f"DOG{dog}_drift_rate", "s/s", [(layout["drift_rate"].start + j, 1.0)])
         if "phi" in layout:
@@ -219,7 +238,7 @@ def table1_markdown(rows, model, run_name):
     lines += [
         "",
         "xR: ECEF offset from CDOG_reference. δt: Eq. 6 convention "
-        "(offset − time_bias). δ̄c: mean over the ESV splits. cσε: sampled "
+        "(offset − time_bias). δ̄c: mean over the ESV splits or windows. cσε: sampled "
         "residual sd in range at 1515 m/s.",
     ]
     return "\n".join(lines) + "\n"
@@ -379,6 +398,88 @@ def linearized_comparison(theta, logpost, model, problem, offsets, CDOG_referenc
     return sd_rows, correlation_rows, condition
 
 
+def common_dc_rows(theta, model, problem):
+    """Per dc window: GPS-time span, pairs per DOG, common series and DOG dc.
+
+    Times are hours from the first window edge (the first paired GPS time).
+    dc values are posterior mean and 2.5/97.5 percentiles in m/s.
+    """
+    edges = np.array(model["config"]["esv_window_edges_s"])
+    hours = (edges - edges[0]) / 3600.0
+    n_windows = model["num_splits"]
+    common = theta[:, model["layout"]["esv_common"]] @ (
+        ms.common_series_matrix(n_windows).T
+    )
+    dc = ms.esv_bias_matrix(theta, model)
+    rows = []
+    for k in range(n_windows):
+        row = {
+            "window": k,
+            "start_h": hours[k],
+            "end_h": hours[k + 1],
+            "common_mean": common[:, k].mean(),
+            "common_p2.5": np.percentile(common[:, k], 2.5),
+            "common_p97.5": np.percentile(common[:, k], 97.5),
+        }
+        for j, dog in enumerate(model["config"]["dogs"]):
+            in_window = problem["pair_window"][problem["pair_slices"][j]] == k
+            row[f"DOG{dog}_pairs"] = int(in_window.sum())
+            row[f"DOG{dog}_dc_mean"] = dc[:, j, k].mean()
+            row[f"DOG{dog}_dc_sd"] = dc[:, j, k].std(ddof=1)
+        rows.append(row)
+    return rows
+
+
+def plot_common_dc(rows, model, run_name, out_path):
+    """dc(t): the common series with its 95% band, and each DOG's dc per window.
+
+    A DOG's dc is drawn only in windows where it has pairs; elsewhere it would be
+    its offset plus the common series, not a measurement.
+    """
+    import matplotlib.pyplot as plt
+
+    start = np.array([row["start_h"] for row in rows])
+    end = np.array([row["end_h"] for row in rows])
+    centre = 0.5 * (start + end)
+    fig, (top, bottom) = plt.subplots(2, 1, figsize=(9, 6), sharex=True)
+    for row in rows:
+        top.fill_between(
+            [row["start_h"], row["end_h"]],
+            1e3 * row["common_p2.5"],
+            1e3 * row["common_p97.5"],
+            color="0.8",
+            linewidth=0,
+        )
+        top.plot([row["start_h"], row["end_h"]], [1e3 * row["common_mean"]] * 2, "k-")
+    top.axhline(0.0, color="0.5", linewidth=0.5)
+    # No "%" or bare "_" in the title: they break LaTeX text rendering.
+    name = run_name.replace("_", r"\_") if plt.rcParams["text.usetex"] else run_name
+    top.set(
+        ylabel="common dc (mm/s)",
+        title=f"{name}: common dc(t), zero mean, 2.5-97.5 percentile band",
+    )
+    for dog in model["config"]["dogs"]:
+        has_pairs = np.array([row[f"DOG{dog}_pairs"] > 0 for row in rows])
+        mean = np.array([row[f"DOG{dog}_dc_mean"] for row in rows])
+        sd = np.array([row[f"DOG{dog}_dc_sd"] for row in rows])
+        bottom.errorbar(
+            centre[has_pairs],
+            mean[has_pairs],
+            sd[has_pairs],
+            fmt="o",
+            markersize=3,
+            label=f"DOG {dog}",
+        )
+    bottom.set(
+        xlabel="hours from first paired GPS time",
+        ylabel="dc (m/s), mean ± sd",
+    )
+    bottom.legend()
+    fig.tight_layout()
+    fig.savefig(out_path)
+    plt.close(fig)
+
+
 def summarize_run(run_name, linearized=True):
     """Write the B2-B4 tables of a run and print the key numbers."""
     chains = load_run(run_name)
@@ -400,6 +501,14 @@ def summarize_run(run_name, linearized=True):
     write_csv(lever, out_dir / "lever_vs_prior.csv")
     sensitivity = prior_sensitivity(theta, model, offsets, CDOG_reference)
     write_csv(sensitivity, out_dir / "prior_sensitivity.csv")
+    common_windows = "esv_common" in model["layout"]
+    problem = None
+    if linearized or common_windows:
+        _, problem = ms.setup_bermuda(config)
+    if common_windows:
+        dc_rows = common_dc_rows(theta, model, problem)
+        write_csv(dc_rows, out_dir / "dc_windows.csv")
+        plot_common_dc(dc_rows, model, run_name, out_dir / "dc_t.pdf")
 
     print(f"\nRun {run_name}: {theta.shape[0]} draws from {len(chains)} chains")
     print((out_dir / "table1_posterior.md").read_text())
@@ -417,7 +526,6 @@ def summarize_run(run_name, linearized=True):
         print(f"  {row['parameter']:28s} {row['ratio']:.4f}  {row['verdict']}")
 
     if linearized:
-        _, problem = ms.setup_bermuda(config)
         sd_rows, correlation_rows, condition = linearized_comparison(
             theta, logpost, model, problem, offsets, CDOG_reference
         )

@@ -292,6 +292,9 @@ def anneal_with_offset_search(
     ``INT_OFFSET_SHIFT_SECONDS`` of that offset is annealed in full, and the lowest
     final RMS wins. Returns ``(lever, offset, estimate)`` like
     ``simulated_annealing_bias``.
+
+    The workflow uses ``gauss_newton_offset_search`` instead (it solves the lever
+    arm exactly at every integer second); this is kept to validate it.
     """
     transponder_coordinates = findTransponder(
         GPS_Coordinates, gps1_to_others, initial_lever

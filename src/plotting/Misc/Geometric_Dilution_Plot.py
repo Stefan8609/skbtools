@@ -11,6 +11,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
 from Inversion_Workflow.Synthetic.Modular_Synthetic import (
     modular_synthetic,
 )
+from acoustics.synthetic_esv_tables import ESV_GENERATE, ESV_STRONG
 from bermuda_data import gps_data_path
 
 
@@ -29,7 +30,7 @@ def geometric_dilution(interval):
         A figure showing GDOP versus time is displayed.
     """
 
-    table_str = "global_table_esv_realistic_perturbed"
+    table_str = ESV_STRONG
 
     (
         inversion_result,
@@ -47,7 +48,7 @@ def geometric_dilution(interval):
         2 * 10**-2,
         0,
         0,
-        "global_table_esv",
+        ESV_GENERATE,
         table_str,
         generate_type=1,
         inversion_type=0,

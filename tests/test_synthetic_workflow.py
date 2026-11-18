@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias,
@@ -75,11 +76,12 @@ def test_unaligned_arrivals_follow_the_inversion_forward_model():
     assert abs(residual.mean()) < 5 * time_noise / np.sqrt(len(residual))
 
 
+@pytest.mark.slow
 def test_clock_offset_recovered_without_the_true_offset():
     """Offset - time_bias recovers offset + generation time_bias, noiseless."""
     offset, time_bias = 3141.5926, 0.2
     CDOG_mat, CDOG, GPS_Coordinates, GPS_time, _ = _generate(
-        8000, 0.0, 0.0, offset, time_bias, seed=0
+        2000, 0.0, 0.0, offset, time_bias, seed=0
     )
     transponder = findTransponder(GPS_Coordinates, OTHERS, LEVER)
     estimate, found_offset = initial_bias_geiger(

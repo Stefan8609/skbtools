@@ -1,6 +1,7 @@
 from functools import lru_cache
 
 import numpy as np
+import pytest
 
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_Geiger_bias import compute_Jacobian_biased
@@ -25,10 +26,10 @@ OFFSET, TIME_BIAS, DRIFT_RATE = 3141.5926, 0.2, 5e-10
 
 @lru_cache(maxsize=None)
 def _invert_unaligned(drift_rate, clock_drift):
-    """Noiseless 8000 s unaligned synthetic, inverted from 50 m off (cached)."""
+    """Noiseless 2000 s unaligned synthetic, inverted from 50 m off (cached)."""
     np.random.seed(0)
     CDOG_mat, CDOG, GPS_Coordinates, GPS_time, _ = generateUnaligned(
-        8000,
+        2000,
         0.0,
         0.0,
         OFFSET,
@@ -71,6 +72,7 @@ def _invert_unaligned(drift_rate, clock_drift):
     return result, offset, CDOG
 
 
+@pytest.mark.slow
 def test_noiseless_drift_is_recovered():
     (estimate, CDOG_full, GPS_full, _, _), offset, CDOG = _invert_unaligned(
         DRIFT_RATE, clock_drift=True
@@ -85,6 +87,7 @@ def test_noiseless_drift_is_recovered():
     assert np.sqrt(np.mean((GPS_full - CDOG_full) ** 2)) < 1e-8
 
 
+@pytest.mark.slow
 def test_ignoring_drift_leaves_a_larger_misfit():
     """Documents the bias when drift is present but not modelled."""
     (on, on_CDOG, on_GPS, _, _), on_offset, CDOG = _invert_unaligned(

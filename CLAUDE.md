@@ -6,10 +6,21 @@
 
 - Do all work on the `development` branch. `master` is the stable version behind the
   results in the submitted paper; never commit to or modify it.
-- Before and after code changes, run the relevant tests and Ruff checks (per AGENTS.md),
-  and run the full test suite before committing.
 - Changes requested by reviewers count as an explicit request to change scientific
   behavior, but note any change to results that appear in the paper.
+
+## Testing
+
+The tests run with the Numba JIT off (`tests/conftest.py`). The few that run full
+inversions are marked `@pytest.mark.slow` and skipped by default, so `pytest` takes
+about 10 s.
+
+- While working, run Ruff and the test files that cover the modules you changed.
+  Run the default suite (`pytest`) before committing.
+- Run the slow tests (`pytest -m slow`, about 40 s) only when a change touches the
+  Gauss-Newton inversion, the synthetic generator or the MCMC sampler.
+- Keep tests small: use the fewest epochs and MCMC iterations that still exercise
+  the code. Mark any new test that takes more than a few seconds as slow.
 
 ## Paper revision (local only)
 

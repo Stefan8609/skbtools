@@ -14,6 +14,7 @@ from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
     calculateTimesRayTracing_split,
+    calculateTimesRayTracing_windows,
 )
 
 from Inversion_Workflow.MCMC_Functions import MCMC_sampler as ms
@@ -266,7 +267,17 @@ def plot_run_best_sample(run_name, DOG_num, loglike=False):
     params = ms.unpack(theta, model)
     trans = (problem["R_stacked"] @ params["lever"]).reshape(-1, 3) + problem["d"]
     DOG_position = problem["CDOG_reference"] + params["CDOG_aug"][j]
-    if model["num_splits"] > 1:
+    if "epoch_window" in problem:
+        times, esv = calculateTimesRayTracing_windows(
+            DOG_position,
+            trans,
+            params["esv_bias"][j],
+            problem["epoch_window"],
+            problem["dz_array"],
+            problem["angle_array"],
+            problem["esv_matrix"],
+        )
+    elif model["num_splits"] > 1:
         times, esv = calculateTimesRayTracing_split(
             DOG_position,
             trans,
@@ -310,7 +321,7 @@ def plot_run_best_sample(run_name, DOG_num, loglike=False):
         block=True,
         save=True,
         path=path,
-        zoom_start=40000,
+        zoom_start=30000,
         DOG_num=DOG_num,
     )
     range_residual(
@@ -329,7 +340,7 @@ def plot_run_best_sample(run_name, DOG_num, loglike=False):
 if __name__ == "__main__":
     # A run of the reworked sampler (Output/MCMC_Chains/<RUN_NAME>), all chains
     # pooled. plot_best_sample above still reads old single-file chains.
-    RUN_NAME = "ar1_drift"
+    RUN_NAME = "ar1_splits8"
     DOG_NUM = 3
     LOGLIKE = False
 

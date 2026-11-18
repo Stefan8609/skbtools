@@ -70,6 +70,7 @@ def pooled_run(run_name):
         "sigma_cm",
         "phi",
         "sigma_white_cm",
+        "esv_common",
         "loglike",
         "logpost",
         "theta_samples",
@@ -77,7 +78,9 @@ def pooled_run(run_name):
     pooled = {
         key: np.concatenate([chain[key] for chain in chains])
         for key in per_draw
-        if key in chains[0]  # sigma_white_cm exists only for "ar1_white" runs
+        # sigma_white_cm exists only for "ar1_white" runs, esv_common only for
+        # "common_windows" runs.
+        if key in chains[0]
     }
     for key in (
         "param_names",

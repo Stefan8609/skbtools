@@ -3,6 +3,7 @@ import scipy.io as sio
 import os
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
+    gauss_newton_offset_search,
     initial_bias_geiger,
     final_bias_geiger,
 )
@@ -21,7 +22,13 @@ from plotting.Plot_Modular import time_series_plot, range_residual
 # Config
 # -------------------------
 DOG_num = 4
-simulated_annealing = True
+# Lever arm and clock offset:
+#   "gauss_newton": integer second and lever arm by the Gauss-Newton offset search
+#       (no hint used; the found integer must match the hint below).
+#   "annealing": simulated annealing at the hinted integer, as in the submitted
+#       paper; kept as a validation of "gauss_newton".
+#   "fixed": lever arm fixed at the initial guess, Geiger inversion only.
+lever_method = "gauss_newton"
 # Paper I (Table 1, Figs. 5, 6, C12-C15) uses the full trajectory. The leg mask
 # (9-11 h and 12.4-15 h) is a sensitivity test: it lowers c*sigma to ~8 cm but
 # moves the DOG depths by metres.
@@ -89,7 +96,57 @@ if use_leg_mask:
     GPS_Coordinates = GPS_Coordinates[leg_mask]
     GPS_data = GPS_data[leg_mask]
 
-if simulated_annealing:
+if lever_method == "gauss_newton":
+    print("\n ---------Using Gauss-Newton Offset Search--------- \n")
+    best_lever, best_offset, inversion_result, offset_diagnostics = (
+        gauss_newton_offset_search(
+            CDOG_data,
+            GPS_data,
+            GPS_Coordinates,
+            gps1_to_others,
+            CDOG_guess,
+            initial_lever_guess,
+            dz_array,
+            angle_array,
+            esv_matrix,
+            real_data=True,
+            clock_drift=clock_drift,
+        )
+    )
+    print(
+        f"Offset {best_offset:.5f} s, lever {np.round(best_lever, 3)}, "
+        f"delta chi^2 to second best {offset_diagnostics['delta_chi2']:.0f}"
+    )
+    if np.round(best_offset) != offset_hint:
+        raise ValueError(
+            f"Gauss-Newton offset search found integer second "
+            f"{np.round(best_offset):.0f} s for DOG {DOG_num}, expected the hint "
+            f"{offset_hint:.0f} s"
+        )
+
+    transponder_coordinates = findTransponder(
+        GPS_Coordinates, gps1_to_others, best_lever
+    )
+    inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(
+        inversion_result[:3],
+        CDOG_data,
+        GPS_data,
+        transponder_coordinates,
+        best_offset,
+        inversion_result[4],
+        inversion_result[3],
+        dz_array,
+        angle_array,
+        esv_matrix,
+        real_data=True,
+        clock_drift=clock_drift,
+        drift_rate=inversion_result[5] if clock_drift else 0.0,
+    )
+
+    inversion_guess = inversion_result[:3]
+    time_bias = inversion_result[3]
+    esv_bias = inversion_result[4]
+elif lever_method == "annealing":
     print("\n ---------Using Simulated Annealing--------- \n")
     best_lever, best_offset, inversion_result = simulated_annealing_bias(
         300,
@@ -131,7 +188,7 @@ if simulated_annealing:
     inversion_guess = inversion_result[:3]
     time_bias = inversion_result[3]
     esv_bias = inversion_result[4]
-else:
+elif lever_method == "fixed":
     # -------------------------
     # Inversion: Initial → Final
     # -------------------------
@@ -179,6 +236,11 @@ else:
     time_bias = inversion_result[3]
     esv_bias = inversion_result[4]
     best_lever = initial_lever_guess
+else:
+    raise ValueError(
+        "lever_method must be 'gauss_newton', 'annealing' or 'fixed', "
+        f"got {lever_method!r}"
+    )
 
 
 # -------------------------
@@ -208,9 +270,8 @@ if clock_drift:
 DOG_name = {1: "1", 3: "3", 4: "4"}
 save_path = "Figs/Inversion_Workflow"
 file_tag = (
-    DOG_name[DOG_num] + "_SimAnn"
-    if simulated_annealing
-    else DOG_name[DOG_num] + "_Geiger"
+    DOG_name[DOG_num]
+    + {"gauss_newton": "_GN", "annealing": "_SimAnn", "fixed": "_Geiger"}[lever_method]
 )
 
 time_series_plot(

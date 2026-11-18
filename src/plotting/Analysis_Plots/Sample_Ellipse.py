@@ -6,11 +6,13 @@ from matplotlib.patches import Ellipse
 from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
     bermuda_trajectory,
 )
+from acoustics.synthetic_esv_tables import ESV_GENERATE, ESV_MODERATE, ESV_STRONG
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import check_esv_coverage
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
-    anneal_with_offset_search,
+from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
+    final_bias_geiger,
+    gauss_newton_offset_search,
 )
-from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import final_bias_geiger
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 
 from pymap3d import geodetic2enu
@@ -128,6 +130,7 @@ def error_ellipse(
     generate=True,
     DOG_num=1,
     use_leg_mask=False,
+    inversion_esv=ESV_MODERATE,
 ):
     """Plot error ellipses from Monte Carlo samples.
 
@@ -148,6 +151,9 @@ def error_ellipse(
     use_leg_mask : bool, optional
         Keep only the 9-11 h and 12.4-15 h legs (sensitivity test). Paper I
         uses the full trajectory (False).
+    inversion_esv : str, optional
+        ESV table used by the inversion. ESV_GENERATE is the identical-table
+        control. Results are saved per table name.
 
     Returns
     -------
@@ -168,14 +174,14 @@ def error_ellipse(
         )
 
         esv_table_generate = sio.loadmat(
-            gps_data_path("ESV_Tables/global_table_esv.mat")
+            gps_data_path(f"ESV_Tables/{ESV_GENERATE}.mat")
         )
         dz_array_generate = esv_table_generate["distance"].flatten()
         angle_array_generate = esv_table_generate["angle"].flatten()
         esv_matrix_generate = esv_table_generate["matrice"]
 
         esv_table_inversion = sio.loadmat(
-            gps_data_path("ESV_Tables/global_table_esv_perturbed.mat")
+            gps_data_path(f"ESV_Tables/{inversion_esv}.mat")
         )
         dz_array_inversion = esv_table_inversion["distance"].flatten()
         angle_array_inversion = esv_table_inversion["angle"].flatten()
@@ -188,7 +194,7 @@ def error_ellipse(
             CDOG,
             correct_GPS_Coordinates,
             correct_GPS_data,
-            _,
+            true_transponder_coordinates,
         ) = bermuda_trajectory(
             0,
             0,
@@ -202,6 +208,20 @@ def error_ellipse(
             gps1_to_others=gps1_to_others,
             gps1_to_transponder=real_lever,
         )
+
+        for table_name, dz_array, angle_array in (
+            (ESV_GENERATE, dz_array_generate, angle_array_generate),
+            (inversion_esv, dz_array_inversion, angle_array_inversion),
+        ):
+            check_esv_coverage(
+                CDOG,
+                true_transponder_coordinates,
+                dz_array,
+                angle_array,
+                True,
+                name=table_name,
+                on_outside="warn",
+            )
 
         # Paper I synthetics use the full trajectory; the leg mask (9-11 h and
         # 12.4-15 h) is a sensitivity test only.
@@ -242,8 +262,7 @@ def error_ellipse(
                 initial_guess = CDOG + np.random.normal(0, 30, 3)
                 initial_lever = real_lever - np.random.normal(0, 2, 3)
 
-                lever, offset, inversion_result = anneal_with_offset_search(
-                    300,
+                lever, offset, inversion_result, _ = gauss_newton_offset_search(
                     CDOG_data,
                     GPS_data,
                     GPS_Coordinates,
@@ -254,7 +273,6 @@ def error_ellipse(
                     angle_array_inversion,
                     esv_matrix_inversion,
                     real_data=True,
-                    z_sample=True,
                 )
 
                 inversion_guess = inversion_result[:3]
@@ -328,7 +346,9 @@ def error_ellipse(
             estimate_converted[i] = np.squeeze(enu)
 
     else:
-        npzfile = np.load(gps_output_path("Plot_Data/synthetic_error_ellipse.npz"))
+        npzfile = np.load(
+            gps_output_path(f"Plot_Data/synthetic_error_ellipse_{inversion_esv}.npz")
+        )
         estimate_converted = npzfile["estimate_converted"]
         lever_diff_array = npzfile["lever_diff_array"]
         RMSE_array = npzfile["RMSE_array"]
@@ -339,6 +359,7 @@ def error_ellipse(
         & ~np.isnan(lever_diff_array).any(axis=1)
         & ~np.isnan(RMSE_array)
     )
+    print(f"{valid_indices.sum()}/{len(valid_indices)} realizations kept")
     estimate_converted = estimate_converted[valid_indices]
     lever_diff_array = lever_diff_array[valid_indices]
     RMSE_array = RMSE_array[valid_indices]
@@ -555,7 +576,7 @@ def error_ellipse(
     plt.show()
 
     np.savez(
-        gps_output_path("Plot_Data/synthetic_error_ellipse"),
+        gps_output_path(f"Plot_Data/synthetic_error_ellipse_{inversion_esv}"),
         estimate_converted=estimate_converted,
         lever_diff_array=lever_diff_array,
         RMSE_array=RMSE_array,
@@ -568,14 +589,13 @@ if __name__ == "__main__":
     position_noise = 2 * 10**-2
     downsample = 5
     generate = True
-    error_ellipse(num_points, time_noise, position_noise, downsample, generate=generate)
-
-    npzfile = np.load(gps_output_path("Plot_Data/synthetic_error_ellipse.npz"))
-    estimate_converted = npzfile["estimate_converted"]
-    lever_diff_array = npzfile["lever_diff_array"]
-    RMSE_array = npzfile["RMSE_array"]
-
-    print("Testing loaded data:")
-    print("Estimate converted shape:", estimate_converted.shape)
-    print("Lever diff array shape:", lever_diff_array.shape)
-    print("RMSE array shape:", RMSE_array.shape)
+    # Moderate and strong SSP perturbations, plus the identical-table control.
+    for inversion_esv in (ESV_MODERATE, ESV_STRONG, ESV_GENERATE):
+        error_ellipse(
+            num_points,
+            time_noise,
+            position_noise,
+            downsample,
+            generate=generate,
+            inversion_esv=inversion_esv,
+        )

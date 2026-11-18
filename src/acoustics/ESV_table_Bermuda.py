@@ -11,7 +11,9 @@ from bermuda_data import gps_data_path
 def construct_esv(depth, cz):
     """Generate an effective sound velocity lookup table."""
     beta_array = np.linspace(20, 90, 400)
-    z_array = np.linspace(5201, 5251, 51)
+    # dz = z - z_a = 5150-5300 m, 1 m step: covers every DOG with at least 48 m of
+    # margin (DOG 1 queries 5198-5201 m, so the old 5199-5249 m range clamped it).
+    z_array = np.linspace(5152, 5302, 151)
 
     esv_matrix = np.zeros((len(z_array), len(beta_array)))
     z_a = 2.0
@@ -45,7 +47,7 @@ if __name__ == "__main__":
 
     dz_native = float(np.median(np.diff(depth)))
     z_max_current = float(depth[-1])
-    z_target_max = 5300.0
+    z_target_max = 5350.0  # must exceed the largest z in construct_esv
     window_m = 10.0
     mask = depth >= (z_max_current - window_m)
     m_local, b_local = np.polyfit(depth[mask], cz[mask], 1)
@@ -73,7 +75,7 @@ if __name__ == "__main__":
     plt.xlabel("Sound Speed (m/s)")
     plt.ylabel("Depth (m)")
     plt.legend()
-    plt.title("SVP extended to 5300 m")
+    plt.title("SVP extended to 5350 m")
     plt.show()
 
     print(f"New depth range: {depth.min():.1f} to {depth.max():.1f} m")
@@ -106,4 +108,7 @@ if __name__ == "__main__":
         "matrice": esv_matrix,
         "transducer_depth": z_a,
     }
-    sio.savemat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"), data_to_save)
+    # New file: global_table_esv_extended.mat is kept as it was.
+    sio.savemat(
+        gps_data_path("ESV_Tables/global_table_esv_extended.mat"), data_to_save
+    )

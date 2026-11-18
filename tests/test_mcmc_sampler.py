@@ -67,11 +67,11 @@ def synthetic_problem(num_esv_splits=1, n_arrivals=60):
         "start_CDOG_aug": [[0.1, -0.1, 0.05]],
         "start_esv_bias": [0.0],
         "prior_CDOG_aug_center_m": [[0.0, 0.0, 0.0]],
-        "n_burn": 60,
-        "n_samples": 60,
+        "n_burn": 30,
+        "n_samples": 20,
         "thin": 2,
-        "first_adapt_window": 10,
-        "checkpoint_every": 25,
+        "first_adapt_window": 5,
+        "checkpoint_every": 10,
         "log_every": 1000,
     }
     problem = ms.build_problem(
@@ -204,7 +204,7 @@ def test_resume_from_checkpoint_matches_uninterrupted_run(tmp_path):
     config, problem = synthetic_problem()
     ms.run_chain(0, ms.build_model(config), problem, tmp_path / "full.npz")
     # Stop inside an adaptation window, then inside the sampling phase, then finish.
-    for stop_at in (35, 85, None):
+    for stop_at in (12, 40, None):
         ms.run_chain(
             0,
             ms.build_model(config),
@@ -215,7 +215,7 @@ def test_resume_from_checkpoint_matches_uninterrupted_run(tmp_path):
     full = np.load(tmp_path / "full.npz")
     resumed = np.load(tmp_path / "resumed.npz")
 
-    assert int(resumed["n_done"]) == 120
+    assert int(resumed["n_done"]) == 50
     for key in (
         "theta_samples",
         "logpost",
@@ -247,6 +247,7 @@ FIG7_CHAIN = ROOT / "Bermuda_Data/Output/mcmc_chain_1_22_new_MCMC_long.npz"
     not (REFERENCE.exists() and FIG7_CHAIN.exists()),
     reason="needs the local reference snapshot and Bermuda data",
 )
+@pytest.mark.slow
 def test_iid_fixed_reproduces_reference_log_likelihood():
     # Runs with Numba compiled (the reference was), so in a subprocess: conftest
     # disables the JIT for this process.
@@ -279,7 +280,9 @@ def test_iid_fixed_reproduces_reference_log_likelihood():
                 problem["gps_pair_indices"], problem["pair_time_base_2d"],
                 problem["pair_counts"], problem["dz_array"], problem["angle_array"],
                 problem["esv_matrix"])
-            assert value == float(reference["loglike_" + name]), name
+            # Bit-for-bit equality breaks on any re-saved ESV table or change in
+            # summation order; 1e-12 still catches any modelling change.
+            assert abs(value / float(reference["loglike_" + name]) - 1) < 1e-12, name
 
             theta = model["start_theta"].copy()
             layout = model["layout"]
@@ -388,9 +391,15 @@ def test_ar1_white_and_split_variants_leave_older_runs_unchanged():
 
 def test_ar1_white_chain_runs_and_resumes(tmp_path):
     config, problem = synthetic_problem()
-    config = {**config, **ms.RUN_VARIANTS["ar1_white"], "num_esv_splits": 1}
+    # The variant sets the production burn-in (40000); keep the short test one.
+    config = {
+        **config,
+        **ms.RUN_VARIANTS["ar1_white"],
+        "num_esv_splits": 1,
+        "n_burn": config["n_burn"],
+    }
     ms.run_chain(0, ms.build_model(config), problem, tmp_path / "full.npz")
-    for stop_at in (35, None):
+    for stop_at in (12, None):
         ms.run_chain(
             0,
             ms.build_model(config),
@@ -401,7 +410,7 @@ def test_ar1_white_chain_runs_and_resumes(tmp_path):
     full = np.load(tmp_path / "full.npz")
     resumed = np.load(tmp_path / "resumed.npz")
 
-    assert full["sigma_white_cm"].shape == (30, 1)
+    assert full["sigma_white_cm"].shape == (10, 1)
     assert np.all(np.isfinite(full["logpost"]))
     np.testing.assert_array_equal(full["theta_samples"], resumed["theta_samples"])
 

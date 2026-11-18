@@ -48,7 +48,10 @@ def get_init_params_and_prior(chain):
     if "prior_center" in chain:
         config = json.loads(str(chain["config_json"]))
         n_dogs = len(config["dogs"])
-        n_splits = config["num_esv_splits"]
+        if config.get("esv_model", "splits") == "common_windows":
+            n_splits = len(config["esv_window_edges_s"]) - 1
+        else:
+            n_splits = config["num_esv_splits"]
         initial_params = {
             "lever": np.array(config["prior_lever_center_m"]),
             "gps_grid": np.array(config["gps1_to_others"]),
