@@ -5,6 +5,8 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias,
 )
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
+from Inversion_Workflow.Inversion import Numba_xAline_Geiger_bias
+from Inversion_Workflow.Inversion.Numba_xAline import find_int_offset
 from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
     simulated_annealing_bias,
 )
@@ -120,6 +122,39 @@ def test_offset_search_recentres_when_the_hint_is_seconds_off():
         halfwindow=2,
     )
     assert abs(offset - TRUE_DT) < 1e-3
+
+
+def test_find_int_offset_default_window_reaches_negative_offsets():
+    """Puerto Rico offsets are negative (-19 s, -7459 s); Bermuda's are positive."""
+    CDOG_mat, CDOG, GPS_Coordinates, GPS_time, _ = _generate(0.0, 0.0)
+    transponder = findTransponder(GPS_Coordinates, OTHERS, LEVER)
+    times, esv = calculateTimesRayTracing_Bias(CDOG, transponder, 0.0, DZ, ANGLE, ESV)
+    shift = 10000.0
+    shifted = CDOG_mat.copy()
+    shifted[:, 0] -= shift
+    offset = find_int_offset(shifted, GPS_time, times, transponder, esv)
+    # The coarse scan only has to land within half a second of the offset.
+    assert abs(offset - (TRUE_DT - shift)) < 0.5
+
+
+def test_offset_search_raises_when_the_best_second_fits_poorly(monkeypatch):
+    """A clear best second is still rejected when its misfit RMS is implausible."""
+    CDOG_mat, CDOG, GPS_Coordinates, GPS_time, _ = _generate(2e-5, 0.0)
+    monkeypatch.setattr(Numba_xAline_Geiger_bias, "MAX_OFFSET_RMS_SECONDS", 1e-6)
+    with pytest.raises(ValueError, match="fits too poorly"):
+        gauss_newton_offset_search(
+            CDOG_mat,
+            GPS_time,
+            GPS_Coordinates,
+            OTHERS,
+            CDOG,
+            LEVER,
+            DZ,
+            ANGLE,
+            ESV,
+            initial_offset=np.round(TRUE_DT),
+            halfwindow=1,
+        )
 
 
 def test_offset_search_raises_when_the_ship_does_not_move():

@@ -495,6 +495,11 @@ def final_bias_geiger(
 # and picks outside the window <= 23.
 OFFSET_SEARCH_HALFWINDOW_SECONDS = 15
 MIN_OFFSET_DELTA_CHI2 = 50.0
+# Largest accepted misfit RMS of the best second: 50 cm of range at 1515 m/s. Right
+# seconds fit at 13-24 cm on the real data; a local minimum at a wrong second
+# (Puerto Rico crossover legs, -10 s instead of -19 s) fit at 94 cm and still had
+# Delta chi^2 = 176 against its neighbours.
+MAX_OFFSET_RMS_SECONDS = 0.5 / 1515.0
 LEVER_GN_MAX_ITERATIONS = 50
 # Iterations paired with the wide gate before narrowing it, so the time bias can
 # absorb a fractional misalignment of a few tenths of a second.
@@ -656,8 +661,10 @@ def gauss_newton_offset_search(
     recentred while the best second lies on its edge.
 
     Confidence: ``delta_chi2 = n_pairs * (rms_2**2 - rms**2) / rms**2`` between the
-    best and second-best seconds (white noise). Below ``MIN_OFFSET_DELTA_CHI2`` the
-    search is repeated once over four times the window, then raises ``ValueError``.
+    best and second-best seconds (white noise). Below ``MIN_OFFSET_DELTA_CHI2``, or
+    with a best-second RMS above ``MAX_OFFSET_RMS_SECONDS`` (a local minimum at a
+    wrong second), the search is repeated once over four times the window, then
+    raises ``ValueError``.
 
     Returns ``(lever, offset, estimate, diagnostics)``. The time bias is folded into
     the offset: ``estimate[3]`` is 0 and ``offset`` is the Eq. 6 clock offset dt
@@ -752,9 +759,17 @@ def gauss_newton_offset_search(
         estimate, lever, rms, n_pairs = fits[best]
         second_rms = fits[second][2]
         delta_chi2 = n_pairs * (second_rms**2 - rms**2) / rms**2
-        if delta_chi2 >= MIN_OFFSET_DELTA_CHI2:
+        if delta_chi2 >= MIN_OFFSET_DELTA_CHI2 and rms <= MAX_OFFSET_RMS_SECONDS:
             break
     else:
+        if delta_chi2 >= MIN_OFFSET_DELTA_CHI2:
+            raise ValueError(
+                "Best integer second of the DOG clock offset fits too poorly: "
+                f"expected RMS <= {MAX_OFFSET_RMS_SECONDS * 1515 * 100:.0f} cm, got "
+                f"{rms * 1515 * 100:.1f} cm ({best:+d} s from the alignment, "
+                f"{n_pairs} pairs). Check the starting position, lever arm and data, "
+                "or pass initial_offset."
+            )
         raise ValueError(
             "Integer second of the DOG clock offset is ambiguous: expected "
             f"delta chi^2 >= {MIN_OFFSET_DELTA_CHI2:.0f} between the best and "

@@ -150,13 +150,16 @@ def find_int_offset(
     travel_times,
     transponder_coordinates,
     esv,
-    offset=5000,
-    halfwindow=5000,
+    offset=0,
+    halfwindow=10000,
 ):
     """
     Refine an offset estimate by minimizing
     circular variance (1 - R)/sqrt(N)
     over progressively smaller step sizes.
+
+    The default window, -10000 to 10000 s, covers negative DOG clock offsets
+    (Puerto Rico: -19 s and -7459 s) as well as positive ones (Bermuda: 1866-3175 s).
     """
     search_lower = offset - halfwindow
     search_upper = offset + halfwindow
