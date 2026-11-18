@@ -338,6 +338,16 @@ RUN_VARIANTS = {
         "esv_window_s": 3600.0,
         **LONG_RUN,
     },
+    # Window-length convergence: 60 -> 30 min moved DOG heights by up to 84 cm.
+    "ar1_common15": {
+        "likelihood": "ar1",
+        **COMMON_WINDOWS,
+        "esv_window_s": 900.0,
+        **LONG_RUN,
+    },
+    # Common dc(t) with the AR(1) + white likelihood: does the shared series take
+    # up the slow component that AR(1) + white alone assigns to each DOG?
+    "ar1_white_common30": {**AR1_WHITE, **COMMON_WINDOWS, **WHITE_LONG_RUN},
 }
 # Repeatability (R4 5, N5). Halves of the survey split at the median GPS epoch of the
 # DOG 1 file (47135 s), each with the 30-min common dc(t), and each DOG alone (its
@@ -1331,8 +1341,9 @@ def save_chain(path, state, model, problem):
     n_burn_kept = state["n_burn_kept"]
     theta_samples = state["theta_samples"][:n_kept]
     arrays = {
-        # Samples after burn-in (thinned), in the Eq. 6 convention.
-        **derived_outputs(theta_samples, model, problem),
+        # Samples after burn-in (thinned). The named arrays of derived_outputs
+        # (three quarters of the file in the common-window runs) are not stored;
+        # load_chain rebuilds them exactly from theta_samples.
         "loglike": state["loglike_samples"][:n_kept],
         "logpost": state["logpost_samples"][:n_kept],
         "theta_samples": theta_samples,
@@ -1383,6 +1394,23 @@ def save_chain(path, state, model, problem):
     temporary = path.with_name(path.stem + ".partial.npz")
     np.savez(temporary, **arrays)
     os.replace(temporary, path)
+
+
+def load_chain(path):
+    """Arrays of a chain file plus the named arrays of derived_outputs.
+
+    The named arrays are rebuilt from theta_samples and the saved configuration.
+    Files written before they were dropped from save_chain are returned as stored.
+    """
+    with np.load(path) as saved:
+        chain = {key: saved[key] for key in saved.files}
+    if "lever" not in chain:
+        model = build_model(json.loads(str(chain["config_json"])))
+        if chain["fixed_phi"].size:
+            model["fixed_phi"] = chain["fixed_phi"]
+        problem = {"offsets": chain["offsets_s"]}
+        chain.update(derived_outputs(chain["theta_samples"], model, problem))
+    return chain
 
 
 def load_state(path, model, n_kept_total, n_burn_kept_total):

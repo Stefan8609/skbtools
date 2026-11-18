@@ -13,6 +13,7 @@ import json
 import numpy as np
 from scipy.stats import norm, rankdata
 
+from Inversion_Workflow.MCMC_Functions.MCMC_sampler import load_chain
 from bermuda_data import gps_output_path
 
 RHAT_LIMIT = 1.01
@@ -31,8 +32,7 @@ def load_run(run_name):
         )
     chains = []
     for path in paths:
-        with np.load(path) as saved:
-            chain = {key: saved[key] for key in saved.files}
+        chain = load_chain(path)
         chain["path"] = path
         chain["metadata"] = json.loads(str(chain["metadata_json"]))
         chains.append(chain)
@@ -293,14 +293,12 @@ def run_diagnostics(run_name, make_plots=True):
 
 if __name__ == "__main__":
     RUN_NAMES = [
-        "iid",
-        "ar1_splits1",
-        "ar1_splits8",
-        "ar1_splits16",
-        "ar1_white",
-        "ar1_white_splits1",
-        "ar1_white_splits8",
-        "ar1_white_splits16",
+        "ar1_white_drift",
+        "ar1_white_drift_splits1",
+        "ar1_white_drift_splits8",
+        "ar1_common30",
+        "ar1_common30_drift",
+        "ar1_common60",
     ]
 
     for run_name in RUN_NAMES:

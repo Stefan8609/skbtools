@@ -212,8 +212,8 @@ def test_resume_from_checkpoint_matches_uninterrupted_run(tmp_path):
             tmp_path / "resumed.npz",
             stop_at=stop_at,
         )
-    full = np.load(tmp_path / "full.npz")
-    resumed = np.load(tmp_path / "resumed.npz")
+    full = ms.load_chain(tmp_path / "full.npz")
+    resumed = ms.load_chain(tmp_path / "resumed.npz")
 
     assert int(resumed["n_done"]) == 50
     for key in (
@@ -228,6 +228,19 @@ def test_resume_from_checkpoint_matches_uninterrupted_run(tmp_path):
     ):
         np.testing.assert_array_equal(full[key], resumed[key], err_msg=key)
     assert str(full["state_rng"]) == str(resumed["state_rng"])
+
+
+def test_load_chain_rebuilds_the_unsaved_named_arrays(tmp_path):
+    config, problem = synthetic_problem()
+    model = ms.build_model(config)
+    ms.run_chain(0, model, problem, tmp_path / "chain.npz")
+
+    with np.load(tmp_path / "chain.npz") as saved:
+        assert "lever" not in saved.files and "esv_bias" not in saved.files
+        expected = ms.derived_outputs(saved["theta_samples"], model, problem)
+    chain = ms.load_chain(tmp_path / "chain.npz")
+    for key, value in expected.items():
+        np.testing.assert_array_equal(chain[key], value, err_msg=key)
 
 
 def test_resume_refuses_a_changed_configuration(tmp_path):
@@ -407,8 +420,8 @@ def test_ar1_white_chain_runs_and_resumes(tmp_path):
             tmp_path / "resumed.npz",
             stop_at=stop_at,
         )
-    full = np.load(tmp_path / "full.npz")
-    resumed = np.load(tmp_path / "resumed.npz")
+    full = ms.load_chain(tmp_path / "full.npz")
+    resumed = ms.load_chain(tmp_path / "resumed.npz")
 
     assert full["sigma_white_cm"].shape == (10, 1)
     assert np.all(np.isfinite(full["logpost"]))

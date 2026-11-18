@@ -340,8 +340,8 @@ def plot_run_best_sample(run_name, DOG_num, loglike=False):
 if __name__ == "__main__":
     # A run of the reworked sampler (Output/MCMC_Chains/<RUN_NAME>), all chains
     # pooled. plot_best_sample above still reads old single-file chains.
-    RUN_NAME = "ar1_splits8"
-    DOG_NUM = 3
+    RUN_NAME = "ar1_common30_drift"
+    DOG_NUM = 1
     LOGLIKE = False
 
     plot_run_best_sample(RUN_NAME, DOG_NUM, loglike=LOGLIKE)
