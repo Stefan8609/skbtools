@@ -1,268 +1,439 @@
-"""3-D posterior cloud of one DOG's ENU position with its 2-D marginals as shadows.
+"""3-D posterior cloud of the DOG positions in local ENU, with shadows on the walls.
 
-Prototype for the revision (plot_tests, not yet a paper figure). The MCMC draws of
-the DOG position are rotated into local ENU at the DOG's posterior mean and shown
-relative to that mean (cm). Each pair of coordinates is projected onto a wall of the
-box: E-N on the floor, E-U on the back wall, N-U on the side wall. Every shadow
-shows the smoothed 2-D sample density, the 68 % and 95 % covariance ellipses
-(Gaussian, 2 degrees of freedom) and the correlation coefficient.
+The MCMC draws of each DOG position are rotated into local ENU at that DOG's
+posterior mean and shown relative to it (cm). The cloud is coloured by the 3-D
+marginal density of (E, N, U) (Gaussian KDE, ln of density over its peak) or, for
+comparison, by the joint log posterior of all parameters. Each wall carries the
+same draws projected onto it as grey points (darker where denser), with the 68 %
+(solid) and 95 % (dashed) Gaussian covariance ellipses and the correlation ρ,
+coloured by sign (vermillion positive, blue negative).
 
-Reviewer links: R3 #11 and R4 m2 (units and reference on every axis), R4 2 and
-R4 2c (correlations between the position components).
+Outputs: the three-DOG figure (main, 174 mm) and its equal-scale variant
+(supplement), one 120 mm figure per DOG, the encoding comparison (KDE vs joint log
+posterior) and the palette comparison (PNG only).
+
+Reviewer links: R3 #11 and R4 m2 (units and reference on every axis), R4 2, 2b and
+2c (correlations, data vs prior). Run from the repo root with PYTHONPATH=src.
 """
-
-import glob
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.colors import LinearSegmentedColormap
-from scipy.ndimage import gaussian_filter
+from matplotlib import colormaps
+from matplotlib.colors import ListedColormap, Normalize
+from mpl_toolkits.mplot3d import proj3d
+from scipy.stats import gaussian_kde
 
+import _figure_common as fc
 from plotting import paper_style
 
-# --- configuration -----------------------------------------------------------
-REPO = Path(__file__).resolve().parents[1]
-RUN_DIR = REPO / "Bermuda_Data" / "Output" / "MCMC_Chains" / "ar1"
-DOG = 3
-DOGS_IN_RUN = [1, 3, 4]  # order of the DOG axis of CDOG_aug in the chain files
-N_CLOUD_POINTS = 6000  # draws shown in the 3-D cloud (all draws feed the shadows)
-SHADOW_BINS = 90
-SHADOW_SMOOTH_BINS = 1.6
-BOX_HALF_WIDTH_SD = 4.2  # box half-width in posterior sd, per axis
-EQUAL_SCALE = False  # True: one cm scale on all three axes (U then dominates)
-VIEW_ELEVATION_DEG = 22
-VIEW_AZIMUTH_DEG = -52
+# --- configuration -----------------------------------------------------------------
+RUN = fc.FINAL_RUN
+DOGS = (1, 3, 4)
+SINGLE_DOG_WIDTH_MM = 120.0  # approved: per-DOG figures for the supplement/letter
+N_CLOUD_POINTS = 5000  # draws shown in each 3-D cloud
+N_SHADOW_POINTS = 20000  # draws projected onto each wall
+N_KDE_FIT = 20000  # draws the 3-D KDE is fitted to
+SHADOW_ALPHA = 0.022
+# Box half-width in posterior sd: wider horizontally so the floor has room for its
+# label clear of the 95 % ellipse.
+BOX_HALF_WIDTH_SD = (5.5, 5.5, 4.5)
+VIEW_ELEVATION_DEG = 30
+VIEW_AZIMUTH_DEG = -55
 ELLIPSE_PROBABILITIES = (0.68, 0.95)
+CLIP_PERCENTILE = 1.0  # colour values below this percentile take the lowest colour
+DRAW_PRIOR = True  # the prior's 95 % ellipse on each wall, where it falls in the box
+CLOUD_CMAP = "magma_r"  # chosen from the palette comparison (README)
+PALETTES = ("viridis_r", "cividis_r", "magma_r")
+PANE_COLOR = (0.94, 0.955, 0.975, 1.0)
+GRID_COLOR = (0.80, 0.82, 0.86, 1.0)
+ELLIPSE_COLOR = "0.12"
 SEED = 20261118
-OUTPUT_DIR = paper_style.FIGURE_DIR.parent / "plot_tests"  # gitignored
-# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 
-WGS84_A_M = 6378137.0
-WGS84_E2 = 6.69437999014e-3
-CHI2_2DOF = {p: -2.0 * np.log(1.0 - p) for p in ELLIPSE_PROBABILITIES}
+AXIS_NAMES = "ENU"
+WALLS = ((0, 1, 2), (0, 2, 1), (1, 2, 0))  # (i, j, wall axis): floor, back, side
 
 
-def ecef_to_lat_lon_deg(xyz_m):
-    """Geodetic latitude and longitude (WGS84) of one ECEF point."""
-    x, y, z = xyz_m
-    lon = np.arctan2(y, x)
-    p = np.hypot(x, y)
-    lat = np.arctan2(z, p * (1.0 - WGS84_E2))
-    for _ in range(6):
-        n = WGS84_A_M / np.sqrt(1.0 - WGS84_E2 * np.sin(lat) ** 2)
-        height = p / np.cos(lat) - n
-        lat = np.arctan2(z, p * (1.0 - WGS84_E2 * n / (n + height)))
-    return np.rad2deg(lat), np.rad2deg(lon)
+def cloud_cmap(name):
+    """Sequential map without its palest end, so low values show on the panes."""
+    return ListedColormap(colormaps[name](np.linspace(0.0, 0.88, 256)), name=name)
 
 
-def enu_rotation(lat_deg, lon_deg):
-    """Rows E, N, U (3, 3) rotating ECEF differences into local ENU."""
-    lat, lon = np.deg2rad(lat_deg), np.deg2rad(lon_deg)
-    return np.array(
-        [
-            [-np.sin(lon), np.cos(lon), 0.0],
-            [-np.sin(lat) * np.cos(lon), -np.sin(lat) * np.sin(lon), np.cos(lat)],
-            [np.cos(lat) * np.cos(lon), np.cos(lat) * np.sin(lon), np.sin(lat)],
-        ]
-    )
+def kde_log_density_ratio(enu, points, rng):
+    """ln(p / p_max) of the 3-D marginal KDE of ``enu`` at ``points``."""
+    fit = enu[rng.choice(len(enu), min(N_KDE_FIT, len(enu)), replace=False)]
+    kde = gaussian_kde(fit.T)
+    log_p = kde.logpdf(points.T)
+    peak = max(log_p.max(), kde.logpdf(np.zeros((3, 1)))[0])
+    return log_p - peak
 
 
-def load_enu_draws_cm(run_dir, dog):
-    """Post-burn-in draws of one DOG, ENU relative to the posterior mean (n, 3) cm."""
-    paths = sorted(glob.glob(str(run_dir / "chain_*.npz")))
-    if not paths:
-        raise FileNotFoundError(f"No chain_*.npz files in {run_dir}")
-    dog_index = DOGS_IN_RUN.index(dog)
-    offsets, reference = [], None
-    for path in paths:
-        with np.load(path, allow_pickle=True) as chain:
-            offsets.append(chain["CDOG_aug"][:, dog_index, :])
-            reference = chain["CDOG_reference"]
-    offsets = np.concatenate(offsets)
-    mean_ecef = reference + offsets.mean(axis=0)
-    rotation = enu_rotation(*ecef_to_lat_lon_deg(mean_ecef))
-    enu_cm = (offsets - offsets.mean(axis=0)) @ rotation.T * 100.0
-    return enu_cm, len(paths)
+def prior_enu(pooled, dog):
+    """Prior mean of a DOG (ENU cm from its posterior mean) and its ENU covariance."""
+    names = list(pooled["param_names"])
+    j = [f"CDOG_aug_DOG{dog}_{axis}" for axis in "xyz"]
+    index = [names.index(name) for name in j]
+    centre = pooled["prior_center"][index]
+    sd = pooled["prior_sd"][index]
+    _, mean_ecef = fc.dog_enu_cm(pooled, dog)
+    rotation = fc.enu_rotation_at(mean_ecef)
+    offset = (pooled["CDOG_reference"] + centre - mean_ecef) @ rotation.T * 100.0
+    cov = rotation @ np.diag((sd * 100.0) ** 2) @ rotation.T
+    return offset, cov
 
 
-def ellipse_points(mean, cov, probability, n=200):
-    """Boundary (n, 2) of the Gaussian region holding ``probability`` in 2-D."""
-    values, vectors = np.linalg.eigh(cov)
-    angle = np.linspace(0.0, 2.0 * np.pi, n)
-    circle = np.stack([np.cos(angle), np.sin(angle)])
-    scale = np.sqrt(CHI2_2DOF[probability] * values)
-    return (vectors @ (scale[:, None] * circle)).T + mean
+def prior_sd_cm(pooled, dog):
+    """Prior sd (cm) of a DOG position; the prior is isotropic in ECEF."""
+    names = list(pooled["param_names"])
+    sds = [pooled["prior_sd"][names.index(f"CDOG_aug_DOG{dog}_{a}")] for a in "xyz"]
+    if not np.allclose(sds, sds[0]):
+        raise ValueError(f"DOG {dog} position prior is not isotropic: {sds} m")
+    return 100.0 * sds[0]
 
 
-def smoothed_density(a, b, a_limits, b_limits):
-    """Histogram density of (a, b) on a grid, smoothed and scaled to peak 1."""
-    counts, a_edges, b_edges = np.histogram2d(
-        a, b, bins=SHADOW_BINS, range=[a_limits, b_limits]
-    )
-    density = gaussian_filter(counts, SHADOW_SMOOTH_BINS)
-    a_centres = 0.5 * (a_edges[1:] + a_edges[:-1])
-    b_centres = 0.5 * (b_edges[1:] + b_edges[:-1])
-    grid_a, grid_b = np.meshgrid(a_centres, b_centres, indexing="ij")
-    return grid_a, grid_b, density / density.max()
+def box_limits(sd, equal_scale):
+    """Axis limits (cm); with equal_scale one cm scale on all three axes."""
+    half = np.array(BOX_HALF_WIDTH_SD) * sd
+    if equal_scale:
+        half = np.full(3, half.max())
+    return [(-h, h) for h in half]
 
 
-def draw_shadow(ax, draws, pair, wall_axis, wall_value, limits, shadow_cmap, color):
-    """Density, ellipses and correlation of draws[:, pair] on one wall of the box."""
-    i, j = pair
-    grid_i, grid_j, density = smoothed_density(
-        draws[:, i], draws[:, j], limits[i], limits[j]
-    )
-    levels = np.linspace(0.03, 1.0, 16)
-    # contourf with zdir/offset takes its arguments in the wall's own (X, Y, Z) slots.
-    if wall_axis == 2:
-        ax.contourf(
-            grid_i,
-            grid_j,
-            density,
-            levels=levels,
-            zdir="z",
-            offset=wall_value,
-            cmap=shadow_cmap,
-            antialiased=True,
-        )
-    elif wall_axis == 1:
-        ax.contourf(
-            grid_i,
-            density,
-            grid_j,
-            levels=levels,
-            zdir="y",
-            offset=wall_value,
-            cmap=shadow_cmap,
-            antialiased=True,
-        )
-    else:
-        ax.contourf(
-            density,
-            grid_i,
-            grid_j,
-            levels=levels,
-            zdir="x",
-            offset=wall_value,
-            cmap=shadow_cmap,
-            antialiased=True,
-        )
-
-    pair_draws = draws[:, [i, j]]
-    mean = pair_draws.mean(axis=0)
-    cov = np.cov(pair_draws, rowvar=False)
-    for probability, style in zip(ELLIPSE_PROBABILITIES, ["-", "--"], strict=True):
-        boundary = ellipse_points(mean, cov, probability)
-        line = [None, None, None]
-        line[i], line[j] = boundary[:, 0], boundary[:, 1]
-        line[wall_axis] = np.full(len(boundary), wall_value)
-        ax.plot(*line, color=color, lw=0.9, ls=style, zorder=10)
-
-    rho = cov[0, 1] / np.sqrt(cov[0, 0] * cov[1, 1])
-    names = "ENU"
-    label = f"ρ$_{{{names[i]}{names[j]}}}$ = {rho:+.2f}".replace("-", "\u2212")
-    anchor = [0.0, 0.0, 0.0]
-    # Upper-left corner of each wall; on the floor, the front-left corner.
-    anchor[i] = limits[i][0] + 0.05 * np.ptp(limits[i])
-    if wall_axis == 2:
-        anchor[j] = limits[j][0] + 0.06 * np.ptp(limits[j])
-    else:
-        anchor[j] = limits[j][1] - 0.07 * np.ptp(limits[j])
-    anchor[wall_axis] = wall_value
-    text_direction = {0: "y", 1: "x", 2: "x"}[wall_axis]
-    ax.text(
-        *anchor,
-        label,
-        zdir=text_direction,
-        color="0.15",
-        fontsize=paper_style.FONT_SIZE_PT,
-        ha="left",
-        va="center",
-    )
-    return rho
+def wall_values(limits):
+    """Floor (low U), back wall (high N) and side wall (low E) positions."""
+    return {2: limits[2][0], 1: limits[1][1], 0: limits[0][0]}
 
 
-def make_figure(enu_cm, n_chains):
-    """Build the 3-D shadow figure; return the figure."""
+def draw_panel(ax, all_enu, enu, colour, norm, cmap, limits, prior=None):
+    """Cloud, shadows, ellipses and ρ labels of one DOG; returns the cloud artist.
+
+    Shadows, ellipses and ρ use all draws (all_enu); the cloud shows enu, coloured
+    by colour.
+    """
     rng = np.random.default_rng(SEED)
-    sd = enu_cm.std(axis=0)
-    if EQUAL_SCALE:
-        half = np.full(3, BOX_HALF_WIDTH_SD * sd.max())
-    else:
-        half = BOX_HALF_WIDTH_SD * sd
-    limits = [(-h, h) for h in half]
-    floor, back_wall, side_wall = limits[2][0], limits[1][1], limits[0][0]
-
-    fig = plt.figure(
-        figsize=(
-            paper_style.DOUBLE_COLUMN_MM / 25.4 * 0.62,
-            paper_style.DOUBLE_COLUMN_MM / 25.4 * 0.52,
+    walls = wall_values(limits)
+    pick = rng.choice(len(all_enu), min(N_SHADOW_POINTS, len(all_enu)), replace=False)
+    shadow = all_enu[pick]
+    rhos = {}
+    for i, j, wall in WALLS:
+        xyz = [None, None, None]
+        xyz[i], xyz[j] = shadow[:, i], shadow[:, j]
+        xyz[wall] = np.full(len(shadow), walls[wall])
+        ax.scatter(
+            *xyz,
+            s=0.8,
+            c="0.35",
+            alpha=SHADOW_ALPHA,
+            linewidths=0,
+            depthshade=False,
+            rasterized=True,
+            zorder=1,
         )
-    )
-    ax = fig.add_subplot(projection="3d", computed_zorder=False)
-    ax.set_box_aspect(half / half.max() if EQUAL_SCALE else (1, 1, 1), zoom=0.86)
+        pair = all_enu[:, [i, j]]
+        cov = np.cov(pair, rowvar=False)
+        for probability, style in zip(ELLIPSE_PROBABILITIES, ("-", "--"), strict=True):
+            boundary = fc.ellipse_points(pair.mean(axis=0), cov, probability)
+            line = [None, None, None]
+            line[i], line[j] = boundary[:, 0], boundary[:, 1]
+            line[wall] = np.full(len(boundary), walls[wall])
+            ax.plot(*line, color=ELLIPSE_COLOR, lw=0.7, ls=style, zorder=3)
+        if prior is not None:
+            draw_prior_ellipse(ax, prior, i, j, wall, walls[wall], limits)
+        rhos[(i, j)] = fc.correlation(all_enu[:, i], all_enu[:, j])
 
-    color = paper_style.DOG_STYLE[DOG]["color"]
-    shadow_cmap = LinearSegmentedColormap.from_list(
-        "shadow", ["#ffffff00", "#9aa3ad", "#3b4550"]
-    )
-    draw_shadow(ax, enu_cm, (0, 1), 2, floor, limits, shadow_cmap, "0.1")
-    draw_shadow(ax, enu_cm, (0, 2), 1, back_wall, limits, shadow_cmap, "0.1")
-    draw_shadow(ax, enu_cm, (1, 2), 0, side_wall, limits, shadow_cmap, "0.1")
-
-    shown = enu_cm[rng.choice(len(enu_cm), N_CLOUD_POINTS, replace=False)]
-    whitened = (shown - shown.mean(axis=0)) / sd
-    radius = np.sqrt((whitened**2).sum(axis=1))
-    order = np.argsort(-radius)  # dense core drawn last, on top
-    cloud_cmap = LinearSegmentedColormap.from_list(
-        "cloud", ["#d6ecf8", color, "#0072B2", "#08306b"]
-    )
-    ax.scatter(
-        *shown[order].T,
-        c=-radius[order],
-        cmap=cloud_cmap,
-        s=1.6,
-        vmin=-3.5,
-        vmax=0.0,
-        alpha=0.7,
+    order = np.argsort(colour)  # high values (dense core) drawn last, on top
+    cloud = ax.scatter(
+        *enu[order].T,
+        c=colour[order],
+        cmap=cmap,
+        norm=norm,
+        s=1.2,
+        alpha=0.85,
         linewidths=0,
         depthshade=False,
         rasterized=True,
-        zorder=20,
+        zorder=5,
     )
-
     for axis, (low, high) in zip("xyz", limits, strict=True):
         getattr(ax, f"set_{axis}lim")(low, high)
-    ax.set_xlabel("ΔE (cm)", labelpad=-6)
-    ax.set_ylabel("ΔN (cm)", labelpad=-6)
-    ax.set_zlabel("ΔU (cm)", labelpad=-7)
-    ax.tick_params(pad=-3, labelsize=paper_style.FONT_SIZE_PT)
-    for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
-        axis.set_pane_color((0.97, 0.97, 0.975, 1.0))
-        axis._axinfo["grid"].update(color=(0.82, 0.82, 0.84, 1.0), linewidth=0.4)
-        axis.set_major_locator(plt.MaxNLocator(5, integer=True, symmetric=True))
-    ax.view_init(elev=VIEW_ELEVATION_DEG, azim=VIEW_AZIMUTH_DEG)
+    style_axes(ax)
+    place_rho_labels(ax, rhos, limits)
+    return cloud
 
-    # Which DOG, run and sample size go in the caption; the panel keeps the sd.
-    sd_text = "\n".join(f"σ$_{n}$ = {s:.1f} cm" for n, s in zip("ENU", sd, strict=True))
-    fig.text(
-        0.03,
-        0.96,
-        f"{paper_style.DOG_STYLE[DOG]['label']}\n{sd_text}",
-        ha="left",
-        va="top",
-        fontsize=paper_style.FONT_SIZE_PT,
-        linespacing=1.3,
+
+def draw_prior_ellipse(ax, prior, i, j, wall, wall_value, limits):
+    """Dotted 95 % prior ellipse on a wall, only the part inside the box."""
+    offset, cov = prior
+    boundary = fc.ellipse_points(offset[[i, j]], cov[np.ix_([i, j], [i, j])], 0.95, 720)
+    inside = (
+        (boundary[:, 0] >= limits[i][0])
+        & (boundary[:, 0] <= limits[i][1])
+        & (boundary[:, 1] >= limits[j][0])
+        & (boundary[:, 1] <= limits[j][1])
     )
-    print(f"{len(enu_cm):,} draws from {n_chains} chains")
+    if not inside.any():
+        return
+    line = [None, None, None]
+    line[i] = np.where(inside, boundary[:, 0], np.nan)
+    line[j] = np.where(inside, boundary[:, 1], np.nan)
+    line[wall] = np.full(len(boundary), wall_value)
+    ax.plot(*line, color=ELLIPSE_COLOR, lw=0.7, ls=":", zorder=3)
+
+
+def style_axes(ax):
+    ax.view_init(elev=VIEW_ELEVATION_DEG, azim=VIEW_AZIMUTH_DEG)
+    ax.set_xlabel("ΔE (cm)", labelpad=-3)
+    ax.set_ylabel("ΔN (cm)", labelpad=0)
+    ax.set_zlabel("ΔU (cm)", labelpad=-4)
+    ax.tick_params(pad=-3.5, labelsize=paper_style.FONT_SIZE_PT)
+    for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
+        axis.set_pane_color(PANE_COLOR)
+        axis._axinfo["grid"].update(color=GRID_COLOR, linewidth=0.4)
+        axis.set_major_locator(plt.MaxNLocator(4, symmetric=True))
+        axis.set_major_formatter(
+            plt.FuncFormatter(lambda v, _: f"{v:g}".replace("-", fc.MINUS))
+        )
+
+
+def place_rho_labels(ax, rhos, limits):
+    """Upright ρ text at each wall's corner farthest from the cloud (projected)."""
+    walls = wall_values(limits)
+    # Corner of each wall away from the ellipses: (i, j) fractions of the half-width.
+    # Floor: in its open front part (high E, low N), between ellipse and edge.
+    # Back and side walls: their upper outer corners, text above the box edge.
+    corners = {(0, 1): (0.40, -0.64), (0, 2): (1.0, 1.0), (1, 2): (-1.0, 1.0)}
+    alignment = {
+        (0, 1): ("center", "center"),
+        (0, 2): ("right", "bottom"),
+        (1, 2): ("left", "bottom"),
+    }
+    projection = ax.get_proj()
+    for (i, j), rho in rhos.items():
+        wall = 3 - i - j
+        point = [0.0, 0.0, 0.0]
+        point[i] = corners[(i, j)][0] * limits[i][1]
+        point[j] = corners[(i, j)][1] * limits[j][1]
+        point[wall] = walls[wall]
+        x2, y2, _ = proj3d.proj_transform(*point, projection)
+        ha, va = alignment[(i, j)]
+        rounded = round(rho, 2)
+        if rounded > 0:
+            colour = fc.POSITIVE_COLOR
+        elif rounded < 0:
+            colour = fc.NEGATIVE_COLOR
+        else:
+            colour, rounded = "0.25", 0.0
+        value = fc.signed(rounded) if rounded else "0.00"
+        ax.annotate(
+            f"ρ$_{{{AXIS_NAMES[i]}{AXIS_NAMES[j]}}}$ = {value}",
+            xy=(x2, y2),
+            xycoords="data",
+            xytext=(
+                {"right": -3, "left": 3, "center": 0}[ha],
+                2 if va == "bottom" else 0,
+            ),
+            textcoords="offset points",
+            ha=ha,
+            va=va,
+            color=colour,
+            fontsize=paper_style.FONT_SIZE_PT,
+            # Bold only for a correlation that matters (|ρ| ≥ 0.3).
+            fontweight="bold" if abs(rounded) >= 0.3 else "normal",
+            zorder=10,
+        )
+
+
+def sd_text(enu, prior_sd_cm):
+    """Posterior sd per axis and the prior sd (isotropic) of the position, cm."""
+    posterior = ", ".join(
+        f"σ$_{n}$ {s:.1f}" for n, s in zip(AXIS_NAMES, enu.std(axis=0), strict=True)
+    )
+    return f"{posterior} cm (prior {prior_sd_cm:.0f})"
+
+
+def shared_norm(values):
+    """Colour range from the CLIP_PERCENTILE-th percentile up to 0 (the peak)."""
+    low = np.percentile(np.concatenate(values), CLIP_PERCENTILE)
+    return Normalize(vmin=low, vmax=0.0, clip=True)
+
+
+ENCODING_LABEL = {
+    "kde": "ln(density / peak) of the 3-D marginal posterior",
+    "kde_short": "ln(density / peak)",
+    "logpost": "Joint log posterior − max",
+}
+
+
+def minus_formatter():
+    return plt.FuncFormatter(lambda v, _: f"{v:g}".replace("-", fc.MINUS))
+
+
+def row_figure(panels, width_mm, height_mm, bar_label, shared_bar=True):
+    """One row of 3-D panels.
+
+    Each panel is a dict with enu (shown draws), shadow_enu (all draws), values,
+    norm, cmap, title, limits, prior and equal_scale. With shared_bar one colourbar
+    sits under the row; otherwise each panel gets its own, labelled by bar_label
+    (a string or a list per panel).
+    """
+    fig = plt.figure(figsize=(width_mm / 25.4, height_mm / 25.4))
+    n = len(panels)
+    step = 1.0 / n
+    bottom = 0.22 if shared_bar else 0.26
+    for k, panel in enumerate(panels):
+        ax = fig.add_axes(
+            [k * step, bottom, step - 0.03, 0.89 - bottom],
+            projection="3d",
+            computed_zorder=False,
+        )
+        limits = panel["limits"]
+        aspect = [h for _, h in limits] if panel["equal_scale"] else (1, 1, 1)
+        ax.set_box_aspect(aspect, zoom=0.95)
+        cloud = draw_panel(
+            ax,
+            panel["shadow_enu"],
+            panel["enu"],
+            panel["values"],
+            panel["norm"],
+            panel["cmap"],
+            limits,
+            panel["prior"],
+        )
+        centre = (k + 0.5) * step
+        title = fig.text(
+            centre, 0.985, panel["title"], ha="center", va="top", weight="bold"
+        )
+        if panel.get("dog") is not None:
+            # DOG marker in its colour, left of the title (one DOG style everywhere).
+            style = paper_style.DOG_STYLE[panel["dog"]]
+            fig.canvas.draw()
+            box = title.get_window_extent().transformed(fig.transFigure.inverted())
+            fig.add_artist(
+                plt.Line2D(
+                    [box.x0 - 0.012],
+                    [0.5 * (box.y0 + box.y1)],
+                    marker=style["marker"],
+                    color=style["color"],
+                    markeredgecolor="0.1",
+                    markeredgewidth=0.5,
+                    markersize=5,
+                    transform=fig.transFigure,
+                )
+            )
+        fig.text(centre, 0.93, panel["subtitle"], ha="center", va="top")
+        if not shared_bar:
+            cax = fig.add_axes([centre - 0.3 * step, 0.12, 0.6 * step, 0.026])
+            bar = fig.colorbar(cloud, cax=cax, orientation="horizontal", extend="min")
+            bar.set_label(bar_label[k])
+            bar.ax.xaxis.set_major_formatter(minus_formatter())
+            bar.ax.xaxis.set_major_locator(plt.MaxNLocator(4))
+    if shared_bar:
+        cax = fig.add_axes([0.30, 0.135, 0.40, 0.026])
+        bar = fig.colorbar(cloud, cax=cax, orientation="horizontal", extend="min")
+        bar.set_label(bar_label)
+        bar.ax.xaxis.set_major_formatter(minus_formatter())
     return fig
+
+
+def dog_panel(pooled, dog, enu, shown, values, norm, cmap_name, equal_scale=False):
+    sd = enu.std(axis=0)
+    return {
+        "enu": enu[shown],
+        "shadow_enu": enu,
+        "values": values,
+        "norm": norm,
+        "cmap": cloud_cmap(cmap_name),
+        "title": paper_style.DOG_STYLE[dog]["label"],
+        "dog": dog,
+        "subtitle": sd_text(enu, prior_sd_cm(pooled, dog)),
+        "limits": box_limits(sd, equal_scale),
+        "prior": prior_enu(pooled, dog) if DRAW_PRIOR else None,
+        "equal_scale": equal_scale,
+    }
+
+
+def report_prior(pooled, enus):
+    """Print where each DOG's prior 95 % region lies relative to the box."""
+    for dog, enu in enus.items():
+        offset, cov = prior_enu(pooled, dog)
+        radius = np.sqrt(fc.chi2_radius_squared(0.95, 2) * np.diag(cov))
+        print(
+            f"DOG {dog}: prior centre {np.round(offset, 1)} cm from posterior mean, "
+            f"95 % half-widths {np.round(radius, 0)} cm, posterior sd "
+            f"{np.round(enu.std(axis=0), 1)} cm"
+        )
 
 
 if __name__ == "__main__":
     paper_style.apply()
     plt.rcParams["figure.constrained_layout.use"] = False
-    enu_cm, n_chains = load_enu_draws_cm(RUN_DIR, DOG)
-    figure = make_figure(enu_cm, n_chains)
-    figure.subplots_adjust(left=0.0, right=0.97, bottom=-0.03, top=0.99)
-    print(paper_style.save(figure, f"fig_mcmc_enu_3d_shadows_DOG{DOG}", OUTPUT_DIR))
+    pooled = fc.pooled_run(RUN)
+    enus = {dog: fc.dog_enu_cm(pooled, dog)[0] for dog in DOGS}
+    report_prior(pooled, enus)
+    rng = np.random.default_rng(SEED)
+    shown = {
+        dog: rng.choice(len(enu), N_CLOUD_POINTS, replace=False)
+        for dog, enu in enus.items()
+    }
+    kde = {
+        dog: kde_log_density_ratio(enus[dog], enus[dog][shown[dog]], rng)
+        for dog in DOGS
+    }
+    logpost = pooled["logpost"] - pooled["logpost"].max()
+    joint = {dog: logpost[shown[dog]] for dog in DOGS}
+    kde_norm = shared_norm(list(kde.values()))
+    double = paper_style.DOUBLE_COLUMN_MM
+
+    # Main figure and its equal-scale supplement variant.
+    for equal_scale, name in ((False, ""), (True, "_equal_scale")):
+        panels = [
+            dog_panel(
+                pooled,
+                dog,
+                enus[dog],
+                shown[dog],
+                kde[dog],
+                kde_norm,
+                CLOUD_CMAP,
+                equal_scale,
+            )
+            for dog in DOGS
+        ]
+        fig = row_figure(panels, double, 88.0, ENCODING_LABEL["kde"])
+        fc.save(fig, f"fig_3d_posterior_three_dogs{name}")
+        plt.close(fig)
+
+    # Encoding comparison (DOG 3): (a) joint log posterior, (b) marginal density.
+    joint_norm = shared_norm([joint[3]])
+    panels = [
+        dog_panel(pooled, 3, enus[3], shown[3], joint[3], joint_norm, CLOUD_CMAP),
+        dog_panel(pooled, 3, enus[3], shown[3], kde[3], kde_norm, CLOUD_CMAP),
+    ]
+    panels[0]["title"] = "DOG 3: (a) joint log posterior"
+    panels[1]["title"] = "DOG 3: (b) marginal density"
+    labels = [ENCODING_LABEL["logpost"], ENCODING_LABEL["kde_short"]]
+    fig = row_figure(panels, double, 90.0, labels, shared_bar=False)
+    fc.save(fig, "fig_3d_posterior_encodings")
+    plt.close(fig)
+
+    # Palette comparison (DOG 3, PNG only).
+    panels = [
+        dog_panel(pooled, 3, enus[3], shown[3], kde[3], kde_norm, name)
+        for name in PALETTES
+    ]
+    for panel, name in zip(panels, PALETTES, strict=True):
+        panel["title"] = f"DOG 3: {name}"
+    fig = row_figure(
+        panels, double, 90.0, [ENCODING_LABEL["kde_short"]] * 3, shared_bar=False
+    )
+    fc.save(fig, "fig_3d_posterior_palettes")
+    plt.close(fig)
+
+    # One figure per DOG (120 mm, supplement and response letter).
+    for dog in DOGS:
+        panel = dog_panel(
+            pooled, dog, enus[dog], shown[dog], kde[dog], kde_norm, CLOUD_CMAP
+        )
+        fig = row_figure([panel], SINGLE_DOG_WIDTH_MM, 105.0, ENCODING_LABEL["kde"])
+        fc.save(fig, f"fig_3d_posterior_DOG{dog}", (SINGLE_DOG_WIDTH_MM,))
+        plt.close(fig)
