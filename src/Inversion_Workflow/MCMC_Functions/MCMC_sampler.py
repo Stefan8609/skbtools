@@ -106,6 +106,11 @@ CONFIG = {
     # GPS-time window [start, end] (s) of the epochs used; None uses all. For the
     # half-split repeatability runs (R4 5).
     "gps_time_window_s": None,
+    # Alternating GPS-time blocks [block_s, parity]: keep the epochs whose block
+    # index floor((t - t_first) / block_s) has this parity (0 or 1); None uses all.
+    # Short blocks give two subsets with nearly the same azimuth coverage, for the
+    # geometry-balanced split (R4 5); applied after gps_time_window_s.
+    "gps_time_blocks": None,
     # Data (paths inside Bermuda_Data). The GPS epochs of the DOG 1 file are used
     # for all DOGs, as in the inversion of the joint model.
     "dogs": [1, 3, 4],
@@ -361,6 +366,29 @@ RUN_VARIANTS["ar1_common30_half2"] = {
     **RUN_VARIANTS["ar1_common30"],
     "gps_time_window_s": [HALF_SPLIT_GPS_S, np.inf],
 }
+# The time halves see the DOGs from different azimuths (half 2 has almost no E/SE
+# sector for DOGs 3 and 4), and each half also re-estimates the lever arm.
+# (a) Lever arm pinned (1 mm prior sd) at the posterior mean of ar1_common30: it is
+# a property of the vessel, so the halves differ only through the DOG, clock and
+# sound-speed parameters.
+FINAL_LEVER_M = [-12.987376, 9.271818, -14.125968]
+PINNED_LEVER = {"prior_lever_center_m": FINAL_LEVER_M, "prior_lever_sd_m": [0.001] * 3}
+for _half in (1, 2):
+    RUN_VARIANTS[f"ar1_common30_half{_half}_pinlever"] = {
+        **RUN_VARIANTS[f"ar1_common30_half{_half}"],
+        **PINNED_LEVER,
+    }
+# (b) Geometry-balanced split: alternating 15-min blocks. The two subsets cover the
+# same azimuths (total-variation distance of the 30-degree azimuth histograms
+# 0.05-0.08 per DOG, vs 0.65 for the time halves) and every 30-min dc(t) window
+# keeps data from both. They share the slow ocean state, so their difference tests
+# the noise model and fast errors, not slow time-varying error.
+ALT_BLOCK_S = 900.0
+for _parity, _name in ((0, "a"), (1, "b")):
+    RUN_VARIANTS[f"ar1_common30_alt15{_name}"] = {
+        **RUN_VARIANTS["ar1_common30"],
+        "gps_time_blocks": [ALT_BLOCK_S, _parity],
+    }
 
 
 def single_dog(dog):
@@ -374,6 +402,43 @@ def single_dog(dog):
 
 for _dog in (1, 3, 4):
     RUN_VARIANTS[f"ar1_dog{_dog}"] = {"likelihood": "ar1", **single_dog(_dog)}
+    # Per-DOG lever arm under the final model (30-min windows, one DOG, so the
+    # "common" series is that DOG's own dc(t); sparse windows merge as usual).
+    RUN_VARIANTS[f"ar1_common30_dog{_dog}"] = {
+        **RUN_VARIANTS["ar1_common30"],
+        **single_dog(_dog),
+    }
+
+
+def time_block_mask(gps_time, block_s, parity):
+    """Epochs in alternating GPS-time blocks of length block_s with this parity."""
+    gps_time = np.asarray(gps_time, dtype=float)
+    if block_s <= 0 or parity not in (0, 1):
+        raise ValueError(f"need block_s > 0 and parity 0 or 1; got {block_s}, {parity}")
+    block = np.floor((gps_time - gps_time.min()) / block_s).astype(np.int64)
+    return block % 2 == parity
+
+
+def check_same_inputs(path, problem):
+    """Refuse to resume a chain written from different input files (e.g. ESV table).
+
+    The configuration check of load_state compares file paths only, so a chain
+    sampled on an older ESV table would otherwise count as finished.
+    """
+    with np.load(path) as saved:
+        saved_files = json.loads(str(saved["metadata_json"])).get("input_files", {})
+    current = problem.get("input_files") or {}
+    changed = sorted(
+        name
+        for name in current
+        if name in saved_files
+        and saved_files[name]["sha256"] != current[name]["sha256"]
+    )
+    if changed:
+        raise ValueError(
+            f"{path} was written from different input files ({', '.join(changed)}); "
+            "move the old chains aside or use another run_name"
+        )
 
 
 def run_config(variant, overrides=None):
@@ -1586,6 +1651,7 @@ def run_chain(chain_index, model, problem, out_path, stop_at=None):
     out_path = Path(out_path)
 
     if out_path.exists():
+        check_same_inputs(out_path, problem)
         state = load_state(out_path, model, n_kept_total, n_burn_kept_total)
         print(
             f"[chain {chain_index}] resuming at iteration {state['iteration']}",
@@ -1708,6 +1774,11 @@ def setup_bermuda(config):
         if len(window) != 2 or not window[0] < window[1]:
             raise ValueError(f"gps_time_window_s must be [start, end]; got {window}")
         keep = (inputs["GPS_data"] >= window[0]) & (inputs["GPS_data"] < window[1])
+        inputs["GPS_data"] = inputs["GPS_data"][keep]
+        inputs["GPS_Coordinates"] = inputs["GPS_Coordinates"][keep]
+    blocks = config.get("gps_time_blocks")
+    if blocks is not None:
+        keep = time_block_mask(inputs["GPS_data"], blocks[0], int(blocks[1]))
         inputs["GPS_data"] = inputs["GPS_data"][keep]
         inputs["GPS_Coordinates"] = inputs["GPS_Coordinates"][keep]
     problem = build_problem(

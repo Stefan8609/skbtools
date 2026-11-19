@@ -37,6 +37,7 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     gauss_newton_offset_search,
     initial_bias_geiger,
 )
+from Inversion_Workflow.MCMC_Functions.MCMC_sampler import ALT_BLOCK_S, time_block_mask
 from Inversion_Workflow.Synthetic.Realistic_Synthetic import (
     GPS1_TO_OTHERS,
     M2_PERIOD_H,
@@ -226,6 +227,15 @@ def experiment_cells(experiment):
             for half in (1, 2):
                 settings = {"lever": "lever_free", "clock_drift": False, "half": half}
                 cells.append((f"{preset}_half{half}", full_preset(preset), settings))
+            # Geometry-balanced split, as the real-data ar1_common30_alt15a/b runs:
+            # alternating 15-min blocks of GPS epochs.
+            for parity, name in ((0, "a"), (1, "b")):
+                settings = {
+                    "lever": "lever_free",
+                    "clock_drift": False,
+                    "alt_block": (ALT_BLOCK_S, parity),
+                }
+                cells.append((f"{preset}_alt15{name}", full_preset(preset), settings))
     elif experiment == "currents":
         for speed in (0.0, 0.02, 0.05, 0.10):
             for direction_deg in (0, 90, 180, 270):
@@ -382,6 +392,10 @@ def run_realization(task):
             first = GPS_data < np.median(GPS_data)
             half = first if settings["half"] == 1 else ~first
             GPS_Coordinates, GPS_data = GPS_Coordinates[half], GPS_data[half]
+        if settings.get("alt_block"):
+            block_s, parity = settings["alt_block"]
+            keep = time_block_mask(GPS_data, block_s, parity)
+            GPS_Coordinates, GPS_data = GPS_Coordinates[keep], GPS_data[keep]
         try:
             estimate, offset, lever, pairs, transponder = invert(
                 CDOG_data, GPS_Coordinates, GPS_data, start, lever_start, settings,

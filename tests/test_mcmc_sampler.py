@@ -460,3 +460,42 @@ def test_single_dog_variants_keep_that_dogs_entries():
     halves = [ms.run_config(f"ar1_common30_half{k}") for k in (1, 2)]
     assert halves[0]["gps_time_window_s"][1] == halves[1]["gps_time_window_s"][0]
     assert ms.CONFIG["gps_time_window_s"] is None
+
+
+def test_resume_refuses_changed_input_files(tmp_path):
+    """A chain sampled on another ESV table must not count as finished."""
+    config, problem = synthetic_problem()
+    problem["input_files"] = {"esv_table": {"path": "table.mat", "sha256": "old"}}
+    ms.run_chain(0, ms.build_model(config), problem, tmp_path / "chain.npz", stop_at=20)
+
+    problem["input_files"] = {"esv_table": {"path": "table.mat", "sha256": "new"}}
+    with pytest.raises(ValueError, match="different input files"):
+        ms.run_chain(0, ms.build_model(config), problem, tmp_path / "chain.npz")
+
+
+def test_time_block_mask_splits_into_alternating_blocks():
+    t = 100.0 + np.arange(0.0, 3600.0, 1.0)
+    a = ms.time_block_mask(t, 900.0, 0)
+    b = ms.time_block_mask(t, 900.0, 1)
+    assert not np.any(a & b) and np.all(a | b)
+    assert a[:900].all() and not a[900:1800].any() and a[1800:2700].all()
+    with pytest.raises(ValueError):
+        ms.time_block_mask(t, 900.0, 2)
+
+
+def test_repeatability_variants():
+    """Balanced split, pinned lever and per-DOG final-model variants (R4 5)."""
+    final = ms.run_config("ar1_common30")
+    for name, parity in (("a", 0), ("b", 1)):
+        config = ms.run_config(f"ar1_common30_alt15{name}")
+        assert config["gps_time_blocks"] == [ms.ALT_BLOCK_S, parity]
+        assert config["esv_model"] == final["esv_model"]
+    for half in (1, 2):
+        config = ms.run_config(f"ar1_common30_half{half}_pinlever")
+        plain = ms.run_config(f"ar1_common30_half{half}")
+        assert config["gps_time_window_s"] == plain["gps_time_window_s"]
+        assert config["prior_lever_center_m"] == ms.FINAL_LEVER_M
+        assert max(config["prior_lever_sd_m"]) <= 0.001
+    config = ms.run_config("ar1_common30_dog4")
+    assert config["dogs"] == [4] and config["esv_model"] == "common_windows"
+    assert ms.CONFIG["gps_time_blocks"] is None
