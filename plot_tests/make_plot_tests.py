@@ -12,9 +12,18 @@ import sys
 import time
 from pathlib import Path
 
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.image as mpimg  # noqa: E402
+import matplotlib.pyplot as plt  # noqa: E402
+
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 SKIP_EXIT_CODE = 3  # same value as _figure_common.SKIP_EXIT_CODE
+OUTPUT_DIR = REPO / "Bermuda_Data" / "Figs" / "plot_tests"  # = _figure_common
+CONTACT_SHEET = OUTPUT_DIR / "contact_sheet.png"
+SHEET_COLUMNS = 4
 # Build order of REVISION_STATUS §7 / FIGURES_PROMPT; scripts not listed run last.
 ORDER = [
     "fig_FX7_corner.py",
@@ -46,6 +55,24 @@ def scripts():
     ]
 
 
+def contact_sheet(out=CONTACT_SHEET, columns=SHEET_COLUMNS):
+    """Tile every figure PNG in the output folder, labelled by name, into one PNG."""
+    pngs = sorted(p for p in OUTPUT_DIR.glob("fig_*.png"))
+    if not pngs:
+        return None
+    rows = -(-len(pngs) // columns)
+    fig, axes = plt.subplots(rows, columns, figsize=(4.0 * columns, 3.2 * rows))
+    for ax in axes.flat:
+        ax.axis("off")
+    for ax, png in zip(axes.flat, pngs, strict=False):
+        ax.imshow(mpimg.imread(png))
+        ax.set_title(png.stem.removeprefix("fig_"), fontsize=9)
+    fig.tight_layout()
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    return out
+
+
 def main():
     env = {**os.environ, "PYTHONPATH": str(REPO / "src"), "MPLBACKEND": "Agg"}
     rows = []
@@ -74,6 +101,7 @@ def main():
     for status in ("OK", "SKIPPED", "FAILED"):
         names = [row[0] for row in rows if row[1] == status]
         print(f"  {status:8s} {len(names):2d}  {' '.join(names)}")
+    print(f"Contact sheet: {contact_sheet()}")
     return 1 if any(row[1] == "FAILED" for row in rows) else 0
 
 
