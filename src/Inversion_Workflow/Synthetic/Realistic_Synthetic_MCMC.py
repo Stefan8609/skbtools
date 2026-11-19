@@ -14,11 +14,12 @@ outlier rule. Only what the real data supply from outside the sampler is replace
 - GNSS: DOG 1's vessel positions for all DOGs. In the "random" preset the three DOGs
   share them exactly; in "observed" the iid antenna noise differs per DOG.
 
+Outputs go to ``OUTPUT_DIR`` = ``Bermuda_Data/Output/MCMC_Synthetic``.
 ``run_synthetic_chain`` writes one chain per (seed, chain) to
-``OUTPUT_DIR/<run>/seed<seed>_chain<chain>.npz`` (resumable, as on real data) and the
-truth to ``seed<seed>_truth.npz``. ``summarize`` pools the chains of every seed and
-writes ``OUTPUT_DIR/<run>.csv``: per seed and DOG, the ENU error of the posterior mean,
-the posterior sd, whether the central 68 % and 95 % intervals hold the truth, the same
+``<run>/seed<seed>_chain<chain>.npz`` (resumable, as on real data) and the truth to
+``<run>/seed<seed>_truth.npz``. ``summarize`` pools the chains of every seed and
+writes ``<run>.csv``: per seed and DOG, the ENU error of the posterior mean, the
+posterior sd, whether the central 68 % and 95 % intervals hold the truth, the same
 for the lever arm and dt, the dc error, and the max R-hat.
 """
 
@@ -28,6 +29,7 @@ import os
 
 import numpy as np
 
+from bermuda_data import gps_output_path
 from Inversion_Workflow.MCMC_Functions.MCMC_diagnostics import (
     rank_normalized_split_rhat,
 )
@@ -48,7 +50,6 @@ from Inversion_Workflow.Synthetic.Realistic_Synthetic import (
 from Inversion_Workflow.Synthetic.Realistic_Synthetic_Ensemble import (
     GENERATION_TABLE,
     INVERSION_TABLE,
-    OUTPUT_DIR,
     full_preset,
     load_table,
     with_random_directions,
@@ -67,6 +68,7 @@ OVERRIDES = {}
 DOGS = (1, 3, 4)
 PRIOR_CENTER_ERROR_SD_M = 1.0
 OFFSET_ROUND_S = 1e-3
+OUTPUT_DIR = gps_output_path("MCMC_Synthetic")
 
 
 def run_name():

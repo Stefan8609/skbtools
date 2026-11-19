@@ -6,7 +6,7 @@
 # PRESET, RUN_VARIANT, N_SURVEYS and N_CHAINS from the config block of
 # src/Inversion_Workflow/Synthetic/Realistic_Synthetic_MCMC.py (defaults: "random",
 # ar1_common30, 20 surveys x 2 chains = tasks 0-39). Chains go to
-# revision/analysis/realistic_synthetic/mcmc_<run>_<preset>/; resubmitting resumes
+# Bermuda_Data/Output/MCMC_Synthetic/mcmc_<run>_<preset>/; resubmitting resumes
 # unfinished chains from their checkpoints.
 #
 # Submit from the repository root, after the Numba warm-up:
