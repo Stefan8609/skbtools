@@ -293,12 +293,11 @@ def run_diagnostics(run_name, make_plots=True):
 
 if __name__ == "__main__":
     RUN_NAMES = [
-        "ar1_white_drift",
-        "ar1_white_drift_splits1",
-        "ar1_white_drift_splits8",
-        "ar1_common30",
-        "ar1_common30_drift",
-        "ar1_common60",
+        "ar1",
+        "ar1_common15",
+        "ar1_white",
+        "ar1_white_common30",
+        "iid",
     ]
 
     for run_name in RUN_NAMES:

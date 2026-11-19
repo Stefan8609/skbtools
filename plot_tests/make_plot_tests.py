@@ -24,7 +24,7 @@ SKIP_EXIT_CODE = 3  # same value as _figure_common.SKIP_EXIT_CODE
 OUTPUT_DIR = REPO / "Bermuda_Data" / "Figs" / "plot_tests"  # = _figure_common
 CONTACT_SHEET = OUTPUT_DIR / "contact_sheet.png"
 SHEET_COLUMNS = 4
-# Build order of REVISION_STATUS §7 / FIGURES_PROMPT; scripts not listed run last.
+# Build order of the figures; scripts not listed run last.
 ORDER = [
     "fig_FX7_corner.py",
     "fig_FIG3_clock_offset.py",

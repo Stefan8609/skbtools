@@ -14,7 +14,7 @@ Angle: 10-90 deg; the Bermuda geometry spans 22.9-89.8 deg and the unaligned
 generator down to about 16 deg. The step (0.1 deg below 25 deg, 0.25 deg above) is
 chosen by ``check_interpolation_error``
 so that bilinear interpolation of the table changes the travel time by far less
-than the 20 us timing noise (see G8_ESV_TABLES.md for the numbers).
+than the 20 us timing noise (lookup error: max 2.9 us, rms 0.3 us).
 """
 
 import numpy as np

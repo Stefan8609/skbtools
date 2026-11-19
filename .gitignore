@@ -49,7 +49,10 @@ uv.lock
 
 !Paper_Data/*.npz
 
+# Claude and Codex
 AGENTS.md
+CLAUDE.md
+.claude/
 
 # Slurm logs
 slurm/logs/

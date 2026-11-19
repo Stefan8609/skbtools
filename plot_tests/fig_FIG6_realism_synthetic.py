@@ -83,7 +83,7 @@ REAL_START_AUGMENTS_M = {
 
 # (e): (label, budget cell or None, residual bound in cm for sources not simulated,
 # note printed next to it). Cells "only_<source>": that source alone, lever fixed.
-ESV_LOOKUP_RMS_S = 0.3e-6  # bilinear ESV lookup error, rms (REVISION_STATUS C3)
+ESV_LOOKUP_RMS_S = 0.3e-6  # bilinear ESV lookup error, rms (REVISION_REFERENCE C3)
 BUDGET_ROWS = (
     ("All sources, observed δc(t) preset", "observed_all", None, ""),
     ("All sources, random δc(t) preset", "random_all", None, ""),

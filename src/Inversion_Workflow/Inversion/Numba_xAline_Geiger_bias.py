@@ -491,7 +491,7 @@ def final_bias_geiger(
 
 # Gauss-Newton offset search: integer seconds tried on each side of the aligned
 # offset, and the smallest best-vs-second-best Delta chi^2 accepted. In small
-# synthetic tests (revision/OFFSET_BRAINSTORM.md) right picks had Delta chi^2 >= 156
+# synthetic tests (DOG 3, 20 trials) right picks had Delta chi^2 >= 156
 # and picks outside the window <= 23.
 OFFSET_SEARCH_HALFWINDOW_SECONDS = 15
 MIN_OFFSET_DELTA_CHI2 = 50.0

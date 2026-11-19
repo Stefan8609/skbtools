@@ -1,7 +1,6 @@
 # plot_tests: revision figures for Paper I (SANA-D-26-00282)
 
-Drafts of the new and remade figures for the major revision (REVISION_STATUS §7,
-`revision/FIGURES_PROMPT.md`). They sit beside `src/plotting/` until promoted; nothing
+Drafts of the new and remade figures for the major revision (`revision/REVISION_REFERENCE.md` §6). They sit beside `src/plotting/` until promoted; nothing
 in `src/plotting/` is modified. One script per figure.
 
 Run everything from the repository root:
