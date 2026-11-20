@@ -90,6 +90,52 @@ def drift_step(J, residuals, t_from_mid):
     return delta
 
 
+@njit(cache=True, fastmath=True)
+def gauss_newton_step(
+    guess,
+    transponder_coordinates,
+    travel_times,
+    CDOG_times,
+    esv,
+    time_bias,
+    drift_rate,
+    t_from_mid,
+    dz_array,
+    angle_array,
+    esv_matrix,
+    real_data,
+    clock_drift,
+):
+    """One Gauss-Newton step on the paired arrivals, outliers excluded.
+
+    The residual is ``(travel_times - time_bias) - CDOG_times`` (plus
+    ``drift_rate * t_from_mid`` with ``clock_drift``). Returns the update of
+    (x, y, z, time_bias, esv_bias[, drift_rate]).
+    """
+    residuals = (travel_times - time_bias) - CDOG_times
+    if clock_drift:
+        residuals = residuals + drift_rate * t_from_mid
+    inliers = residual_inliers(residuals)
+    grad_x_c0 = esv_gradient(
+        guess,
+        transponder_coordinates[inliers],
+        dz_array,
+        angle_array,
+        esv_matrix,
+        real_data,
+    )[0]
+    J = compute_Jacobian_biased(
+        guess,
+        transponder_coordinates[inliers],
+        travel_times[inliers],
+        esv[inliers],
+        grad_x_c0,
+    )
+    if clock_drift:
+        return drift_step(J, residuals[inliers], t_from_mid[inliers])
+    return -1 * np.linalg.inv(J.T @ J) @ J.T @ residuals[inliers]
+
+
 # Largest integer-second shift tried per pass when re-selecting the offset.
 INT_OFFSET_SHIFT_SECONDS = 3
 MAX_INT_OFFSET_PASSES = 20
@@ -166,33 +212,26 @@ def _geiger_at_offset(
         ) = two_pointer_index(
             offset, 0.2, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
         )
-        residuals = (GPS_full - time_bias) - CDOG_full
-        t_from_mid = np.zeros(len(residuals))
+        t_from_mid = np.zeros(len(GPS_full))
         if clock_drift:
             # Pairs change between iterations here, so t_mid follows them.
             emission_times = GPS_clock - GPS_full
             t_from_mid = emission_times - paired_time_mid(emission_times)
-            residuals = residuals + drift_rate * t_from_mid
-        inliers = residual_inliers(residuals)
-        grad_x_c0 = esv_gradient(
+        delta = gauss_newton_step(
             guess,
-            transponder_coordinates_full[inliers],
+            transponder_coordinates_full,
+            GPS_full,
+            CDOG_full,
+            esv_full,
+            time_bias,
+            drift_rate,
+            t_from_mid,
             dz_array,
             angle_array,
             esv_matrix,
             real_data,
-        )[0]
-        J = compute_Jacobian_biased(
-            guess,
-            transponder_coordinates_full[inliers],
-            GPS_full[inliers],
-            esv_full[inliers],
-            grad_x_c0,
+            clock_drift,
         )
-        if clock_drift:
-            delta = drift_step(J, residuals[inliers], t_from_mid[inliers])
-        else:
-            delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ residuals[inliers]
         estimate = estimate + delta
         guess = estimate[:3]
         time_bias = estimate[3]
@@ -412,29 +451,21 @@ def final_bias_geiger(
             real_data,
         )
 
-        residuals = (GPS_full - time_bias) - CDOG_full
-        if clock_drift:
-            residuals = residuals + drift_rate * t_from_mid
-        inliers = residual_inliers(residuals)
-        grad_x_c0 = esv_gradient(
+        delta = gauss_newton_step(
             guess,
-            transponder_coordinates_full[inliers],
+            transponder_coordinates_full,
+            GPS_full,
+            CDOG_full,
+            esv,
+            time_bias,
+            drift_rate,
+            t_from_mid,
             dz_array,
             angle_array,
             esv_matrix,
             real_data,
-        )[0]
-        J = compute_Jacobian_biased(
-            guess,
-            transponder_coordinates_full[inliers],
-            GPS_full[inliers],
-            esv[inliers],
-            grad_x_c0,
+            clock_drift,
         )
-        if clock_drift:
-            delta = drift_step(J, residuals[inliers], t_from_mid[inliers])
-        else:
-            delta = -1 * np.linalg.inv(J.T @ J) @ J.T @ residuals[inliers]
         estimate = estimate + delta
         guess = estimate[:3]
         time_bias = estimate[3]
