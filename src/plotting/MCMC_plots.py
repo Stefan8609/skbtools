@@ -10,6 +10,7 @@ from geometry.ECEF_Geodetic import ECEF_Geodetic
 from scipy.stats import norm
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
 from plotting.save import save_plot
+from bermuda_data import CDOG_REFERENCE
 import itertools
 
 """Enable this for paper plots"""
@@ -179,7 +180,7 @@ def cdog_aug_ecef_to_enu(
         ENU coordinates (E, N, U) in meters for each sample.
     """
     if CDOG_reference is None:
-        CDOG_reference = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
+        CDOG_reference = CDOG_REFERENCE
     aug_samples = np.asarray(aug_samples)
     if aug_samples.ndim != 2 or aug_samples.shape[1] != 3:
         raise ValueError(f"aug_samples must have shape (N, 3); got {aug_samples.shape}")

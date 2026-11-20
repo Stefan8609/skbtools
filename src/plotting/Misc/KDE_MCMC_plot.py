@@ -9,6 +9,7 @@ from plotting.Ellipses.Error_Ellipse import compute_error_ellipse
 from plotting.MCMC_plots import get_init_params_and_prior
 from Inversion_Workflow.MCMC_Functions.MCMC_diagnostics import pooled_run
 from plotting.save import save_plot
+from bermuda_data import CDOG_REFERENCE
 
 
 def plot_kde_mcmc(
@@ -28,7 +29,7 @@ def plot_kde_mcmc(
     fig=None,
 ):
     if CDOG_reference is None:
-        CDOG_reference = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
+        CDOG_reference = CDOG_REFERENCE
 
     CDOG_loc = prior_mean + CDOG_reference
     CDOG_lat, CDOG_lon, CDOG_height = ECEF_Geodetic(np.array([CDOG_loc]))

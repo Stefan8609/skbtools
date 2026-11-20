@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
 from geometry.ECEF_Geodetic import ECEF_Geodetic
-from bermuda_data import gps_data_path
+from bermuda_data import CDOG_GUESS_AUGMENTS, CDOG_REFERENCE, gps_data_path
 from plotting.save import save_plot
 
 """Enable this for paper plots"""
@@ -452,15 +452,8 @@ def range_residual(
 
 
 if __name__ == "__main__":
-    CDOG_guess_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
-    CDOGs = np.array(
-        [
-            [-398.16, 371.90, 773.02],
-            [825.182985, -111.05670221, -734.10011698],
-            [236.428385, -1307.98390221, -2189.21991698],
-        ]
-    )
-    CDOGs += CDOG_guess_base
+    CDOGs = np.array([CDOG_GUESS_AUGMENTS[dog] for dog in (1, 3, 4)])
+    CDOGs += CDOG_REFERENCE
 
     CDOGs_lat, CDOGs_lon, CDOGs_height = ECEF_Geodetic(CDOGs)
 

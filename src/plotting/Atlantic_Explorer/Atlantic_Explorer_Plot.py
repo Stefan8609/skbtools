@@ -12,7 +12,7 @@ from plotting.Misc.KDE_MCMC_plot import plot_kde_mcmc
 from plotting.save import save_plot
 
 from geometry.rigid_body import findRotationAndDisplacement
-from bermuda_data import gps_output_path, gps_data_path
+from bermuda_data import GPS1_TO_OTHERS, gps_output_path, gps_data_path
 
 plt.rcParams.update(
     {
@@ -561,19 +561,13 @@ def RV_Plot(
             )
 
         data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
-        GPS_grid = np.array(
-            [
-                [0.0, 0.0, 0.0],
-                [-2.39341409, -4.22350344, 0.02941493],
-                [-12.09568416, -0.94568462, 0.0043972],
-                [-8.68674054, 5.16918806, 0.02499322],
-            ]
-        )
         GPS_Coordinates = data["GPS_Coordinates"]
 
         GPS_Vessel = np.zeros_like(GPS_Coordinates)
         for i in range(GPS_Coordinates.shape[0]):
-            R_mtrx, d = findRotationAndDisplacement(GPS_Coordinates[i].T, GPS_grid.T)
+            R_mtrx, d = findRotationAndDisplacement(
+                GPS_Coordinates[i].T, GPS1_TO_OTHERS.T
+            )
             GPS_Vessel[i] = (R_mtrx @ GPS_Coordinates[i].T + d[:, None]).T
 
         GPS1 = np.array(GPS1_OFFSET)

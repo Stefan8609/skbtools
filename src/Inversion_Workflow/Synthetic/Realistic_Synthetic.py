@@ -39,7 +39,7 @@ import numpy as np
 import scipy.io as sio
 from scipy.signal import lfilter
 
-from bermuda_data import gps_data_path
+from bermuda_data import CDOG_REFERENCE, GPS1_TO_OTHERS, gps_data_path
 from geometry.Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
@@ -50,16 +50,7 @@ from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
 )
 
 M2_PERIOD_H = 12.4206
-SITE_ORIGIN_ECEF = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
-# Same values as the defaults inside bermuda_trajectory.
-GPS1_TO_OTHERS = np.array(
-    [
-        [0.0, 0.0, 0.0],
-        [-2.39341409, -4.22350344, 0.02941493],
-        [-12.09568416, -0.94568462, 0.0043972],
-        [-8.68674054, 5.16918806, 0.02499322],
-    ]
-)
+SITE_ORIGIN_ECEF = CDOG_REFERENCE
 GPS1_TO_TRANSPONDER = np.array([-12.4659, 9.6021, -13.2993])
 CDOG_AUGMENTS = {
     1: np.array([-396.80833750, 370.23261256, 774.14404697]),

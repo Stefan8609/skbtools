@@ -14,7 +14,15 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
-from bermuda_data import gps_data_path, gps_output_path
+from bermuda_data import (
+    CDOG_GUESS_AUGMENTS,
+    CDOG_REFERENCE,
+    GPS1_TO_OTHERS,
+    OFFSET_HINTS_S,
+    gps_data_path,
+    gps_output_path,
+    leg_mask,
+)
 from plotting.Plot_Modular import time_series_plot, range_residual
 
 
@@ -55,46 +63,18 @@ GPS_Coordinates = data["GPS_Coordinates"]
 GPS_data = data["GPS_data"]
 CDOG_data = data["CDOG_data"][::downsample]
 
-CDOG_guess_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
-
-gps1_to_others = np.array(
-    [
-        [0.0, 0.0, 0.0],
-        [-2.39341409, -4.22350344, 0.02941493],
-        [-12.09568416, -0.94568462, 0.0043972],
-        [-8.68674054, 5.16918806, 0.02499322],
-    ]
-)
-
 initial_lever_guess = np.array([-12.69796149, 9.51739301, -15.0743129])
 
-# -------------------------
-# Initial guesses by DOG
-# -------------------------
-if DOG_num == 1:
-    CDOG_guess_augment = np.array([-398.16, 371.90, 773.02])
-    offset_hint = 1866.0
-elif DOG_num == 3:
-    CDOG_guess_augment = np.array([825.182985, -111.05670221, -734.10011698])
-    offset_hint = 3175.0
-elif DOG_num == 4:
-    CDOG_guess_augment = np.array([236.428385, -1307.98390221, -2189.21991698])
-    offset_hint = 1939.0
-else:
-    CDOG_guess_augment = np.zeros(3)
-    offset_hint = 0.0
-
-CDOG_guess = CDOG_guess_base + CDOG_guess_augment
+CDOG_guess = CDOG_REFERENCE + CDOG_GUESS_AUGMENTS[DOG_num]
+offset_hint = OFFSET_HINTS_S[DOG_num]
 
 if use_leg_mask:
     # Same legs for every DOG. Earlier alternative for DOGs 3 and 4:
     # 8.7-11 h and 15.75-18.15 h (not a true leg for DOG 4, as the GPS data
     # were corrupted overlying DOG 4).
-    leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
-    leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
-    leg_mask = leg1 | leg2
-    GPS_Coordinates = GPS_Coordinates[leg_mask]
-    GPS_data = GPS_data[leg_mask]
+    keep = leg_mask(GPS_data)
+    GPS_Coordinates = GPS_Coordinates[keep]
+    GPS_data = GPS_data[keep]
 
 if lever_method == "gauss_newton":
     print("\n ---------Using Gauss-Newton Offset Search--------- \n")
@@ -103,7 +83,7 @@ if lever_method == "gauss_newton":
             CDOG_data,
             GPS_data,
             GPS_Coordinates,
-            gps1_to_others,
+            GPS1_TO_OTHERS,
             CDOG_guess,
             initial_lever_guess,
             dz_array,
@@ -125,7 +105,7 @@ if lever_method == "gauss_newton":
         )
 
     transponder_coordinates = findTransponder(
-        GPS_Coordinates, gps1_to_others, best_lever
+        GPS_Coordinates, GPS1_TO_OTHERS, best_lever
     )
     inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(
         inversion_result[:3],
@@ -153,7 +133,7 @@ elif lever_method == "annealing":
         CDOG_data,
         GPS_data,
         GPS_Coordinates,
-        gps1_to_others,  # keep consistent with how data were generated
+        GPS1_TO_OTHERS,  # keep consistent with how data were generated
         CDOG_guess,
         initial_lever_guess,
         dz_array,
@@ -166,7 +146,7 @@ elif lever_method == "annealing":
     )
 
     transponder_coordinates = findTransponder(
-        GPS_Coordinates, gps1_to_others, best_lever
+        GPS_Coordinates, GPS1_TO_OTHERS, best_lever
     )
 
     inversion_result, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(
@@ -195,7 +175,7 @@ elif lever_method == "fixed":
     print("\n ---------Using Geiger Inversion--------- \n")
 
     transponder_coordinates = findTransponder(
-        GPS_Coordinates, gps1_to_others, initial_lever_guess
+        GPS_Coordinates, GPS1_TO_OTHERS, initial_lever_guess
     )
     inversion_result, best_offset = initial_bias_geiger(
         CDOG_guess,
@@ -257,7 +237,7 @@ print(f"\nEstimate: {np.round(inversion_result, 4)}")
 print(
     f"Best Lever: {np.round(best_lever, 3)}, "
     f"Offset: {np.round(best_offset_eff, 4)}, "
-    f"Inversion Guess (from base): {np.round(inversion_guess - CDOG_guess_base, 5)}"
+    f"Inversion Guess (from base): {np.round(inversion_guess - CDOG_REFERENCE, 5)}"
 )
 print("RMSE:", np.round(RMSE_cm, 3), "cm")
 if clock_drift:

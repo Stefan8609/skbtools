@@ -16,7 +16,7 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 
 from pymap3d import geodetic2enu
-from bermuda_data import gps_data_path, gps_output_path
+from bermuda_data import GPS1_TO_OTHERS, gps_data_path, gps_output_path, leg_mask
 
 plt.rcParams.update(
     {
@@ -164,15 +164,6 @@ def error_ellipse(
     real_lever = np.array([-12.4659, 9.6021, -13.2993])
 
     if generate:
-        gps1_to_others = np.array(
-            [
-                [0.0, 0.0, 0.0],
-                [-2.39341409, -4.22350344, 0.02941493],
-                [-12.09568416, -0.94568462, 0.0043972],
-                [-8.68674054, 5.16918806, 0.02499322],
-            ]
-        )
-
         esv_table_generate = sio.loadmat(
             gps_data_path(f"ESV_Tables/{ESV_GENERATE}.mat")
         )
@@ -205,7 +196,7 @@ def error_ellipse(
             esv_matrix_generate,
             offset=true_offset,
             DOG_num=DOG_num,
-            gps1_to_others=gps1_to_others,
+            gps1_to_others=GPS1_TO_OTHERS,
             gps1_to_transponder=real_lever,
         )
 
@@ -226,12 +217,9 @@ def error_ellipse(
         # Paper I synthetics use the full trajectory; the leg mask (9-11 h and
         # 12.4-15 h) is a sensitivity test only.
         if use_leg_mask:
-            hours = correct_GPS_data / 3600
-            leg_mask = ((hours >= 9.0) & (hours <= 11.0)) | (
-                (hours >= 12.4) & (hours <= 15.0)
-            )
-            correct_GPS_Coordinates = correct_GPS_Coordinates[leg_mask]
-            correct_GPS_data = correct_GPS_data[leg_mask]
+            keep = leg_mask(correct_GPS_data)
+            correct_GPS_Coordinates = correct_GPS_Coordinates[keep]
+            correct_GPS_data = correct_GPS_data[keep]
         correct_GPS_Coordinates = correct_GPS_Coordinates[::downsample]
         correct_GPS_data = correct_GPS_data[::downsample]
         correct_CDOG_time = correct_CDOG_data[:, 0] + correct_CDOG_data[:, 1]
@@ -266,7 +254,7 @@ def error_ellipse(
                     CDOG_data,
                     GPS_data,
                     GPS_Coordinates,
-                    gps1_to_others,
+                    GPS1_TO_OTHERS,
                     initial_guess,
                     initial_lever,
                     dz_array_inversion,
@@ -281,7 +269,7 @@ def error_ellipse(
 
                 transponder_coordinates = findTransponder(
                     GPS_Coordinates,
-                    gps1_to_others,
+                    GPS1_TO_OTHERS,
                     lever,
                 )
 

@@ -4,7 +4,13 @@ import scipy.io as sio
 from Inversion_Workflow.Inversion.Numba_xAline_Joint_Annealing_bias import (
     simulated_annealing_bias_joint,
 )
-from bermuda_data import gps_data_path
+from bermuda_data import (
+    CDOG_GUESS_AUGMENTS,
+    CDOG_REFERENCE,
+    GPS1_TO_OTHERS,
+    OFFSET_HINTS_S,
+    gps_data_path,
+)
 from numba.typed import List
 
 # -------------------------
@@ -23,33 +29,17 @@ dz_array = esv_table["distance"].flatten()
 angle_array = esv_table["angle"].flatten()
 esv_matrix = esv_table["matrice"]
 
-CDOG_guess_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
-
-gps1_to_others = np.array(
-    [
-        [0.0, 0.0, 0.0],
-        [-2.39341409, -4.22350344, 0.02941493],
-        [-12.09568416, -0.94568462, 0.0043972],
-        [-8.68674054, 5.16918806, 0.02499322],
-    ]
-)
-
 initial_lever_guess = np.array([-12.69796149, 9.51739301, -12.0743129])
 
 
 # -------------------------
 # Initial guesses by DOG
 # -------------------------
+# DOG 1 starts 2 m from the guess in Bermuda_Data_time_bias.py (+2 m ECEF x, -2 m y).
 initial_guess_augments = {
     1: np.array([-396.16, 369.90, 773.02]),
-    3: np.array([825.182985, -111.05670221, -734.10011698]),
-    4: np.array([236.428385, -1307.98390221, -2189.21991698]),
-}
-
-offset_hints = {
-    1: 1866.0,
-    3: 3175.0,
-    4: 1939.0,
+    3: CDOG_GUESS_AUGMENTS[3],
+    4: CDOG_GUESS_AUGMENTS[4],
 }
 
 
@@ -81,8 +71,8 @@ for DOG_num in DOG_nums:
                 f"{GPS_Coordinates.shape} != {GPS_Coordinates_ref.shape}"
             )
 
-    CDOG_guess = CDOG_guess_base + initial_guess_augments.get(DOG_num, np.zeros(3))
-    offset_hint = offset_hints.get(DOG_num, 0.0)
+    CDOG_guess = CDOG_REFERENCE + initial_guess_augments[DOG_num]
+    offset_hint = OFFSET_HINTS_S[DOG_num]
 
     CDOG_data_list.append(CDOG_data[::downsample])
     GPS_data_list.append(GPS_data)
@@ -106,7 +96,7 @@ best_lever, best_offset_list, inversion_result_list, rmse_list = (
         CDOG_data_list,
         GPS_data,
         GPS_Coordinates,
-        gps1_to_others,
+        GPS1_TO_OTHERS,
         initial_guess_list,
         initial_lever_guess,
         dz_array,
@@ -144,7 +134,7 @@ for i, DOG_num in enumerate(DOG_nums):
         print(f"Drift rate: {inversion_result[5]:.4e} s/s (Eq. 6 convention)")
     print(
         f"Offset: {np.round(best_offset_eff, 4)}, "
-        f"Inversion Guess (from base): {np.round(inversion_guess - CDOG_guess_base, 5)}"
+        f"Inversion Guess (from base): {np.round(inversion_guess - CDOG_REFERENCE, 5)}"
     )
     print("RMSE:", np.round(rmse_list[i] * 100 * 1515, 3), "cm")
 

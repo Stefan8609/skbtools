@@ -71,7 +71,14 @@ from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
     calculateTimesRayTracing_windows,
 )
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import residual_inliers
-from bermuda_data import PROJECT_ROOT, gps_data_path, gps_output_path
+from bermuda_data import (
+    CDOG_GUESS_AUGMENTS,
+    CDOG_REFERENCE,
+    GPS1_TO_OTHERS,
+    PROJECT_ROOT,
+    gps_data_path,
+    gps_output_path,
+)
 from geometry.Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 
 RANGE_CM_PER_S = 1515.0 * 100.0
@@ -117,14 +124,9 @@ CONFIG = {
     "esv_table": "ESV_Tables/global_table_esv_extended.mat",
     "gps_file": "GPS_Data/Processed_GPS_Receivers_DOG_1.npz",
     "num_esv_splits": 4,
-    "CDOG_reference": [1976671.618715, -5069622.53769779, 3306330.69611698],
+    "CDOG_reference": CDOG_REFERENCE.tolist(),
     # Receiver grid (body frame, m from GPS1) as in the inversion drivers.
-    "gps1_to_others": [
-        [0.0, 0.0, 0.0],
-        [-2.39341409, -4.22350344, 0.02941493],
-        [-12.09568416, -0.94568462, 0.0043972],
-        [-8.68674054, 5.16918806, 0.02499322],
-    ],
+    "gps1_to_others": GPS1_TO_OTHERS.tolist(),
     # Alignment: integer plus sub-integer offsets (s) and the pairing window.
     "offsets_s": [1866.016, 3175.017, 1939.0178],
     "pair_threshold_s": 0.4,
@@ -144,11 +146,7 @@ CONFIG = {
     "prior_lever_sd_m": PRIOR_LEVER_SD_M,
     # DOG positions: the Gauss-Newton starting guesses of Bermuda_Data_time_bias.py.
     # Replace with deployment positions when they are available.
-    "prior_CDOG_aug_center_m": [
-        [-398.16, 371.90, 773.02],
-        [825.182985, -111.05670221, -734.10011698],
-        [236.428385, -1307.98390221, -2189.21991698],
-    ],
+    "prior_CDOG_aug_center_m": [CDOG_GUESS_AUGMENTS[dog].tolist() for dog in (1, 3, 4)],
     "prior_CDOG_aug_sd_m": 5.0,
     "prior_esv_bias_center_m_s": 0.0,
     "prior_esv_bias_sd_m_s": 2.0,

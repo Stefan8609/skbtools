@@ -1,6 +1,6 @@
 import numpy as np
 from geometry.ECEF_Geodetic import ECEF_Geodetic
-from bermuda_data import gps_data_path
+from bermuda_data import CDOG_REFERENCE, gps_data_path
 
 # Find the geodetic coordinates of the CDOG locations
 from pymap3d import geodetic2enu
@@ -69,7 +69,7 @@ if __name__ == "__main__":
         [235.88302714, -1306.08869213, -2190.76178745],
     ]
 
-    CDOG_reference = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
+    CDOG_reference = CDOG_REFERENCE
     CDOG_Locations = CDOG_augments + CDOG_reference
     lat, lon, alt = ECEF_Geodetic(CDOG_Locations)
 

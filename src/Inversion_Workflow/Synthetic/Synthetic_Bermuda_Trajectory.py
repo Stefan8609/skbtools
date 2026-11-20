@@ -4,7 +4,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
 )
 from geometry.Numba_RigidBodyMovementProblem import findRotationAndDisplacement
-from bermuda_data import gps_data_path
+from bermuda_data import CDOG_REFERENCE, GPS1_TO_OTHERS, gps_data_path
 
 
 def bermuda_trajectory(
@@ -44,19 +44,10 @@ def bermuda_trajectory(
         ``(CDOG_data, CDOG, GPS_Coordinates, GPS_data, transponder_coordinates)``.
     """
     if gps1_to_others is None:
-        gps1_to_others = np.array(
-            [
-                [0.0, 0.0, 0.0],
-                [-2.39341409, -4.22350344, 0.02941493],
-                [-12.09568416, -0.94568462, 0.0043972],
-                [-8.68674054, 5.16918806, 0.02499322],
-            ]
-        )
+        gps1_to_others = GPS1_TO_OTHERS
 
     if gps1_to_transponder is None:
         gps1_to_transponder = np.array([-12.4659, 9.6021, -13.2993])
-
-    CDOG_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
 
     CDOG_augments = {
         1: np.array([-396.80833750, 370.23261256, 774.14404697]),
@@ -64,7 +55,7 @@ def bermuda_trajectory(
         4: np.array([235.77476616, -1305.38300727, -2190.89445398]),
     }
 
-    CDOG = CDOG_base + CDOG_augments[DOG_num]
+    CDOG = CDOG_REFERENCE + CDOG_augments[DOG_num]
 
     data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
     GPS_Coordinates_real = data["GPS_Coordinates"]

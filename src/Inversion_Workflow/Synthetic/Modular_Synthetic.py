@@ -23,7 +23,7 @@ from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
     anneal_with_offset_search,
 )
 from plotting.Plot_Modular import time_series_plot
-from bermuda_data import gps_data_path, gps_output_path
+from bermuda_data import gps_data_path, gps_output_path, leg_mask
 
 plt.rcParams.update(
     {
@@ -160,9 +160,7 @@ def modular_synthetic(
         # Paper I synthetics use the full trajectory, downsampled. The leg mask
         # (9-11 h and 12.4-15 h, not downsampled) is a sensitivity test only.
         if use_leg_mask:
-            leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
-            leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
-            keep = leg1 | leg2
+            keep = leg_mask(GPS_data)
         else:
             keep = slice(None, None, downsample)
         GPS_Coordinates = GPS_Coordinates[keep]

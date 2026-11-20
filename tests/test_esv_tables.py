@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
 
+from bermuda_data import CDOG_REFERENCE
+
 from acoustics.build_synthetic_esv_tables import (
     ANGLE_ARRAY_DEG,
     DZ_ARRAY_M,
@@ -85,7 +87,7 @@ def test_coverage_check_can_warn_instead_of_raising():
 
 
 def test_coverage_check_uses_geodetic_depth_for_real_data():
-    cdog = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
+    cdog = CDOG_REFERENCE
     transponders = (cdog * (1 + 5200.0 / np.linalg.norm(cdog)))[None, :]
 
     check_esv_coverage(cdog, transponders, DZ_ARRAY_M, ANGLE_ARRAY_DEG, True)

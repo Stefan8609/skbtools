@@ -16,7 +16,12 @@ from pathlib import Path
 import numpy as np
 import scipy.io as sio
 
-from bermuda_data import gps_data_path
+from bermuda_data import (
+    CDOG_GUESS_AUGMENTS,
+    CDOG_REFERENCE,
+    GPS1_TO_OTHERS,
+    gps_data_path,
+)
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
 )
@@ -39,22 +44,8 @@ GATE_SECONDS = 0.4  # gamma of paper Eq. A20
 ESV_TABLE = "ESV_Tables/global_table_esv_extended_before_ray_fix_20261008.mat"
 OUTPUT_DIR = Path(__file__).resolve().parents[3] / "revision/analysis/integer_ambiguity"
 
-# Same constants as Bermuda_Data_time_bias.py. Table 1 lever arms and published
-# values (delta_t in s, c*sigma_eps in cm with c = 1515 m/s) are used for the check.
-CDOG_BASE = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
-GPS1_TO_OTHERS = np.array(
-    [
-        [0.0, 0.0, 0.0],
-        [-2.39341409, -4.22350344, 0.02941493],
-        [-12.09568416, -0.94568462, 0.0043972],
-        [-8.68674054, 5.16918806, 0.02499322],
-    ]
-)
-START_AUGMENT = {
-    1: [-398.16, 371.90, 773.02],
-    3: [825.182985, -111.05670221, -734.10011698],
-    4: [236.428385, -1307.98390221, -2189.21991698],
-}
+# Table 1 lever arms and published values (delta_t in s, c*sigma_eps in cm with
+# c = 1515 m/s) are used for the check.
 TABLE1_LEVER = {
     1: [-12.77, 9.58, -12.07],
     3: [-12.89, 9.45, -12.28],
@@ -84,7 +75,7 @@ def best_solution(dog_num, CDOG_data, GPS_data, transponder_coordinates, esv_tab
     [x, y, z, time_bias, esv_bias] and delta_t = offset - time_bias.
     """
     dz_array, angle_array, esv_matrix = esv_table
-    guess = CDOG_BASE + np.array(START_AUGMENT[dog_num])
+    guess = CDOG_REFERENCE + CDOG_GUESS_AUGMENTS[dog_num]
     estimate, offset = initial_bias_geiger(
         guess,
         CDOG_data,

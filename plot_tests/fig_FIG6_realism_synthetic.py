@@ -32,7 +32,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 import _figure_common as fc
-from bermuda_data import gps_data_path
+from bermuda_data import CDOG_GUESS_AUGMENTS, gps_data_path
 from Inversion_Workflow.Synthetic import Realistic_Synthetic_Ensemble as ens
 from Inversion_Workflow.Synthetic.Realistic_Synthetic import (
     SITE_ORIGIN_ECEF,
@@ -75,11 +75,6 @@ ACF_LAGS_S = np.unique(np.round(np.logspace(0, np.log10(ACF_MAX_LAG_S), 60))).as
 ACF_CACHE = fc.OUTPUT_DIR / "cache" / "FIG6_residual_acf.npz"
 REAL_TABLE = "global_table_esv_extended"
 REAL_LEVER_M = np.array([-12.959, 9.282, -14.157])
-REAL_START_AUGMENTS_M = {
-    1: np.array([-398.16, 371.90, 773.02]),
-    3: np.array([825.182985, -111.05670221, -734.10011698]),
-    4: np.array([236.428385, -1307.98390221, -2189.21991698]),
-}
 
 # (e): (label, budget cell or None, residual bound in cm for sources not simulated,
 # note printed next to it). Cells "only_<source>": that source alone, lever fixed.
@@ -136,7 +131,7 @@ def residual_acfs():
     tables = ens.load_table(REAL_TABLE)
     for dog in DOGS:
         data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{dog}.npz"))
-        start = SITE_ORIGIN_ECEF + REAL_START_AUGMENTS_M[dog]
+        start = SITE_ORIGIN_ECEF + CDOG_GUESS_AUGMENTS[dog]
         t, r = residual_series(
             dog,
             data["CDOG_data"],
