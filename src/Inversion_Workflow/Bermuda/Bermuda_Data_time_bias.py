@@ -318,18 +318,6 @@ range_residual(
     DOG_num=file_tag,
 )
 
-# Elevation-angle residuals
-# depth_arr = ECEF_Geodetic(trans_coords_full)[2]
-# inv_xyz = inversion_guess[np.newaxis, :]
-# lat, lon, depth0 = ECEF_Geodetic(inv_xyz)
-
-# dz = depth_arr - depth0
-# abs_dist = np.sqrt(np.sum((trans_coords_full - inv_xyz) ** 2, axis=1))
-# beta = np.arcsin(dz / abs_dist) * 180.0 / np.pi
-
-# elevation_angle_residual(beta, CDOG_full_ex, GPS_full_ex, save=save,
-# path= save_path, chain_name=file_tag)
-
 # plot_integer_pick_metrics_dog(
 #     best_offset,
 #     CDOG_data,

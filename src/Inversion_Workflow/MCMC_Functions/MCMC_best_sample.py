@@ -19,7 +19,6 @@ from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
 
 from Inversion_Workflow.MCMC_Functions import MCMC_sampler as ms
 from Inversion_Workflow.MCMC_Functions.MCMC_diagnostics import pooled_run
-from bermuda_data import gps_output_path
 
 
 plt.rcParams.update(
@@ -69,54 +68,6 @@ def load_min_logpost_params(npz_path, loglike=False):
         "logpost": logpost[idx_min],
         "loglike": loglikelihood[idx_min],
     }
-
-
-def split_samples(path, n_splits):
-    """
-    Split the MCMC chain into multiple parts for parallel processing.
-
-    Parameters
-    ----------
-    path : str
-        Path to the .npz file containing the MCMC chain.
-    n_splits : int, optional
-        Number of splits to create (default is 5).
-    """
-    dir = gps_output_path(path)
-    esv_biases = np.zeros((n_splits, 3))
-    for i in range(n_splits):
-        # Load the MCMC chain
-        data = np.load(f"{dir}/split_{i}.npz")
-        logpost = data["logpost"]
-        idx_min = np.argmax(logpost)
-
-        # print(f"Best parameters for split {i} \n",
-        #       f"Lever guess: {data['lever'][idx_min]}\n",
-        #       f"GPS1 grid guess: {data['gps1_grid'][idx_min]}\n",
-        #       f"CDOG augment: {data['CDOG_aug'][idx_min]}\n",
-        #       f"ESV bias: {data['esv_bias'][idx_min]}\n",
-        #       f"Time bias: {data['time_bias'][idx_min]}\n",)
-        esv_biases[i, :] = data["esv_bias"][idx_min].T
-
-        print(f"ESV bias for split {i}: {data['esv_bias'][idx_min].T}")
-    print(esv_biases[:, 0], esv_biases[:, 1], esv_biases[:, 2])
-    print(esv_biases)
-
-    fig, axes = plt.subplots(1, 3, figsize=(12, 4), sharey=True)
-    splits = np.arange(n_splits)
-    for dog in range(3):
-        ax = axes[dog]
-        ax.plot(splits, esv_biases[:, dog], marker="o", linestyle="-")
-        ax.set_title(f"DOG {dog + 1}")
-        ax.set_xlabel("Split index")
-        if dog == 0:
-            ax.set_ylabel("ESV bias (m)")
-        ax.set_xticks(splits)
-        ax.grid(True, linestyle="--", alpha=0.5)
-
-    fig.suptitle("ESV Bias Across Splits for Each DOG")
-    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.show()
 
 
 def plot_best_sample(
