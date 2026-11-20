@@ -318,17 +318,6 @@ range_residual(
     DOG_num=file_tag,
 )
 
-# plot_integer_pick_metrics_dog(
-#     best_offset,
-#     CDOG_data,
-#     GPS_data,
-#     times_guess,
-#     transponder_coordinates,
-#     esv,
-#     half_window=50,
-#     step=0.1,
-# )
-
 # Save Data for Easy replotting
 
 # -------------------------

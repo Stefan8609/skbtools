@@ -151,8 +151,6 @@ def plot_elevation_density_from_cache(
 
     median_color = "#2A6F97"
     cutoff_color = "orange"
-    # median_color = "#2A6F97"
-    # cutoff_color = "#D98F00"
     hard_cut_color = "#7A8B5B"
     rejected_color = "#C8553D"
 
@@ -326,14 +324,17 @@ def plot_elevation_density_from_cache(
 if __name__ == "__main__":
     data_path = gps_output_path("Plot_Data/bermuda_elevation_plot_cache.npz")
 
-    # save_elevation_plot_cache(
-    #     GNSS_start=25,
-    #     GNSS_end=39,
-    #     window=5000,
-    #     elev_upper=-35,
-    #     elev_lower=-38,
-    #     save_path=data_path,
-    # )
+    rebuild_cache = False  # rereads the GNSS files (slow)
+
+    if rebuild_cache:
+        save_elevation_plot_cache(
+            GNSS_start=25,
+            GNSS_end=39,
+            window=5000,
+            elev_upper=-35,
+            elev_lower=-38,
+            save_path=data_path,
+        )
 
     plot_elevation_density_from_cache(
         cache_path=data_path,

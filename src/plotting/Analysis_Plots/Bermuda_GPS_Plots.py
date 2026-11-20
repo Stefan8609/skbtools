@@ -222,7 +222,6 @@ def barycenter_elevation_plot(save=False, paper=False):
     ax.set_title("Barycenter Elevation over Time")
     ax.set_xlabel(r"Time (s)")
     ax.set_ylabel(r"Elevation (m)")
-    # ax.set_ylim(-39, -34)
     ax.legend(loc="lower right")
     plt.tight_layout()
     plt.show()
@@ -233,5 +232,4 @@ Difference between converted elevation and matlab file
 elevation is +/- 1 mm
 """
 if __name__ == "__main__":
-    # filtered_elevation_plots(window=5000, save=False, paper=False)
     barycenter_elevation_plot(save=False)

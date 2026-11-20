@@ -164,28 +164,6 @@ if __name__ == "__main__":
                 nsat_bundle = np.concatenate(
                     (nsat_bundle, np.asarray(output["nsat_bundle"])), axis=0
                 )
-
-            # datetimes = (np.asarray(output["days"]) - 59958) * 24 * 3600 + np.
-            # # asarray(output["times"])
-
-            # plt.scatter(output["lon"], output["lat"], s=1)
-            # plt.title(f"00{formatted_i} Position Plot")
-            # plt.xlabel("Longitude (deg)")
-            # plt.ylabel("Latitude (deg)")
-            # plt.axis("equal")
-            # path = gps_data_path(f"Figs/GPS/Puerto_Rico_Segments/
-            ##Trajectory_Segment_{i}.png")
-            # plt.savefig(path, dpi=300)
-            # plt.show()
-
-            # plt.scatter(datetimes, output["elev"])
-            # plt.title(f"00{formatted_i} Height Over Time")
-            # plt.xlabel("Epoch Index")
-            # plt.ylabel("Height (m)")
-            # path = gps_data_path(f"Figs/GPS/Puerto_Rico_Segments/
-            # #Elevation_Segment_{i}.png")
-            # plt.savefig(path, dpi=300)
-            # plt.show()
         except Exception as e:
             print(f"❌ Failed to process 00{formatted_i}: {e}")
 

@@ -334,7 +334,6 @@ def modular_synthetic(
         time_series_plot(
             CDOG_clock, CDOG_full, GPS_clock, GPS_full, position_noise, time_noise
         )
-        # trajectory_plot(transponder_coordinates, GPS_data, CDOG)
 
     return (
         inversion_result,

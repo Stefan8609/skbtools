@@ -191,9 +191,6 @@ def plot_integer_pick_metrics_dog(
             linestyle="--",
             label="All-reception optimum",
         )
-        # axes[0].set_title(
-        #     f"Integer-pick metrics (best by coherence: {best_off:.3f}{title_suffix}"
-        # )
     if filtered_coh_obj is not None:
         axes[1].legend()
 

@@ -333,34 +333,3 @@ if __name__ == "__main__":
         save=True,
         chain_name=file,
     )
-
-    # for i in range(7):
-    #     chain = np.load(
-    #         gps_output_path(f"7_individual_splits_esv_20250806_165630/split_{i}.npz")
-    #     )
-    #     DOG_num = 0
-    #     segment_samples = chain["CDOG_aug"][::1, DOG_num]
-    #     if i == 0:
-    #         samples = segment_samples
-    #     else:
-    #         # Stack samples from each segment
-    #         samples = np.vstack((samples, segment_samples))
-
-    # initial_params, prior_scales = get_init_params_and_prior(chain)
-    # init_aug = initial_params["CDOG_aug"]
-    # prior_aug = prior_scales["CDOG_aug"]
-    # print(samples)
-
-    # downsample = 10
-    # samples = samples[::downsample]
-
-    # plot_kde_mcmc(
-    #     samples,
-    #     nbins=100,
-    #     cmap="viridis",
-    #     prior_mean=init_aug[DOG_num],
-    #     prior_sd=prior_aug,
-    #     ellipses=7,
-    #     save=True,
-    #     chain_name = "7_splits_combined",
-    # )

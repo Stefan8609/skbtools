@@ -68,13 +68,6 @@ def initialize_bermuda(GNSS_start, GNSS_end, DOG_num=3, save=False):
     """
     print("Initializing Bermuda Data")
 
-    # paths = [
-    #     gps_data_path("GPS_Data/Unit1-camp_bis.mat"),
-    #     gps_data_path("GPS_Data/Unit2-camp_bis.mat"),
-    #     gps_data_path("GPS_Data/Unit3-camp_bis.mat"),
-    #     gps_data_path("GPS_Data/Unit4-camp_bis.mat"),
-    # ]
-
     paths = [
         gps_data_path("GPS_Data/Bermuda_Testing/Antenna1-camp.mat"),
         gps_data_path("GPS_Data/Bermuda_Testing/Antenna2-camp.mat"),
@@ -170,7 +163,6 @@ def initialize_bermuda(GNSS_start, GNSS_end, DOG_num=3, save=False):
 
 if __name__ == "__main__":
     GNSS_start = 25
-    # GNSS_end = 40.9
     GNSS_end = 39
     (
         GPS_Coordinates,
