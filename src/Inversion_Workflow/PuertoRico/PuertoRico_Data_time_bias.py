@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.io as sio
 
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
 )
+from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
 from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
@@ -37,12 +37,9 @@ downsample = 1
 mask_crossover_legs = True
 
 # Known data
-esv_table = sio.loadmat(
+dz_array, angle_array, esv_matrix = load_esv_table(
     gps_data_path("ESV_Tables/PuertoRico_table_transducer_60_DOG_2950_3050.mat")
 )
-dz_array = esv_table["distance"].flatten()
-angle_array = esv_table["angle"].flatten()
-esv_matrix = esv_table["matrice"]
 
 
 def run_inversion():

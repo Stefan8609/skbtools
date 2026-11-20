@@ -14,7 +14,6 @@ import json
 from pathlib import Path
 
 import numpy as np
-import scipy.io as sio
 
 from bermuda_data import (
     CDOG_GUESS_AUGMENTS,
@@ -25,6 +24,7 @@ from bermuda_data import (
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
 )
+from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
@@ -59,12 +59,7 @@ PAPER_SOUND_SPEED = 1515.0  # m/s, used only for the paper's c*sigma convention
 def load_dog(dog_num, esv_table_file=ESV_TABLE):
     """Load GPS coordinates, GPS epochs, DOG arrivals and the ESV table."""
     data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{dog_num}.npz"))
-    table = sio.loadmat(gps_data_path(esv_table_file))
-    esv_table = (
-        table["distance"].flatten(),
-        table["angle"].flatten(),
-        table["matrice"],
-    )
+    esv_table = load_esv_table(gps_data_path(esv_table_file))
     return data["GPS_Coordinates"], data["GPS_data"], data["CDOG_data"], esv_table
 
 

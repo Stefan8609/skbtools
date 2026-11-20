@@ -3,7 +3,6 @@
 import math
 
 import numpy as np
-import scipy.io as sio
 from numba import njit
 from numba.typed import List
 
@@ -13,6 +12,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
 )
+from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.PuertoRico.Crossover_Mask import crossover_leg_mask
 from geometry.Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 from puertorico_data import gps_data_path, gps_output_path
@@ -720,12 +720,9 @@ if __name__ == "__main__":
     n_iters = 100000
     burn_in = 1000
 
-    esv = sio.loadmat(
+    dz_array, angle_array, esv_matrix = load_esv_table(
         gps_data_path("ESV_Tables/PuertoRico_table_transducer_60_DOG_2950_3050.mat")
     )
-    dz_array = esv["distance"].flatten()
-    angle_array = esv["angle"].flatten()
-    esv_matrix = esv["matrice"]
 
     survey_names = ("before", "after")
     GPS_coordinate_blocks = []

@@ -70,6 +70,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
     calculateTimesRayTracing_split,
     calculateTimesRayTracing_windows,
 )
+from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import residual_inliers
 from bermuda_data import (
     CDOG_GUESS_AUGMENTS,
@@ -567,7 +568,7 @@ def load_bermuda_inputs(config):
     for dog in config["dogs"]:
         paths[f"DOG{dog}"] = gps_data_path(f"CDOG_Data/DOG{dog}-camp.mat")
 
-    esv = sio.loadmat(paths["esv_table"])
+    dz_array, angle_array, esv_matrix = load_esv_table(paths["esv_table"])
     gps = np.load(paths["gps_file"])
     CDOG_all_data = []
     for dog in config["dogs"]:
@@ -585,9 +586,9 @@ def load_bermuda_inputs(config):
         "GPS_Coordinates": gps["GPS_Coordinates"],
         "GPS_data": gps["GPS_data"],
         "CDOG_all_data": CDOG_all_data,
-        "dz_array": np.ascontiguousarray(esv["distance"].flatten()),
-        "angle_array": np.ascontiguousarray(esv["angle"].flatten()),
-        "esv_matrix": np.ascontiguousarray(esv["matrice"]),
+        "dz_array": np.ascontiguousarray(dz_array),
+        "angle_array": np.ascontiguousarray(angle_array),
+        "esv_matrix": np.ascontiguousarray(esv_matrix),
         "input_files": file_hashes,
     }
 

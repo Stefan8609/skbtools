@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
-import scipy.io as sio
 
 from bermuda_data import gps_data_path
+from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Synthetic import Realistic_Synthetic as rs
 from Inversion_Workflow.Synthetic import Realistic_Synthetic_Ensemble as ens
@@ -14,8 +14,7 @@ needs_data = pytest.mark.skipif(
 
 
 def _table():
-    table = sio.loadmat(TABLE_PATH)
-    return table["distance"].flatten(), table["angle"].flatten(), table["matrice"]
+    return load_esv_table(TABLE_PATH)
 
 
 def test_current_towards_the_dog_shortens_the_travel_time():

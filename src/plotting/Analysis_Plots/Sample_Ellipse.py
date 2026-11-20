@@ -1,5 +1,4 @@
 import numpy as np
-import scipy.io as sio
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 
@@ -8,6 +7,7 @@ from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
 )
 from acoustics.synthetic_esv_tables import ESV_GENERATE, ESV_MODERATE, ESV_STRONG
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import check_esv_coverage
+from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     final_bias_geiger,
@@ -164,19 +164,13 @@ def error_ellipse(
     real_lever = np.array([-12.4659, 9.6021, -13.2993])
 
     if generate:
-        esv_table_generate = sio.loadmat(
+        dz_array_generate, angle_array_generate, esv_matrix_generate = load_esv_table(
             gps_data_path(f"ESV_Tables/{ESV_GENERATE}.mat")
         )
-        dz_array_generate = esv_table_generate["distance"].flatten()
-        angle_array_generate = esv_table_generate["angle"].flatten()
-        esv_matrix_generate = esv_table_generate["matrice"]
 
-        esv_table_inversion = sio.loadmat(
-            gps_data_path(f"ESV_Tables/{inversion_esv}.mat")
+        dz_array_inversion, angle_array_inversion, esv_matrix_inversion = (
+            load_esv_table(gps_data_path(f"ESV_Tables/{inversion_esv}.mat"))
         )
-        dz_array_inversion = esv_table_inversion["distance"].flatten()
-        angle_array_inversion = esv_table_inversion["angle"].flatten()
-        esv_matrix_inversion = esv_table_inversion["matrice"]
 
         true_offset = np.random.rand() * 9000 + 1000
 

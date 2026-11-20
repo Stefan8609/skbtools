@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from numba import njit
+from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Inversion.Numba_xAline import (
     OFFSET_SEARCH_THRESHOLD_SECONDS,
     two_pointer_index,
@@ -213,7 +214,6 @@ def plot_integer_pick_metrics_dog(
 
 def plot_puertorico_metrics():
     """Plot after-segment metrics using the schematic transducer lever."""
-    import scipy.io as sio
 
     from geometry.ECEF_Geodetic import ECEF_Geodetic
     from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
@@ -231,7 +231,7 @@ def plot_puertorico_metrics():
     before_inversion_path = gps_output_path(
         "Plot_Data", "PuertoRico_before_inversion.npz"
     )
-    esv_table = sio.loadmat(
+    dz_array, angle_array, esv_matrix = load_esv_table(
         gps_data_path("ESV_Tables/PuertoRico_table_transducer_60_DOG_2950_3050.mat")
     )
 
@@ -255,8 +255,6 @@ def plot_puertorico_metrics():
             schematic_lever,
         )
 
-        dz_array = esv_table["distance"].flatten()
-        angle_array = esv_table["angle"].flatten()
         ranges = np.linalg.norm(transponder_coordinates - CDOG_guess, axis=1)
         transducer_height = ECEF_Geodetic(transponder_coordinates)[2]
         CDOG_height = ECEF_Geodetic(CDOG_guess[None, :])[2][0]
@@ -277,7 +275,7 @@ def plot_puertorico_metrics():
             0.0,
             dz_array,
             angle_array,
-            esv_table["matrice"],
+            esv_matrix,
         )
         filtered_cdog = filter_close_receptions(
             CDOG_data,

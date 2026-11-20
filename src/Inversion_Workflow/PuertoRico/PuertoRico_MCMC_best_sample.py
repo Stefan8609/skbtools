@@ -2,8 +2,8 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.io as sio
 
+from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.PuertoRico.Crossover_Mask import crossover_leg_mask
 from Inversion_Workflow.PuertoRico.PuertoRico_MCMC_sampler import (
@@ -85,12 +85,9 @@ def plot_best_sample(
     GPS_Coordinates = GPS_Coordinates[trajectory_mask][::downsample]
     GPS_data = GPS_data[trajectory_mask][::downsample]
 
-    esv_table = sio.loadmat(
+    dz_array, angle_array, esv_matrix = load_esv_table(
         gps_data_path("ESV_Tables/PuertoRico_table_transducer_60_DOG_2950_3050.mat")
     )
-    dz_array = esv_table["distance"].flatten()
-    angle_array = esv_table["angle"].flatten()
-    esv_matrix = esv_table["matrice"]
 
     transponder_coordinates = findTransponder(
         GPS_Coordinates,

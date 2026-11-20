@@ -29,10 +29,10 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import scipy.io as sio
 
 from acoustics.synthetic_esv_tables import ESV_GENERATE
 from bermuda_data import PROJECT_ROOT, gps_data_path
+from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     final_bias_geiger,
@@ -302,12 +302,10 @@ def experiment_cells(experiment, amplitudes="guess"):
 
 def load_table(name):
     """ESV table arrays (dz, angle, matrix) from Bermuda_Data/ESV_Tables."""
-    table = sio.loadmat(gps_data_path(f"ESV_Tables/{name}.mat"))
-    return (
-        np.ascontiguousarray(table["distance"].flatten()),
-        np.ascontiguousarray(table["angle"].flatten()),
-        np.ascontiguousarray(table["matrice"]),
+    dz_array, angle_array, esv_matrix = load_esv_table(
+        gps_data_path(f"ESV_Tables/{name}.mat")
     )
+    return dz_array, angle_array, np.ascontiguousarray(esv_matrix)
 
 
 def invert(CDOG_data, GPS_Coordinates, GPS_data, start, lever_start, settings, tables):

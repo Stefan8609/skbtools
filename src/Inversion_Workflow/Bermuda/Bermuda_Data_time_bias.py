@@ -1,7 +1,7 @@
 import numpy as np
-import scipy.io as sio
 import os
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
+from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     gauss_newton_offset_search,
     initial_bias_geiger,
@@ -53,10 +53,9 @@ clock_drift = False
 # Known data
 # -------------------------
 
-esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"))
-dz_array = esv_table["distance"].flatten()
-angle_array = esv_table["angle"].flatten()
-esv_matrix = esv_table["matrice"]
+dz_array, angle_array, esv_matrix = load_esv_table(
+    gps_data_path("ESV_Tables/global_table_esv_extended.mat")
+)
 
 data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
 GPS_Coordinates = data["GPS_Coordinates"]

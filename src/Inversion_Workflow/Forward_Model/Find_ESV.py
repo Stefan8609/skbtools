@@ -1,5 +1,15 @@
 import numpy as np
+import scipy.io as sio
 from numba import njit
+
+
+def load_esv_table(path):
+    """Read an ESV table .mat file as (dz_array, angle_array, esv_matrix).
+
+    The matrix is returned as loadmat gives it (Fortran order).
+    """
+    table = sio.loadmat(path)
+    return table["distance"].flatten(), table["angle"].flatten(), table["matrice"]
 
 
 @njit

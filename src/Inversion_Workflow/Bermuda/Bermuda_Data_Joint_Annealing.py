@@ -1,6 +1,6 @@
 import numpy as np
-import scipy.io as sio
 
+from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Inversion.Numba_xAline_Joint_Annealing_bias import (
     simulated_annealing_bias_joint,
 )
@@ -24,10 +24,9 @@ clock_drift = False
 # -------------------------
 # Known data
 # -------------------------
-esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"))
-dz_array = esv_table["distance"].flatten()
-angle_array = esv_table["angle"].flatten()
-esv_matrix = esv_table["matrice"]
+dz_array, angle_array, esv_matrix = load_esv_table(
+    gps_data_path("ESV_Tables/global_table_esv_extended.mat")
+)
 
 initial_lever_guess = np.array([-12.69796149, 9.51739301, -12.0743129])
 
