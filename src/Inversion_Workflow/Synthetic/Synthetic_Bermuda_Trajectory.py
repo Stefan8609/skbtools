@@ -1,5 +1,4 @@
 import numpy as np
-import scipy.io as sio
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
@@ -132,59 +131,4 @@ def bermuda_trajectory(
         GPS_Coordinates,
         GPS_data,
         transponder_coordinates,
-    )
-
-
-if __name__ == "__main__":
-    from plotting.Plot_Modular import trajectory_plot
-    from geometry.ECEF_Geodetic import ECEF_Geodetic
-
-    esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
-    dz_array = esv_table["distance"].flatten()
-    angle_array = esv_table["angle"].flatten()
-    esv_matrix = esv_table["matrice"]
-
-    time_noise = 0
-    position_noise = 0
-
-    (
-        CDOG_data,
-        CDOG,
-        GPS_Coordinates,
-        GPS_data,
-        transponder_coordinates,
-    ) = bermuda_trajectory(
-        time_noise,
-        position_noise,
-        0,
-        0,
-        dz_array,
-        angle_array,
-        esv_matrix,
-    )
-
-    leg1 = (GPS_data / 3600 >= 9.0) & (GPS_data / 3600 <= 11)
-    leg2 = (GPS_data / 3600 >= 12.4) & (GPS_data / 3600 <= 15)
-    leg_mask = leg1 | leg2
-
-    GPS_Coordinates = GPS_Coordinates[leg_mask]
-    GPS_data = GPS_data[leg_mask]
-
-    CDOG_guess_base = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
-    CDOGs = np.array(
-        [
-            [-398.16, 371.90, 773.02],
-            [825.182985, -111.05670221, -734.10011698],
-            [236.428385, -1307.98390221, -2189.21991698],
-        ]
-    )
-    CDOGs += CDOG_guess_base
-
-    CDOGs_lat, CDOGs_lon, CDOGs_height = ECEF_Geodetic(CDOGs)
-    GPS_lat, GPS_lon, GPS_height = ECEF_Geodetic(GPS_Coordinates[:, 0, :])
-
-    trajectory_plot(
-        np.array([GPS_lon, GPS_lat, GPS_height]).T,
-        GPS_data,
-        np.array([CDOGs_lon, CDOGs_lat, CDOGs_height]).T,
     )

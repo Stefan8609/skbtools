@@ -1,11 +1,8 @@
 import numpy as np
-import scipy.io as sio
-import matplotlib.pyplot as plt
 from Inversion_Workflow.Synthetic.Generate_Trajectories import generateRealistic
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias,
 )
-from bermuda_data import gps_data_path
 from numba import njit
 
 # Fraction of DOG tags dropped in total (App. B.3: "10-20%").
@@ -123,42 +120,3 @@ def generateUnaligned(
     GPS_Coordinates += np.random.normal(0, position_noise, GPS_Coordinates.shape)
 
     return CDOG_mat, CDOG, GPS_Coordinates, GPS_time, transponder_coordinates
-
-
-if __name__ == "__main__":
-    esv_table = sio.loadmat(gps_data_path("ESV_Tables/global_table_esv.mat"))
-    dz_array = esv_table["distance"].flatten()
-    angle_array = esv_table["angle"].flatten()
-    esv_matrix = esv_table["matrice"]
-
-    esv_bias = 0.0
-    time_bias = 0.0
-    offset = 1200
-    time_noise = 2 * 10**-5
-    position_noise = 2 * 10**-2
-
-    CDOG_mat, CDOG, GPS_Coordinates, GPS_time, transponder_coordinates = (
-        generateUnaligned(
-            20000,
-            time_noise,
-            position_noise,
-            offset,
-            esv_bias,
-            time_bias,
-            dz_array,
-            angle_array,
-            esv_matrix,
-        )
-    )
-
-    CDOG_int = CDOG_mat[:, 0]
-    CDOG_frac = np.unwrap(CDOG_mat[:, 1] * 2 * np.pi) / (2 * np.pi)
-    print(CDOG_frac)
-
-    plt.figure(figsize=(8, 5))
-    plt.plot(CDOG_int, CDOG_frac, ".", markersize=2)
-    plt.xlabel("Integer part of CDOG time")
-    plt.ylabel("Unwrapped fractional part of CDOG time")
-    plt.title("CDOG_mat Time Components")
-    plt.grid(True)
-    plt.show()
