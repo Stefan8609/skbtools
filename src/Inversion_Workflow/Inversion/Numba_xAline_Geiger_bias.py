@@ -11,10 +11,8 @@ from Inversion_Workflow.Inversion.Numba_xAline import (
     find_subint_offset,
     two_pointer_index,
 )
-from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
-    compute_Jacobian_biased,
-)
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
+    esv_gradient,
     calculateTimesRayTracing_Bias,
     calculateTimesRayTracing_Bias_Real,
 )
@@ -22,6 +20,34 @@ from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from numba import njit
 from plotting.Plot_Modular import time_series_plot
 from bermuda_data import gps_data_path
+
+
+@njit(cache=True)
+def compute_Jacobian_biased(guess, transponder_coordinates, times, esv, grad_x_c0=None):
+    """Jacobian of the travel-time residual with respect to (x, y, z, dt, dc).
+
+    ``esv`` must already include the ESV bias (c_eff + dc), as returned by
+    ``calculateTimesRayTracing_Bias(_Real)``. The residual is
+    (T_mod - time_bias) - T_obs with T_mod = range / esv.
+
+    ``grad_x_c0`` (N, 3), the gradient of the geometry-dependent reference ESV c0
+    with respect to the DOG (``esv_gradient``), adds the term -(T / esv) * grad c0
+    of the full derivative. Without it c0 is held fixed (frozen-ESV Jacobian).
+    """
+    diffs = transponder_coordinates - guess
+
+    J = np.zeros((len(transponder_coordinates), 5))
+
+    # Compute different partial derivatives
+    J[:, 0] = -diffs[:, 0] / (times[:] * (esv[:] ** 2))
+    J[:, 1] = -diffs[:, 1] / (times[:] * (esv[:] ** 2))
+    J[:, 2] = -diffs[:, 2] / (times[:] * (esv[:] ** 2))
+    if grad_x_c0 is not None:
+        J[:, :3] -= times[:, None] / esv[:, None] * grad_x_c0
+    J[:, 3] = -1.0
+    J[:, 4] = -times[:] / esv[:]
+
+    return J
 
 
 @njit(cache=True)
@@ -188,11 +214,20 @@ def _geiger_at_offset(
             t_from_mid = emission_times - paired_time_mid(emission_times)
             residuals = residuals + drift_rate * t_from_mid
         inliers = residual_inliers(residuals)
+        grad_x_c0 = esv_gradient(
+            guess,
+            transponder_coordinates_full[inliers],
+            dz_array,
+            angle_array,
+            esv_matrix,
+            real_data,
+        )[0]
         J = compute_Jacobian_biased(
             guess,
             transponder_coordinates_full[inliers],
             GPS_full[inliers],
             esv_full[inliers],
+            grad_x_c0,
         )
         if clock_drift:
             delta = drift_step(J, residuals[inliers], t_from_mid[inliers])
@@ -429,11 +464,20 @@ def final_bias_geiger(
         if clock_drift:
             residuals = residuals + drift_rate * t_from_mid
         inliers = residual_inliers(residuals)
+        grad_x_c0 = esv_gradient(
+            guess,
+            transponder_coordinates_full[inliers],
+            dz_array,
+            angle_array,
+            esv_matrix,
+            real_data,
+        )[0]
         J = compute_Jacobian_biased(
             guess,
             transponder_coordinates_full[inliers],
             GPS_full[inliers],
             esv[inliers],
+            grad_x_c0,
         )
         if clock_drift:
             delta = drift_step(J, residuals[inliers], t_from_mid[inliers])
@@ -605,13 +649,26 @@ def lever_bias_geiger(
         n_pairs = int(np.sum(inliers))
 
         epoch = np.searchsorted(GPS_data, emission_times - 1e-6)
+        # dT/ds = line_of_sight / c - (T / c) * grad_s c0, then dT/dlever = dT/ds @ R.
+        grad_x_c0, grad_s_c0 = esv_gradient(
+            estimate[:3],
+            transponder_coordinates_full,
+            dz_array,
+            angle_array,
+            esv_matrix,
+            real_data,
+        )
         line_of_sight = transponder_coordinates_full - estimate[:3]
         line_of_sight /= np.sqrt(np.sum(line_of_sight**2, axis=1))[:, None]
-        J_lever = np.einsum("ni,nij->nj", line_of_sight, lever_rotation[epoch])
-        J_lever /= esv_full[:, None]
+        dT_ds = (line_of_sight - GPS_full[:, None] * grad_s_c0) / esv_full[:, None]
+        J_lever = np.einsum("ni,nij->nj", dT_ds, lever_rotation[epoch])
         columns = [
             compute_Jacobian_biased(
-                estimate[:3], transponder_coordinates_full, GPS_full, esv_full
+                estimate[:3],
+                transponder_coordinates_full,
+                GPS_full,
+                esv_full,
+                grad_x_c0,
             )
         ]
         half_span = np.max(np.abs(t_from_mid))

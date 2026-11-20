@@ -8,7 +8,9 @@ from geometry.ECEF_Geodetic import (
 from geometry.Numba_RigidBodyMovementProblem import (
     findRotationAndDisplacement,
 )
-from Inversion_Workflow.Inversion.Numba_Geiger_bias import compute_Jacobian_biased
+from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
+    compute_Jacobian_biased,
+)
 
 
 def test_ecef_geodetic_against_pymap3d():

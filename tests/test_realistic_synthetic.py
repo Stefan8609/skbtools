@@ -5,6 +5,7 @@ import scipy.io as sio
 from bermuda_data import gps_data_path
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Synthetic import Realistic_Synthetic as rs
+from Inversion_Workflow.Synthetic import Realistic_Synthetic_Ensemble as ens
 
 TABLE_PATH = gps_data_path("ESV_Tables/global_table_esv_synth_ref.mat")
 needs_data = pytest.mark.skipif(
@@ -89,6 +90,53 @@ def test_tracks_keep_speed_and_radius():
     step = np.linalg.norm(np.diff(grid, axis=0), axis=1)
     np.testing.assert_allclose(np.median(step), rs.TRACK_SPEED_MPS)
     assert set(np.round(np.degrees(heading)).astype(int)) <= {90, -90, 0, 180}
+    cross, _ = rs.track_en_m("cross", 30000, centre)
+    offset = cross - centre
+    assert np.all(np.min(np.abs(offset), axis=1) < 1e-6)  # on one of the two lines
+    assert rs.CROSS_HALF_LENGTH_M - rs.TRACK_SPEED_MPS < np.max(np.abs(offset))
+    assert np.max(np.abs(offset)) <= rs.CROSS_HALF_LENGTH_M
+
+
+def test_geometry_cross_cells_and_summary_table(tmp_path):
+    cells = [name for name, _, _ in ens.experiment_cells("geometry")]
+    assert [c for c in cells if c.startswith("cross")] == [
+        "cross_lever_fixed",
+        "cross_lever_free",
+    ]
+    rows = {
+        "cell": ["cross_lever_fixed"] * 3,
+        "DOG": [3, 3, 3],
+        "failed": ["", "", "diverged"],
+        "wrong_second": [0, 0, 0],
+        "E_err_cm": [3.0, 1.0, 50.0],
+        "N_err_cm": [4.0, 0.0, 50.0],
+        "U_err_cm": [-2.0, 4.0, 50.0],
+        "E_sd_ar1_cm": [1.0, 1.0, 1.0],
+        "N_sd_ar1_cm": [1.0, 1.0, 1.0],
+        "U_sd_ar1_cm": [1.0, 3.0, 1.0],
+    }
+    path = tmp_path / "geometry.csv"
+    ens.pd.DataFrame(rows).to_csv(path, index=False)
+    row = ens.summary_table(path).iloc[0]
+    assert (row["n"], row["n_excluded"]) == (2, 1)
+    assert row["horizontal_bias_cm"] == pytest.approx(np.hypot(2.0, 2.0))
+    assert row["vertical_bias_cm"] == pytest.approx(1.0)
+    assert row["horizontal_rms_cm"] == pytest.approx(np.sqrt((25 + 1) / 2))
+    assert row["horizontal_coverage_95"] == pytest.approx(0.5)
+    assert row["vertical_coverage_95"] == pytest.approx(0.5)
+    assert (tmp_path / "geometry_summary.csv").exists()
+
+
+def test_merge_task_csvs_joins_tasks_and_rejects_repeats(tmp_path, monkeypatch):
+    monkeypatch.setattr(ens, "OUTPUT_DIR", tmp_path)
+    row = {"cell": "cross_lever_fixed", "DOG": 3, "E_err_cm": 1.0}
+    ens.pd.DataFrame([{**row, "seed": 0}]).to_csv(tmp_path / "geometry.csv")
+    ens.pd.DataFrame([{**row, "seed": 1}]).to_csv(tmp_path / "geometry_seed0001.csv")
+    merged = ens.pd.read_csv(ens.merge_task_csvs("geometry"))
+    assert list(merged["seed"]) == [0, 1]
+    ens.pd.DataFrame([{**row, "seed": 0}]).to_csv(tmp_path / "geometry_seed0002.csv")
+    with pytest.raises(ValueError):
+        ens.merge_task_csvs("geometry")
 
 
 @pytest.mark.parametrize(
@@ -149,3 +197,31 @@ def test_knobs_act_as_documented():
 
     # 22 824 of 29 595 GPS epochs have a DOG 1 pair in the real data.
     assert abs(keep.mean() - 22824 / 29595) < 0.01
+
+
+@pytest.mark.parametrize(
+    "amplitudes, speed, gradient, m2",
+    [
+        ("guess", 0.03, 0.005, 0.02),
+        ("models_low", 0.03, 0.0026, 0.009),
+        ("models_high", 0.11, 0.008, 0.009),
+    ],
+)
+def test_amplitude_sets_set_current_gradient_and_tide(amplitudes, speed, gradient, m2):
+    knobs = ens.with_random_directions(ens.full_preset("random", amplitudes), seed=3)
+    assert set(knobs) <= set(rs.ZERO_KNOBS)
+    assert np.linalg.norm(knobs["current_mps"]) == pytest.approx(speed)
+    assert np.linalg.norm(knobs["dc_gradient_mps_per_km"]) == pytest.approx(gradient)
+    assert knobs["current_m2_mps"] == m2
+
+
+def test_amplitude_cells_are_labelled_and_budget_groups_follow_the_set():
+    guess = ens.experiment_cells("budget")
+    high = ens.experiment_cells("budget", "models_high")
+    assert [name + "_models_high" for name, _, _ in guess] == [n for n, _, _ in high]
+    cells = {name: knobs for name, knobs, _ in high}
+    only_current = cells["random_only_current_steady_models_high"]
+    knobs = ens.with_random_directions(only_current, seed=0)
+    assert np.linalg.norm(knobs["current_mps"]) == pytest.approx(0.11)
+    with pytest.raises(KeyError):
+        ens.experiment_cells("budget", "models_middle")

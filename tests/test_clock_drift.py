@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-from Inversion_Workflow.Inversion.Numba_Geiger_bias import compute_Jacobian_biased
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
+    compute_Jacobian_biased,
     drift_step,
     final_bias_geiger,
     initial_bias_geiger,

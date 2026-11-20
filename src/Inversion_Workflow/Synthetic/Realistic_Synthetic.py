@@ -16,8 +16,8 @@ block each, in the order they act on the data:
 4. Vessel GNSS: a common-mode Gauss-Markov error that moves the transducer 1:1, and
    a per-antenna (relative) error that tilts the vessel frame through the 20 m lever.
 5. Detection: timing noise and dropped arrivals (none, random, or the real pattern).
-6. Geometry: the real Bermuda track, or an idealized circle or grid, with or without
-   the lost upper-left quadrant of the GNSS rejection.
+6. Geometry: the real Bermuda track, or an idealized circle, grid or cross, with or
+   without the lost upper-left quadrant of the GNSS rejection.
 
 Every knob lives in one dict (``ZERO_KNOBS`` lists them with units in the names) and
 defaults to off. With every knob off the output equals ``bermuda_trajectory`` bit for
@@ -90,6 +90,10 @@ TRACK_SPEED_MPS = 2.2
 CIRCLE_RADIUS_M = 5200.0  # about the water depth
 GRID_HALF_WIDTH_M = 7000.0
 GRID_LINE_SPACING_M = 2000.0
+# The cross is centred on one DOG, so that DOG has a track centred on it and the
+# other two (about 2 km away) an offset one.
+CROSS_DOG = 3
+CROSS_HALF_LENGTH_M = 7000.0
 
 ZERO_KNOBS = {
     # 1. Sound speed: dc added to the ESV, m/s, depth-uniform.
@@ -117,14 +121,14 @@ ZERO_KNOBS = {
     "dropouts": "none",  # "none" | "random" | "real_pattern"
     "dropout_fraction": 0.15,  # for "random"
     # 6. Geometry.
-    "track": "bermuda",  # "bermuda" | "circle" | "grid"
+    "track": "bermuda",  # "bermuda" | "circle" | "grid" | "cross"
     "lost_quadrant": False,
 }
 KNOB_CHOICES = {
     "dc_series": ("none", "random_walk", "observed"),
     "gnss_relative": ("none", "real_misfit", "real_misfit_shifted"),
     "dropouts": ("none", "random", "real_pattern"),
-    "track": ("bermuda", "circle", "grid"),
+    "track": ("bermuda", "circle", "grid", "cross"),
 }
 # Independent random streams, so switching one knob on leaves the others' draws.
 STREAM = {
@@ -347,8 +351,10 @@ def track_en_m(track, n_epochs, centre_en_m):
 
     ``"circle"``: radius ``CIRCLE_RADIUS_M`` around ``centre_en_m``. ``"grid"``:
     east-west lines ``GRID_LINE_SPACING_M`` apart over +-``GRID_HALF_WIDTH_M``.
-    Sailed at ``TRACK_SPEED_MPS`` from the start of the path, repeating it if the
-    survey is longer than the path.
+    ``"cross"``: an east-west and a north-south line, +-``CROSS_HALF_LENGTH_M``
+    through ``centre_en_m``, sailed centre-east-west-centre-north-south-centre so
+    the ship never leaves the two lines. Sailed at ``TRACK_SPEED_MPS`` from the
+    start of the path, repeating it if the survey is longer than the path.
     """
     if track == "circle":
         angle = np.linspace(0.0, 2 * np.pi, 721)
@@ -364,8 +370,14 @@ def track_en_m(track, n_epochs, centre_en_m):
                 ends = ends[::-1]
             vertices += [(ends[0], north), (ends[1], north)]
         vertices = np.array(vertices)
+    elif track == "cross":
+        arm = CROSS_HALF_LENGTH_M
+        vertices = np.array(
+            [(0, 0), (arm, 0), (-arm, 0), (0, 0), (0, arm), (0, -arm), (0, 0)],
+            dtype=float,
+        )
     else:
-        raise ValueError(f"track must be 'circle' or 'grid', got {track!r}")
+        raise ValueError(f"track must be 'circle', 'grid' or 'cross', got {track!r}")
     segment = np.linalg.norm(np.diff(vertices, axis=0), axis=1)
     along = np.concatenate(([0.0], np.cumsum(segment)))
     s = (TRACK_SPEED_MPS * np.arange(n_epochs)) % along[-1]
@@ -395,10 +407,12 @@ def idealized_trajectory(
 ):
     """``bermuda_trajectory`` on an idealized track (same arguments and returns).
 
-    The ship sails ``track`` ("circle" or "grid", see ``track_en_m``) around the
-    centre of the three DOGs at ``TRACK_SPEED_MPS`` with 1 Hz pings, for as long as
-    the Bermuda survey. Attitude: the real Bermuda roll and pitch (epoch by epoch),
-    with the yaw turned so the body x axis follows the track heading. GPS1 keeps the
+    The ship sails ``track`` ("circle", "grid" or "cross", see ``track_en_m``) at
+    ``TRACK_SPEED_MPS`` with 1 Hz pings, for as long as the Bermuda survey. The
+    circle and grid are centred on the centre of the three DOGs, the cross on DOG
+    ``CROSS_DOG`` whichever DOG is generated, so the three DOGs of one survey share
+    one track. Attitude: the real Bermuda roll and pitch (epoch by epoch), with the
+    yaw turned so the body x axis follows the track heading. GPS1 keeps the
     real height series (heave, tide). The travel times, clock and noise follow
     ``bermuda_trajectory`` line for line.
     """
@@ -412,8 +426,12 @@ def idealized_trajectory(
     GPS_data = real_GPS_data[0] + np.arange(n, dtype=float)
 
     to_enu = enu_rotation()
-    dog_centre_en = np.mean([to_enu @ CDOG_AUGMENTS[d] for d in CDOG_AUGMENTS], axis=0)
-    position_en, heading = track_en_m(track, n, dog_centre_en[:2])
+    if track == "cross":
+        centre_en = (to_enu @ CDOG_AUGMENTS[CROSS_DOG])[:2]
+    else:
+        centre_en = np.mean([to_enu @ CDOG_AUGMENTS[d] for d in CDOG_AUGMENTS], axis=0)
+        centre_en = centre_en[:2]
+    position_en, heading = track_en_m(track, n, centre_en)
     real_index = np.arange(n) % len(real)
     gps1_up = ((real[:, 0, :] - SITE_ORIGIN_ECEF) @ to_enu.T)[real_index, 2]
     body_to_enu = np.einsum("ij,njk->nik", to_enu, rotations[real_index])

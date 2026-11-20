@@ -59,6 +59,7 @@ from Inversion_Workflow.Synthetic.Realistic_Synthetic_Ensemble import (
 # Config
 # -------------------------
 PRESET = "random"
+AMPLITUDE_SET = "guess"  # "guess" | "models_low" | "models_high" (Ensemble AMPLITUDES)
 RUN_VARIANT = "ar1_common30"
 N_SURVEYS = 20
 N_CHAINS = 2
@@ -72,12 +73,13 @@ OUTPUT_DIR = gps_output_path("MCMC_Synthetic")
 
 
 def run_name():
-    return f"mcmc_{RUN_VARIANT}_{PRESET}"
+    label = "" if AMPLITUDE_SET == "guess" else f"_{AMPLITUDE_SET}"
+    return f"mcmc_{RUN_VARIANT}_{PRESET}{label}"
 
 
 def synthetic_problem(seed):
     """Sampler model, problem and truth for the survey of one seed."""
-    knobs = with_random_directions(full_preset(PRESET), seed)
+    knobs = with_random_directions(full_preset(PRESET, AMPLITUDE_SET), seed)
     tables_gen = load_table(GENERATION_TABLE)
     tables_inv = load_table(INVERSION_TABLE)
     surveys = [realistic_synthetic(dog, knobs, seed, *tables_gen) for dog in DOGS]
@@ -94,7 +96,7 @@ def synthetic_problem(seed):
             "run_name": run_name(),
             "dogs": list(DOGS),
             "esv_table": f"ESV_Tables/{INVERSION_TABLE}.mat",
-            "gps_file": f"synthetic seed {seed}, preset {PRESET}",
+            "gps_file": f"synthetic seed {seed}, {PRESET}, {AMPLITUDE_SET}",
             "CDOG_reference": SITE_ORIGIN_ECEF.tolist(),
             "gps1_to_others": GPS1_TO_OTHERS.tolist(),
             "offsets_s": (np.round(dt_true / OFFSET_ROUND_S) * OFFSET_ROUND_S).tolist(),

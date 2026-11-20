@@ -49,3 +49,44 @@ def find_esv(beta, dz, dz_array, angle_array, esv_matrix):
         )
 
     return esv
+
+
+@njit
+def find_esv_gradient(beta, dz, dz_array, angle_array, esv_matrix):
+    """Partial derivatives of the ``find_esv`` interpolant, from the same cell.
+
+    Returns ``(dc_ddz, dc_dbeta)`` in (m/s)/m and (m/s)/degree. Conventions where
+    the interpolant is not differentiable: a query exactly on an interior grid line
+    takes the derivative of the lower cell (the one ``find_esv`` interpolates in); a
+    query strictly outside an axis is clamped by ``find_esv``, so the derivative
+    along that axis is 0; a query exactly on an axis edge takes the inside cell's
+    derivative (the one-sided derivative from the table side).
+    """
+    dc_ddz = np.zeros(dz.shape[0], dtype=np.float64)
+    dc_dbeta = np.zeros(dz.shape[0], dtype=np.float64)
+    last_row = dz_array.shape[0] - 2
+    last_col = angle_array.shape[0] - 2
+
+    for k in range(dz.shape[0]):
+        z = min(max(dz[k], dz_array[0]), dz_array[-1])
+        b = min(max(beta[k], angle_array[0]), angle_array[-1])
+
+        i = min(max(np.searchsorted(dz_array, z) - 1, 0), last_row)
+        j = min(max(np.searchsorted(angle_array, b) - 1, 0), last_col)
+        width_z = dz_array[i + 1] - dz_array[i]
+        width_b = angle_array[j + 1] - angle_array[j]
+        fz = (z - dz_array[i]) / width_z
+        fb = (b - angle_array[j]) / width_b
+
+        if dz_array[0] <= dz[k] <= dz_array[-1]:
+            dc_ddz[k] = (
+                (1.0 - fb) * (esv_matrix[i + 1, j] - esv_matrix[i, j])
+                + fb * (esv_matrix[i + 1, j + 1] - esv_matrix[i, j + 1])
+            ) / width_z
+        if angle_array[0] <= beta[k] <= angle_array[-1]:
+            dc_dbeta[k] = (
+                (1.0 - fz) * (esv_matrix[i, j + 1] - esv_matrix[i, j])
+                + fz * (esv_matrix[i + 1, j + 1] - esv_matrix[i + 1, j])
+            ) / width_b
+
+    return dc_ddz, dc_dbeta

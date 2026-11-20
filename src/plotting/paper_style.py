@@ -52,8 +52,13 @@ def apply():
             # matplotlib text (Unicode, editable in the PDF).
             "text.usetex": False,
             "font.family": "sans-serif",
-            "font.sans-serif": ["DejaVu Sans"],
-            "mathtext.fontset": "dejavusans",
+            # Arial/Helvetica as the journal's sans-serif; DejaVu Sans if absent.
+            "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
+            "mathtext.fontset": "custom",
+            "mathtext.rm": "sans",
+            "mathtext.it": "sans:italic",
+            "mathtext.bf": "sans:bold",
+            "mathtext.default": "regular",
             "font.size": FONT_SIZE_PT,
             "axes.titlesize": FONT_SIZE_PT,
             "axes.labelsize": FONT_SIZE_PT,

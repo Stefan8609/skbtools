@@ -18,6 +18,7 @@ clock and dc estimates, and residual statistics. One npz per realization goes to
 ``OUTPUT_DIR/<experiment>.csv``. Every realization is reproducible from (seed, knobs).
 
 Experiments are defined in ``experiment_cells``; set ``EXPERIMENT`` and run the file.
+``summary_table`` condenses an experiment CSV to one row per cell and DOG.
 """
 
 import csv
@@ -27,6 +28,7 @@ from multiprocessing import Pool
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import scipy.io as sio
 
 from acoustics.synthetic_esv_tables import ESV_GENERATE
@@ -49,6 +51,7 @@ from Inversion_Workflow.Synthetic.Realistic_Synthetic import (
 # Config
 # -------------------------
 EXPERIMENT = "sanity"
+AMPLITUDE_SET = "guess"  # key of AMPLITUDES: "guess" | "models_low" | "models_high"
 N_REALIZATIONS = 10
 FIRST_SEED = 0
 N_WORKERS = 10
@@ -68,13 +71,36 @@ LEVER_START_SD_M = 0.3
 OUTPUT_DIR = PROJECT_ROOT / "revision/analysis/realistic_synthetic"
 RANGE_SOUND_SPEED_MPS = 1515.0
 
-# Realistic amplitudes. Basis in the comments; "guess" values are stated in the
-# results document as assumptions. Directions of the current and the gradient are
-# drawn per realization (``with_random_directions``).
-CURRENT_SPEED_MPS = 0.03  # depth-mean current; guess (mesoscale + barotropic)
-DC_GRADIENT_MPS_PER_KM = 0.005  # guess: thermocline slope 0.5 m/km x 10 mm/s per m
+# Amplitudes of the three sources that the acoustic data cannot constrain. Directions
+# of the current and the gradient are drawn per realization
+# (``with_random_directions``).
+# "guess" is the original assumption. "models_low" and "models_high" bracket the
+# external ocean-model values at the site on 16 June 2020 (revision/OCEAN_MODEL_PLAN.md
+# sections 3.1-3.3, scripts in revision/analysis/ocean_models_phase0/):
+# - depth-mean current: GLORYS12 3.0 cm/s (low), HYCOM GOFS 3.1 11 cm/s (high);
+# - ESV gradient of a vertical ray, 0-4 km: GLORYS12 2.6 mm/s/km (low, 1/12 degree
+#   smooths it), HYCOM 8 mm/s/km (7-9 over 10-50 km, high);
+# - M2 tidal current: HAMTIDE11a maximum speed 0.9 cm/s, used as the amplitude of the
+#   circular M2 knob (a conservative stand-in for its 0.78 x 0.46 cm/s ellipse);
+#   the same in both because only one tide model was used.
+AMPLITUDES = {
+    "guess": {
+        "current_speed_mps": 0.03,
+        "gradient_mps_per_km": 0.005,
+        "current_m2_mps": 0.02,
+    },
+    "models_low": {
+        "current_speed_mps": 0.030,
+        "gradient_mps_per_km": 0.0026,
+        "current_m2_mps": 0.009,
+    },
+    "models_high": {
+        "current_speed_mps": 0.11,
+        "gradient_mps_per_km": 0.008,
+        "current_m2_mps": 0.009,
+    },
+}
 COMMON = {
-    "current_m2_mps": 0.02,  # barotropic M2 tidal current; guess
     "offset_s": 1991.01236648,
     "drift_rate_s_per_s": 1e-9,  # R3 M1: CSAC frequency offsets of 1e-10 to 1e-9
     "transmit_delay_s": 30e-6,  # R3 M1: "tens of microseconds"
@@ -124,39 +150,55 @@ def with_random_directions(knobs, seed):
     rng = np.random.default_rng([seed, 1000])
     current_dir, gradient_dir = rng.uniform(0.0, 2 * np.pi, 2)
     knobs = dict(knobs)
+    current_speed = knobs.pop("current_speed_mps", None)
+    gradient_size = knobs.pop("gradient_mps_per_km", None)
     if knobs.pop("random_current", False):
         knobs["current_mps"] = tuple(
-            CURRENT_SPEED_MPS * np.array([np.sin(current_dir), np.cos(current_dir)])
+            current_speed * np.array([np.sin(current_dir), np.cos(current_dir)])
         )
     if knobs.pop("random_gradient", False):
         knobs["dc_gradient_mps_per_km"] = tuple(
-            DC_GRADIENT_MPS_PER_KM
-            * np.array([np.sin(gradient_dir), np.cos(gradient_dir)])
+            gradient_size * np.array([np.sin(gradient_dir), np.cos(gradient_dir)])
         )
     return knobs
 
 
-def full_preset(name):
-    """Preset knobs plus random-direction current and gradient."""
-    knobs = {**PRESETS[name], "random_current": True}
+def full_preset(name, amplitudes="guess"):
+    """Preset knobs plus random-direction current and gradient of an AMPLITUDES set."""
+    sizes = AMPLITUDES[amplitudes]
+    knobs = {
+        **PRESETS[name],
+        "current_m2_mps": sizes["current_m2_mps"],
+        "current_speed_mps": sizes["current_speed_mps"],
+        "gradient_mps_per_km": sizes["gradient_mps_per_km"],
+        "random_current": True,
+    }
     if name == "random":
         knobs["random_gradient"] = True
     return knobs
 
 
-def preset_group_knobs(preset, group):
+def preset_group_knobs(preset, group, amplitudes="guess"):
     """Knobs of one budget group taken from the full preset (direction flags kept)."""
-    full = full_preset(preset)
+    full = full_preset(preset, amplitudes)
     knobs = {key: full[key] for key in BUDGET_GROUPS[group] if key in full}
     if group == "current_steady":
-        knobs = {"random_current": True}
+        knobs = {key: full[key] for key in ("random_current", "current_speed_mps")}
     if group == "dc_gradient":
-        knobs = {"random_gradient": True} if preset == "random" else {}
+        knobs = {}
+        if preset == "random":
+            keys = ("random_gradient", "gradient_mps_per_km")
+            knobs = {key: full[key] for key in keys}
     return knobs
 
 
-def experiment_cells(experiment):
-    """List of (cell name, knobs, inversion settings) for an experiment."""
+def experiment_cells(experiment, amplitudes="guess"):
+    """List of (cell name, knobs, inversion settings) for an experiment.
+
+    ``amplitudes`` picks the AMPLITUDES set of the preset-based experiments (sanity,
+    coverage, budget, geometry, halfsplit); a set other than "guess" is appended to
+    every cell name. The fixed sweeps ("isolation", "currents") ignore it.
+    """
     lever_fixed = {"lever": "lever_fixed", "clock_drift": False}
     cells = []
     if experiment == "isolation":
@@ -195,16 +237,17 @@ def experiment_cells(experiment):
                         continue
                     name = f"{preset}_{lever}" + ("_drift" if drift else "")
                     settings = {"lever": lever, "clock_drift": drift}
-                    cells.append((name, full_preset(preset), settings))
+                    cells.append((name, full_preset(preset, amplitudes), settings))
     elif experiment == "budget":
         for preset in PRESETS:
-            cells.append((f"{preset}_all", full_preset(preset), lever_fixed))
+            knobs = full_preset(preset, amplitudes)
+            cells.append((f"{preset}_all", knobs, lever_fixed))
             for group in BUDGET_GROUPS:
-                alone = preset_group_knobs(preset, group)
+                alone = preset_group_knobs(preset, group, amplitudes)
                 if not alone:
                     continue
                 cells.append((f"{preset}_only_{group}", alone, lever_fixed))
-                without = full_preset(preset)
+                without = full_preset(preset, amplitudes)
                 for key in BUDGET_GROUPS[group]:
                     without.pop(key, None)
                 if group == "current_steady":
@@ -213,10 +256,13 @@ def experiment_cells(experiment):
                     without.pop("random_gradient")
                 cells.append((f"{preset}_without_{group}", without, lever_fixed))
     elif experiment == "geometry":
-        for track in ("bermuda", "circle", "grid"):
-            for lost in (False, True):
+        # The cross is centred on DOG CROSS_DOG: its bias against the other two DOGs'
+        # gives the effect of a track offset from the DOG. It is run without the lost
+        # quadrant, which is defined about the array centre.
+        for track in ("bermuda", "circle", "grid", "cross"):
+            for lost in (False,) if track == "cross" else (False, True):
                 for lever in ("lever_fixed", "lever_free"):
-                    knobs = {**full_preset("random"), "track": track}
+                    knobs = {**full_preset("random", amplitudes), "track": track}
                     knobs["lost_quadrant"] = lost
                     name = f"{track}{'_lost' if lost else ''}_{lever}"
                     cells.append((name, knobs, {"lever": lever, "clock_drift": False}))
@@ -226,7 +272,8 @@ def experiment_cells(experiment):
         for preset in PRESETS:
             for half in (1, 2):
                 settings = {"lever": "lever_free", "clock_drift": False, "half": half}
-                cells.append((f"{preset}_half{half}", full_preset(preset), settings))
+                knobs = full_preset(preset, amplitudes)
+                cells.append((f"{preset}_half{half}", knobs, settings))
             # Geometry-balanced split, as the real-data ar1_common30_alt15a/b runs:
             # alternating 15-min blocks of GPS epochs.
             for parity, name in ((0, "a"), (1, "b")):
@@ -235,7 +282,8 @@ def experiment_cells(experiment):
                     "clock_drift": False,
                     "alt_block": (ALT_BLOCK_S, parity),
                 }
-                cells.append((f"{preset}_alt15{name}", full_preset(preset), settings))
+                knobs = full_preset(preset, amplitudes)
+                cells.append((f"{preset}_alt15{name}", knobs, settings))
     elif experiment == "currents":
         for speed in (0.0, 0.02, 0.05, 0.10):
             for direction_deg in (0, 90, 180, 270):
@@ -247,6 +295,8 @@ def experiment_cells(experiment):
                 cells.append((name, {"current_mps": current}, lever_fixed))
     else:
         raise ValueError(f"unknown experiment {experiment!r}")
+    if amplitudes != "guess":
+        cells = [(f"{name}_{amplitudes}", knobs, st) for name, knobs, st in cells]
     return cells
 
 
@@ -456,6 +506,67 @@ def run_realization(task):
     return rows
 
 
+def merge_task_csvs(experiment, amplitudes="guess"):
+    """Join the per-task CSVs of a slurm array run into ``<name>_all.csv``.
+
+    Reads ``<name>.csv`` (task 0) and every ``<name>_seed*.csv`` in ``OUTPUT_DIR``,
+    ``<name>`` being the experiment plus the amplitude label. Raises if a (cell,
+    seed, DOG) appears twice. Returns the path of the merged file.
+    """
+    name = experiment + ("" if amplitudes == "guess" else f"_{amplitudes}")
+    paths = [OUTPUT_DIR / f"{name}.csv"] + sorted(OUTPUT_DIR.glob(f"{name}_seed*.csv"))
+    data = pd.concat([pd.read_csv(path) for path in paths], ignore_index=True)
+    repeated = data.duplicated(["cell", "seed", "DOG"])
+    if repeated.any():
+        raise ValueError(f"{repeated.sum()} repeated (cell, seed, DOG) rows in {name}")
+    merged = OUTPUT_DIR / f"{name}_all.csv"
+    data.to_csv(merged, index=False)
+    print(f"{len(paths)} files, {len(data)} rows -> {merged}")
+    return merged
+
+
+def summary_table(csv_path):
+    """Bias, rms and 95 % coverage per cell and DOG of an experiment CSV, in cm.
+
+    Uses the fits that succeeded and found the right clock second (``n`` of them;
+    ``n_excluded`` others). Horizontal bias is the length of the mean E, N error,
+    vertical bias the mean U error; rms is about zero (the truth), so it includes
+    the bias. Coverage is the fraction of components (E and N, or U) whose error is
+    within 1.96 AR(1)-inflated formal sd. Writes ``<name>_summary.csv`` next to the
+    input and returns the table.
+    """
+    csv_path = Path(csv_path)
+    data = pd.read_csv(csv_path)
+    good = (data["failed"].fillna("") == "") & (data["wrong_second"] == 0)
+    rows = []
+    for (cell, DOG_num), group in data.groupby(["cell", "DOG"], sort=False):
+        fits = group[good[group.index]]
+        horizontal = fits[["E_err_cm", "N_err_cm"]].to_numpy()
+        horizontal_sd = fits[["E_sd_ar1_cm", "N_sd_ar1_cm"]].to_numpy()
+        vertical = fits["U_err_cm"].to_numpy()
+        rows.append(
+            {
+                "cell": cell,
+                "DOG": DOG_num,
+                "n": len(fits),
+                "n_excluded": len(group) - len(fits),
+                "horizontal_bias_cm": np.linalg.norm(horizontal.mean(axis=0)),
+                "vertical_bias_cm": vertical.mean(),
+                "horizontal_rms_cm": np.sqrt(np.mean(np.sum(horizontal**2, axis=1))),
+                "vertical_rms_cm": np.sqrt(np.mean(vertical**2)),
+                "horizontal_coverage_95": np.mean(
+                    np.abs(horizontal) <= 1.96 * horizontal_sd
+                ),
+                "vertical_coverage_95": np.mean(
+                    np.abs(vertical) <= 1.96 * fits["U_sd_ar1_cm"].to_numpy()
+                ),
+            }
+        )
+    table = pd.DataFrame(rows)
+    table.to_csv(csv_path.with_name(f"{csv_path.stem}_summary.csv"), index=False)
+    return table
+
+
 def git_commit():
     """Short commit of the repository (with "-dirty" if files are modified)."""
     run = {"cwd": PROJECT_ROOT, "capture_output": True, "text": True}
@@ -467,18 +578,21 @@ def git_commit():
 GIT_COMMIT = git_commit()
 
 
-def run_experiment(experiment, n_realizations, first_seed=0, n_workers=N_WORKERS):
+def run_experiment(
+    experiment, n_realizations, first_seed=0, n_workers=N_WORKERS, amplitudes="guess"
+):
     """Run every cell of an experiment over seeds; write the CSV; return the rows."""
     tasks = [
         (experiment, cell, knobs, settings, seed)
-        for cell, knobs, settings in experiment_cells(experiment)
+        for cell, knobs, settings in experiment_cells(experiment, amplitudes)
         for seed in range(first_seed, first_seed + n_realizations)
     ]
     with Pool(n_workers) as pool:
         rows = [row for result in pool.imap(run_realization, tasks) for row in result]
     columns = list(dict.fromkeys(key for row in rows for key in row))
+    label = "" if amplitudes == "guess" else f"_{amplitudes}"
     suffix = f"_seed{first_seed:04d}" if first_seed else ""
-    path = OUTPUT_DIR / f"{experiment}{suffix}.csv"
+    path = OUTPUT_DIR / f"{experiment}{label}{suffix}.csv"
     with open(path, "w", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=columns)
         writer.writeheader()
@@ -496,4 +610,5 @@ if __name__ == "__main__":
     task = int(os.environ.get("SLURM_ARRAY_TASK_ID", "0"))
     first_seed = FIRST_SEED + task * n_realizations
     n_workers = int(os.environ.get("RS_WORKERS", N_WORKERS))
-    run_experiment(experiment, n_realizations, first_seed, n_workers)
+    amplitudes = os.environ.get("RS_AMPLITUDES", AMPLITUDE_SET)
+    run_experiment(experiment, n_realizations, first_seed, n_workers, amplitudes)

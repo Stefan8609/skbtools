@@ -2,7 +2,7 @@ import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
 
-from Inversion_Workflow.Inversion.Numba_Geiger_bias import (
+from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     compute_Jacobian_biased,
 )
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
