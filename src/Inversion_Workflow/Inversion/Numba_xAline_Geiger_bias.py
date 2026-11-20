@@ -1,8 +1,8 @@
 import numpy as np
 
 from Inversion_Workflow.Inversion.Numba_xAline import (
+    align_offset,
     filter_close_receptions,
-    find_int_offset,
     find_subint_offset,
     two_pointer_index,
 )
@@ -135,27 +135,13 @@ def _geiger_at_offset(
         real_data,
     )
     offset_data = filter_close_receptions(CDOG_data)
-    if initial_offset is None:
-        offset = find_int_offset(
-            offset_data, GPS_data, times_guess, transponder_coordinates, esv
-        )
-    else:
-        offset = find_int_offset(
-            offset_data,
-            GPS_data,
-            times_guess,
-            transponder_coordinates,
-            esv,
-            offset=np.round(initial_offset),
-            halfwindow=0.5,
-        )
-    offset = find_subint_offset(
-        offset,
+    offset = align_offset(
         offset_data,
         GPS_data,
         times_guess,
         transponder_coordinates,
         esv,
+        initial_offset,
     )
 
     while np.linalg.norm(delta) > epsilon and k < 100:
@@ -713,28 +699,13 @@ def gauss_newton_offset_search(
             esv_matrix,
             real_data,
         )
-        offset_data = filter_close_receptions(CDOG_data)
-        if initial_offset is None:
-            aligned_offset = find_int_offset(
-                offset_data, GPS_data, times, transponder_coordinates, esv
-            )
-        else:
-            aligned_offset = find_int_offset(
-                offset_data,
-                GPS_data,
-                times,
-                transponder_coordinates,
-                esv,
-                offset=np.round(initial_offset),
-                halfwindow=0.5,
-            )
-        aligned_offset = find_subint_offset(
-            aligned_offset,
-            offset_data,
+        aligned_offset = align_offset(
+            filter_close_receptions(CDOG_data),
             GPS_data,
             times,
             transponder_coordinates,
             esv,
+            initial_offset,
         )
 
     fits = {}

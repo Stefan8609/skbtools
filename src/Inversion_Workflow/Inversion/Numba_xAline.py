@@ -247,3 +247,30 @@ def find_subint_offset(
         lower = max(search_lower, best_offset - interval)
         upper = min(search_upper, best_offset + interval)
     return best_offset
+
+
+@njit(cache=True)
+def align_offset(
+    CDOG_data, GPS_data, travel_times, transponder_coordinates, esv, initial_offset=None
+):
+    """Clock offset (s): integer second by circular variance, then fraction by RMSE.
+
+    With ``initial_offset`` the integer search stays within 0.5 s of it.
+    """
+    if initial_offset is None:
+        offset = find_int_offset(
+            CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
+        )
+    else:
+        offset = find_int_offset(
+            CDOG_data,
+            GPS_data,
+            travel_times,
+            transponder_coordinates,
+            esv,
+            offset=np.round(initial_offset),
+            halfwindow=0.5,
+        )
+    return find_subint_offset(
+        offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
+    )
