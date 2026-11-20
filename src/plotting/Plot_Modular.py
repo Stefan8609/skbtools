@@ -160,7 +160,7 @@ def time_series_plot(
     axes[1, 0].text(
         xmax_hist * 0.9,
         mu + std + ymax_hist * 0.13,
-        "$\sigma_\epsilon$",
+        r"$\sigma_\epsilon$",
         va="center",
         color="r",
     )
@@ -175,7 +175,7 @@ def time_series_plot(
         axes[1, 0].text(
             xmax_hist * 0.9,
             position_noise / NOMINAL_SOUND_SPEED_MPS * 1000 - ymax_hist * 0.06,
-            "$\sigma_d$",
+            r"$\sigma_d$",
             va="center",
             color="g",
         )
@@ -186,13 +186,13 @@ def time_series_plot(
         axes[1, 0].text(
             xmax_hist * 0.9,
             -time_noise * 1000 - ymax_hist * 0.06,
-            "$\sigma_t$",
+            r"$\sigma_t$",
             va="center",
             color="y",
         )
 
     # invert axis and plot
-    axes[1, 0].set_ylabel("Residuals $\epsilon$ (ms)")
+    axes[1, 0].set_ylabel(r"Residuals $\epsilon$ (ms)")
     axes[1, 0].set_title(
         rf"$\sigma_\epsilon$ = {np.round(std, 2)} ms $\sim$ "
         rf"{np.round(std * NOMINAL_SOUND_SPEED_MPS / 10, 2)} cm",
@@ -259,7 +259,7 @@ def time_series_plot(
     axes[1, 3].text(
         xmax_zoom_hist * 0.9,
         mu_zoom + std_zoom + ymax_hist * 0.13,
-        "$\sigma_\epsilon$",
+        r"$\sigma_\epsilon$",
         va="center",
         color="r",
     )
@@ -274,7 +274,7 @@ def time_series_plot(
         axes[1, 3].text(
             xmax_zoom_hist * 0.9,
             position_noise / NOMINAL_SOUND_SPEED_MPS * 1000 - ymax_hist * 0.06,
-            "$\sigma_d$",
+            r"$\sigma_d$",
             va="center",
             color="g",
         )
@@ -285,7 +285,7 @@ def time_series_plot(
         axes[1, 3].text(
             xmax_zoom_hist * 0.9,
             -time_noise * 1000 - ymax_hist * 0.06,
-            "$\sigma_t$",
+            r"$\sigma_t$",
             va="center",
             color="y",
         )
@@ -408,7 +408,7 @@ def range_residual(
     )
     fig.colorbar(scatter, ax=axes[0], label="Time (hours)")
     axes[0].set_xlabel("Slant Range (km)")
-    axes[0].set_ylabel("$c\epsilon$ (cm)")
+    axes[0].set_ylabel(r"$c\epsilon$ (cm)")
     axes[0].axhline(-std_rr, color="r")
     axes[0].axhline(std_rr, color="r")
     axes[0].set_ylim([mu_rr - 3 * std_rr, mu_rr + 3 * std_rr])
@@ -442,7 +442,7 @@ def range_residual(
     axes[1].text(
         1.06,
         0.45,
-        f"$c\sigma_\epsilon$={std_rr:.2f} (cm)",
+        rf"$c\sigma_\epsilon$={std_rr:.2f} (cm)",
         transform=axes[1].transAxes,
         ha="left",
         va="center",

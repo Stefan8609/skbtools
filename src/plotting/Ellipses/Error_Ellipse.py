@@ -6,22 +6,9 @@ from scipy.stats import chi2
 def compute_error_ellipse(
     data_xy: np.ndarray, confidence: float = 0.68, zorder: int = 1
 ):
-    """
-    Compute an error ellipse patch and the percentage of points within it.
+    """Ellipse patch of the (N, 2) points at ``confidence`` (chi-square, 2 dof).
 
-    Parameters
-    ----------
-    data_xy : (N, 2) array
-        2D points for which to compute the error ellipse.
-    confidence : float
-        Confidence level for the ellipse (e.g., 0.68 for ~68%).
-
-    Returns
-    -------
-    ellipse : matplotlib.patches.Ellipse
-        Ellipse representing the specified confidence region.
-    pct : float
-        Percentage of points lying within the ellipse.
+    Returns the patch and the percentage of points inside it.
     """
     # Compute covariance and mean
     cov = np.cov(data_xy, rowvar=False)

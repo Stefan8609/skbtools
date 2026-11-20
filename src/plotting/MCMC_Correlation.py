@@ -64,7 +64,7 @@ def corner_plot_with_corr(
       - per-parameter axis limits for time-bias and ESV (hard-coded)
     """
 
-    # ----- objective for coloring -----
+    # Objective for coloring
     raw_logpost = (
         chain["loglike"][::downsample] if loglike else chain["logpost"][::downsample]
     )
@@ -72,13 +72,13 @@ def corner_plot_with_corr(
     order = np.argsort(raw_logpost)
     logpost = raw_logpost[order]
 
-    # ----- DOG mapping -----
+    # DOG mapping
     DOG_index_map = {1: 0, 3: 1, 4: 2}
     if DOG_num not in DOG_index_map:
         raise ValueError(f"DOG_num must be one of {list(DOG_index_map.keys())}")
     d = DOG_index_map[DOG_num]
 
-    # ----- pull chains -----
+    # Pull chains
     lever = np.asarray(chain["lever"][::downsample])[order]  # (T,3)
     cdog_aug = np.asarray(chain["CDOG_aug"][::downsample])[order]  # (T,D,3)
     esv = _as_TDS(chain["esv_bias"][::downsample])[order]  # (T,D,S)
@@ -88,7 +88,7 @@ def corner_plot_with_corr(
     else:
         tb = np.asarray(chain["time_bias"][::downsample])[order]  # (T,...) dims vary
 
-    # ----- DOG ENU (meters) -----
+    # DOG ENU (meters)
     cdog_aug_samples = cdog_aug[:, d, :]  # (T,3) ECEF offsets for this DOG
     if initial_params is not None:
         prior_mean_aug = np.asarray(initial_params["CDOG_aug"][d])
@@ -98,10 +98,10 @@ def corner_plot_with_corr(
         cdog_aug_samples, prior_mean_aug
     )  # (T,3) in meters
 
-    # ----- ESV mean (for this DOG) -----
+    # ESV mean (for this DOG)
     esv_mean = esv[:, d, :].mean(axis=1)  # (T,)
 
-    # ----- Time bias (for this DOG) -----
+    # Time bias (for this DOG)
     if tb.ndim == 1:
         tb_dog = tb
     elif tb.ndim == 2:
@@ -111,10 +111,10 @@ def corner_plot_with_corr(
     else:
         raise ValueError(f"time_bias must be 1D/2D/3D; got {tb.shape}")
 
-    # ----- derived -----
+    # Derived
     lever_minus_dogu_m = lever[:, 2] - cdog_enu_m[:, 2]
 
-    # ----- parameter keys -----
+    # Parameter keys
     key_esv = "mean esv"  # native units
     key_tb = "tb"  # ms
 
@@ -138,7 +138,7 @@ def corner_plot_with_corr(
         "lz - DOG U": lever_minus_dogu_m * 100.0,  # cm
     }
 
-    # ----- apply a single finite mask across ALL parameters + logpost -----
+    # Apply a single finite mask across ALL parameters + logpost
     keys = list(pars.keys())
     X = np.column_stack([np.asarray(pars[k]) for k in keys])
     finite = np.isfinite(X).all(axis=1) & np.isfinite(logpost)
@@ -146,7 +146,7 @@ def corner_plot_with_corr(
     for k in keys:
         pars[k] = np.asarray(pars[k])[finite]
 
-    # ----- initial values (flat_init) in plot units -----
+    # Initial values (flat_init) in plot units
     flat_init = {}
     if initial_params is not None:
         flat_init["lx"] = float(initial_params["lever"][0]) * 100.0
@@ -177,7 +177,7 @@ def corner_plot_with_corr(
                 flat_init["lz"] - flat_init[f"DOG{DOG_num}_U"]
             )
 
-    # ----- prior sigmas (flat_prior) in native prior units like original -----
+    # Prior sigmas (flat_prior) in native prior units
     flat_prior = {}
     if prior_scales is not None:
         if "lever" in prior_scales:
@@ -198,7 +198,7 @@ def corner_plot_with_corr(
                 np.sqrt(flat_prior["lz"] ** 2 + flat_prior[f"DOG{DOG_num}_U"] ** 2)
             )
 
-    # ----- center each parameter at its posterior median -----
+    # Center each parameter at its posterior median
     stats = {}
     pars_c = {}
     all_centered_vals = []
@@ -211,7 +211,7 @@ def corner_plot_with_corr(
         pars_c[k] = centered
         all_centered_vals.append(centered)
 
-    # ----- common symmetric extent across all subplots -----
+    # Common symmetric extent across all subplots
     global_max_abs = (
         np.max(np.abs(np.concatenate(all_centered_vals))) if all_centered_vals else 1.0
     )
@@ -220,7 +220,7 @@ def corner_plot_with_corr(
     common_lim = float(np.ceil(global_max_abs / 1.0) * 1.0)
     common_lim *= 0.8
 
-    # ----- NEW: per-key axis limits (centered units) -----
+    # Per-key axis limits (centered units)
     axis_limits = {
         key_tb: float(tb_lim_ms),
         key_esv: float(esv_lim_native),
@@ -238,7 +238,7 @@ def corner_plot_with_corr(
     n = len(keys)
     fig, axes = plt.subplots(n, n, figsize=(14, 10))
 
-    # ----- color maps -----
+    # Color maps
     vmin = float(np.min(logpost))
     vmax = float(np.max(logpost))
     norm_cmap = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
@@ -375,7 +375,7 @@ def corner_plot_with_corr(
                     s=40,
                 )
 
-            # NEW: per-key x/y limits
+            # Per-key x/y limits
             ax.set_xlim(-_get_lim(key_j), _get_lim(key_j))
             ax.set_ylim(-_get_lim(key_i), _get_lim(key_i))
 

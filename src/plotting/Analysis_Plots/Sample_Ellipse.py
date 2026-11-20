@@ -26,7 +26,7 @@ plt.rcParams.update(
         "text.usetex": True,
         "font.family": "serif",
         "font.serif": ["Computer Modern"],
-        "font.size": 20,  # change this freely
+        "font.size": 20,
         "mathtext.fontset": "cm",
         "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
         "\n"
@@ -46,20 +46,7 @@ def _plot_error_ellipse(
     label=None,
     **ellipse_kwargs,
 ):
-    """
-    Plot an n_std-sigma error ellipse for the 2D points (x, y) onto the given Axes.
-
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        The axes to plot the ellipse on.
-    x, y : array-like, shape (N,)
-        Data in the two coordinate directions.
-    n_std : float, optional
-        The radius of the ellipse in standard deviations (default 1.0).
-    facecolor, edgecolor, linestyle, label : passed to Ellipse
-    **ellipse_kwargs : other kwargs passed to Ellipse constructor
-    """
+    """Draw the n_std-sigma covariance ellipse of the points (x, y) on ax."""
     x = np.asarray(x)
     y = np.asarray(y)
     mean_x, mean_y = x.mean(), y.mean()
@@ -100,8 +87,8 @@ def _add_xy_stats(ax, x, y, xlabel="x", ylabel="y"):
         0.02,
         0.98,
         (
-            f"{xlabel}: $\mu$={mean_x:.2f}, $\sigma$={std_x:.2f}\n"
-            f"{ylabel}: $\mu$={mean_y:.2f}, $\sigma$={std_y:.2f}"
+            f"{xlabel}: $\\mu$={mean_x:.2f}, $\\sigma$={std_x:.2f}\n"
+            f"{ylabel}: $\\mu$={mean_y:.2f}, $\\sigma$={std_y:.2f}"
         ),
         transform=ax.transAxes,
         ha="left",
@@ -135,33 +122,14 @@ def error_ellipse(
     use_leg_mask=False,
     inversion_esv=ESV_MODERATE,
 ):
-    """Plot error ellipses from Monte Carlo samples.
+    """Monte Carlo error ellipses of the DOG and lever-arm estimates.
 
-    Parameters
-    ----------
-    num_points : int
-        Number of Monte Carlo iterations to run.
-    time_noise : float
-        Standard deviation of timing noise in seconds.
-    position_noise : float
-        Standard deviation of GNSS position noise in metres.
-    downsample : int
-        Downsampling interval applied to the clean GNSS trajectory.
-    generate : bool, optional
-        Generate new Monte Carlo results when True, otherwise load saved results.
-    DOG_num : int, optional
-        Bermuda DOG data set used for the synthetic trajectory.
-    use_leg_mask : bool, optional
-        Keep only the 9-11 h and 12.4-15 h legs (sensitivity test). Paper I
-        uses the full trajectory (False).
-    inversion_esv : str, optional
-        ESV table used by the inversion. ESV_GENERATE is the identical-table
-        control. Results are saved per table name.
-
-    Returns
-    -------
-    None
-        Displays plots of the estimated CDOG positions and lever errors.
+    Inverts ``num_points`` synthetics on the Bermuda track of ``DOG_num``, with
+    ``time_noise`` (s) and ``position_noise`` (m) and the clean GNSS trajectory taken
+    every ``downsample`` epochs, or loads the saved results when ``generate`` is
+    False. ``use_leg_mask`` keeps only the 9-11 h and 12.4-15 h legs (the paper uses
+    the full track). ``inversion_esv`` is the inversion's ESV table; ESV_GENERATE is
+    the identical-table control. Results are saved per table name.
     """
 
     real_lever = np.array([-12.4659, 9.6021, -13.2993])
@@ -357,9 +325,7 @@ def error_ellipse(
     colorbar_max = 7
     colorbar_min = 4
 
-    # ------------------------
     # Plot the CDOG estimates
-    # ------------------------
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))
 
     # Easting vs Northing
@@ -439,7 +405,7 @@ def error_ellipse(
         label=r"CDOG Estimates",
     )
     cbar2 = fig.colorbar(sc2, ax=axs[2])
-    cbar2.set_label("$c\sigma_\epsilon$ (cm)")
+    cbar2.set_label(r"$c\sigma_\epsilon$ (cm)")
     axs[2].scatter(0, 0, s=100, color="red", marker="o", label="CDOG Actual")
     for std in range(1, 3):
         _plot_error_ellipse(
@@ -461,9 +427,7 @@ def error_ellipse(
     plt.tight_layout()
     plt.show()
 
-    # ---------------------
     # Plot the lever errors
-    # ---------------------
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))
 
     # x vs y error
@@ -543,7 +507,7 @@ def error_ellipse(
         label=r"Lever Errors",
     )
     cbar5 = fig.colorbar(sc5, ax=axs[2])
-    cbar5.set_label("$c\sigma_\epsilon$ (cm)")
+    cbar5.set_label(r"$c\sigma_\epsilon$ (cm)")
     axs[2].scatter(0, 0, s=100, color="red", marker="o", label="Lever Actual")
     for std in range(1, 3):
         _plot_error_ellipse(

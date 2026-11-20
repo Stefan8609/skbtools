@@ -160,7 +160,7 @@ def plot_integer_pick_metrics_dog(
     fig, axes = plt.subplots(3, 1, sharex=True, figsize=(12, 8))
 
     axes[0].plot(offsets, rmse)
-    axes[0].set_ylabel("$\mathcal{R}$ (cm)")
+    axes[0].set_ylabel(r"$\mathcal{R}$ (cm)")
     axes[0].ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
     axes[0].grid(True)
 
@@ -178,7 +178,7 @@ def plot_integer_pick_metrics_dog(
             linestyle="--",
             label="Filtered optimum",
         )
-    axes[1].set_ylabel("$v_\circ$")
+    axes[1].set_ylabel(r"$v_\circ$")
     axes[1].ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
     axes[1].grid(True)
 
@@ -187,7 +187,7 @@ def plot_integer_pick_metrics_dog(
         axes[2].plot(offsets, filtered_nmatch, label="Intervals at least 0.95 s")
         axes[2].legend()
     axes[2].set_ylabel("Pairings")
-    axes[2].set_xlabel("$\delta t$ (s)")
+    axes[2].set_xlabel(r"$\delta t$ (s)")
     axes[2].grid(True)
 
     # Annotate best by Circular Variance

@@ -11,7 +11,7 @@ if __name__ == "__main__":
             "text.usetex": True,
             "font.family": "serif",
             "font.serif": ["Computer Modern"],
-            "font.size": 20,  # change this freely
+            "font.size": 20,
             "mathtext.fontset": "cm",
             "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
             "\n"

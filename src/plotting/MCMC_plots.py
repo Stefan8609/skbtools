@@ -19,7 +19,7 @@ plt.rcParams.update(
         "text.usetex": True,
         "font.family": "serif",
         "font.serif": ["Computer Modern"],
-        "font.size": 20,  # change this freely
+        "font.size": 20,
         "mathtext.fontset": "cm",
         "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
         "\n"
@@ -29,22 +29,12 @@ plt.rcParams.update(
 
 
 def get_init_params_and_prior(chain):
-    """
-    Extract prior and initial parameters from the MCMC chain.
+    """Initial parameters and prior scales of a chain.
 
-    Parameters
-    ----------
-    chain : dict
-        Dictionary containing MCMC chain data.
-
-    Returns
-    -------
-    tuple
-        Initial parameters and prior scales. For chains of the reworked sampler
-        (they store ``prior_center``), the "initial parameters" are the prior
-        centers from the run configuration, ``time_bias`` is the dt deviation
-        from the alignment offset (prior center 0), and there are no proposal
-        scales (adaptive; the proposal covariance is saved in each chain).
+    For chains of the reworked sampler (they store ``prior_center``) the initial
+    parameters are the prior centers of the run configuration, ``time_bias`` is the
+    dt deviation from the alignment offset (prior center 0), and there are no
+    proposal scales (the proposal covariance is adaptive and saved in each chain).
     """
     if "prior_center" in chain:
         config = json.loads(str(chain["config_json"]))
@@ -162,22 +152,9 @@ def cdog_aug_ecef_to_enu(
     prior_mean,
     CDOG_reference=None,
 ):
-    """
-    Convert CDOG augment samples from ECEF offsets to ENU coordinates (meters).
+    """ENU (m) of DOG offset samples (N, 3), ECEF metres from CDOG_reference.
 
-    Parameters
-    ----------
-    aug_samples : (N, 3) array
-        Samples of CDOG augment in ECEF (meters) relative to CDOG_reference.
-    prior_mean : (3,) array
-        Prior mean of the CDOG augment in ECEF (meters) used to define the ENU origin.
-    CDOG_reference : (3,) array, optional
-        Absolute ECEF position of the CDOG reference point.
-
-    Returns
-    -------
-    enu : (N, 3) array
-        ENU coordinates (E, N, U) in meters for each sample.
+    The ENU origin is ``CDOG_reference + prior_mean``.
     """
     if CDOG_reference is None:
         CDOG_reference = CDOG_REFERENCE

@@ -1,4 +1,4 @@
-"""One figure style for Paper I (reviewer comments R1 4e, R3 #10, R3 #11, R4 m2).
+"""One figure style for Paper I.
 
 - Figures are drawn at their printed width (single or double column) and saved as
   vector PDF, with a PNG preview for slides. Only dense scatter layers are
@@ -8,7 +8,7 @@
   the label "DOG n" everywhere.
 - One time axis: hours since the first GPS epoch of the processed Bermuda survey
   (``hours_since_start``, ``TIME_LABEL``, ``TIME_LIMITS_H``).
-- Times convert to range at ``RANGE_SOUND_SPEED_MPS`` everywhere (R1 4i).
+- Times convert to range at ``RANGE_SOUND_SPEED_MPS`` everywhere.
 
 Use: ``apply()`` once, ``fig, ax = figure("single", 60)``, plot, ``save(fig, name)``.
 """

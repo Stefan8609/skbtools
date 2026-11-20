@@ -19,7 +19,7 @@ plt.rcParams.update(
         "text.usetex": True,
         "font.family": "serif",
         "font.serif": ["Computer Modern"],
-        "font.size": 16,  # change this freely
+        "font.size": 16,
         "mathtext.fontset": "cm",
         "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
         "\n"
@@ -254,27 +254,11 @@ def px_to_world_segments(
     view="side",
     flip_y=False,
 ):
-    """Convert pixel coordinates to ship-fixed meter coordinates.
+    """Pixel segments [((x1, y1), (x2, y2)), ...] to ship-frame metres.
 
-    Parameters
-    ----------
-    segments_px : sequence of tuple
-        Iterable of pixel-space segments [((x1, y1), (x2, y2)), ...].
-    scale : float
-        Meters per pixel.
-    x_shift_px, y_shift_px : float, optional
-        Pixel offsets to subtract before scaling.
-    gps1_offset : tuple of float, optional
-        (x, y, z) offset in meters to translate results.
-    view : {"side", "top"}, optional
-        Mapping of pixel axes to world axes. Default "side".
-    flip_y : bool, optional
-        If True, multiply the pixel y-coordinates by -1 before scaling.
-
-    Returns
-    -------
-    list of tuple
-        World-coordinate segments [((x1, y1), (x2, y2)), ...].
+    Pixels are shifted by (x_shift_px, y_shift_px), optionally flipped in y, scaled
+    by ``scale`` (m per pixel) and offset by ``gps1_offset`` (x, y, z) m. ``view``
+    "side" maps to (x, z), "top" to (x, y).
     """
     ox, oy, oz = gps1_offset
     world = []
@@ -298,7 +282,6 @@ def px_to_world_segments(
     return world
 
 
-# Helper: add a schematic inset showing the full boat outline on the left
 def _add_schematic_inset(
     ax,
     segments,
@@ -308,33 +291,10 @@ def _add_schematic_inset(
     scale=1.0,
     box_coord="axes",
 ):
-    """Add a boat-outline inset to the given axes.
+    """Inset axes on ax with the full boat outline ``segments``; returns the inset.
 
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        Axes to attach the inset to.
-    segments : iterable
-        World-coordinate segments [((x1, y1), (x2, y2)), ...] for the outline.
-    box : tuple of float, optional
-        (x0, y0, width, height) for the inset box. Interpreted in the
-        coordinate system given by *box_coord*. Default (0.02, 0.10, 0.40, 0.80).
-    line_color : color, optional
-        Segment line color. Default "0.35".
-    line_width : float, optional
-        Segment line width. Default 0.8.
-    title : str, optional
-        Inset title. Default "Schematic".
-    scale : float, optional
-        Multiplier applied to width and height of *box*. Default 1.0.
-    box_coord : {"axes", "data", "figure"}, optional
-        Coordinate system for *box*: axes-fraction [0–1], data units of *ax*,
-        or figure-fraction. Default "axes".
-
-    Returns
-    -------
-    matplotlib.axes.Axes
-        The inset axes.
+    ``box`` is (x0, y0, width, height) in ``box_coord`` units ("axes", "data" or
+    "figure"); width and height are multiplied by ``scale``.
     """
     # Create inset inside the axes, positioned along the left edge
     x0, y0, w, h = box
@@ -747,10 +707,10 @@ def RV_Plot(
 
     # Top view insets (positions fixed as before)
     GPS_labels = {
-        1: "$\mathbf{x}^\mathrm{S}_1$",
-        2: "$\mathbf{x}^\mathrm{S}_2$",
-        3: "$\mathbf{x}^\mathrm{S}_3$",
-        4: "$\mathbf{x}^\mathrm{S}_4$",
+        1: r"$\mathbf{x}^\mathrm{S}_1$",
+        2: r"$\mathbf{x}^\mathrm{S}_2$",
+        3: r"$\mathbf{x}^\mathrm{S}_3$",
+        4: r"$\mathbf{x}^\mathrm{S}_4$",
     }
     for idx, (pts, c) in enumerate(zip(gps_xy_list, centroids, strict=False), start=1):
         w = 2.0
@@ -1043,11 +1003,11 @@ def RV_Plot(
 
     # Prepare table contents (rounded to 0.1 cm)
     row_labels = [
-        "$\mathbf{x}^\mathrm{S}_1$",
-        "$\mathbf{x}^\mathrm{S}_2$",
-        "$\mathbf{x}^\mathrm{S}_3$",
-        "$\mathbf{x}^\mathrm{S}_4$",
-        "$\mathbf{x}^\mathrm{T}$",
+        r"$\mathbf{x}^\mathrm{S}_1$",
+        r"$\mathbf{x}^\mathrm{S}_2$",
+        r"$\mathbf{x}^\mathrm{S}_3$",
+        r"$\mathbf{x}^\mathrm{S}_4$",
+        r"$\mathbf{x}^\mathrm{T}$",
     ]
     cell_text = [
         [
