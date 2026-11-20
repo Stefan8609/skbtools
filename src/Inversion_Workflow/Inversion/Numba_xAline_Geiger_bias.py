@@ -17,21 +17,18 @@ from numba import njit
 
 @njit(cache=True)
 def compute_Jacobian_biased(guess, transponder_coordinates, times, esv, grad_x_c0=None):
-    """Jacobian of the travel-time residual with respect to (x, y, z, dt, dc).
+    """Jacobian (N, 5) of the travel-time residual in (x, y, z, time_bias, esv_bias).
 
-    ``esv`` must already include the ESV bias (c_eff + dc), as returned by
-    ``calculateTimesRayTracing_Bias(_Real)``. The residual is
-    (T_mod - time_bias) - T_obs with T_mod = range / esv.
-
-    ``grad_x_c0`` (N, 3), the gradient of the geometry-dependent reference ESV c0
-    with respect to the DOG (``esv_gradient``), adds the term -(T / esv) * grad c0
-    of the full derivative. Without it c0 is held fixed (frozen-ESV Jacobian).
+    Eq. A26. ``esv`` already includes the ESV bias (c_eff + dc), as returned by
+    ``modelled_times``. The residual is (T_mod - time_bias) - T_obs with T_mod =
+    range / esv. ``grad_x_c0`` (N, 3), the gradient of the table ESV with respect to
+    the DOG (``esv_gradient``), adds -(T / esv) grad c0, which A26 leaves out (it
+    holds c_eff fixed, as happens here without ``grad_x_c0``).
     """
     diffs = transponder_coordinates - guess
 
     J = np.zeros((len(transponder_coordinates), 5))
 
-    # Compute different partial derivatives
     J[:, 0] = -diffs[:, 0] / (times[:] * (esv[:] ** 2))
     J[:, 1] = -diffs[:, 1] / (times[:] * (esv[:] ** 2))
     J[:, 2] = -diffs[:, 2] / (times[:] * (esv[:] ** 2))
@@ -45,7 +42,11 @@ def compute_Jacobian_biased(guess, transponder_coordinates, times, esv, grad_x_c
 
 @njit(cache=True)
 def residual_inliers(residuals, sigma=6.0):
-    """Keep residuals within a conservative median-based limit."""
+    """Mask of residuals within ``sigma`` robust standard deviations of the median.
+
+    The scale is 1.4826 MAD. Everything is kept with fewer than 5 residuals, a zero
+    MAD or fewer than 5 inliers.
+    """
     if len(residuals) < 5:
         return np.ones(len(residuals), dtype=np.bool_)
 
@@ -107,7 +108,7 @@ def gauss_newton_step(
     real_data,
     clock_drift,
 ):
-    """One Gauss-Newton step on the paired arrivals, outliers excluded.
+    """One Gauss-Newton step (Eq. A27) on the paired arrivals, outliers excluded.
 
     The residual is ``(travel_times - time_bias) - CDOG_times`` (plus
     ``drift_rate * t_from_mid`` with ``clock_drift``). Returns the update of
@@ -171,7 +172,7 @@ def _geiger_at_offset(
     if clock_drift:
         estimate = np.append(estimate, drift_rate)
 
-    # Initial offset estimate
+    # Initial alignment at the starting guess
     times_guess, esv = modelled_times(
         guess,
         transponder_coordinates,
@@ -192,7 +193,6 @@ def _geiger_at_offset(
     )
 
     while np.linalg.norm(delta) > epsilon and k < 100:
-        # Find the best offset
         times_guess, esv = modelled_times(
             guess,
             transponder_coordinates,
@@ -240,7 +240,7 @@ def _geiger_at_offset(
         if clock_drift:
             drift_rate = estimate[5]
         k += 1
-    """Refine offset in local region"""
+    # Refine the fraction of the offset at the converged fit
     offset = find_subint_offset(
         offset,
         offset_data,
@@ -395,10 +395,13 @@ def final_bias_geiger(
     clock_drift=False,
     drift_rate=0.0,
 ):
-    """Final bias-aware inversion with fixed offset.
+    """Gauss-Newton fit (Eq. A25) of position and biases at a fixed clock offset.
 
-    With ``clock_drift`` the estimate gets a sixth entry, ``drift_rate`` (s/s, Eq. 6
-    convention), started from ``drift_rate``; t_mid is set by the pairs made here.
+    The pairs are made at ``offset`` (0.05 s gate) and kept through the iterations.
+    Returns ``(estimate, CDOG_full, GPS_full, CDOG_clock, GPS_clock)``, the last four
+    for the inlier pairs re-made at ``offset - time_bias``. With ``clock_drift`` the
+    estimate gets a sixth entry, ``drift_rate`` (s/s, Eq. 6 convention), started from
+    ``drift_rate``; t_mid is set by the pairs made here.
     """
     epsilon = 10**-5
     k = 0
@@ -441,7 +444,6 @@ def final_bias_geiger(
         t_from_mid = emission_times - t_mid
 
     while np.linalg.norm(delta) > epsilon and k < 100:
-        # Find the best offset
         GPS_full, esv = modelled_times(
             guess,
             transponder_coordinates_full,
@@ -485,8 +487,8 @@ def final_bias_geiger(
         real_data,
     )
 
-    """Note doing GPS_data - time_bias to include time_bias
-       in offset when calculating travel times"""
+    # Pair at offset - time_bias (Eq. 6), so the returned travel times include the
+    # time bias.
     shifted_GPS_data = GPS_data - time_bias
     if clock_drift:
         # The drift moves arrivals by ~40 us at most, far inside the 0.05 s gate,

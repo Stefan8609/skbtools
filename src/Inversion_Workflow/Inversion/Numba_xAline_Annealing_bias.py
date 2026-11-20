@@ -37,12 +37,16 @@ def simulated_annealing_bias(
     z_sample=True,
     clock_drift=False,
 ):
-    """Estimate lever arm and biases using simulated annealing.
+    """Lever arm, offset and estimate by simulated annealing (Eqs. A28-A29).
 
-    With ``clock_drift`` the estimate carries ``drift_rate`` (s/s, Eq. 6 convention)
-    as a sixth entry, as in ``final_bias_geiger``.
+    300 lever-arm moves U(-Theta, Theta) m with Theta = exp(-7 k / iter) around the
+    best lever arm; a move is kept only if it lowers the RMSE, so A30 (accepting a
+    worse move) is not implemented. The fraction of the offset is refit every 50
+    moves; ``z_sample`` then scans the lever-arm z over +-5 m in 0.1 m steps.
+    Returns ``(lever, offset, estimate)``. With ``clock_drift`` the estimate carries
+    ``drift_rate`` (s/s, Eq. 6 convention) as a sixth entry, as in
+    ``final_bias_geiger``.
     """
-    # Working state
     inversion_guess = initial_guess
     time_bias = 0.0
     esv_bias = 0.0
@@ -51,7 +55,7 @@ def simulated_annealing_bias(
     best_lever = initial_lever
     best_rmse = np.inf
 
-    # ---- initial solve at initial lever ----
+    # Alignment and fit at the initial lever arm
     transponder_coordinates = findTransponder(
         GPS_Coordinates, gps1_to_others, best_lever
     )
@@ -75,7 +79,6 @@ def simulated_annealing_bias(
     if clock_drift:
         drift_rate = inversion_estimate[5]
 
-    # Evaluate RMSE at this solution
     times_guess, esv = modelled_times(
         inversion_guess,
         transponder_coordinates,
@@ -91,7 +94,7 @@ def simulated_annealing_bias(
     )[1:4]
     best_rmse = np.sqrt(np.nanmean((GPS_full - CDOG_full) ** 2))
 
-    # ---- annealing loop ----
+    # Annealing
     k = 0
     while k < 300:
         temp = np.exp(-np.float64(k) * 7.0 * (1.0 / (iter)))
@@ -113,7 +116,7 @@ def simulated_annealing_bias(
             CDOG_data,
             GPS_data,
             transponder_coordinates,
-            offset,  # fixed offset during SA
+            offset,
             esv_bias,
             time_bias,
             dz_array,
@@ -130,7 +133,6 @@ def simulated_annealing_bias(
             best_rmse = RMSE
             best_lever = lever
 
-            # update "best" state to this candidate
             inversion_estimate = inversion_estimate_k
             inversion_guess = inversion_estimate_k[:3]
             time_bias = inversion_estimate_k[3]
@@ -171,7 +173,7 @@ def simulated_annealing_bias(
 
         k += 1
 
-    # ---- optional z scan around best lever ----
+    # Vertical scan of the lever arm
     if z_sample:
         print("\nStarting Z-scan around best lever...\n")
         best_lever_new = best_lever
@@ -218,7 +220,7 @@ def simulated_annealing_bias(
 
         best_lever = best_lever_new
 
-    # Final solve at best lever (keep your original final_bias_geiger usage)
+    # Final fit at the best lever arm
     transponder_coordinates = findTransponder(
         GPS_Coordinates, gps1_to_others, best_lever
     )

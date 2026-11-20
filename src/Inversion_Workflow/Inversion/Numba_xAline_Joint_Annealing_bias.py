@@ -32,8 +32,10 @@ def _evaluate_single_dog(
     clock_drift=False,
     drift_rate=0.0,
 ):
-    """
-    Run one DOG's final refinement and return updated state + RMSE.
+    """Final fit of one DOG at a fixed offset.
+
+    Returns ``(estimate, rmse, CDOG_full, GPS_full, CDOG_clock, GPS_clock)``, RMSE
+    in s.
     """
     (
         inversion_estimate,
@@ -64,32 +66,34 @@ def _evaluate_single_dog(
 @njit(cache=True)
 def simulated_annealing_bias_joint(
     iter,
-    CDOG_data_array,  # shape: (n_dogs, ...)
-    GPS_data,  # shared GPS data
-    GPS_Coordinates,  # shared platform trajectory
+    CDOG_data_array,
+    GPS_data,
+    GPS_Coordinates,
     gps1_to_others,
-    initial_guess_list,  # shape: (n_dogs, 3)
+    initial_guess_list,
     initial_lever,
     dz_array,
     angle_array,
     esv_matrix,
-    initial_offset_list,  # shape: (n_dogs,)
+    initial_offset_list,
     real_data=False,
     z_sample=True,
     clock_drift=False,
 ):
-    """
-    Joint simulated annealing:
-    - shared lever arm across all DOGs
-    - each DOG has its own x_R, time bias, esv bias, and offset
-    - with clock_drift, each DOG also has a drift_rate (s/s, Eq. 6 convention),
-      the sixth column of the returned estimates
-    - objective = sum of individual DOG RMSE values
+    """Simulated annealing of one lever arm shared by all DOGs.
+
+    Each DOG keeps its own position, time bias, ESV bias and offset, and with
+    ``clock_drift`` a ``drift_rate`` (s/s, Eq. 6 convention) in the sixth column of
+    the estimates. The objective is the sum of the DOG RMSEs; the moves are those of
+    ``simulated_annealing_bias``. ``CDOG_data_array`` is a typed List of (N_j, 2)
+    arrival arrays; ``GPS_data`` and ``GPS_Coordinates`` are shared;
+    ``initial_guess_list`` is (n_dogs, 3) and ``initial_offset_list`` (n_dogs,).
+    Returns ``(lever, offsets, estimates, rmses)``.
     """
     n_dogs = len(CDOG_data_array)
     n_params = 6 if clock_drift else 5
 
-    # Shared SA state
+    # Shared lever arm
     best_lever = initial_lever.copy()
     best_total_rmse = np.inf
 
@@ -101,7 +105,7 @@ def simulated_annealing_bias_joint(
     drift_rates = np.zeros(n_dogs)
     offsets = initial_offset_list.copy()
 
-    # ----- initial solve for all DOGs at initial lever -----
+    # Alignment and fit of every DOG at the initial lever arm
     transponder_coordinates = findTransponder(
         GPS_Coordinates, gps1_to_others, best_lever
     )
@@ -175,7 +179,7 @@ def simulated_annealing_bias_joint(
     best_drift_rates = drift_rates.copy()
     best_offsets = offsets.copy()
 
-    # ----- annealing loop -----
+    # Annealing
     k = 0
     while k < 300:
         temp = np.exp(-np.float64(k) * 7.0 * (1.0 / iter))
@@ -272,7 +276,7 @@ def simulated_annealing_bias_joint(
                 )
         k += 1
 
-    # ----- optional z scan -----
+    # Vertical scan of the lever arm
     if z_sample:
         print("\nStarting Z-scan around best lever...\n")
         best_lever_new = best_lever.copy()
@@ -328,7 +332,7 @@ def simulated_annealing_bias_joint(
 
         best_lever = best_lever_new
 
-    # ----- final solve for all DOGs at best lever -----
+    # Final fit of every DOG at the best lever arm
     best_transponder_coordinates = findTransponder(
         GPS_Coordinates, gps1_to_others, best_lever
     )

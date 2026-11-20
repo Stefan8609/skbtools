@@ -8,36 +8,22 @@ OFFSET_SEARCH_THRESHOLD_SECONDS = 0.5
 @njit(cache=True)
 def two_pointer_index(
     offset,
-    threshhold,
+    threshold,
     CDOG_data,
     GPS_data,
     GPS_travel_times,
     transponder_coordinates,
     esv,
 ):
-    """Synchronize DOG and GPS data streams given a time offset.
+    """Pair each GPS emission with the nearest DOG arrival within ``threshold`` (s).
 
-    Parameters
-    ----------
-    offset : float
-        Candidate time offset between the DOG and GPS records.
-    threshhold : float
-        Maximum time difference allowed when pairing samples.
-    CDOG_data : ndarray
-        ``(N, 2)`` DOG integer and fractional times.
-    GPS_data : ndarray
-        ``(M,)`` GPS absolute times.
-    GPS_travel_times : ndarray
-        Modeled travel times from GPS to transponder.
-    transponder_coordinates : ndarray
-        Positions of the transponder for each GPS sample.
-    esv : ndarray
-        Effective sound speeds for each GPS sample.
-
-    Returns
-    -------
-    tuple
-        ``(CDOG_clock, CDOG_full, GPS_clock, GPS_full, transponder_coords, esv_full)``.
+    Eqs. A19-A20: arrival t' pairs with emission t when |(t' - offset) - (t + T_mod)|
+    < gamma; of several arrivals in the gate the nearest is taken, and each arrival is
+    used once. The paper's gamma is 0.4 s; the call sites use 0.05-0.6 s.
+    ``CDOG_data`` is (N, 2) integer and fractional seconds. Returns ``(CDOG_clock,
+    CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full)``: shifted
+    arrival time, observed travel time (Eq. A21), predicted arrival time and modelled
+    travel time of each pair, with the pair's transducer position and ESV.
     """
     CDOG_times = CDOG_data[:, 0] + CDOG_data[:, 1] - offset
     GPS_times = GPS_data + GPS_travel_times
@@ -53,8 +39,8 @@ def two_pointer_index(
     CDOG_pointer, count = 0, 0
 
     for GPS_pointer in range(len(GPS_data)):
-        lower = GPS_times[GPS_pointer] - threshhold
-        upper = GPS_times[GPS_pointer] + threshhold
+        lower = GPS_times[GPS_pointer] - threshold
+        upper = GPS_times[GPS_pointer] + threshold
 
         while CDOG_pointer < len(CDOG_data) and CDOG_times[CDOG_pointer] <= lower:
             CDOG_pointer += 1
@@ -88,7 +74,7 @@ def two_pointer_index(
     transponder_coordinates_full = transponder_coordinates_full[:count]
     esv_full = esv_full[:count]
 
-    # Best travel times for known offset
+    # Observed travel times (Eq. A21)
     CDOG_full = CDOG_clock - (GPS_clock - GPS_full)
 
     return (
@@ -115,11 +101,11 @@ def filter_close_receptions(CDOG_data, minimum_interval=0.95):
 
 @njit(cache=True)
 def _coherence_score_from_pairs(CDOG_full, GPS_full):
-    """
-    obj = (1 - R) / sqrt(N)   (smaller is better)
-    where:
-      w = wrap(CDOG_full - GPS_full) into [-0.5, 0.5)
-      R = |mean(exp(i 2π w))|
+    """Circular-variance score (1 - R) / sqrt(N) of the fractional residuals.
+
+    R = |mean(exp(2 pi i w))| for w = CDOG_full - GPS_full wrapped into [-0.5, 0.5)
+    s; smaller is better. Eq. A22 uses 2 (1 - R); the 1 / sqrt(N) factor favours
+    offsets that pair more arrivals.
     """
     N = len(CDOG_full)
     if N == 0:
@@ -153,13 +139,11 @@ def find_int_offset(
     offset=0,
     halfwindow=10000,
 ):
-    """
-    Refine an offset estimate by minimizing
-    circular variance (1 - R)/sqrt(N)
-    over progressively smaller step sizes.
+    """Offset (s) minimizing the circular-variance score, on ever finer steps.
 
-    The default window, -10000 to 10000 s, covers negative DOG clock offsets
-    (Puerto Rico: -19 s and -7459 s) as well as positive ones (Bermuda: 1866-3175 s).
+    Steps of 10 s down to 0.1 ms within ``offset +- halfwindow``. The default
+    window, -10000 to 10000 s, covers negative DOG clock offsets (Puerto Rico: -19 s
+    and -7459 s) as well as positive ones (Bermuda: 1866-3175 s).
     """
     search_lower = offset - halfwindow
     search_upper = offset + halfwindow
@@ -208,7 +192,7 @@ def find_int_offset(
 def find_subint_offset(
     offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
 ):
-    """Search for the fractional time offset with minimum RMSE."""
+    """Offset (s) within 0.5 s of ``offset`` minimizing the RMSE (Eq. A23)."""
     # Initialize values for loop
     search_lower, search_upper = offset - 0.5, offset + 0.5
     lower, upper = search_lower, search_upper
@@ -221,10 +205,9 @@ def find_subint_offset(
         best_RMSE = np.inf
         level_best_offset = best_offset
         for lag in np.arange(lower, upper + interval, interval):
-            # Round to prevent numpy float errors
-            lag = np.round(lag, 8)  # Adjust precision based on your interval
+            # Round away the float error of np.arange
+            lag = np.round(lag, 8)
 
-            # Index data using lag
             CDOG_full, GPS_clock, GPS_full = two_pointer_index(
                 lag,
                 OFFSET_SEARCH_THRESHOLD_SECONDS,
@@ -239,7 +222,6 @@ def find_subint_offset(
             diff_data = GPS_full - CDOG_full
             RMSE = np.sqrt(np.nanmean(diff_data**2))
 
-            # Update best offset if RMSE is improved
             if RMSE < best_RMSE:
                 level_best_offset = lag
                 best_RMSE = RMSE
