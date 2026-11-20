@@ -21,9 +21,7 @@ if __name__ == "__main__":
     neighborhood_file = "PuertoRico_SVP_Neighborhood_20230118.nc"
     profile_file = "PuertoRico_SVP_Profile_20230118.nc"
 
-    # ------------------------------------------------------------
     # Download a small neighborhood around TDOG 02
-    # ------------------------------------------------------------
 
     copernicusmarine.subset(
         dataset_id="cmems_mod_glo_phy_my_0.083deg_P1D-m",
@@ -40,9 +38,7 @@ if __name__ == "__main__":
         output_filename=neighborhood_file,
     )
 
-    # ------------------------------------------------------------
     # Find deepest valid depth at every GLORYS grid cell
-    # ------------------------------------------------------------
 
     neighborhood_path = output_path / neighborhood_file
     ds = xr.open_dataset(neighborhood_path)
@@ -97,9 +93,7 @@ if __name__ == "__main__":
             f"{candidate['deepest_depth']:18.1f}"
         )
 
-    # ------------------------------------------------------------
     # Choose closest cell that is sufficiently deep
-    # ------------------------------------------------------------
 
     deep_candidates = [
         candidate
@@ -122,9 +116,7 @@ if __name__ == "__main__":
     print(f"Distance from TDOG:  {best['distance_km']:.2f} km")
     print(f"Deepest valid level: {best['deepest_depth']:.1f} m")
 
-    # ------------------------------------------------------------
     # Extract selected profile
-    # ------------------------------------------------------------
 
     selected = ds.isel(
         latitude=best["i"],
@@ -145,9 +137,7 @@ if __name__ == "__main__":
 
     print(f"\nSaved selected profile to:\n{output_path / profile_file}")
 
-    # ------------------------------------------------------------
     # Plot temperature and salinity with depth
-    # ------------------------------------------------------------
 
     fig, axs = plt.subplots(1, 2, figsize=(9, 8), sharey=True)
 

@@ -52,7 +52,7 @@ def plot_GNSS(path, nthresh=4, pthresh=15.0, downsample=1, save=False, show=Fals
     good = (pdop < pthresh) & (pdop != 0) & (nsats > nthresh)
     bad = ~good
 
-    # ---- Larger figure and cleaner layout ----
+    # Larger figure and cleaner layout
     fig = plt.figure(figsize=(12, 8))
     gs = fig.add_gridspec(
         2, 2, width_ratios=[1.2, 1], height_ratios=[1, 1], wspace=0.25, hspace=0.3
@@ -62,7 +62,7 @@ def plot_GNSS(path, nthresh=4, pthresh=15.0, downsample=1, save=False, show=Fals
     ax_ht = fig.add_subplot(gs[0, 1])
     ax_np = fig.add_subplot(gs[1, 1])
 
-    # ---- Map: lon/lat scatter ----
+    # Map: lon/lat scatter
     sz = 15
     cvals = np.linspace(1, 10, idx.size)
     gi = idx[good[idx]]
@@ -89,7 +89,7 @@ def plot_GNSS(path, nthresh=4, pthresh=15.0, downsample=1, save=False, show=Fals
     t_thin = t[idx]
     cbar.set_ticklabels([str(t_thin[i]) for i in ticks_i])
 
-    # ---- Height vs time ----
+    # Height vs time
     ht_good = ht.copy()
     ht_good[bad] = np.nan
     ht_bad = ht.copy()
@@ -107,7 +107,7 @@ def plot_GNSS(path, nthresh=4, pthresh=15.0, downsample=1, save=False, show=Fals
     ax_ht.set_title("Height relative to WGS84")
     ax_ht.grid(True)
 
-    # ---- Satellites & PDOP ----
+    # Satellites & PDOP
     ax_left = ax_np
     ax_right = ax_left.twinx()
 
@@ -128,7 +128,7 @@ def plot_GNSS(path, nthresh=4, pthresh=15.0, downsample=1, save=False, show=Fals
     ax_left.set_title("Number of Satellites and PDOP")
     ax_left.grid(True)
 
-    # ---- Annotation ----
+    # Annotation
     fig.suptitle("Ship GNSS Summary", fontsize=14, y=0.95)
     if save:
         fig.savefig(gps_data_path(str(path).replace(".mat", "") + ".pdf"), dpi=300)

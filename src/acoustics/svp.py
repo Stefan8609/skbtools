@@ -8,7 +8,7 @@ from puertorico_data import gps_data_path
 
 
 def depth_to_pressure(z, lat):
-    """Convert depth in meters to pressure in bars."""
+    """Pressure (bar) at depth z (m) and latitude lat (deg), Eq. A12."""
     c1 = (5.92 + 5.25 * np.sin(np.abs(lat) * np.pi / 180) ** 2) * 1e-3
     c2 = 2.21e-6
     pressure = ((1 - c1) - np.sqrt((1 - c1) ** 2 - 4 * c2 * z)) / (2 * c2)
@@ -82,12 +82,9 @@ def potential_to_insitu_temperature(S, theta, P, tolerance=1e-10, max_iterations
 
 
 def DelGrosso_SV(S, T, P):
-    """
-    Del Grosso sound velocity.
+    """Del Grosso (1974) sound speed (m/s), Eq. A13.
 
-    S : Practical Salinity
-    T : in-situ temperature (deg C)
-    P : pressure (bar)
+    S practical salinity, T in-situ temperature (deg C), P pressure (bar).
     """
     P = P * 1.019716213  # bar -> kg/cm^2
 

@@ -78,7 +78,7 @@ def perturb_profile(
     mixed_layer_depth_m=30.0,
     mixed_layer_taper_m=30.0,
 ):
-    """Return the perturbed sound speed c(z + eta(z)) + mixed-layer change, m/s.
+    """Perturbed profile (Eq. B34): c(z + eta(z)) plus a mixed-layer change, m/s.
 
     ``depth`` (m, increasing) and ``c`` (m/s) are the reference profile.
     ``heave_amplitude_m`` is the peak displacement A, positive moving the profile

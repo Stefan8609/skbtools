@@ -9,16 +9,19 @@ from bermuda_data import gps_data_path
 
 @njit
 def construct_esv(depth, cz):
-    """Generate an effective sound velocity lookup table."""
+    """ESV table (Eq. A16): straight-line range over ray travel time.
+
+    Rows are receiver depths z (m; dz = z - z_a below the 2 m transducer), columns
+    elevation angles of 20-90 deg. Returns ``(beta_array, z_array, esv_matrix)``.
+    """
     beta_array = np.linspace(20, 90, 400)
-    # dz = z - z_a = 5150-5300 m, 1 m step: covers every DOG with at least 48 m of
-    # margin (DOG 1 queries 5198-5201 m, so the old 5199-5249 m range clamped it).
+    # dz = z - z_a = 5150-5300 m, 1 m step: every DOG with at least 48 m of margin
+    # (DOG 1 queries 5198-5201 m)
     z_array = np.linspace(5152, 5302, 151)
 
     esv_matrix = np.zeros((len(z_array), len(beta_array)))
     z_a = 2.0
 
-    # Pre-calculate constants
     beta_rad = beta_array * np.pi / 180
     tan_beta = np.tan(beta_rad)
 
@@ -68,7 +71,7 @@ if __name__ == "__main__":
     depth = np.ascontiguousarray(depth)
     cz = np.ascontiguousarray(cz)
 
-    # Quick sanity plot (optional)
+    # Extended SVP
     plt.figure()
     plt.plot(cz, depth, label="Extended SVP")
     plt.gca().invert_yaxis()
@@ -85,7 +88,6 @@ if __name__ == "__main__":
     print(z_a)
     print(cz[-1])
 
-    # Time the execution
     start_time = time()
     beta_array, z_array, esv_matrix = construct_esv(depth, cz)
     end_time = time()
@@ -108,5 +110,7 @@ if __name__ == "__main__":
         "matrice": esv_matrix,
         "transducer_depth": z_a,
     }
-    # New file: global_table_esv_extended.mat is kept as it was.
+    # Overwrites the table of the Bermuda inversions; the table from before the
+    # 2026-10-08 ray-tracing fix is kept as
+    # global_table_esv_extended_before_ray_fix_20261008.mat
     sio.savemat(gps_data_path("ESV_Tables/global_table_esv_extended.mat"), data_to_save)

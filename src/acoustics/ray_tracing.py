@@ -6,7 +6,12 @@ from bermuda_data import gps_data_path
 
 @njit
 def ray_tracing(iga, z_a, z_b, depth, cz):
-    """Return horizontal range, vertical separation (m), and travel time (s)."""
+    """Ray from depth z_a to z_b (m) at launch elevation iga (deg), Eqs. A14-A15.
+
+    The integrals are summed over the profile layers. Returns horizontal range,
+    vertical separation (m) and travel time (s); range and time are NaN when the
+    ray turns before z_b.
+    """
     if depth.ndim != 1 or cz.ndim != 1 or depth.size != cz.size or depth.size < 2:
         raise ValueError(
             "depth and cz must be matching 1D arrays with at least 2 points"
@@ -42,26 +47,24 @@ def ray_tracing(iga, z_a, z_b, depth, cz):
     cz_slice[-1] = np.interp(z_b, depth, cz)
     dz = depth_slice[1:] - depth_slice[:-1]
 
-    # Initial conditions
+    # theta from the vertical; sin(theta) / c is constant along the ray
     theta = (90 - iga) * np.pi / 180
     c = cz_slice[0]
 
-    # Pre-calculate sine of theta
     sin_theta = np.sin(theta)
 
-    # Check for total internal reflection
+    # The ray turns before z_b
     if np.any(cz_slice * sin_theta / c >= 1.0):
         return np.nan, z_b - z_a, np.nan
 
     c_ratios = 0.5 * (cz_slice[1:] + cz_slice[:-1]) / c
     thetas = np.arcsin(c_ratios * sin_theta)
 
-    # Vectorized calculations for distance and time
+    # Eqs. A14-A15 per layer, at the mean sound speed of its ends
     dx = dz * np.tan(thetas)
     ds = np.sqrt(dx**2 + dz**2)
     dt = ds / (c_ratios * c)
 
-    # Sum up the results
     x = np.sum(dx)
     time = np.sum(dt)
 

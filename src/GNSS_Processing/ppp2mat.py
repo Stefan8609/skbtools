@@ -218,7 +218,3 @@ if __name__ == "__main__":
     plt.ylabel("Number of Satellites")
     plt.savefig(path, dpi=300)
     plt.show()
-
-
-# Plot trajectory
-# Plot PDOP
