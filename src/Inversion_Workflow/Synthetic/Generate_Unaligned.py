@@ -25,38 +25,15 @@ def generateUnaligned(
     gps1_to_transponder=None,
     drift_rate=0.0,
 ):
-    """Generate noisy travel times and corrupted CDOG tags for a realistic trajectory.
+    """Box-pattern synthetic arrivals (Eq. B35) with dropped tags (App. B.3).
 
-    Parameters
-    ----------
-    n : int
-        Number of points along the synthetic path.
-    time_noise : float
-        Standard deviation of arrival time noise, s.
-    position_noise : float
-        Standard deviation of the noise added to each GNSS receiver coordinate, m.
-    offset : float
-        Base offset applied to DOG times.
-    esv_bias, time_bias : float
-        Bias values applied to ESV and times. The DOG clock reads
-        ``t + T + offset + time_bias``, so the offset of Eq. 6 is
-        ``offset + time_bias`` and the inversion recovers
-        ``offset_est - time_bias_est = offset + time_bias``.
-    dz_array, angle_array, esv_matrix : ndarray
-        Lookup table for the ESV.
-    gps1_to_others, gps1_to_transponder : ndarray, optional
-        Geometry offsets. Defaults are used if not provided.
-    drift_rate : float, optional
-        Clock drift, s/s, Eq. 6 convention: the DOG clock also gains
-        ``drift_rate * (t - t_mid)``, with ``t_mid`` half-way through the GPS
-        epochs (the inversion's ``t_mid`` uses the paired epochs instead).
-
-    Returns
-    -------
-    tuple
-        (CDOG_mat, CDOG, GPS_Coordinates, GPS_time, transponder_coordinates)
-        where CDOG_mat has shape (m, 2) with integer and fractional clock parts,
-        after removal of several random contiguous segments.
+    The DOG clock reads ``t + T + offset + time_bias`` plus ``time_noise`` (s) and
+    ``drift_rate * (t - t_mid)`` (s/s, Eq. 6 convention; ``t_mid`` half-way through
+    the GPS epochs, while the inversion's uses the paired epochs). So the offset of
+    Eq. 6 is ``offset + time_bias`` and the inversion recovers ``offset_est -
+    time_bias_est``. ``position_noise`` (m) is added to every receiver coordinate.
+    Returns ``(CDOG_mat, CDOG, GPS_Coordinates, GPS_time, transponder_coordinates)``;
+    ``CDOG_mat`` is (m, 2) integer and fractional seconds.
     """
     if gps1_to_others is None:
         gps1_to_others = np.array(

@@ -50,9 +50,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     NOMINAL_SOUND_SPEED_MPS,
 )
 
-# -------------------------
 # Config
-# -------------------------
 EXPERIMENT = "sanity"
 AMPLITUDE_SET = "guess"  # key of AMPLITUDES: "guess" | "models_low" | "models_high"
 N_REALIZATIONS = 10
@@ -104,8 +102,8 @@ AMPLITUDES = {
 }
 COMMON = {
     "offset_s": 1991.01236648,
-    "drift_rate_s_per_s": 1e-9,  # R3 M1: CSAC frequency offsets of 1e-10 to 1e-9
-    "transmit_delay_s": 30e-6,  # R3 M1: "tens of microseconds"
+    "drift_rate_s_per_s": 1e-9,  # CSAC frequency offsets are 1e-10 to 1e-9
+    "transmit_delay_s": 30e-6,  # tens of microseconds
     "gnss_common_sd_m": (0.02, 0.02, 0.05),  # kinematic PPP; guess
     "gnss_common_tau_s": 1800.0,
     "timing_noise_s": 20e-6,  # paper, receive side
@@ -113,7 +111,7 @@ COMMON = {
 }
 PRESETS = {
     # dc(t) shaped like our own estimate. That estimate already contains vessel-side
-    # GNSS error (K7), so the relative GNSS error is only iid antenna noise here.
+    # GNSS error, so the relative GNSS error is only iid antenna noise here.
     "observed": {
         **COMMON,
         "dc_series": "observed",
@@ -270,7 +268,7 @@ def experiment_cells(experiment, amplitudes="guess"):
                     cells.append((name, knobs, {"lever": lever, "clock_drift": False}))
     elif experiment == "halfsplit":
         # Each half of the survey inverted alone (lever free), as the real-data
-        # half-split (R4 5): is the half-to-half spread a fair measure of the error?
+        # half-split: is the half-to-half spread a fair measure of the error?
         for preset in PRESETS:
             for half in (1, 2):
                 settings = {"lever": "lever_free", "clock_drift": False, "half": half}

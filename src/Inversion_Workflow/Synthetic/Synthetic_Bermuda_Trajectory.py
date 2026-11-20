@@ -21,27 +21,15 @@ def bermuda_trajectory(
     DOG_num=3,
     drift_rate=0.0,
 ):
-    """Generate synthetic Bermuda trajectory and travel times.
+    """Synthetic arrivals (Eq. B35) on the real Bermuda track of one DOG.
 
-    Parameters
-    ----------
-    time_noise : float
-        Standard deviation of timing noise added to the data.
-    position_noise : float
-        Standard deviation of position noise in metres.
-    dz_array, angle_array, esv_matrix : ndarray
-        Effective sound velocity lookup tables.
-    DOG_num : int, optional
-        DOG data set to load (1–4).
-    drift_rate : float, optional
-        Clock drift, s/s, Eq. 6 convention: the DOG clock also gains
-        ``drift_rate * (t - t_mid)``, with ``t_mid`` half-way through the GPS
-        epochs (the inversion's ``t_mid`` uses the paired epochs instead).
-
-    Returns
-    -------
-    tuple of numpy.ndarray
-        ``(CDOG_data, CDOG, GPS_Coordinates, GPS_data, transponder_coordinates)``.
+    The GNSS grid is the rigid ``gps1_to_others`` (vessel frame, m) fitted to the
+    real receivers at each epoch, so only GPS1 keeps its real noise. The DOG clock
+    reads ``t + T + time_bias + offset`` plus ``time_noise`` (s) and
+    ``drift_rate * (t - t_mid)`` (s/s, Eq. 6 convention; ``t_mid`` half-way through
+    the GPS epochs, while the inversion's uses the paired epochs). ``position_noise``
+    (m) is then added to every receiver. Returns ``(CDOG_data, CDOG,
+    GPS_Coordinates, GPS_data, transponder_coordinates)``.
     """
     if gps1_to_others is None:
         gps1_to_others = GPS1_TO_OTHERS

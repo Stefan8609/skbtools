@@ -55,9 +55,7 @@ from Inversion_Workflow.Synthetic.Realistic_Synthetic_Ensemble import (
     with_random_directions,
 )
 
-# -------------------------
 # Config
-# -------------------------
 PRESET = "random"
 AMPLITUDE_SET = "guess"  # "guess" | "models_low" | "models_high" (Ensemble AMPLITUDES)
 RUN_VARIANT = "ar1_common30"

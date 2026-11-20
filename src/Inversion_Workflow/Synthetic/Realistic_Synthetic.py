@@ -2,7 +2,7 @@
 
 The paper's synthetics (App. B) have iid noise and a time-invariant sound speed. They
 leave about 4.5 cm of range residual against 15-24 cm in the Bermuda data, so they
-miss the error that dominates the real data (R3 M3, R4 4). ``realistic_synthetic``
+miss the error that dominates the real data. ``realistic_synthetic``
 starts from the paper's generator and adds the obstacles a one-way system meets, one
 block each, in the order they act on the data:
 
@@ -61,7 +61,7 @@ CDOG_AUGMENTS = {
 # Common dc(t) estimated from the Bermuda data: posterior mean of the "ar1_common30"
 # model (one dc series shared by DOGs 1/3/4 on 30-min windows, zero mean over the
 # windows), local chains at commit d2d00cb. Window edges in GPS seconds; values in
-# m/s. It contains vessel-side GNSS error as well as ocean (REVISION_REFERENCE K7).
+# m/s. It contains vessel-side GNSS error as well as ocean.
 OBSERVED_DC_EDGES_GPS_S = np.array(
     [20116.0, 23716.0] + list(np.arange(25516.0, 68716.1, 1800.0)) + [70400.0]
 )

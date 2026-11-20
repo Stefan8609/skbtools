@@ -2,16 +2,9 @@ import numpy as np
 from numba import njit
 
 
-# Numba-friendly helpers
 @njit(cache=True, fastmath=True)
 def _rot_matrix_xyz(rx: float, ry: float, rz: float) -> np.ndarray:
-    """Rotation matrix with intrinsic X (roll), Y (pitch), Z (yaw) order.
-
-    Parameters
-    ----------
-    rx, ry, rz : float
-        Rotations (radians) about x, y, z respectively.
-    """
+    """Rotation matrix X (roll) @ Y (pitch) @ Z (yaw), angles in radians."""
     cx, sx = np.cos(rx), np.sin(rx)
     cy, sy = np.cos(ry), np.sin(ry)
     cz, sz = np.cos(rz), np.sin(rz)
@@ -31,7 +24,7 @@ def _rot_matrix_xyz(rx: float, ry: float, rz: float) -> np.ndarray:
     zRot[1, 0], zRot[1, 1], zRot[1, 2] = sz, cz, 0.0
     zRot[2, 0], zRot[2, 1], zRot[2, 2] = 0.0, 0.0, 1.0
 
-    # totalRot = xRot @ yRot @ zRot (explicit to avoid creating temporaries)
+    # totalRot = xRot @ yRot @ zRot, written out
     tmp = np.empty((3, 3))
     totalRot = np.empty((3, 3))
 
@@ -64,12 +57,13 @@ def _apply_rot(mat: np.ndarray, vec: np.ndarray) -> np.ndarray:
     return out
 
 
-# Trajectory generator (Numba-compatible, no Python random)
 @njit(cache=True, fastmath=True)
 def generateRealistic(n, gps1_to_others=None, gps1_to_transponder=None):
-    """Create a synthetic survey with four legs and random boat motion.
+    """Box-pattern survey of four legs with random vessel motion.
 
-    The path length is truncated to a multiple of 4 to form a box pattern.
+    ``n`` is truncated to a multiple of 4. Returns ``(CDog, GPS_Coordinates,
+    transponder_coordinates, gps1_to_others, gps1_to_transponder)`` in m, with
+    GPS_Coordinates (m, 4, 3) and transponder_coordinates (m, 3).
     """
     if gps1_to_others is None:
         gps1_to_others = np.array(

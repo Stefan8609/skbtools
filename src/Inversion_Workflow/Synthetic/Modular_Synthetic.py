@@ -86,8 +86,7 @@ def modular_synthetic(
     entry of ``inversion_result``.
     """
     np.set_printoptions(suppress=True)
-    # Choose ESV table for generation and to run synthetic
-    #   Perhaps make the file link a parameter of the function
+    # ESV tables for generation and inversion
 
     dz_array_generate, angle_array_generate, esv_matrix_generate = load_esv_table(
         gps_data_path(f"ESV_Tables/{esv1}.mat")
@@ -97,7 +96,7 @@ def modular_synthetic(
         gps_data_path(f"ESV_Tables/{esv2}.mat")
     )
 
-    # Choose Generate type:
+    # Generator:
     #   0: Generate Unaligned Realistic Data
     #   1: Use Bermuda Dataset
     if generate_type == 0:
@@ -171,7 +170,7 @@ def modular_synthetic(
     # offset - time_bias at inversion; only this combination is identified.
     true_dt = true_offset + in_time_bias
     print("True clock offset", true_dt)
-    # Choose Inversion_Workflow Type
+    # Inversion:
     #   0: Just xAline Geiger (true lever arm)
     #   1: Gauss-Newton offset search (integer second and lever arm)
     #   2: Simulated annealing over the integer seconds (validation of 1)
