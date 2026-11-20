@@ -8,8 +8,7 @@ from Inversion_Workflow.Inversion.Numba_xAline import (
 )
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     esv_gradient,
-    calculateTimesRayTracing_Bias,
-    calculateTimesRayTracing_Bias_Real,
+    modelled_times,
 )
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from numba import njit
@@ -126,24 +125,15 @@ def _geiger_at_offset(
         estimate = np.append(estimate, drift_rate)
 
     # Initial offset estimate
-    if not real_data:
-        times_guess, esv = calculateTimesRayTracing_Bias(
-            guess,
-            transponder_coordinates,
-            esv_bias,
-            dz_array,
-            angle_array,
-            esv_matrix,
-        )
-    else:
-        times_guess, esv = calculateTimesRayTracing_Bias_Real(
-            guess,
-            transponder_coordinates,
-            esv_bias,
-            dz_array,
-            angle_array,
-            esv_matrix,
-        )
+    times_guess, esv = modelled_times(
+        guess,
+        transponder_coordinates,
+        esv_bias,
+        dz_array,
+        angle_array,
+        esv_matrix,
+        real_data,
+    )
     offset_data = filter_close_receptions(CDOG_data)
     if initial_offset is None:
         offset = find_int_offset(
@@ -170,24 +160,15 @@ def _geiger_at_offset(
 
     while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
-        if not real_data:
-            times_guess, esv = calculateTimesRayTracing_Bias(
-                guess,
-                transponder_coordinates,
-                esv_bias,
-                dz_array,
-                angle_array,
-                esv_matrix,
-            )
-        else:
-            times_guess, esv = calculateTimesRayTracing_Bias_Real(
-                guess,
-                transponder_coordinates,
-                esv_bias,
-                dz_array,
-                angle_array,
-                esv_matrix,
-            )
+        times_guess, esv = modelled_times(
+            guess,
+            transponder_coordinates,
+            esv_bias,
+            dz_array,
+            angle_array,
+            esv_matrix,
+            real_data,
+        )
 
         (
             CDOG_clock,
@@ -400,14 +381,15 @@ def final_bias_geiger(
     if clock_drift:
         estimate = np.append(estimate, drift_rate)
 
-    if not real_data:
-        times_guess, esv = calculateTimesRayTracing_Bias(
-            guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
-        )
-    else:
-        times_guess, esv = calculateTimesRayTracing_Bias_Real(
-            guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
-        )
+    times_guess, esv = modelled_times(
+        guess,
+        transponder_coordinates,
+        esv_bias,
+        dz_array,
+        angle_array,
+        esv_matrix,
+        real_data,
+    )
 
     (
         CDOG_clock,
@@ -434,24 +416,15 @@ def final_bias_geiger(
 
     while np.linalg.norm(delta) > epsilon and k < 100:
         # Find the best offset
-        if not real_data:
-            GPS_full, esv = calculateTimesRayTracing_Bias(
-                guess,
-                transponder_coordinates_full,
-                esv_bias,
-                dz_array,
-                angle_array,
-                esv_matrix,
-            )
-        else:
-            GPS_full, esv = calculateTimesRayTracing_Bias_Real(
-                guess,
-                transponder_coordinates_full,
-                esv_bias,
-                dz_array,
-                angle_array,
-                esv_matrix,
-            )
+        GPS_full, esv = modelled_times(
+            guess,
+            transponder_coordinates_full,
+            esv_bias,
+            dz_array,
+            angle_array,
+            esv_matrix,
+            real_data,
+        )
 
         residuals = (GPS_full - time_bias) - CDOG_full
         if clock_drift:
@@ -484,14 +457,15 @@ def final_bias_geiger(
             drift_rate = estimate[5]
         k += 1
 
-    if not real_data:
-        times_guess, esv = calculateTimesRayTracing_Bias(
-            guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
-        )
-    else:
-        times_guess, esv = calculateTimesRayTracing_Bias_Real(
-            guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
-        )
+    times_guess, esv = modelled_times(
+        guess,
+        transponder_coordinates,
+        esv_bias,
+        dz_array,
+        angle_array,
+        esv_matrix,
+        real_data,
+    )
 
     """Note doing GPS_data - time_bias to include time_bias
        in offset when calculating travel times"""
@@ -590,24 +564,15 @@ def lever_bias_geiger(
     rms, n_pairs = np.inf, 0
     for iteration in range(LEVER_GN_MAX_ITERATIONS):
         transponder_coordinates = lever_origin + lever_rotation @ lever
-        if real_data:
-            times, esv = calculateTimesRayTracing_Bias_Real(
-                estimate[:3],
-                transponder_coordinates,
-                estimate[4],
-                dz_array,
-                angle_array,
-                esv_matrix,
-            )
-        else:
-            times, esv = calculateTimesRayTracing_Bias(
-                estimate[:3],
-                transponder_coordinates,
-                estimate[4],
-                dz_array,
-                angle_array,
-                esv_matrix,
-            )
+        times, esv = modelled_times(
+            estimate[:3],
+            transponder_coordinates,
+            estimate[4],
+            dz_array,
+            angle_array,
+            esv_matrix,
+            real_data,
+        )
         gate = 0.5 if iteration < LEVER_GN_WIDE_GATE_ITERATIONS else 0.05
         (
             CDOG_clock,
@@ -739,24 +704,15 @@ def gauss_newton_offset_search(
     except np.linalg.LinAlgError:
         # Too few pairs for the fit after the circular-variance alignment: keep
         # that alignment; the search below refits at every candidate second.
-        if real_data:
-            times, esv = calculateTimesRayTracing_Bias_Real(
-                initial_guess,
-                transponder_coordinates,
-                0.0,
-                dz_array,
-                angle_array,
-                esv_matrix,
-            )
-        else:
-            times, esv = calculateTimesRayTracing_Bias(
-                initial_guess,
-                transponder_coordinates,
-                0.0,
-                dz_array,
-                angle_array,
-                esv_matrix,
-            )
+        times, esv = modelled_times(
+            initial_guess,
+            transponder_coordinates,
+            0.0,
+            dz_array,
+            angle_array,
+            esv_matrix,
+            real_data,
+        )
         offset_data = filter_close_receptions(CDOG_data)
         if initial_offset is None:
             aligned_offset = find_int_offset(

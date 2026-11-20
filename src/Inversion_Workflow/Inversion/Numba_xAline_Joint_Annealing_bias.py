@@ -1,10 +1,7 @@
 import numpy as np
 from numba import njit
 
-from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
-    calculateTimesRayTracing_Bias,
-    calculateTimesRayTracing_Bias_Real,
-)
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import modelled_times
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline import (
     find_subint_offset,
@@ -128,24 +125,15 @@ def simulated_annealing_bias_joint(
             drift_rates[j] = inversion_estimate_j[5]
         offsets[j] = offset_j
 
-        if not real_data:
-            times_guess, esv = calculateTimesRayTracing_Bias(
-                inversion_guesses[j],
-                transponder_coordinates,
-                esv_biases[j],
-                dz_array,
-                angle_array,
-                esv_matrix,
-            )
-        else:
-            times_guess, esv = calculateTimesRayTracing_Bias_Real(
-                inversion_guesses[j],
-                transponder_coordinates,
-                esv_biases[j],
-                dz_array,
-                angle_array,
-                esv_matrix,
-            )
+        times_guess, esv = modelled_times(
+            inversion_guesses[j],
+            transponder_coordinates,
+            esv_biases[j],
+            dz_array,
+            angle_array,
+            esv_matrix,
+            real_data,
+        )
 
         CDOG_full, GPS_clock, GPS_full = two_pointer_index(
             offsets[j],
@@ -257,24 +245,15 @@ def simulated_annealing_bias_joint(
             )
 
             for j in range(n_dogs):
-                if not real_data:
-                    times_guess, esv = calculateTimesRayTracing_Bias(
-                        best_inversion_guesses[j],
-                        best_transponder_coordinates,
-                        best_esv_biases[j],
-                        dz_array,
-                        angle_array,
-                        esv_matrix,
-                    )
-                else:
-                    times_guess, esv = calculateTimesRayTracing_Bias_Real(
-                        best_inversion_guesses[j],
-                        best_transponder_coordinates,
-                        best_esv_biases[j],
-                        dz_array,
-                        angle_array,
-                        esv_matrix,
-                    )
+                times_guess, esv = modelled_times(
+                    best_inversion_guesses[j],
+                    best_transponder_coordinates,
+                    best_esv_biases[j],
+                    dz_array,
+                    angle_array,
+                    esv_matrix,
+                    real_data,
+                )
 
                 best_offsets[j] = find_subint_offset(
                     best_offsets[j],

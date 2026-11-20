@@ -59,6 +59,26 @@ def calculateTimesRayTracing_Bias_Real(
 
 
 @njit
+def modelled_times(
+    guess,
+    transponder_coordinates,
+    esv_bias,
+    dz_array,
+    angle_array,
+    esv_matrix,
+    real_data,
+):
+    """Travel times and ESVs: geodetic depths for real data, ECEF z for synthetics."""
+    if real_data:
+        return calculateTimesRayTracing_Bias_Real(
+            guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
+        )
+    return calculateTimesRayTracing_Bias(
+        guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
+    )
+
+
+@njit
 def esv_gradient(
     guess, transponder_coordinates, dz_array, angle_array, esv_matrix, real_data
 ):
