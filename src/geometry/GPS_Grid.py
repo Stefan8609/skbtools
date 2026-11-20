@@ -8,18 +8,10 @@ np.set_printoptions(suppress=True)
 
 
 def GPS_Lever_arms(GPS_Coordinates):
-    """Compute lever arms between GPS receivers. and give the average orientation
-     and angle with respect to vessel
+    """Receiver positions (4, N, 3) relative to GPS1 in the plane of the grid.
 
-    Parameters
-    ----------
-    GPS_Coordinates : array-like, shape (N, 4, 3)
-        Positions of the four GPS units for ``N`` time steps.
-
-    Returns
-    -------
-    numpy.ndarray
-        Array of GPS Grid vectors with shape ``(4, N, 3)``.
+    This is how ``gps1_to_others`` was derived (vessel frame, m). Prints and plots the
+    mean grid and the angle of the GPS1-GPS2 normal.
     """
     all_arms = np.zeros((4, len(GPS_Coordinates), 3))
     xaxes = []

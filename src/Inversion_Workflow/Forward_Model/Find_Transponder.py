@@ -6,24 +6,12 @@ from geometry.Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 
 @njit(cache=True)
 def findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder):
-    """Estimate transponder positions for each time step.
+    """Transducer positions (N, 3) from the GPS positions (N, 4, 3) of each epoch.
 
-    Parameters
-    ----------
-    GPS_Coordinates : ndarray
-        ``(N, 4, 3)`` array of GPS positions for each time step.
-    gps1_to_others : ndarray
-        Relative positions of the additional GPS receivers to GPS1.
-    gps1_to_transponder : ndarray
-        Initial guess for the lever arm from GPS1 to the transponder.
-
-    Returns
-    -------
-    ndarray
-        ``(N, 3)`` array of transponder coordinates.
+    Eq. 1 with A7-A11: the rigid-body fit of the receiver grid ``gps1_to_others``
+    (vessel frame, m from GPS1) to each epoch moves the lever arm
+    ``gps1_to_transponder``. ECEF metres.
     """
-    # Given initial relative GPS locations and transponder and GPS Coords
-    # at each timestep
     xs, ys, zs = gps1_to_others.T
     initial_transponder = gps1_to_transponder
     n = len(GPS_Coordinates)

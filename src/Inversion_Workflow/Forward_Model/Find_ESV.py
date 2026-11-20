@@ -14,29 +14,14 @@ def load_esv_table(path):
 
 @njit
 def find_esv(beta, dz, dz_array, angle_array, esv_matrix):
-    """Bilinearly interpolate effective sound velocities from the ESV table.
+    """Effective sound velocity (m/s) at each (beta in deg, dz in m), bilinear.
 
-    Interpolation keeps the modelled travel times continuous in the geometry. A
-    stepwise lookup moves a pair to the next table row (about 2 cm of range in the
-    Bermuda table) as soon as its vertical offset crosses a 1 m grid line, which
-    makes the likelihood jagged at the scale of the posterior. Queries outside the
-    table are clamped to its edges.
-
-    Parameters
-    ----------
-    beta : ndarray
-        Ray takeoff angles in degrees.
-    dz : ndarray
-        Vertical distance between the receiver and the source, in metres.
-    dz_array, angle_array : ndarray
-        Increasing grids of the ESV table (rows and columns of ``esv_matrix``).
-    esv_matrix : ndarray
-        Effective sound velocity table, shape ``(len(dz_array), len(angle_array))``.
-
-    Returns
-    -------
-    ndarray
-        Effective sound velocity for each input pair.
+    Eqs. A16-A17 take the nearest table node; here the table is interpolated, which
+    keeps the modelled travel times continuous in the geometry. A stepwise lookup
+    moves a pair to the next table row (about 2 cm of range in the Bermuda table) as
+    soon as its vertical offset crosses a 1 m grid line, which makes the likelihood
+    jagged at the scale of the posterior. Queries outside the table are clamped to
+    its edges. ``esv_matrix`` is ``(len(dz_array), len(angle_array))``.
     """
     esv = np.empty(dz.shape[0], dtype=np.float64)
     last_row = dz_array.shape[0] - 2

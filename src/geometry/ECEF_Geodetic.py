@@ -1,8 +1,5 @@
-"""
-Function to convert from ECEF coordinates to Geodetic coordinates
-    Uses the WGS84 ellipsoid model
-    Adapted from https://gis.stackexchange.com/questions/265909/converting-from-ecef-to-geodetic-coordinates
-"""
+# Adapted from
+# https://gis.stackexchange.com/questions/265909/converting-from-ecef-to-geodetic-coordinates
 
 import numpy as np
 from numba import njit
@@ -10,23 +7,15 @@ from numba import njit
 
 @njit(cache=True)
 def ECEF_Geodetic(coords):
-    """Convert ECEF coordinates to geodetic coordinates.
+    """Latitude (deg), longitude (deg) and WGS84 ellipsoidal height (m) of ECEF points.
 
-    Parameters
-    ----------
-    coords : ndarray, shape (N, 3)
-        Array of ``(x, y, z)`` positions in metres.
-
-    Returns
-    -------
-    tuple of ndarray
-        ``(lat, lon, h)`` arrays in degrees/metres for each input point.
+    ``coords`` is (N, 3) in metres. The latitude is refined by two fixed-point
+    iterations.
     """
     x, y, z = coords[:, 0], coords[:, 1], coords[:, 2]
-    # --- WGS84 constants
+    # WGS84
     a = 6378137.0
     f = 1.0 / 298.257223563
-    # --- derived constants
     b = a - f * a
     e = np.sqrt(np.power(a, 2.0) - np.power(b, 2.0)) / a
     clambda = np.arctan2(y, x)

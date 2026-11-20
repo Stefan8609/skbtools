@@ -4,22 +4,12 @@ from numba import njit
 
 @njit(cache=True)
 def findRotationAndDisplacement(xyzs_init, xyzs_final):
-    """Rigid body transform between two point clouds.
+    """Rotation R (3, 3) and translation d (3,) best mapping xyzs_init onto xyzs_final.
 
-    Parameters
-    ----------
-    xyzs_init : ndarray
-        ``(3, N)`` initial coordinates.
-    xyzs_final : ndarray
-        ``(3, N)`` final coordinates.
-
-    Returns
-    -------
-    tuple
-        ``(R_mtrx, d)`` rotation matrix and translation vector.
+    Both are (3, N). Eqs. A10-A11: the SVD solution of Soderkvist, "Using SVD for
+    some fitting problems"; the determinant term rules out a reflection.
     """
-    # Compute centroid of the initial and final point clouds
-
+    # Centroids of the two point clouds
     centroid_init = np.array(
         [[np.mean(xyzs_init[0]), np.mean(xyzs_init[1]), np.mean(xyzs_init[2])]]
     ).T
@@ -27,18 +17,15 @@ def findRotationAndDisplacement(xyzs_init, xyzs_final):
         [[np.mean(xyzs_final[0]), np.mean(xyzs_final[1]), np.mean(xyzs_final[2])]]
     ).T
 
-    # Compute matrices for each point in
-    # point cloud subtracted by its respective centroid
+    # Centred point clouds
     A_mtrx = xyzs_init - centroid_init
     B_mtrx = xyzs_final - centroid_final
 
-    # Get a matrix product of the the two matrices above and find its SVD
+    # SVD of the cross-covariance
     C_mtrx = B_mtrx @ A_mtrx.T
     U, S, V_t = np.linalg.svd(C_mtrx)
 
-    # Use the SVD to compute the rotation matrix and
-    # displacement between the point clouds
-    #   Following the instructions of the source above
+    # Rotation without reflection, then the displacement
     det = np.linalg.det(U @ V_t)
     R_mtrx = U @ np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, det]]) @ V_t
     d = centroid_final - R_mtrx @ centroid_init

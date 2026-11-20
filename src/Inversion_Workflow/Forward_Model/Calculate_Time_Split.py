@@ -8,32 +8,15 @@ from geometry.ECEF_Geodetic import ECEF_Geodetic
 def calculateTimesRayTracing_split(
     guess, transponder_coordinates, esv_biases, dz_array, angle_array, esv_matrix
 ):
-    """Ray trace times with separate ESV biases for consecutive blocks.
+    """As ``calculateTimesRayTracing_Bias_Real``, with an ESV bias per block of epochs.
 
-    Parameters
-    ----------
-    guess : array-like of float, shape (3,)
-        Current estimate of the source location.
-    transponder_coordinates : ndarray
-        ``(N, 3)`` array of transponder positions.
-    esv_biases : ndarray
-        Sequence of ESV biases applied in order along the track.
-    dz_array : ndarray
-        Depth grid used for the ESV table.
-    angle_array : ndarray
-        Angle grid used for the ESV table in degrees.
-    esv_matrix : ndarray
-        Effective sound velocity table.
-
-    Returns
-    -------
-    tuple of ndarray
-        ``(times, esv)`` travel times and effective sound speeds.
+    The epochs are split into ``len(esv_biases)`` consecutive blocks as
+    ``np.array_split`` does. Returns ``(times, esv)``.
     """
     N = transponder_coordinates.shape[0]
     B = esv_biases.shape[0]
 
-    # Get depth of receiver guess
+    # Geodetic height of the DOG
     guess = guess[np.newaxis, :]
     lat, lon, depth = ECEF_Geodetic(guess)
 

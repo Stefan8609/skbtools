@@ -15,23 +15,11 @@ NOMINAL_SOUND_SPEED_MPS = 1515.0
 def calculateTimesRayTracing_Bias(
     guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
 ):
-    """Compute travel times with an optional ESV bias term.
+    """Travel times (s) and ESVs (m/s) to each transducer, depths from ECEF z.
 
-    Parameters
-    ----------
-    guess : array-like, shape (3,)
-        Current estimate of the source location.
-    transponder_coordinates : ndarray
-        ``(N, 3)`` array of transponder positions.
-    esv_bias : float or ndarray
-        Bias added to the effective sound velocity.
-    dz_array, angle_array, esv_matrix : ndarray
-        Lookup table for computing the ESV.
-
-    Returns
-    -------
-    tuple of ndarray
-        ``(times, esv)`` travel times and sound velocities.
+    Eq. A18: T = |x - s| / (c_eff(beta, dz) + esv_bias), with beta the elevation
+    angle (deg) and dz the vertical separation (m) looked up in the ESV table. Used
+    for the synthetics.
     """
     hori_dist = np.sqrt(
         (transponder_coordinates[:, 0] - guess[0]) ** 2
@@ -49,7 +37,7 @@ def calculateTimesRayTracing_Bias(
 def calculateTimesRayTracing_Bias_Real(
     guess, transponder_coordinates, esv_bias, dz_array, angle_array, esv_matrix
 ):
-    """Calculate times for real data using geodetic depths."""
+    """As ``calculateTimesRayTracing_Bias``, with dz and beta from geodetic heights."""
     abs_dist = np.sqrt(np.sum((transponder_coordinates - guess) ** 2, axis=1))
     depth_arr = ECEF_Geodetic(transponder_coordinates)[2]
 
@@ -94,7 +82,8 @@ def esv_gradient(
     h_x geodetic height difference, beta = arcsin(dz / range), with grad h the
     ellipsoid normal). The table's beta is in degrees. Where beta is +-90 degrees
     (vertical path, direction undefined) its gradient is set to 0; the table clamps
-    there.
+    there. Gives the -(T/c) grad c_eff term of the Jacobian, which the paper's A26
+    leaves out (it holds c_eff fixed).
     """
     to_deg = 180.0 / np.pi
     d = guess - transponder_coordinates  # x - s
