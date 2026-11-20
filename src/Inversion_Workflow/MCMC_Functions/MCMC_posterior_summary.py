@@ -1,4 +1,4 @@
-"""Posterior summaries of a Bermuda MCMC run (Paper I revision, items B2-B4).
+"""Posterior summaries of a Bermuda MCMC run.
 
 - Summary per parameter and DOG: MAP (the highest-posterior saved draw), mean, sd
   and the 2.5/50/97.5 percentiles. DOG positions are also given in local ENU,
@@ -7,7 +7,7 @@
   of Table 1, and the posterior lever arm against its drawing-based prior.
 - Linearized comparison at the MAP: J^T W J (W from the per-DOG sigma), its
   condition number, the formal covariance (J^T W J)^-1 and its correlations,
-  against the posterior; also with AR(1) weighting (Reviewer 4, point 2a).
+  against the posterior; also with AR(1) weighting.
 - Prior sensitivity: posterior sd / prior sd for each parameter.
 
 Outputs go to Output/MCMC_Chains/<run_name>/analysis/.
@@ -481,7 +481,7 @@ def plot_common_dc(rows, model, run_name, out_path):
 
 
 def summarize_run(run_name, linearized=True):
-    """Write the B2-B4 tables of a run and print the key numbers."""
+    """Write the summary tables of a run and print the key numbers."""
     chains = load_run(run_name)
     config = json.loads(str(chains[0]["config_json"]))
     model = ms.build_model(config)

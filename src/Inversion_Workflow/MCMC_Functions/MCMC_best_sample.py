@@ -26,7 +26,7 @@ plt.rcParams.update(
         "text.usetex": True,
         "font.family": "serif",
         "font.serif": ["Computer Modern"],
-        "font.size": 20,  # change this freely
+        "font.size": 20,
         "mathtext.fontset": "cm",
         "text.latex.preamble": r"\usepackage[utf8]{inputenc}"
         "\n"
@@ -36,21 +36,9 @@ plt.rcParams.update(
 
 
 def load_min_logpost_params(npz_path, loglike=False):
-    """
-    Load an MCMC chain saved with np.savez and return the parameter set
-    corresponding to the maximum logpost.
+    """Parameters of the highest-logpost (or loglike) draw of an old single-file chain.
 
-    Parameters
-    ----------
-    npz_path : str
-        Path to the .npz file (e.g. gps_output_path("mcmc_chain_good.npz")).
-
-    Returns
-    -------
-    dict
-        A dictionary with keys 'lever', 'gps1_grid', 'CDOG_aug',
-        'esv_bias', 'time_bias', 'logpost', each holding the value
-        (or array) at the minimum-logpost index.
+    Returns a dict of lever, CDOG_aug, esv_bias, time_bias, logpost and loglike.
     """
     data = np.load(npz_path)
     logpost = data["logpost"]
@@ -85,15 +73,9 @@ def plot_best_sample(
     loglike=False,
     chain_name=None,
 ):
-    """
-    Plot the best sample from an MCMC chain based on minimum logpost.
+    """Fig. 9 residuals of one DOG at the best draw of an old single-file chain.
 
-    Parameters
-    ----------
-    npz_path : str
-        Path to the .npz file containing the MCMC chain.
-    downsample : int, optional
-        Step used when plotting chain values (default is 1).
+    The best draw is the highest logpost, or loglike with ``loglike``.
     """
     CDOG_to_index = {1: 0, 3: 1, 4: 2}
     CDOG_index = CDOG_to_index[CDOG_num]

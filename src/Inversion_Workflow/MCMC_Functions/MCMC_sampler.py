@@ -47,8 +47,14 @@ while the posterior spans centimetres. Pairs whose start-model residual fails th
 
 Residuals are in centimetres of range at a nominal 1515 m/s (the c*sigma convention
 of Table 1). Log-likelihoods omit the constant ``-n/2 log(2 pi)``.
+
+The file follows the flow of a run: configuration and run variants, the fixed-pair
+problem, the parameter layout and priors, forward model and residuals, likelihood,
+the start point (Laplace approximation), adaptive Metropolis, save and resume, and
+the entry points.
 """
 
+import hashlib
 import json
 import math
 import os
@@ -110,15 +116,15 @@ CONFIG = {
     "fix_phi": False,
     # ar1: consecutive pairs further apart than this start a new AR(1) segment.
     "ar1_gap_threshold_s": 30.0,
-    # Linear clock drift per DOG (theme T5).
+    # Linear clock drift per DOG.
     "clock_drift": False,
     # GPS-time window [start, end] (s) of the epochs used; None uses all. For the
-    # half-split repeatability runs (R4 5).
+    # half-split repeatability runs.
     "gps_time_window_s": None,
     # Alternating GPS-time blocks [block_s, parity]: keep the epochs whose block
     # index floor((t - t_first) / block_s) has this parity (0 or 1); None uses all.
     # Short blocks give two subsets with nearly the same azimuth coverage, for the
-    # geometry-balanced split (R4 5); applied after gps_time_window_s.
+    # geometry-balanced split; applied after gps_time_window_s.
     "gps_time_blocks": None,
     # Data (paths inside Bermuda_Data). The GPS epochs of the DOG 1 file are used
     # for all DOGs, as in the inversion of the joint model.
@@ -173,117 +179,6 @@ CONFIG = {
     "log_every": 1000,
 }
 
-
-@njit(cache=True)
-def find_fixed_pair_indices(
-    offset,
-    threshold,
-    CDOG_data,
-    GPS_data,
-    GPS_travel_times,
-):
-    """Find the CDOG and GPS row indices once using the initial model."""
-
-    max_pairs = min(CDOG_data.shape[0], GPS_data.shape[0])
-    cdog_indices = np.empty(max_pairs, dtype=np.int64)
-    gps_indices = np.empty(max_pairs, dtype=np.int64)
-
-    cdog_pointer = 0
-    gps_pointer = 0
-    count = 0
-
-    while cdog_pointer < CDOG_data.shape[0] and gps_pointer < GPS_data.shape[0]:
-        cdog_time = CDOG_data[cdog_pointer, 0] + CDOG_data[cdog_pointer, 1] - offset
-        gps_time = GPS_data[gps_pointer] + GPS_travel_times[gps_pointer]
-
-        if abs(gps_time - cdog_time) < threshold:
-            cdog_indices[count] = cdog_pointer
-            gps_indices[count] = gps_pointer
-
-            cdog_pointer += 1
-            gps_pointer += 1
-            count += 1
-
-        elif gps_time < cdog_time:
-            gps_pointer += 1
-
-        else:
-            cdog_pointer += 1
-
-    return cdog_indices[:count], gps_indices[:count]
-
-
-@njit(cache=True, fastmath=True)
-def compute_log_likelihood(
-    trans_coords,
-    CDOG_augments,
-    esv_bias,
-    time_bias,
-    CDOG_reference,
-    gps_pair_indices,
-    pair_time_base,
-    pair_counts,
-    dz_array,
-    angle_array,
-    esv_matrix,
-    sigma_cm=20.0,
-):
-    """Compute Gaussian log-likelihood using fixed CDOG-GPS pairs.
-
-    This is the original likelihood, kept unchanged as the "iid_fixed" mode.
-    """
-
-    split_esv = esv_bias.shape[1] > 1
-
-    total_sse = 0.0
-    total_n = 0
-
-    inv_sigma2 = 1.0 / (sigma_cm * sigma_cm)
-    log_sigma2 = math.log(sigma_cm * sigma_cm)
-    residual_scale = RANGE_CM_PER_S
-
-    for j in range(CDOG_augments.shape[0]):
-        inv_guess = CDOG_reference + CDOG_augments[j]
-
-        if split_esv:
-            times_guess, _ = calculateTimesRayTracing_split(
-                inv_guess,
-                trans_coords,
-                esv_bias[j],
-                dz_array,
-                angle_array,
-                esv_matrix,
-            )
-        else:
-            times_guess, _ = calculateTimesRayTracing_Bias_Real(
-                inv_guess,
-                trans_coords,
-                esv_bias[j, 0],
-                dz_array,
-                angle_array,
-                esv_matrix,
-            )
-
-        for i in range(pair_counts[j]):
-            gps_i = gps_pair_indices[j, i]
-
-            residual = (
-                pair_time_base[j, i] + time_bias[j] - times_guess[gps_i]
-            ) * residual_scale
-
-            if not math.isnan(residual):
-                total_sse += residual * residual
-                total_n += 1
-
-    if total_n == 0:
-        return -1e30, 0
-
-    return (
-        -0.5 * total_sse * inv_sigma2 - 0.5 * total_n * log_sigma2,
-        total_n,
-    )
-
-
 # AR(1) + white noise: residuals are a slowly varying AR(1) component plus
 # independent ping-to-ping noise. The white-noise sd gets the same weak prior as
 # sigma. phi may come closer to 1 because the slow component decorrelates over
@@ -299,7 +194,7 @@ AR1_WHITE = {
 # With white noise as well, the 20k-iteration smoke runs had not converged.
 LONG_RUN = {"n_burn": 40000, "n_samples": 400000}
 WHITE_LONG_RUN = {"n_burn": 80000, "n_samples": 600000}
-# Sensitivity model (R1 3c, R2 #6): one dc(t) series shared by all DOGs on fixed
+# Sensitivity model: one dc(t) series shared by all DOGs on fixed
 # GPS-time windows plus a constant dc per DOG. The minimum of 300 pairs (all DOGs
 # together) is about 10 min of one DOG; a typical 30-min window holds 1000-4000.
 COMMON_WINDOWS = {
@@ -354,7 +249,7 @@ RUN_VARIANTS = {
     # up the slow component that AR(1) + white alone assigns to each DOG?
     "ar1_white_common30": {**AR1_WHITE, **COMMON_WINDOWS, **WHITE_LONG_RUN},
 }
-# Repeatability (R4 5, N5). Halves of the survey split at the median GPS epoch of the
+# Repeatability. Halves of the survey split at the median GPS epoch of the
 # DOG 1 file (47135 s), each with the 30-min common dc(t), and each DOG alone (its
 # own lever arm) with the 4-split model of "ar1".
 HALF_SPLIT_GPS_S = 47135.0
@@ -410,37 +305,6 @@ for _dog in (1, 3, 4):
     }
 
 
-def time_block_mask(gps_time, block_s, parity):
-    """Epochs in alternating GPS-time blocks of length block_s with this parity."""
-    gps_time = np.asarray(gps_time, dtype=float)
-    if block_s <= 0 or parity not in (0, 1):
-        raise ValueError(f"need block_s > 0 and parity 0 or 1; got {block_s}, {parity}")
-    block = np.floor((gps_time - gps_time.min()) / block_s).astype(np.int64)
-    return block % 2 == parity
-
-
-def check_same_inputs(path, problem):
-    """Refuse to resume a chain written from different input files (e.g. ESV table).
-
-    The configuration check of load_state compares file paths only, so a chain
-    sampled on an older ESV table would otherwise count as finished.
-    """
-    with np.load(path) as saved:
-        saved_files = json.loads(str(saved["metadata_json"])).get("input_files", {})
-    current = problem.get("input_files") or {}
-    changed = sorted(
-        name
-        for name in current
-        if name in saved_files
-        and saved_files[name]["sha256"] != current[name]["sha256"]
-    )
-    if changed:
-        raise ValueError(
-            f"{path} was written from different input files ({', '.join(changed)}); "
-            "move the old chains aside or use another run_name"
-        )
-
-
 def run_config(variant, overrides=None):
     """Return CONFIG with a run variant and any overrides applied.
 
@@ -457,6 +321,57 @@ def run_config(variant, overrides=None):
         "run_name": variant,
         **(overrides or {}),
     }
+
+
+@njit(cache=True)
+def find_fixed_pair_indices(
+    offset,
+    threshold,
+    CDOG_data,
+    GPS_data,
+    GPS_travel_times,
+):
+    """CDOG and GPS row indices of the pairs at the start model (Eqs. A19-A20).
+
+    A DOG arrival and a GPS epoch pair when the predicted arrival is within
+    ``threshold`` s; the first such match in time order is taken.
+    """
+    max_pairs = min(CDOG_data.shape[0], GPS_data.shape[0])
+    cdog_indices = np.empty(max_pairs, dtype=np.int64)
+    gps_indices = np.empty(max_pairs, dtype=np.int64)
+
+    cdog_pointer = 0
+    gps_pointer = 0
+    count = 0
+
+    while cdog_pointer < CDOG_data.shape[0] and gps_pointer < GPS_data.shape[0]:
+        cdog_time = CDOG_data[cdog_pointer, 0] + CDOG_data[cdog_pointer, 1] - offset
+        gps_time = GPS_data[gps_pointer] + GPS_travel_times[gps_pointer]
+
+        if abs(gps_time - cdog_time) < threshold:
+            cdog_indices[count] = cdog_pointer
+            gps_indices[count] = gps_pointer
+
+            cdog_pointer += 1
+            gps_pointer += 1
+            count += 1
+
+        elif gps_time < cdog_time:
+            gps_pointer += 1
+
+        else:
+            cdog_pointer += 1
+
+    return cdog_indices[:count], gps_indices[:count]
+
+
+def time_block_mask(gps_time, block_s, parity):
+    """Epochs in alternating GPS-time blocks of length block_s with this parity."""
+    gps_time = np.asarray(gps_time, dtype=float)
+    if block_s <= 0 or parity not in (0, 1):
+        raise ValueError(f"need block_s > 0 and parity 0 or 1; got {block_s}, {parity}")
+    block = np.floor((gps_time - gps_time.min()) / block_s).astype(np.int64)
+    return block % 2 == parity
 
 
 def vessel_rotations(GPS_Coordinates, gps1_to_others):
@@ -595,8 +510,6 @@ def load_bermuda_inputs(config):
 
 
 def _sha256(path):
-    import hashlib
-
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
@@ -991,6 +904,76 @@ def residuals_cm(theta, model, problem):
     return residuals
 
 
+@njit(cache=True, fastmath=True)
+def compute_log_likelihood(
+    trans_coords,
+    CDOG_augments,
+    esv_bias,
+    time_bias,
+    CDOG_reference,
+    gps_pair_indices,
+    pair_time_base,
+    pair_counts,
+    dz_array,
+    angle_array,
+    esv_matrix,
+    sigma_cm=20.0,
+):
+    """iid Gaussian log-likelihood with sd ``sigma_cm``, the "iid_fixed" mode.
+
+    The original likelihood, kept unchanged. Returns ``(value, n_pairs)``.
+    """
+    split_esv = esv_bias.shape[1] > 1
+
+    total_sse = 0.0
+    total_n = 0
+
+    inv_sigma2 = 1.0 / (sigma_cm * sigma_cm)
+    log_sigma2 = math.log(sigma_cm * sigma_cm)
+    residual_scale = RANGE_CM_PER_S
+
+    for j in range(CDOG_augments.shape[0]):
+        inv_guess = CDOG_reference + CDOG_augments[j]
+
+        if split_esv:
+            times_guess, _ = calculateTimesRayTracing_split(
+                inv_guess,
+                trans_coords,
+                esv_bias[j],
+                dz_array,
+                angle_array,
+                esv_matrix,
+            )
+        else:
+            times_guess, _ = calculateTimesRayTracing_Bias_Real(
+                inv_guess,
+                trans_coords,
+                esv_bias[j, 0],
+                dz_array,
+                angle_array,
+                esv_matrix,
+            )
+
+        for i in range(pair_counts[j]):
+            gps_i = gps_pair_indices[j, i]
+
+            residual = (
+                pair_time_base[j, i] + time_bias[j] - times_guess[gps_i]
+            ) * residual_scale
+
+            if not math.isnan(residual):
+                total_sse += residual * residual
+                total_n += 1
+
+    if total_n == 0:
+        return -1e30, 0
+
+    return (
+        -0.5 * total_sse * inv_sigma2 - 0.5 * total_n * log_sigma2,
+        total_n,
+    )
+
+
 def whiten_ar1(x, segment_start, pair_dog, sigma_cm, phi):
     """Map AR(1) residuals, or Jacobian columns, to unit-variance innovations.
 
@@ -1315,6 +1298,90 @@ def laplace_approximation(model, problem, max_iterations=8):
     return theta, cov, sigma, phi
 
 
+def initial_state(
+    chain_index, model, problem, n_kept_total, n_burn_kept_total, n_windows
+):
+    """Seed the chain, find the mode, and draw an overdispersed start point."""
+    config = model["config"]
+    seed_sequence = np.random.SeedSequence([config["seed"], chain_index])
+    rng = np.random.Generator(np.random.PCG64(seed_sequence))
+
+    laplace_theta, laplace_cov, sigma_hat, phi_hat = laplace_approximation(
+        model, problem
+    )
+    if config["likelihood"] in ("ar1", "ar1_white") and config["fix_phi"]:
+        model["fixed_phi"] = phi_hat
+    print(
+        "Mode estimate: sigma_cm",
+        np.round(sigma_hat, 2).tolist(),
+        "phi",
+        np.round(phi_hat, 4).tolist(),
+        flush=True,
+    )
+
+    # Overdispersed start: the mode plus `overdispersion` times a draw from the
+    # Gaussian approximation. Redraw if the prior support (phi bounds) is left.
+    cholesky = np.linalg.cholesky(laplace_cov)
+    d = laplace_theta.shape[0]
+    for _ in range(100):
+        theta = laplace_theta + config[
+            "overdispersion"
+        ] * cholesky @ rng.standard_normal(d)
+        logpost, loglike = log_posterior(theta, model, problem)
+        if np.isfinite(logpost):
+            break
+    else:
+        raise RuntimeError("No start point with a finite posterior in 100 draws")
+
+    commit, dirty = git_revision()
+    metadata = {
+        "chain_index": int(chain_index),
+        "seed": [int(config["seed"]), int(chain_index)],
+        "rng": "numpy PCG64 from SeedSequence(seed)",
+        "likelihood": config["likelihood"],
+        "clock_drift": config["clock_drift"],
+        "git_commit": commit,
+        "git_dirty": dirty,
+        "python": sys.version.split()[0],
+        "numpy": np.__version__,
+        "numba": numba.__version__,
+        "param_names": model["names"],
+        "laplace_sigma_cm": sigma_hat.tolist(),
+        "laplace_phi": phi_hat.tolist(),
+        "dropped_pairs": problem["dropped_pairs"],
+        "input_files": problem["input_files"],
+        "time_bias_convention": "dt (Eq. 6) = offset - time_bias; outputs report dt",
+        "runs": [],
+    }
+    return {
+        "iteration": 0,
+        "theta": theta,
+        "logpost": logpost,
+        "loglike": loglike,
+        "log_lambda": 0.0,
+        "proposal_cov": laplace_cov.copy(),
+        "window_index": 0,
+        "window_n": 0,
+        "window_mean": np.zeros(d),
+        "window_m2": np.zeros((d, d)),
+        "window_accepted": 0,
+        "window_acceptance": np.full(n_windows, np.nan),
+        "n_accepted_sampling": 0,
+        "rng": rng,
+        "theta_samples": np.full((n_kept_total, d), np.nan),
+        "loglike_samples": np.full(n_kept_total, np.nan),
+        "logpost_samples": np.full(n_kept_total, np.nan),
+        "burnin_theta": np.full((n_burn_kept_total, d), np.nan),
+        "burnin_logpost": np.full(n_burn_kept_total, np.nan),
+        "n_kept": 0,
+        "n_burn_kept": 0,
+        "start_theta": theta.copy(),
+        "laplace_theta": laplace_theta,
+        "laplace_cov": laplace_cov,
+        "metadata": metadata,
+    }
+
+
 def adaptation_window_ends(n_burn, first_window):
     """End iterations of the burn-in adaptation windows (doubling lengths).
 
@@ -1331,6 +1398,155 @@ def adaptation_window_ends(n_burn, first_window):
         start = end
         size *= 2
     return ends
+
+
+def run_chain(chain_index, model, problem, out_path, stop_at=None):
+    """Run or resume one adaptive Metropolis chain, checkpointing to out_path.
+
+    Burn-in (``n_burn`` iterations): the proposal is Gaussian with covariance
+    ``lambda**2 * 2.38**2 / d * C``. C starts at the Laplace covariance and is
+    re-estimated from the chain at the end of each adaptation window (windows
+    double in length), in the style of Haario et al. (2001). The last
+    ``scale_only_fraction`` of burn-in keeps C fixed. log lambda follows a
+    Robbins-Monro update toward ``target_acceptance``, restarted after every
+    change of C. Both are frozen after burn-in, so the saved samples come from a
+    fixed-kernel Metropolis chain.
+    ``stop_at`` (an iteration count) ends this call early with a checkpoint, as a
+    job time limit would; calling again resumes.
+    """
+    config = model["config"]
+    n_burn = config["n_burn"]
+    n_total = n_burn + config["n_samples"]
+    thin = config["thin"]
+    target = config["target_acceptance"]
+    n_scale_only = int(round(config["scale_only_fraction"] * n_burn))
+    if not 0 < n_scale_only < n_burn:
+        raise ValueError(
+            f"scale_only_fraction * n_burn must leave both phases non-empty; got "
+            f"{n_scale_only} of {n_burn}"
+        )
+    # Covariance windows, then the scale-only phase ending at n_burn.
+    window_ends = adaptation_window_ends(
+        n_burn - n_scale_only, config["first_adapt_window"]
+    ) + [n_burn]
+    n_kept_total = -(-config["n_samples"] // thin)
+    n_burn_kept_total = -(-n_burn // thin)
+    out_path = Path(out_path)
+
+    if out_path.exists():
+        check_same_inputs(out_path, problem)
+        state = load_state(out_path, model, n_kept_total, n_burn_kept_total)
+        print(
+            f"[chain {chain_index}] resuming at iteration {state['iteration']}",
+            flush=True,
+        )
+    else:
+        state = initial_state(
+            chain_index,
+            model,
+            problem,
+            n_kept_total,
+            n_burn_kept_total,
+            len(window_ends),
+        )
+    state["n_burn"] = n_burn
+    state["n_total"] = n_total
+    if state["iteration"] >= n_total:
+        print(f"[chain {chain_index}] already complete: {out_path}", flush=True)
+        return state
+    state["metadata"]["runs"].append(_run_record(state["iteration"]))
+
+    rng = state["rng"]
+    theta = state["theta"]
+    logpost = state["logpost"]
+    loglike = state["loglike"]
+    d = theta.shape[0]
+    base_scale = 2.38 / np.sqrt(d)
+    cholesky = np.linalg.cholesky(state["proposal_cov"])
+    regularizer = 1e-3 * np.diag(np.diag(state["laplace_cov"]))
+    last_stop = n_total if stop_at is None else min(stop_at, n_total)
+    accepted_since_log = 0
+    clock = time.time()
+
+    for it in range(state["iteration"], last_stop):
+        z = rng.standard_normal(d)
+        log_u = np.log(rng.random())
+        proposal = theta + np.exp(state["log_lambda"]) * base_scale * (cholesky @ z)
+        logpost_proposal, loglike_proposal = log_posterior(proposal, model, problem)
+        log_alpha = logpost_proposal - logpost
+        accepted = log_u < log_alpha
+        if accepted:
+            theta, logpost, loglike = proposal, logpost_proposal, loglike_proposal
+            accepted_since_log += 1
+
+        if it < n_burn:
+            window = state["window_index"]
+            previous_end = window_ends[window - 1] if window > 0 else 0
+            state["log_lambda"] += (it - previous_end + 1) ** -0.6 * (
+                np.exp(min(0.0, log_alpha)) - target
+            )
+            state["window_accepted"] += int(accepted)
+            state["window_n"] += 1
+            covariance_window = window < len(window_ends) - 1
+            if covariance_window:
+                delta = theta - state["window_mean"]
+                state["window_mean"] = state["window_mean"] + delta / state["window_n"]
+                state["window_m2"] = state["window_m2"] + np.outer(
+                    delta, theta - state["window_mean"]
+                )
+            if it % thin == 0:
+                state["burnin_theta"][state["n_burn_kept"]] = theta
+                state["burnin_logpost"][state["n_burn_kept"]] = logpost
+                state["n_burn_kept"] += 1
+            if it + 1 == window_ends[window]:
+                n = state["window_n"]
+                if covariance_window:
+                    sample_cov = state["window_m2"] / (n - 1)
+                    state["proposal_cov"] = (n * sample_cov + 5.0 * regularizer) / (
+                        n + 5.0
+                    )
+                    cholesky = np.linalg.cholesky(state["proposal_cov"])
+                state["window_acceptance"][window] = state["window_accepted"] / n
+                print(
+                    f"[chain {chain_index}] adaptation window {window} "
+                    f"({'covariance' if covariance_window else 'scale only'}) "
+                    f"ends at {it + 1}: acceptance {state['window_accepted'] / n:.3f}, "
+                    f"lambda {np.exp(state['log_lambda']):.3f}",
+                    flush=True,
+                )
+                state["window_index"] += 1
+                state["window_n"] = 0
+                state["window_mean"] = np.zeros(d)
+                state["window_m2"] = np.zeros((d, d))
+                state["window_accepted"] = 0
+        else:
+            state["n_accepted_sampling"] += int(accepted)
+            if (it - n_burn) % thin == 0:
+                k = state["n_kept"]
+                state["theta_samples"][k] = theta
+                state["loglike_samples"][k] = loglike
+                state["logpost_samples"][k] = logpost
+                state["n_kept"] += 1
+
+        done = it + 1
+        if done % config["log_every"] == 0:
+            elapsed = time.time() - clock
+            sigma, _ = noise_parameters(theta, model)
+            print(
+                f"[chain {chain_index}] {done}/{n_total} "
+                f"{'burn-in' if done <= n_burn else 'sampling'} "
+                f"acceptance {accepted_since_log / config['log_every']:.3f} "
+                f"logpost {logpost:.1f} sigma_cm {np.round(sigma, 2).tolist()} "
+                f"({1000 * elapsed / config['log_every']:.1f} s per 1000)",
+                flush=True,
+            )
+            accepted_since_log = 0
+            clock = time.time()
+        if done % config["checkpoint_every"] == 0 or done == last_stop:
+            state.update(iteration=done, theta=theta, logpost=logpost, loglike=loglike)
+            save_chain(out_path, state, model, problem)
+
+    return state
 
 
 def git_revision():
@@ -1533,237 +1749,26 @@ def load_state(path, model, n_kept_total, n_burn_kept_total):
         }
 
 
-def initial_state(
-    chain_index, model, problem, n_kept_total, n_burn_kept_total, n_windows
-):
-    """Seed the chain, find the mode, and draw an overdispersed start point."""
-    config = model["config"]
-    seed_sequence = np.random.SeedSequence([config["seed"], chain_index])
-    rng = np.random.Generator(np.random.PCG64(seed_sequence))
+def check_same_inputs(path, problem):
+    """Refuse to resume a chain written from different input files (e.g. ESV table).
 
-    laplace_theta, laplace_cov, sigma_hat, phi_hat = laplace_approximation(
-        model, problem
-    )
-    if config["likelihood"] in ("ar1", "ar1_white") and config["fix_phi"]:
-        model["fixed_phi"] = phi_hat
-    print(
-        "Mode estimate: sigma_cm",
-        np.round(sigma_hat, 2).tolist(),
-        "phi",
-        np.round(phi_hat, 4).tolist(),
-        flush=True,
-    )
-
-    # Overdispersed start: the mode plus `overdispersion` times a draw from the
-    # Gaussian approximation. Redraw if the prior support (phi bounds) is left.
-    cholesky = np.linalg.cholesky(laplace_cov)
-    d = laplace_theta.shape[0]
-    for _ in range(100):
-        theta = laplace_theta + config[
-            "overdispersion"
-        ] * cholesky @ rng.standard_normal(d)
-        logpost, loglike = log_posterior(theta, model, problem)
-        if np.isfinite(logpost):
-            break
-    else:
-        raise RuntimeError("No start point with a finite posterior in 100 draws")
-
-    commit, dirty = git_revision()
-    metadata = {
-        "chain_index": int(chain_index),
-        "seed": [int(config["seed"]), int(chain_index)],
-        "rng": "numpy PCG64 from SeedSequence(seed)",
-        "likelihood": config["likelihood"],
-        "clock_drift": config["clock_drift"],
-        "git_commit": commit,
-        "git_dirty": dirty,
-        "python": sys.version.split()[0],
-        "numpy": np.__version__,
-        "numba": numba.__version__,
-        "param_names": model["names"],
-        "laplace_sigma_cm": sigma_hat.tolist(),
-        "laplace_phi": phi_hat.tolist(),
-        "dropped_pairs": problem["dropped_pairs"],
-        "input_files": problem["input_files"],
-        "time_bias_convention": "dt (Eq. 6) = offset - time_bias; outputs report dt",
-        "runs": [],
-    }
-    return {
-        "iteration": 0,
-        "theta": theta,
-        "logpost": logpost,
-        "loglike": loglike,
-        "log_lambda": 0.0,
-        "proposal_cov": laplace_cov.copy(),
-        "window_index": 0,
-        "window_n": 0,
-        "window_mean": np.zeros(d),
-        "window_m2": np.zeros((d, d)),
-        "window_accepted": 0,
-        "window_acceptance": np.full(n_windows, np.nan),
-        "n_accepted_sampling": 0,
-        "rng": rng,
-        "theta_samples": np.full((n_kept_total, d), np.nan),
-        "loglike_samples": np.full(n_kept_total, np.nan),
-        "logpost_samples": np.full(n_kept_total, np.nan),
-        "burnin_theta": np.full((n_burn_kept_total, d), np.nan),
-        "burnin_logpost": np.full(n_burn_kept_total, np.nan),
-        "n_kept": 0,
-        "n_burn_kept": 0,
-        "start_theta": theta.copy(),
-        "laplace_theta": laplace_theta,
-        "laplace_cov": laplace_cov,
-        "metadata": metadata,
-    }
-
-
-def run_chain(chain_index, model, problem, out_path, stop_at=None):
-    """Run or resume one adaptive Metropolis chain, checkpointing to out_path.
-
-    Burn-in (``n_burn`` iterations): the proposal is Gaussian with covariance
-    ``lambda**2 * 2.38**2 / d * C``. C starts at the Laplace covariance and is
-    re-estimated from the chain at the end of each adaptation window (windows
-    double in length), in the style of Haario et al. (2001). The last
-    ``scale_only_fraction`` of burn-in keeps C fixed. log lambda follows a
-    Robbins-Monro update toward ``target_acceptance``, restarted after every
-    change of C. Both are frozen after burn-in, so the saved samples come from a
-    fixed-kernel Metropolis chain.
-    ``stop_at`` (an iteration count) ends this call early with a checkpoint, as a
-    job time limit would; calling again resumes.
+    The configuration check of load_state compares file paths only, so a chain
+    sampled on an older ESV table would otherwise count as finished.
     """
-    config = model["config"]
-    n_burn = config["n_burn"]
-    n_total = n_burn + config["n_samples"]
-    thin = config["thin"]
-    target = config["target_acceptance"]
-    n_scale_only = int(round(config["scale_only_fraction"] * n_burn))
-    if not 0 < n_scale_only < n_burn:
+    with np.load(path) as saved:
+        saved_files = json.loads(str(saved["metadata_json"])).get("input_files", {})
+    current = problem.get("input_files") or {}
+    changed = sorted(
+        name
+        for name in current
+        if name in saved_files
+        and saved_files[name]["sha256"] != current[name]["sha256"]
+    )
+    if changed:
         raise ValueError(
-            f"scale_only_fraction * n_burn must leave both phases non-empty; got "
-            f"{n_scale_only} of {n_burn}"
+            f"{path} was written from different input files ({', '.join(changed)}); "
+            "move the old chains aside or use another run_name"
         )
-    # Covariance windows, then the scale-only phase ending at n_burn.
-    window_ends = adaptation_window_ends(
-        n_burn - n_scale_only, config["first_adapt_window"]
-    ) + [n_burn]
-    n_kept_total = -(-config["n_samples"] // thin)
-    n_burn_kept_total = -(-n_burn // thin)
-    out_path = Path(out_path)
-
-    if out_path.exists():
-        check_same_inputs(out_path, problem)
-        state = load_state(out_path, model, n_kept_total, n_burn_kept_total)
-        print(
-            f"[chain {chain_index}] resuming at iteration {state['iteration']}",
-            flush=True,
-        )
-    else:
-        state = initial_state(
-            chain_index,
-            model,
-            problem,
-            n_kept_total,
-            n_burn_kept_total,
-            len(window_ends),
-        )
-    state["n_burn"] = n_burn
-    state["n_total"] = n_total
-    if state["iteration"] >= n_total:
-        print(f"[chain {chain_index}] already complete: {out_path}", flush=True)
-        return state
-    state["metadata"]["runs"].append(_run_record(state["iteration"]))
-
-    rng = state["rng"]
-    theta = state["theta"]
-    logpost = state["logpost"]
-    loglike = state["loglike"]
-    d = theta.shape[0]
-    base_scale = 2.38 / np.sqrt(d)
-    cholesky = np.linalg.cholesky(state["proposal_cov"])
-    regularizer = 1e-3 * np.diag(np.diag(state["laplace_cov"]))
-    last_stop = n_total if stop_at is None else min(stop_at, n_total)
-    accepted_since_log = 0
-    clock = time.time()
-
-    for it in range(state["iteration"], last_stop):
-        z = rng.standard_normal(d)
-        log_u = np.log(rng.random())
-        proposal = theta + np.exp(state["log_lambda"]) * base_scale * (cholesky @ z)
-        logpost_proposal, loglike_proposal = log_posterior(proposal, model, problem)
-        log_alpha = logpost_proposal - logpost
-        accepted = log_u < log_alpha
-        if accepted:
-            theta, logpost, loglike = proposal, logpost_proposal, loglike_proposal
-            accepted_since_log += 1
-
-        if it < n_burn:
-            window = state["window_index"]
-            previous_end = window_ends[window - 1] if window > 0 else 0
-            state["log_lambda"] += (it - previous_end + 1) ** -0.6 * (
-                np.exp(min(0.0, log_alpha)) - target
-            )
-            state["window_accepted"] += int(accepted)
-            state["window_n"] += 1
-            covariance_window = window < len(window_ends) - 1
-            if covariance_window:
-                delta = theta - state["window_mean"]
-                state["window_mean"] = state["window_mean"] + delta / state["window_n"]
-                state["window_m2"] = state["window_m2"] + np.outer(
-                    delta, theta - state["window_mean"]
-                )
-            if it % thin == 0:
-                state["burnin_theta"][state["n_burn_kept"]] = theta
-                state["burnin_logpost"][state["n_burn_kept"]] = logpost
-                state["n_burn_kept"] += 1
-            if it + 1 == window_ends[window]:
-                n = state["window_n"]
-                if covariance_window:
-                    sample_cov = state["window_m2"] / (n - 1)
-                    state["proposal_cov"] = (n * sample_cov + 5.0 * regularizer) / (
-                        n + 5.0
-                    )
-                    cholesky = np.linalg.cholesky(state["proposal_cov"])
-                state["window_acceptance"][window] = state["window_accepted"] / n
-                print(
-                    f"[chain {chain_index}] adaptation window {window} "
-                    f"({'covariance' if covariance_window else 'scale only'}) "
-                    f"ends at {it + 1}: acceptance {state['window_accepted'] / n:.3f}, "
-                    f"lambda {np.exp(state['log_lambda']):.3f}",
-                    flush=True,
-                )
-                state["window_index"] += 1
-                state["window_n"] = 0
-                state["window_mean"] = np.zeros(d)
-                state["window_m2"] = np.zeros((d, d))
-                state["window_accepted"] = 0
-        else:
-            state["n_accepted_sampling"] += int(accepted)
-            if (it - n_burn) % thin == 0:
-                k = state["n_kept"]
-                state["theta_samples"][k] = theta
-                state["loglike_samples"][k] = loglike
-                state["logpost_samples"][k] = logpost
-                state["n_kept"] += 1
-
-        done = it + 1
-        if done % config["log_every"] == 0:
-            elapsed = time.time() - clock
-            sigma, _ = noise_parameters(theta, model)
-            print(
-                f"[chain {chain_index}] {done}/{n_total} "
-                f"{'burn-in' if done <= n_burn else 'sampling'} "
-                f"acceptance {accepted_since_log / config['log_every']:.3f} "
-                f"logpost {logpost:.1f} sigma_cm {np.round(sigma, 2).tolist()} "
-                f"({1000 * elapsed / config['log_every']:.1f} s per 1000)",
-                flush=True,
-            )
-            accepted_since_log = 0
-            clock = time.time()
-        if done % config["checkpoint_every"] == 0 or done == last_stop:
-            state.update(iteration=done, theta=theta, logpost=logpost, loglike=loglike)
-            save_chain(out_path, state, model, problem)
-
-    return state
 
 
 def setup_bermuda(config):
@@ -1798,6 +1803,7 @@ def setup_bermuda(config):
 
 
 def chain_output_path(config, chain_index):
+    """``Output/MCMC_Chains/<run_name>/chain_<NN>.npz``."""
     return gps_output_path(
         "MCMC_Chains", config["run_name"], f"chain_{chain_index:02d}.npz"
     )
