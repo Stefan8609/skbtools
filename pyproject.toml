@@ -25,7 +25,6 @@ dev = [
     "pre-commit>=3.0",
     "ruff>=0.4",
     "opencv-python>=4.8.0",
-    "pdf2image>=1.16",
 ]
 # Puerto Rico sound-speed profile download and processing (acoustics/svp.py,
 # acoustics/download_PuertoRico_profile.py).

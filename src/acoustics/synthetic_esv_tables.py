@@ -10,7 +10,7 @@
   depth, so inversion lookups are clamped to the table edge (SYNTHETIC_AUDIT.md, G8).
 
 ``moderate`` replaces ``global_table_esv_perturbed`` (B8, B9, B11); ``strong``
-replaces ``global_table_esv_realistic_perturbed`` (B10, Geometric_Dilution_Plot).
+replaces ``global_table_esv_realistic_perturbed`` (B10).
 """
 
 SYNTHETIC_ESV_TABLES = "new"
