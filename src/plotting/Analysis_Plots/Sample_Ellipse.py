@@ -6,7 +6,10 @@ from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
     bermuda_trajectory,
 )
 from acoustics.synthetic_esv_tables import ESV_GENERATE, ESV_MODERATE, ESV_STRONG
-from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import check_esv_coverage
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
+    check_esv_coverage,
+    NOMINAL_SOUND_SPEED_MPS,
+)
 from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
@@ -288,7 +291,12 @@ def error_ellipse(
                 )
 
                 diff_data = (CDOG_full - GPS_full) * 1000
-                RMSE = np.sqrt(np.nanmean(diff_data**2)) / 1000 * 1515 * 100
+                RMSE = (
+                    np.sqrt(np.nanmean(diff_data**2))
+                    / 1000
+                    * NOMINAL_SOUND_SPEED_MPS
+                    * 100
+                )
 
                 if RMSE > 15:
                     print(f"\n{i + 1}/{num_points} iteration failed to converge")

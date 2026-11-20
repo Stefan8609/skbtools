@@ -11,6 +11,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
 )
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
+    NOMINAL_SOUND_SPEED_MPS,
 )
 from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.PuertoRico.Crossover_Mask import crossover_leg_mask
@@ -208,7 +209,7 @@ def compute_log_likelihood(
     total_n = 0
     inv_sigma2 = 1.0 / (sigma_cm * sigma_cm)
     log_sigma2 = math.log(sigma_cm * sigma_cm)
-    residual_scale = 1515.0 * 100.0
+    residual_scale = NOMINAL_SOUND_SPEED_MPS * 100.0
 
     for survey in range(survey_bounds.shape[0]):
         start = survey_bounds[survey, 0]

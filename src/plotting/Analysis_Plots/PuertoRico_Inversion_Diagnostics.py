@@ -3,6 +3,9 @@ from types import SimpleNamespace
 import matplotlib.pyplot as plt
 import numpy as np
 
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
+    NOMINAL_SOUND_SPEED_MPS,
+)
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from geometry.Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 from plotting.Analysis_Plots.metric_plots import (
@@ -16,7 +19,6 @@ clock_segment = "before"
 simulated_annealing = True
 save = True
 
-sound_speed = 1515.0
 derivative_gap = 5.0
 preliminary_gate = 0.2
 final_gate = 0.05
@@ -195,7 +197,9 @@ def load_diagnostic_data():
     dog = inversion["inversion_result"][:3]
     times = inversion["GPS_data"][observation_gps_indices]
     time_hours = (times - times[0]) / 3600.0
-    residual = (inversion["CDOG_full"] - inversion["GPS_full"]) * sound_speed
+    residual = (
+        inversion["CDOG_full"] - inversion["GPS_full"]
+    ) * NOMINAL_SOUND_SPEED_MPS
     slant_range = np.linalg.norm(transducer - dog, axis=1)
     radial_velocity = segmented_gradient(slant_range, times)
 

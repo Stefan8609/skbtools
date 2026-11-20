@@ -6,7 +6,10 @@ from Inversion_Workflow.Inversion.Numba_xAline import (
     find_subint_offset,
     two_pointer_index,
 )
-from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import modelled_times
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
+    modelled_times,
+    NOMINAL_SOUND_SPEED_MPS,
+)
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     initial_bias_geiger,
@@ -138,7 +141,7 @@ def simulated_annealing_bias(
         if k % 10 == 0:
             print(
                 k,
-                np.round(RMSE * 100 * 1515, 2),
+                np.round(RMSE * 100 * NOMINAL_SOUND_SPEED_MPS, 2),
                 np.round(offset, 5),
                 np.round(lever, 3),
             )

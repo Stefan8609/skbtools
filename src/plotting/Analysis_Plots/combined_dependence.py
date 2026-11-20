@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
+    NOMINAL_SOUND_SPEED_MPS,
+)
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Synthetic.Modular_Synthetic import (
     BERMUDA_GPS1_TO_OTHERS,
@@ -60,8 +63,6 @@ def combined_dependence(
     """
     data_path = gps_output_path(f"Plot_Data/Combined_Dependence_{inversion_esv}.npz")
 
-    sound_speed = 1515.0  # m/s
-
     g = 1.0
     if solve_g:
         # Zero noise: the returned GPS_Coordinates are the noise-free receivers.
@@ -117,10 +118,10 @@ def combined_dependence(
         Z_error = Z_error_all.mean(axis=0)
 
         # Expected uncertainty in seconds
-        Z_stdexp = np.sqrt((g * X / sound_speed) ** 2 + Y**2)
+        Z_stdexp = np.sqrt((g * X / NOMINAL_SOUND_SPEED_MPS) ** 2 + Y**2)
 
         # Expected uncertainty in cm
-        Z_stdexp_cm = Z_stdexp * sound_speed * 100
+        Z_stdexp_cm = Z_stdexp * NOMINAL_SOUND_SPEED_MPS * 100
 
         np.savez(
             data_path,
@@ -136,9 +137,9 @@ def combined_dependence(
             Z_stdexp=Z_stdexp,
             X_cm=X * 100,
             Y_us=Y * 1_000_000,
-            Z_std_cm=Z_std * sound_speed * 100,
+            Z_std_cm=Z_std * NOMINAL_SOUND_SPEED_MPS * 100,
             Z_stdexp_cm=Z_stdexp_cm,
-            residual_scale_mps=sound_speed,
+            residual_scale_mps=NOMINAL_SOUND_SPEED_MPS,
             position_noise_units="m",
             time_noise_units="s",
             Z_std_units="s",
@@ -157,10 +158,10 @@ def combined_dependence(
         Z_std = npzfile["Z_std"]
 
         # Recompute expected uncertainty to make sure it uses current formula
-        Z_stdexp = np.sqrt((g * X / sound_speed) ** 2 + Y**2)
+        Z_stdexp = np.sqrt((g * X / NOMINAL_SOUND_SPEED_MPS) ** 2 + Y**2)
 
-    Z_plot_cm = Z_std * sound_speed * 100
-    Z_stdexp_cm = Z_stdexp * sound_speed * 100
+    Z_plot_cm = Z_std * NOMINAL_SOUND_SPEED_MPS * 100
+    Z_stdexp_cm = Z_stdexp * NOMINAL_SOUND_SPEED_MPS * 100
 
     CS = plt.contour(
         X * 100,

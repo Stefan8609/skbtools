@@ -11,7 +11,10 @@ from Inversion_Workflow.Synthetic.Synthetic_Bermuda_Trajectory import (
     bermuda_trajectory,
 )
 from acoustics.synthetic_esv_tables import ESV_GENERATE, ESV_MODERATE, ESV_STRONG
-from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import check_esv_coverage
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
+    check_esv_coverage,
+    NOMINAL_SOUND_SPEED_MPS,
+)
 from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
@@ -54,7 +57,6 @@ BERMUDA_GPS1_TO_OTHERS = np.array(
 )
 # A recovered clock offset (Eq. 6 dt) further than this from the truth is a failure.
 OFFSET_FAIL_S = 0.01
-SOUND_SPEED_MPS = 1515.0
 
 
 def modular_synthetic(
@@ -403,7 +405,7 @@ def synthetic_trials(
             out[10],
             out[11],
         )
-        residual_cm = (CDOG_full - GPS_full) * SOUND_SPEED_MPS * 100
+        residual_cm = (CDOG_full - GPS_full) * NOMINAL_SOUND_SPEED_MPS * 100
         results["dt_error_s"][i] = (
             offset - inversion_result[3] - (true_offset + in_time_bias)
         )

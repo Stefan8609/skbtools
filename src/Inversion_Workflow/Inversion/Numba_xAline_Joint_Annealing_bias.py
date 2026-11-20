@@ -1,7 +1,10 @@
 import numpy as np
 from numba import njit
 
-from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import modelled_times
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
+    modelled_times,
+    NOMINAL_SOUND_SPEED_MPS,
+)
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline import (
     find_subint_offset,
@@ -152,14 +155,17 @@ def simulated_annealing_bias_joint(
             "Initial DOG",
             j,
             "RMSE (cm):",
-            np.round(rmse_j * 100.0 * 1515.0, 2),
+            np.round(rmse_j * 100.0 * NOMINAL_SOUND_SPEED_MPS, 2),
             "Offset:",
             np.round(offsets[j], 5),
         )
 
     best_total_rmse = total_rmse
 
-    print("Initial joint RMSE (cm):", np.round(best_total_rmse * 100.0 * 1515.0, 2))
+    print(
+        "Initial joint RMSE (cm):",
+        np.round(best_total_rmse * 100.0 * NOMINAL_SOUND_SPEED_MPS, 2),
+    )
     print("Initial lever:", np.round(best_lever, 3))
 
     # Save best per-DOG state
@@ -232,10 +238,11 @@ def simulated_annealing_bias_joint(
             print("Best Lever:", np.round(best_lever, 3))
             print(
                 "Current Total RMSE (cm):",
-                np.round(candidate_total_rmse * 100.0 * 1515.0, 2),
+                np.round(candidate_total_rmse * 100.0 * NOMINAL_SOUND_SPEED_MPS, 2),
             )
             print(
-                "Best Total RMSE (cm):", np.round(best_total_rmse * 100.0 * 1515.0, 2)
+                "Best Total RMSE (cm):",
+                np.round(best_total_rmse * 100.0 * NOMINAL_SOUND_SPEED_MPS, 2),
             )
             print("Best Offsets:", np.round(best_offsets, 3))
 

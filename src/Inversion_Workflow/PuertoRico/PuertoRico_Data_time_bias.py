@@ -4,6 +4,7 @@ import numpy as np
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
+    NOMINAL_SOUND_SPEED_MPS,
 )
 from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
@@ -212,7 +213,9 @@ def run_inversion():
     esv_bias = inversion_result[4]
     best_offset_eff = best_offset - time_bias
     diff_data_ms = (CDOG_full - GPS_full) * 1000.0
-    RMSE_cm = np.sqrt(np.nanmean(diff_data_ms**2)) / 1000.0 * 1515.0 * 100.0
+    RMSE_cm = (
+        np.sqrt(np.nanmean(diff_data_ms**2)) / 1000.0 * NOMINAL_SOUND_SPEED_MPS * 100.0
+    )
 
     print(f"\nEstimate: {np.round(inversion_result, 4)}")
     print(

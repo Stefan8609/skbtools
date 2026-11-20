@@ -17,6 +17,9 @@ from pathlib import Path
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
+    NOMINAL_SOUND_SPEED_MPS,
+)
 
 # Springer column widths; check against the current Satellite Navigation guidelines.
 SINGLE_COLUMN_MM = 84.0
@@ -30,7 +33,7 @@ RASTERIZE_ABOVE_POINTS = 5000
 SURVEY_START_GPS_S = 20056.0  # first epoch of Processed_GPS_Receivers_DOG_*.npz
 TIME_LABEL = "Time since survey start (h)"
 TIME_LIMITS_H = (0.0, 14.0)
-RANGE_SOUND_SPEED_MPS = 1515.0
+RANGE_SOUND_SPEED_MPS = NOMINAL_SOUND_SPEED_MPS
 
 # Okabe-Ito colours with distinct markers.
 DOG_STYLE = {

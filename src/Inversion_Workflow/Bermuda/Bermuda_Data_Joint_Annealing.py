@@ -1,6 +1,9 @@
 import numpy as np
 
 from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
+    NOMINAL_SOUND_SPEED_MPS,
+)
 from Inversion_Workflow.Inversion.Numba_xAline_Joint_Annealing_bias import (
     simulated_annealing_bias_joint,
 )
@@ -135,8 +138,9 @@ for i, DOG_num in enumerate(DOG_nums):
         f"Offset: {np.round(best_offset_eff, 4)}, "
         f"Inversion Guess (from base): {np.round(inversion_guess - CDOG_REFERENCE, 5)}"
     )
-    print("RMSE:", np.round(rmse_list[i] * 100 * 1515, 3), "cm")
+    print("RMSE:", np.round(rmse_list[i] * 100 * NOMINAL_SOUND_SPEED_MPS, 3), "cm")
 
 print(
-    "\nJoint objective (sum of DOG RMSE, cm):", np.round(joint_rmse_cm * 100 * 1515, 3)
+    "\nJoint objective (sum of DOG RMSE, cm):",
+    np.round(joint_rmse_cm * 100 * NOMINAL_SOUND_SPEED_MPS, 3),
 )

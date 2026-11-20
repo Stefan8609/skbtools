@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from numba import njit
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
+    NOMINAL_SOUND_SPEED_MPS,
+)
 from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Inversion.Numba_xAline import (
     OFFSET_SEARCH_THRESHOLD_SECONDS,
@@ -38,7 +41,11 @@ def _rmse_cm_for_offset(
         if abs(diff) >= 0.9:
             CDOG_full[i] += np.round(diff)
 
-    rmse_cm = np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2)) * 1515.0 * 100.0
+    rmse_cm = (
+        np.sqrt(np.nanmean((CDOG_full - GPS_full) ** 2))
+        * NOMINAL_SOUND_SPEED_MPS
+        * 100.0
+    )
     return rmse_cm, N
 
 

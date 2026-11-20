@@ -65,6 +65,7 @@ from numba import njit
 
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
+    NOMINAL_SOUND_SPEED_MPS,
 )
 from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
     calculateTimesRayTracing_split,
@@ -82,7 +83,7 @@ from bermuda_data import (
 )
 from geometry.Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 
-RANGE_CM_PER_S = 1515.0 * 100.0
+RANGE_CM_PER_S = NOMINAL_SOUND_SPEED_MPS * 100.0
 LIKELIHOOD_MODES = ("iid_fixed", "iid", "ar1", "ar1_white")
 
 # Lever-arm prior, vessel body frame, metres from GPS1. The horizontal center is
@@ -239,7 +240,7 @@ def compute_log_likelihood(
 
     inv_sigma2 = 1.0 / (sigma_cm * sigma_cm)
     log_sigma2 = math.log(sigma_cm * sigma_cm)
-    residual_scale = 1515.0 * 100.0
+    residual_scale = RANGE_CM_PER_S
 
     for j in range(CDOG_augments.shape[0]):
         inv_guess = CDOG_reference + CDOG_augments[j]

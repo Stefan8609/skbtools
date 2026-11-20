@@ -12,6 +12,7 @@ from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
 )
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
+    NOMINAL_SOUND_SPEED_MPS,
 )
 from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
 from bermuda_data import (
@@ -230,7 +231,9 @@ best_offset_eff = best_offset - time_bias
 drift_rate = inversion_result[5] if clock_drift else 0.0
 
 diff_data_ms = (CDOG_full - GPS_full) * 1000.0
-RMSE_cm = (np.sqrt(np.nanmean(diff_data_ms**2)) / 1000.0) * 1515.0 * 100.0
+RMSE_cm = (
+    (np.sqrt(np.nanmean(diff_data_ms**2)) / 1000.0) * NOMINAL_SOUND_SPEED_MPS * 100.0
+)
 
 print(f"\nEstimate: {np.round(inversion_result, 4)}")
 print(

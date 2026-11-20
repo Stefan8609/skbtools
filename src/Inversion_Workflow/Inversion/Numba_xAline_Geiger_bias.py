@@ -9,6 +9,7 @@ from Inversion_Workflow.Inversion.Numba_xAline import (
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     esv_gradient,
     modelled_times,
+    NOMINAL_SOUND_SPEED_MPS,
 )
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from numba import njit
@@ -527,7 +528,7 @@ MIN_OFFSET_DELTA_CHI2 = 50.0
 # seconds fit at 13-24 cm on the real data; a local minimum at a wrong second
 # (Puerto Rico crossover legs, -10 s instead of -19 s) fit at 94 cm and still had
 # Delta chi^2 = 176 against its neighbours.
-MAX_OFFSET_RMS_SECONDS = 0.5 / 1515.0
+MAX_OFFSET_RMS_SECONDS = 0.5 / NOMINAL_SOUND_SPEED_MPS
 LEVER_GN_MAX_ITERATIONS = 50
 # Iterations paired with the wide gate before narrowing it, so the time bias can
 # absorb a fractional misalignment of a few tenths of a second.
@@ -770,11 +771,14 @@ def gauss_newton_offset_search(
         if delta_chi2 >= MIN_OFFSET_DELTA_CHI2 and rms <= MAX_OFFSET_RMS_SECONDS:
             break
     else:
+        max_rms_cm = MAX_OFFSET_RMS_SECONDS * NOMINAL_SOUND_SPEED_MPS * 100
+        rms_cm = rms * NOMINAL_SOUND_SPEED_MPS * 100
+        second_rms_cm = second_rms * NOMINAL_SOUND_SPEED_MPS * 100
         if delta_chi2 >= MIN_OFFSET_DELTA_CHI2:
             raise ValueError(
                 "Best integer second of the DOG clock offset fits too poorly: "
-                f"expected RMS <= {MAX_OFFSET_RMS_SECONDS * 1515 * 100:.0f} cm, got "
-                f"{rms * 1515 * 100:.1f} cm ({best:+d} s from the alignment, "
+                f"expected RMS <= {max_rms_cm:.0f} cm, got "
+                f"{rms_cm:.1f} cm ({best:+d} s from the alignment, "
                 f"{n_pairs} pairs). Check the starting position, lever arm and data, "
                 "or pass initial_offset."
             )
@@ -782,8 +786,8 @@ def gauss_newton_offset_search(
             "Integer second of the DOG clock offset is ambiguous: expected "
             f"delta chi^2 >= {MIN_OFFSET_DELTA_CHI2:.0f} between the best and "
             f"second-best seconds, got {delta_chi2:.1f} (best {best:+d} s from the "
-            f"alignment, RMS {rms * 1515 * 100:.1f} cm; second {second:+d} s, RMS "
-            f"{second_rms * 1515 * 100:.1f} cm; {n_pairs} pairs). Check the starting "
+            f"alignment, RMS {rms_cm:.1f} cm; second {second:+d} s, RMS "
+            f"{second_rms_cm:.1f} cm; {n_pairs} pairs). Check the starting "
             "position, lever arm and data."
         )
 

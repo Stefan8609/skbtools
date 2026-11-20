@@ -46,6 +46,9 @@ from Inversion_Workflow.Synthetic.Realistic_Synthetic import (
     enu_rotation,
     realistic_synthetic,
 )
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
+    NOMINAL_SOUND_SPEED_MPS,
+)
 
 # -------------------------
 # Config
@@ -69,7 +72,6 @@ MIN_PAIRS = 100
 START_POSITION_SD_M = 20.0
 LEVER_START_SD_M = 0.3
 OUTPUT_DIR = PROJECT_ROOT / "revision/analysis/realistic_synthetic"
-RANGE_SOUND_SPEED_MPS = 1515.0
 
 # Amplitudes of the three sources that the acoustic data cannot constrain. Directions
 # of the current and the gradient are drawn per realization
@@ -391,7 +393,7 @@ def residual_summary(estimate, pairs, transponder, GPS_data, clock_drift):
     sd_white = np.sqrt(np.diag(cov)[:3]) * 100
     elevation = np.degrees(np.arcsin(line[:, 2] / slant))
     hours = (GPS_data[epoch] - GPS_data[0]) / 3600.0
-    residual_cm = residual * RANGE_SOUND_SPEED_MPS * 100
+    residual_cm = residual * NOMINAL_SOUND_SPEED_MPS * 100
     time_bins = np.arange(0.0, 15.0, 0.25)
     slant_bins = np.arange(5000.0, 13500.0, 500.0)
     return {

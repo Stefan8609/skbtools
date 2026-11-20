@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
+    NOMINAL_SOUND_SPEED_MPS,
+)
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from bermuda_data import CDOG_GUESS_AUGMENTS, CDOG_REFERENCE, gps_data_path
 from plotting.save import save_plot
@@ -164,12 +167,14 @@ def time_series_plot(
 
     if position_noise != 0:
         axes[1, 0].axhline(
-            -position_noise / 1515 * 1000, color="g", label="Input Position Noise"
+            -position_noise / NOMINAL_SOUND_SPEED_MPS * 1000,
+            color="g",
+            label="Input Position Noise",
         )
-        axes[1, 0].axhline(position_noise / 1515 * 1000, color="g")
+        axes[1, 0].axhline(position_noise / NOMINAL_SOUND_SPEED_MPS * 1000, color="g")
         axes[1, 0].text(
             xmax_hist * 0.9,
-            position_noise / 1515 * 1000 - ymax_hist * 0.06,
+            position_noise / NOMINAL_SOUND_SPEED_MPS * 1000 - ymax_hist * 0.06,
             "$\sigma_d$",
             va="center",
             color="g",
@@ -190,7 +195,7 @@ def time_series_plot(
     axes[1, 0].set_ylabel("Residuals $\epsilon$ (ms)")
     axes[1, 0].set_title(
         rf"$\sigma_\epsilon$ = {np.round(std, 2)} ms $\sim$ "
-        rf"{np.round(std * 1515 / 10, 2)} cm",
+        rf"{np.round(std * NOMINAL_SOUND_SPEED_MPS / 10, 2)} cm",
         fontsize=16,
     )
     axes[1, 0].set_xlabel("Density")
@@ -261,12 +266,14 @@ def time_series_plot(
 
     if position_noise != 0:
         axes[1, 3].axhline(
-            -position_noise / 1515 * 1000, color="g", label="Input Position Noise"
+            -position_noise / NOMINAL_SOUND_SPEED_MPS * 1000,
+            color="g",
+            label="Input Position Noise",
         )
-        axes[1, 3].axhline(position_noise / 1515 * 1000, color="g")
+        axes[1, 3].axhline(position_noise / NOMINAL_SOUND_SPEED_MPS * 1000, color="g")
         axes[1, 3].text(
             xmax_zoom_hist * 0.9,
-            position_noise / 1515 * 1000 - ymax_hist * 0.06,
+            position_noise / NOMINAL_SOUND_SPEED_MPS * 1000 - ymax_hist * 0.06,
             "$\sigma_d$",
             va="center",
             color="g",
@@ -286,7 +293,7 @@ def time_series_plot(
     # invert axis and plot
     axes[1, 3].set_title(
         rf"$\sigma_\epsilon$ = {np.round(std_zoom, 2)} "
-        rf"ms $\sim$ {np.round(std_zoom * 1515 / 10, 2)} cm",
+        rf"ms $\sim$ {np.round(std_zoom * NOMINAL_SOUND_SPEED_MPS / 10, 2)} cm",
         fontsize=16,
     )
     axes[1, 3].yaxis.set_label_position("right")
@@ -386,7 +393,7 @@ def range_residual(
 ):
     """Plot residual range errors along the track."""
     times_hours = GPS_clock / 3600  # Convert seconds to hours
-    range_residuals = (CDOG_full - GPS_full) * 1515 * 100  # Convert to cm
+    range_residuals = (CDOG_full - GPS_full) * NOMINAL_SOUND_SPEED_MPS * 100  # cm
     calculated_range = np.linalg.norm(transponder_coordinates - CDOG, axis=1)
     mu_rr, std_rr = norm.fit(range_residuals)
 

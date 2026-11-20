@@ -23,6 +23,7 @@ from bermuda_data import (
 )
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
+    NOMINAL_SOUND_SPEED_MPS,
 )
 from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
@@ -53,7 +54,6 @@ TABLE1_LEVER = {
 }
 TABLE1_DELTA_T = {1: 1866.016, 3: 3175.017, 4: 1939.018}
 TABLE1_C_SIGMA_CM = {1: 22.80, 3: 23.75, 4: 21.99}
-PAPER_SOUND_SPEED = 1515.0  # m/s, used only for the paper's c*sigma convention
 
 
 def load_dog(dog_num, esv_table_file=ESV_TABLE):
@@ -189,7 +189,7 @@ def run_analysis(dog_num=DOG_num, n_shift=N_SHIFT, gate=GATE_SECONDS):
     )
     dog_position = estimate[:3]
     delta_t = offset - time_bias
-    c_sigma_cm = np.std(CDOG_full - GPS_full) * PAPER_SOUND_SPEED * 100
+    c_sigma_cm = np.std(CDOG_full - GPS_full) * NOMINAL_SOUND_SPEED_MPS * 100
     print(
         f"DOG {dog_num}: delta_t = {delta_t:.6f} s, delta_c = {esv_bias:.4f} m/s, "
         f"c*sigma = {c_sigma_cm:.2f} cm over {len(CDOG_full)} pairs "

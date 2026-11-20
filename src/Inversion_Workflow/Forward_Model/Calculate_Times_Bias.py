@@ -6,6 +6,10 @@ from numba import njit
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from Inversion_Workflow.Forward_Model.Find_ESV import find_esv, find_esv_gradient
 
+# Nominal sound speed (m/s) that turns travel-time residuals into range, as in the
+# paper's c*sigma. Reporting only; the forward model uses the ESV table.
+NOMINAL_SOUND_SPEED_MPS = 1515.0
+
 
 @njit
 def calculateTimesRayTracing_Bias(
