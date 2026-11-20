@@ -27,9 +27,7 @@ from bermuda_data import (
 from plotting.Plot_Modular import time_series_plot, range_residual
 
 
-# -------------------------
 # Config
-# -------------------------
 DOG_num = 4
 # Lever arm and clock offset:
 #   "gauss_newton": integer second and lever arm by the Gauss-Newton offset search
@@ -44,15 +42,13 @@ lever_method = "gauss_newton"
 use_leg_mask = False
 save = True
 downsample = 1
-# Linear clock drift (theme T5), as config["clock_drift"] in the MCMC. The estimate
+# Linear clock drift, as config["clock_drift"] in the MCMC. The estimate
 # then gets drift_rate (s/s, Eq. 6 convention) as a sixth entry, and the reported
 # offset is dt0, the offset at t_mid (half-way between the first and last paired
 # GPS epochs).
 clock_drift = False
 
-# -------------------------
 # Known data
-# -------------------------
 
 dz_array, angle_array, esv_matrix = load_esv_table(
     gps_data_path("ESV_Tables/global_table_esv_extended.mat")
@@ -69,9 +65,7 @@ CDOG_guess = CDOG_REFERENCE + CDOG_GUESS_AUGMENTS[DOG_num]
 offset_hint = OFFSET_HINTS_S[DOG_num]
 
 if use_leg_mask:
-    # Same legs for every DOG. Earlier alternative for DOGs 3 and 4:
-    # 8.7-11 h and 15.75-18.15 h (not a true leg for DOG 4, as the GPS data
-    # were corrupted overlying DOG 4).
+    # Same legs for every DOG
     keep = leg_mask(GPS_data)
     GPS_Coordinates = GPS_Coordinates[keep]
     GPS_data = GPS_data[keep]
@@ -169,9 +163,7 @@ elif lever_method == "annealing":
     time_bias = inversion_result[3]
     esv_bias = inversion_result[4]
 elif lever_method == "fixed":
-    # -------------------------
     # Inversion: Initial → Final
-    # -------------------------
     print("\n ---------Using Geiger Inversion--------- \n")
 
     transponder_coordinates = findTransponder(
@@ -223,10 +215,8 @@ else:
     )
 
 
-# -------------------------
 # Summary + diagnostics
-# -------------------------
-# Keep your original convention (fold time_bias into offset for reporting)
+# Eq. 6 clock offset: dt = offset - time_bias
 best_offset_eff = best_offset - time_bias
 drift_rate = inversion_result[5] if clock_drift else 0.0
 
@@ -246,9 +236,7 @@ if clock_drift:
     print(f"Drift rate: {drift_rate:.4e} s/s (Eq. 6 convention)")
 
 
-# -------------------------
 # Plots
-# -------------------------
 DOG_name = {1: "1", 3: "3", 4: "4"}
 save_path = "Figs/Inversion_Workflow"
 file_tag = (
@@ -266,7 +254,7 @@ time_series_plot(
     DOG_num=file_tag,
 )
 
-# Range residual plot inputs: recompute travel times at final estimate
+# Range residuals: travel times at the final estimate, paired with a wide gate
 times_guess, esv = calculateTimesRayTracing_Bias_Real(
     inversion_guess,
     transponder_coordinates,
@@ -300,11 +288,7 @@ range_residual(
     DOG_num=file_tag,
 )
 
-# Save Data for Easy replotting
-
-# -------------------------
-# Save plotting inputs for later font-size experiments
-# -------------------------
+# Plotting inputs
 plot_data_dir = gps_output_path("Plot_Data")
 plot_data_path = f"{plot_data_dir}/integer_pick_metrics_DOG{DOG_num}.npz"
 
@@ -334,9 +318,7 @@ if save:
 
     print(f"Saved integer-pick metric plot data to: {plot_data_path}")
 
-# -------------------------
 # Save small repo sample
-# -------------------------
 save_repo_sample = True
 
 if save_repo_sample:
@@ -345,7 +327,7 @@ if save_repo_sample:
 
     n_repo_samples = 1000
 
-    # Use the first 1000 samples, preserving the same imported-file structure
+    # First 1000 epochs, same keys as the processed file
     GPS_Coordinates_sample = GPS_Coordinates[:n_repo_samples]
     GPS_data_sample = GPS_data[:n_repo_samples]
     CDOG_data_sample = CDOG_data[:n_repo_samples]

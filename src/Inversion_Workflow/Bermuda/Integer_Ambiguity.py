@@ -1,6 +1,6 @@
 """Test whether the integer-second part of delta_t is uniquely identified.
 
-Reviewer 3, M1. Starting from the best solution for one DOG, delta_t is shifted by
+Starting from the best solution for one DOG, delta_t is shifted by
 k whole seconds and the emission/arrival pairing is re-derived from scratch with
 ``two_pointer_index`` (paper Eq. A20, gate gamma). Travel-time residuals are then
 evaluated (a) with the best-solution parameters held fixed and (b) after
@@ -34,9 +34,7 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     residual_inliers,
 )
 
-# -------------------------
 # Config
-# -------------------------
 DOG_num = 3
 N_SHIFT = 5
 GATE_SECONDS = 0.4  # gamma of paper Eq. A20

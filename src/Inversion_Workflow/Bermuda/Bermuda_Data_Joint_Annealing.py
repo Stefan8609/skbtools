@@ -16,17 +16,13 @@ from bermuda_data import (
 )
 from numba.typed import List
 
-# -------------------------
 # Config
-# -------------------------
 DOG_nums = [1, 3, 4]
 downsample = 10
-# Linear clock drift per DOG (theme T5), as config["clock_drift"] in the MCMC.
+# Linear clock drift per DOG as config["clock_drift"] in the MCMC.
 clock_drift = False
 
-# -------------------------
 # Known data
-# -------------------------
 dz_array, angle_array, esv_matrix = load_esv_table(
     gps_data_path("ESV_Tables/global_table_esv_extended.mat")
 )
@@ -34,9 +30,7 @@ dz_array, angle_array, esv_matrix = load_esv_table(
 initial_lever_guess = np.array([-12.69796149, 9.51739301, -12.0743129])
 
 
-# -------------------------
 # Initial guesses by DOG
-# -------------------------
 # DOG 1 starts 2 m from the guess in Bermuda_Data_time_bias.py (+2 m ECEF x, -2 m y).
 initial_guess_augments = {
     1: np.array([-396.16, 369.90, 773.02]),
@@ -45,9 +39,7 @@ initial_guess_augments = {
 }
 
 
-# -------------------------
 # Load all DOG datasets
-# -------------------------
 
 CDOG_data_list = List()
 GPS_data_list = List()
@@ -86,9 +78,7 @@ initial_offset_list = np.asarray(initial_offset_list)
 GPS_Coordinates = GPS_Coordinates_ref
 
 
-# -------------------------
 # Joint inversion
-# -------------------------
 
 print("\n ---------Using Joint Simulated Annealing--------- \n")
 
@@ -112,9 +102,7 @@ best_lever, best_offset_list, inversion_result_list, rmse_list = (
 )
 
 
-# -------------------------
 # Summary + diagnostics
-# -------------------------
 print("\n---------------- Joint Results ----------------")
 print("Best Lever:", np.round(best_lever, 4))
 

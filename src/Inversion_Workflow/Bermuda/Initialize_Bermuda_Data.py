@@ -24,7 +24,7 @@ def load_and_process_data(path, GNSS_start, GNSS_end):
 
 # Filtering Functions
 def running_median(data, window=50):
-    """Return the running median of ``data`` using the given window."""
+    """Running median (Eq. A4) of ``data`` over ``window`` samples."""
     half = window // 2
     n = len(data)
     result = np.empty(n)
@@ -36,7 +36,7 @@ def running_median(data, window=50):
 
 
 def running_abs_dev(data, window=50):
-    """Median absolute deviation computed over a moving window."""
+    """Running median absolute deviation (Eq. A5) over ``window`` samples."""
     half = window // 2
     n = len(data)
     result = np.empty(n)
@@ -50,21 +50,13 @@ def running_abs_dev(data, window=50):
 
 
 def initialize_bermuda(GNSS_start, GNSS_end, DOG_num=3, save=False):
-    """Load DOG and GPS data for the Bermuda experiment.
+    """GPS_Coordinates (N, 4, 3), GPS_data (N,) and CDOG_data (M, 2) of one DOG.
 
-    Parameters
-    ----------
-    GNSS_start, GNSS_end : float
-        Start and end times (hours) for slicing the GNSS data.
-    DOG_num : int, optional
-        DOG data set number to load.
-    save : bool, optional
-        If ``True`` save processed arrays as ``.npz`` files.
-
-    Returns
-    -------
-    tuple
-        ``(GPS_Coordinates, GPS_data, CDOG_data)``.
+    Keeps the GNSS epochs between ``GNSS_start`` and ``GNSS_end`` (hours since MJD
+    59015) that all four receivers share, then filters them on ellipsoidal height
+    (Eqs. A4-A6). GPS times are shifted by 70000 s and the DOG fractional seconds
+    converted from ns to s. ``save`` writes
+    ``GPS_Data/Processed_GPS_Receivers_DOG_<n>.npz``.
     """
     print("Initializing Bermuda Data")
 
@@ -95,7 +87,7 @@ def initialize_bermuda(GNSS_start, GNSS_end, DOG_num=3, save=False):
         )
     filtered_data = np.array(filtered_data)
 
-    # Filter data based on elevation
+    # Hard cut on the ellipsoidal height (m) of all four receivers
     print("Filtering Data")
     window = 5000
     elev_upper = -35
@@ -115,6 +107,7 @@ def initialize_bermuda(GNSS_start, GNSS_end, DOG_num=3, save=False):
     indices = np.where(mask[0])[0]
     filtered_data = filtered_data[:, :, indices]
 
+    # Eq. A6: drop epochs where any receiver is over 2 MAD from its running median
     mask = np.ones(filtered_data.shape[2], dtype=bool)
     for i in range(4):
         elev = filtered_data[i, 4, :]
@@ -127,7 +120,7 @@ def initialize_bermuda(GNSS_start, GNSS_end, DOG_num=3, save=False):
     filtered_data = filtered_data[:, :, indices]
 
     print("End of Filtering Data")
-    # Initialize Coordinates in form of Geiger's Method
+    # GPS_Coordinates (N, 4, 3)
     GPS_Coordinates = np.zeros((len(filtered_data[0, 0]), 4, 3))
     for i in range(len(filtered_data[0, 0])):
         for j in range(4):
@@ -135,20 +128,18 @@ def initialize_bermuda(GNSS_start, GNSS_end, DOG_num=3, save=False):
             GPS_Coordinates[i, j, 1] = filtered_data[j, 2, i]
             GPS_Coordinates[i, j, 2] = filtered_data[j, 3, i]
 
-    # Initialize time-tagged data for GPS and CDOG
     GPS_data = filtered_data[0, 0, :]
     CDOG_data = sio.loadmat(gps_data_path(f"CDOG_Data/DOG{DOG_num}-camp.mat"))[
         "tags"
     ].astype(float)
 
-    # Scale GPS Clock slightly and scale CDOG clock to nanoseconds
+    # Shift the GPS clock and convert the DOG fractional seconds from ns to s
     clock_adjustment = {1: 70000.0, 2: 70000.0, 3: 70000.0, 4: 70000.0}
 
     GPS_data = GPS_data - clock_adjustment[DOG_num]
 
     CDOG_data[:, 1] = CDOG_data[:, 1] / 1e9
 
-    # Save the data if required
     if save:
         np.savez(
             gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}"),
