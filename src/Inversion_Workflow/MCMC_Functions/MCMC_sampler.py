@@ -286,22 +286,27 @@ for _parity, _name in ((0, "a"), (1, "b")):
     }
 
 
-def single_dog(dog):
-    """Overrides that keep one DOG of CONFIG (per-DOG entries sliced)."""
-    j = CONFIG["dogs"].index(dog)
-    per_dog = ("offsets_s", "start_CDOG_aug", "start_esv_bias")
-    overrides = {key: [CONFIG[key][j]] for key in per_dog}
-    overrides["prior_CDOG_aug_center_m"] = [CONFIG["prior_CDOG_aug_center_m"][j]]
-    return {"dogs": [dog], **overrides}
+def select_dogs(dogs):
+    """Overrides that keep these DOGs of CONFIG, in this order (per-DOG entries)."""
+    index = [CONFIG["dogs"].index(dog) for dog in dogs]
+    overrides = {"dogs": list(dogs)}
+    for key in (
+        "offsets_s",
+        "start_CDOG_aug",
+        "start_esv_bias",
+        "prior_CDOG_aug_center_m",
+    ):
+        overrides[key] = [CONFIG[key][j] for j in index]
+    return overrides
 
 
 for _dog in (1, 3, 4):
-    RUN_VARIANTS[f"ar1_dog{_dog}"] = {"likelihood": "ar1", **single_dog(_dog)}
+    RUN_VARIANTS[f"ar1_dog{_dog}"] = {"likelihood": "ar1", **select_dogs([_dog])}
     # Per-DOG lever arm under the final model (30-min windows, one DOG, so the
     # "common" series is that DOG's own dc(t); sparse windows merge as usual).
     RUN_VARIANTS[f"ar1_common30_dog{_dog}"] = {
         **RUN_VARIANTS["ar1_common30"],
-        **single_dog(_dog),
+        **select_dogs([_dog]),
     }
 
 
