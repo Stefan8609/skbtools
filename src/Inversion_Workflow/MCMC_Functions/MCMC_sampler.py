@@ -140,19 +140,24 @@ CONFIG = {
     # Receiver grid (body frame, m from GPS1) as in the inversion drivers.
     "gps1_to_others": GPS1_TO_OTHERS.tolist(),
     # Alignment: integer plus sub-integer offsets (s) and the pairing window.
-    "offsets_s": [1866.016, 3175.017, 1939.0178],
+    # Gauss-Newton offset search of Bermuda_Data_time_bias.py on the PRIDE_final
+    # GNSS (2026-11-21). Submitted-GNSS values: 1866.016, 3175.017, 1939.0178.
+    "offsets_s": [1866.016727, 3175.016802, 1939.016538],
     "pair_threshold_s": 0.4,
     # Pairs with start-model residuals beyond this many MADs are dropped (None: keep).
     "outlier_mad_factor": 6.0,
     # Start model: the pairing model and the start of the mode search. It does not
-    # enter the prior. Values are the inputs of the Fig. 7 chain.
-    "start_lever": [-12.8, 9.5, -12.15],
+    # enter the prior. Per-DOG Gauss-Newton solutions on the PRIDE_final GNSS
+    # (2026-11-21); the lever arm is the mean of the three per-DOG lever arms. The
+    # submitted-GNSS start (inputs of the Fig. 7 chain) was lever
+    # [-12.8, 9.5, -12.15], dc [-0.4078, -0.2667, -0.1230] m/s.
+    "start_lever": [-12.965, 9.471, -14.547],
     "start_CDOG_aug": [
-        [-396.91, 369.80, 774.24],
-        [826.22, -112.94, -733.06],
-        [236.20, -1306.98, -2189.99],
+        [-397.535, 371.119, 773.408],
+        [825.428, -111.056, -734.226],
+        [235.188, -1304.573, -2191.449],
     ],
-    "start_esv_bias": [-0.4078, -0.2667, -0.1230],
+    "start_esv_bias": [-0.1633, -0.1478, -0.1858],
     # Priors (independent Gaussians unless noted).
     "prior_lever_center_m": PRIOR_LEVER_CENTER_M,
     "prior_lever_sd_m": PRIOR_LEVER_SD_M,

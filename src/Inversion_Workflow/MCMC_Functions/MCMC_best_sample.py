@@ -19,6 +19,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
 
 from Inversion_Workflow.MCMC_Functions import MCMC_sampler as ms
 from Inversion_Workflow.MCMC_Functions.MCMC_diagnostics import pooled_run
+from bermuda_data import GPS1_TO_OTHERS
 
 
 plt.rcParams.update(
@@ -100,14 +101,7 @@ def plot_best_sample(
     print("Log posterior:", logpost)
     print("Log likelihood:", loglikelihood)
 
-    gps1_grid = np.array(
-        [
-            [0.0, 0.0, 0.0],
-            [-2.393414, -4.223503, 0.029415],
-            [-12.095685, -0.945685, 0.004397],
-            [-8.686741, 5.169188, -0.024993],
-        ]
-    )
+    gps1_grid = GPS1_TO_OTHERS
 
     split_esv = (esv_bias.ndim == 2) and (esv_bias.shape[1] > 1)
     trans_coords = findTransponder(GPS_Coordinates, gps1_grid, lever_guess)

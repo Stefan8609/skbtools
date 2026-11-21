@@ -2,7 +2,6 @@ from pathlib import Path
 import numpy as np
 from scipy.io import savemat
 from bermuda_data import gps_data_path
-import matplotlib.pyplot as plt
 
 
 def save_mat(input_path, output_path):
@@ -131,90 +130,10 @@ def save_mat(input_path, output_path):
 
 
 if __name__ == "__main__":
-    GPS_num = 1
-    GPS_num_to_name = {1: "1_PortFwd", 2: "2_StbdFwd", 3: "3_StbdAft", 4: "4_PortAft"}
-
-    lat_vals = []
-    lon_vals = []
-    elev_vals = []
-    days_vals = []
-    time_vals = []
-    PDOP_vals = []
-    nsat_bundle = None
-    for i in range(6, 14):
-        formatted_i = f"{i:02d}"
-        input_path = gps_data_path(
-            f"GPS_Data/Puerto_Rico/{GPS_num_to_name[GPS_num]}/combined/00{formatted_i}-combined"
+    for n in (1, 2, 3, 4):
+        save_mat(
+            gps_data_path(
+                f"GPS_Data/PRIDE_runs/final/ber{n}/2020/168/kin_2020168_ber{n}"
+            ),
+            gps_data_path(f"GPS_Data/PRIDE_final/Antenna{n}-camp.mat"),
         )
-        output_path = gps_data_path(
-            f"GPS_Data/Puerto_Rico/{GPS_num_to_name[GPS_num]}/combined/00{formatted_i}-combined.mat"
-        )
-        try:
-            output = save_mat(input_path, output_path)
-            lat_vals = lat_vals + output["lat"].tolist()
-            lon_vals = lon_vals + output["lon"].tolist()
-            elev_vals = elev_vals + output["elev"].tolist()
-            days_vals = days_vals + output["days"].tolist()
-            time_vals = time_vals + output["times"].tolist()
-            PDOP_vals = PDOP_vals + output["pdop"].tolist()
-
-            if nsat_bundle is None:
-                nsat_bundle = np.asarray(output["nsat_bundle"])
-            else:
-                nsat_bundle = np.concatenate(
-                    (nsat_bundle, np.asarray(output["nsat_bundle"])), axis=0
-                )
-        except Exception as e:
-            print(f"❌ Failed to process 00{formatted_i}: {e}")
-
-    days_vals = np.array(days_vals)
-    time_vals = np.array(time_vals)
-
-    days = days_vals.flatten() - 59958
-    times = time_vals.flatten()
-    datetimes = ((days * 24 * 3600) + times) / 3600
-
-    sc = plt.scatter(lon_vals, lat_vals, c=datetimes, s=1, cmap="viridis")
-    plt.gca().set_aspect("equal", adjustable="box")
-    cbar = plt.colorbar(sc)
-    cbar.set_label("Time (hours)")
-    plt.xticks(rotation=30)
-    plt.title("Trajectory colored by time")
-    plt.xlabel("Longitude (deg)")
-    plt.ylabel("Latitude (deg)")
-    plt.tight_layout()
-    path = gps_data_path(
-        f"Figs/GPS/{GPS_num_to_name[GPS_num]}/Puerto_Rico_Trajectory_6.png"
-    )
-    plt.savefig(path, dpi=300)
-    plt.show()
-
-    plt.scatter(datetimes, elev_vals, s=1)
-    plt.ylim(-66, -52)
-
-    path = gps_data_path(
-        f"Figs/GPS/{GPS_num_to_name[GPS_num]}/Puerto_Rico_Elevation_6.png"
-    )
-
-    plt.title(f"Elevation Over Time for {GPS_num_to_name[GPS_num]}")
-    plt.xlabel("Time (hours)")
-    plt.ylabel("Elevation (m)")
-    plt.savefig(path, dpi=300)
-    plt.show()
-
-    plt.scatter(datetimes, PDOP_vals, s=1)
-
-    path = gps_data_path(f"Figs/GPS/{GPS_num_to_name[GPS_num]}/Puerto_Rico_PDOP_6.png")
-    plt.title(f"PDOP Over Time for {GPS_num_to_name[GPS_num]}")
-    plt.xlabel("Time (hours)")
-    plt.ylabel("PDOP")
-    plt.savefig(path, dpi=300)
-    plt.show()
-
-    plt.scatter(datetimes, np.sum(nsat_bundle, axis=1), s=1)
-    path = gps_data_path(f"Figs/GPS/{GPS_num_to_name[GPS_num]}/Puerto_Rico_Nsat_6.png")
-    plt.title(f"Number of Satellites Over Time for {GPS_num_to_name[GPS_num]}")
-    plt.xlabel("Time (hours)")
-    plt.ylabel("Number of Satellites")
-    plt.savefig(path, dpi=300)
-    plt.show()

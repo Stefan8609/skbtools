@@ -51,7 +51,7 @@ def test_dc_series_random_walk_size_and_seed():
 
 
 def test_dc_series_observed_and_sinusoid():
-    t = np.array([20116.0, 23716.0 + 1.0, 70399.0])
+    t = np.array([20111.0, 21911.0 + 1.0, 70399.0])
     observed = rs.dc_series_mps(t, {**rs.ZERO_KNOBS, "dc_series": "observed"}, 0)
     np.testing.assert_allclose(observed, rs.OBSERVED_DC_MPS[[0, 1, -1]])
     sine = {**rs.ZERO_KNOBS, "dc_sinusoid_mps": 0.01, "dc_sinusoid_phase_rad": 0.0}

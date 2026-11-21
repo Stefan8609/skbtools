@@ -66,12 +66,13 @@ def generateRealistic(n, gps1_to_others=None, gps1_to_transponder=None):
     GPS_Coordinates (m, 4, 3) and transponder_coordinates (m, 3).
     """
     if gps1_to_others is None:
+        # bermuda_data.GPS1_TO_OTHERS (a literal: njit cannot take the global here)
         gps1_to_others = np.array(
             [
                 [0.0, 0.0, 0.0],
-                [-2.39341409, -4.22350344, 0.02941493],
-                [-12.09568416, -0.94568462, 0.0043972],
-                [-8.68674054, 5.16918806, 0.02499322],
+                [-2.435242, -4.237408, 0.005141],
+                [-12.125877, -0.967643, 0.000789],
+                [-8.694497, 5.143601, 0.004453],
             ]
         )
     if gps1_to_transponder is None:

@@ -4,6 +4,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias,
 )
 from numba import njit
+from bermuda_data import GPS1_TO_OTHERS
 
 # Fraction of DOG tags dropped in total (App. B.3: "10-20%").
 MIN_DROP_FRACTION = 0.10
@@ -36,14 +37,7 @@ def generateUnaligned(
     ``CDOG_mat`` is (m, 2) integer and fractional seconds.
     """
     if gps1_to_others is None:
-        gps1_to_others = np.array(
-            [
-                [0.0, 0.0, 0.0],
-                [-2.39341409, -4.22350344, 0.02941493],
-                [-12.09568416, -0.94568462, 0.0043972],
-                [-8.68674054, 5.16918806, 0.02499322],
-            ]
-        )
+        gps1_to_others = GPS1_TO_OTHERS
     if gps1_to_transponder is None:
         gps1_to_transponder = np.array([-12.4659, 9.6021, -13.2993])
 

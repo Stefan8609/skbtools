@@ -20,6 +20,7 @@ from bermuda_data import (
     CDOG_REFERENCE,
     GPS1_TO_OTHERS,
     gps_data_path,
+    gps_output_path,
 )
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
@@ -38,9 +39,13 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
 DOG_num = 3
 N_SHIFT = 5
 GATE_SECONDS = 0.4  # gamma of paper Eq. A20
-# Paper I (Table 1) used the table from before the 2026-10-08 ray-tracing fix.
-# Switch to "global_table_esv_extended.mat" to use the current table.
-ESV_TABLE = "ESV_Tables/global_table_esv_extended_before_ray_fix_20261008.mat"
+# Current table. Paper I (Table 1) used the table from before the 2026-10-08
+# ray-tracing fix, "ESV_Tables/global_table_esv_extended_before_ray_fix_20261008.mat",
+# with TABLE1_LEVER (set LEVER_SOURCE = "table1" to repeat that check).
+ESV_TABLE = "ESV_Tables/global_table_esv_extended.mat"
+# "gauss_newton": the lever arm found by Bermuda_Data_time_bias.py (its saved
+# Plot_Data/integer_pick_metrics_DOG<n>.npz); "table1": TABLE1_LEVER.
+LEVER_SOURCE = "gauss_newton"
 OUTPUT_DIR = Path(__file__).resolve().parents[3] / "revision/analysis/integer_ambiguity"
 
 # Table 1 lever arms and published values (delta_t in s, c*sigma_eps in cm with
@@ -52,6 +57,18 @@ TABLE1_LEVER = {
 }
 TABLE1_DELTA_T = {1: 1866.016, 3: 3175.017, 4: 1939.018}
 TABLE1_C_SIGMA_CM = {1: 22.80, 3: 23.75, 4: 21.99}
+
+
+def lever_arm(dog_num):
+    """Lever arm (m, vessel frame) of LEVER_SOURCE for this DOG."""
+    if LEVER_SOURCE == "table1":
+        return np.array(TABLE1_LEVER[dog_num])
+    if LEVER_SOURCE == "gauss_newton":
+        path = gps_output_path("Plot_Data", f"integer_pick_metrics_DOG{dog_num}.npz")
+        return np.load(path)["best_lever"]
+    raise ValueError(
+        f"LEVER_SOURCE must be 'gauss_newton' or 'table1', got {LEVER_SOURCE!r}"
+    )
 
 
 def load_dog(dog_num, esv_table_file=ESV_TABLE):
@@ -178,9 +195,8 @@ def mechanism_fit(pairing, velocity):
 def run_analysis(dog_num=DOG_num, n_shift=N_SHIFT, gate=GATE_SECONDS):
     GPS_Coordinates, GPS_data, CDOG_data, esv_table = load_dog(dog_num)
     dz_array, angle_array, esv_matrix = esv_table
-    transponder_coordinates = findTransponder(
-        GPS_Coordinates, GPS1_TO_OTHERS, np.array(TABLE1_LEVER[dog_num])
-    )
+    lever = lever_arm(dog_num)
+    transponder_coordinates = findTransponder(GPS_Coordinates, GPS1_TO_OTHERS, lever)
 
     estimate, offset, time_bias, esv_bias, CDOG_full, GPS_full = best_solution(
         dog_num, CDOG_data, GPS_data, transponder_coordinates, esv_table
@@ -264,7 +280,8 @@ def run_analysis(dog_num=DOG_num, n_shift=N_SHIFT, gate=GATE_SECONDS):
         "delta_t_best_s": float(delta_t),
         "delta_c_best_m_s": float(esv_bias),
         "dog_position_ecef_m": dog_position.tolist(),
-        "lever_arm_m": TABLE1_LEVER[dog_num],
+        "lever_source": LEVER_SOURCE,
+        "lever_arm_m": lever.tolist(),
         "c_sigma_cm_paper_convention": float(c_sigma_cm),
         "c_sigma_cm_published": TABLE1_C_SIGMA_CM[dog_num],
         "rows": rows,

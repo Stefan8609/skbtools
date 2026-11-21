@@ -42,13 +42,20 @@ def gps_output_path(*paths: str | Path) -> Path:
 # CDOG_REFERENCE.
 CDOG_REFERENCE = np.array([1976671.618715, -5069622.53769779, 3306330.69611698])
 
-# Receivers 2-4 relative to receiver 1 in the vessel frame (m).
+# Receivers 2-4 relative to receiver 1 in the vessel frame (m). Rigid grid fitted
+# by geometry/GPS_Grid.py (fit_rigid_grid) to the PRIDE_final positions in
+# Processed_GPS_Receivers_DOG_1.npz (2026-11-21): the per-antenna median after
+# aligning every epoch to the grid, rotated onto the frame of the previous grid so
+# the lever-arm axes keep their meaning, receiver 1 at the origin. Rigid-body misfit
+# rms 1.8-2.2 cm per antenna (2.3-3.5 cm with the previous grid). Previous grid,
+# fitted to the submitted GNSS solutions: [-2.39341409, -4.22350344, 0.02941493],
+# [-12.09568416, -0.94568462, 0.0043972], [-8.68674054, 5.16918806, 0.02499322].
 GPS1_TO_OTHERS = np.array(
     [
         [0.0, 0.0, 0.0],
-        [-2.39341409, -4.22350344, 0.02941493],
-        [-12.09568416, -0.94568462, 0.0043972],
-        [-8.68674054, 5.16918806, 0.02499322],
+        [-2.435242, -4.237408, 0.005141],
+        [-12.125877, -0.967643, 0.000789],
+        [-8.694497, 5.143601, 0.004453],
     ]
 )
 

@@ -10,7 +10,7 @@ from geometry.ECEF_Geodetic import ECEF_Geodetic
 from scipy.stats import norm
 from plotting.Ellipses.Prior_Ellipse import plot_prior_ellipse
 from plotting.save import save_plot
-from bermuda_data import CDOG_REFERENCE
+from bermuda_data import CDOG_REFERENCE, GPS1_TO_OTHERS
 import itertools
 
 """Enable this for paper plots"""
@@ -81,14 +81,7 @@ def get_init_params_and_prior(chain):
             "CDOG_aug, ESV bias, and time bias"
         )
         init_lever = np.array([-13.12, 9.72, -15.9])
-        init_gps_grid = np.array(
-            [
-                [0.0, 0.0, 0.0],
-                [-2.393414, -4.223503, 0.029415],
-                [-12.095685, -0.945685, 0.004397],
-                [-8.686741, 5.169188, -0.024993],
-            ]
-        )
+        init_gps_grid = GPS1_TO_OTHERS
         init_aug = np.array(
             [
                 [-397.63809, 371.47355, 773.26347],

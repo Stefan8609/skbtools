@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from geometry.fit_plane import fitPlane
 from geometry.project_to_plane import projectToPlane
-from bermuda_data import gps_data_path
+from bermuda_data import GPS1_TO_OTHERS, gps_data_path
+from geometry.rigid_body import findRotationAndDisplacement
 
 np.set_printoptions(suppress=True)
 
@@ -90,7 +91,48 @@ def GPS_Lever_arms(GPS_Coordinates):
         np.savez(save_path, GPS_grid=all_arms)
 
 
+def fit_rigid_grid(GPS_Coordinates, frame_grid, n_iterations=10):
+    """Rigid receiver grid (4, 3) best fitting GPS_Coordinates (N, 4, 3), in m.
+
+    Every epoch is rotated onto the current grid and the grid replaced by the
+    per-receiver median of the aligned epochs, until it stops changing. The result
+    is then rotated onto ``frame_grid`` (so the vessel-frame axes, and with them the
+    lever arm, keep their meaning) and shifted to put receiver 1 at the origin.
+    Returns ``(grid, misfit)`` with misfit (N, 4) the distance (m) of each receiver
+    from the fitted grid.
+    """
+    GPS_Coordinates = np.asarray(GPS_Coordinates, dtype=float)
+    if GPS_Coordinates.ndim != 3 or GPS_Coordinates.shape[1:] != (4, 3):
+        raise ValueError(f"expected (N, 4, 3), got {GPS_Coordinates.shape}")
+    grid = np.asarray(frame_grid, dtype=float)
+    aligned = np.empty_like(GPS_Coordinates)
+    for _ in range(n_iterations):
+        for i, epoch in enumerate(GPS_Coordinates):
+            R, d = findRotationAndDisplacement(epoch.T, grid.T)
+            aligned[i] = (R @ epoch.T + d[:, None]).T
+        median = np.median(aligned, axis=0)
+        R, d = findRotationAndDisplacement(median.T, np.asarray(frame_grid).T)
+        new_grid = (R @ median.T + d[:, None]).T
+        new_grid -= new_grid[0]
+        converged = np.max(np.abs(new_grid - grid)) < 1e-6
+        grid = new_grid
+        if converged:
+            break
+    for i, epoch in enumerate(GPS_Coordinates):
+        R, d = findRotationAndDisplacement(epoch.T, grid.T)
+        aligned[i] = (R @ epoch.T + d[:, None]).T
+    return grid, np.linalg.norm(aligned - grid, axis=2)
+
+
 if __name__ == "__main__":
     data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz"))
     GPS_Coordinates = data["GPS_Coordinates"]
+    # The grid in bermuda_data.GPS1_TO_OTHERS
+    grid, misfit = fit_rigid_grid(GPS_Coordinates, GPS1_TO_OTHERS)
+    print("Rigid grid (m):")
+    print(np.round(grid, 6))
+    print(
+        "Misfit rms per receiver (cm):",
+        np.round(100 * np.sqrt(np.mean(misfit**2, 0)), 2),
+    )
     GPS_Lever_arms(GPS_Coordinates)

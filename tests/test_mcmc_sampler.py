@@ -25,7 +25,16 @@ def synthetic_problem(num_esv_splits=1, n_arrivals=60):
     east = np.cross([0.0, 0.0, 1.0], up)
     east /= np.linalg.norm(east)
     north = np.cross(up, east)
-    grid = np.array(ms.CONFIG["gps1_to_others"])
+    # A fixed receiver grid (the pre-2026-11-21 Bermuda grid), so the problem does
+    # not change when the site grid is refitted.
+    grid = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [-2.39341409, -4.22350344, 0.02941493],
+            [-12.09568416, -0.94568462, 0.0043972],
+            [-8.68674054, 5.16918806, 0.02499322],
+        ]
+    )
     lever = np.array([-13.0, 9.5, -14.5])
 
     GPS_data = 1000.0 + np.concatenate([np.arange(40.0), 140.0 + np.arange(20.0)])
@@ -57,6 +66,7 @@ def synthetic_problem(num_esv_splits=1, n_arrivals=60):
     config = {
         **ms.CONFIG,
         "run_name": "synthetic",
+        "gps1_to_others": grid.tolist(),
         "likelihood": "ar1",
         "clock_drift": True,
         "dogs": [1],

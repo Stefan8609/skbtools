@@ -58,21 +58,24 @@ CDOG_AUGMENTS = {
     4: np.array([235.77476616, -1305.38300727, -2190.89445398]),
 }
 
-# Common dc(t) estimated from the Bermuda data: posterior mean of the "ar1_common30"
-# model (one dc series shared by DOGs 1/3/4 on 30-min windows, zero mean over the
-# windows), local chains at commit d2d00cb. Window edges in GPS seconds; values in
-# m/s. It contains vessel-side GNSS error as well as ocean.
+# Common dc(t) estimated from the Bermuda data: posterior mode (Laplace
+# approximation) of the "ar1_common30" model (one dc series shared by DOGs 1/3/4 on
+# 30-min windows, zero mean over the windows) on the PRIDE_final GNSS, 2026-11-21.
+# Window edges in GPS seconds; values in m/s. It may still hold common-mode vessel
+# GNSS error. The submitted-GNSS series (posterior mean, commit d2d00cb) ranged
+# -68 to +125 mm/s with antenna 4's height jumps in it.
 OBSERVED_DC_EDGES_GPS_S = np.array(
-    [20116.0, 23716.0] + list(np.arange(25516.0, 68716.1, 1800.0)) + [70400.0]
+    list(np.arange(20111.0, 68711.1, 1800.0)) + [70400.0]
 )
 OBSERVED_DC_MPS = 1e-3 * np.array(
-    [-10.5, -24.0, -30.2, -13.9, -43.3, -47.7, -68.0, -53.8, -16.1, -5.3, -14.6,
-     -24.9, 12.6, 3.6, -16.8, -51.6, -37.7, -10.4, -3.5, -9.1, 51.3, 124.7, 39.1,
-     46.3, 63.8, 53.3, 86.6]
+    [9.1, -12.0, -23.2, -30.8, -8.8, -14.6, -25.4, -32.6, -17.3, -7.8, -8.8, -21.6,
+     -24.7, -25.4, -27.5, -20.7, -14.5, -3.4, -10.1, 6.9, 2.3, 7.5, 61.0, 51.0, 54.4,
+     65.7, 37.6, 33.8]
 )  # fmt: skip
 
-# Real-data alignment, used only to copy which pings each DOG received.
-REAL_DOG_OFFSET_S = {1: 1866.016, 3: 3175.017, 4: 1939.0178}
+# Real-data alignment, used only to copy which pings each DOG received (Gauss-Newton
+# offsets on the PRIDE_final GNSS; MCMC_sampler CONFIG["offsets_s"]).
+REAL_DOG_OFFSET_S = {1: 1866.016727, 3: 3175.016802, 4: 1939.016538}
 REAL_PAIR_GATE_S = 0.05
 
 # Idealized tracks: speed of the Bermuda survey (median), 1 Hz pings, and a survey
@@ -283,7 +286,8 @@ def real_vessel(DOG_num):
 
     The rigid fit is the one ``bermuda_trajectory`` uses as the truth: GPS1 at its
     real position and the grid rotated to the real attitude. ``real - rigid`` is the
-    real per-antenna (rigid-body) misfit, antenna 4's decimetre jumps included.
+    real per-antenna (rigid-body) misfit (1.8-2.2 cm rms per antenna with the
+    PRIDE_final GNSS; the submitted solutions had antenna 4's decimetre jumps).
     """
     data = np.load(gps_data_path(f"GPS_Data/Processed_GPS_Receivers_DOG_{DOG_num}.npz"))
     real = data["GPS_Coordinates"]

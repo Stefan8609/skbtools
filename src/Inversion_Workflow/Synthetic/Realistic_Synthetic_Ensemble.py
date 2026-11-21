@@ -117,13 +117,14 @@ PRESETS = {
         "dc_series": "observed",
         "position_noise_m": 0.02,
     },
-    # dc(t) as a random walk with the observed increment size (0.044 m/s per
-    # sqrt(hour) at 30-min windows) plus a 10 mm/s M2 sinusoid (the M2 level of the
-    # observed series), a lateral gradient, and the real antenna misfit.
+    # dc(t) as a random walk with the observed increment size (0.022 m/s per
+    # sqrt(hour) at 30-min windows on the PRIDE_final GNSS; 0.044 on the submitted
+    # GNSS, whose series held antenna 4's jumps) plus a 10 mm/s M2 sinusoid (the M2
+    # level of the observed series), a lateral gradient, and the real antenna misfit.
     "random": {
         **COMMON,
         "dc_series": "random_walk",
-        "dc_random_walk_mps_per_sqrt_h": 0.044,
+        "dc_random_walk_mps_per_sqrt_h": 0.022,
         "dc_sinusoid_mps": 0.010,
         "dc_sinusoid_period_h": M2_PERIOD_H,
         "gnss_relative": "real_misfit_shifted",
@@ -208,7 +209,9 @@ def experiment_cells(experiment, amplitudes="guess"):
             "dc_observed": {"dc_series": "observed"},
             "dc_random_walk": {
                 "dc_series": "random_walk",
-                "dc_random_walk_mps_per_sqrt_h": 0.044,
+                "dc_random_walk_mps_per_sqrt_h": PRESETS["random"][
+                    "dc_random_walk_mps_per_sqrt_h"
+                ],
             },
             "dc_sinusoid_10mmps": {"dc_sinusoid_mps": 0.01},
             "dc_gradient_5mmps_per_km_E": {"dc_gradient_mps_per_km": (0.005, 0.0)},

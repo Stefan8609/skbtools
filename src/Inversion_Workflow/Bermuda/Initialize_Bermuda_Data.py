@@ -53,18 +53,18 @@ def initialize_bermuda(GNSS_start, GNSS_end, DOG_num=3, save=False):
     """GPS_Coordinates (N, 4, 3), GPS_data (N,) and CDOG_data (M, 2) of one DOG.
 
     Keeps the GNSS epochs between ``GNSS_start`` and ``GNSS_end`` (hours since MJD
-    59015) that all four receivers share, then filters them on ellipsoidal height
-    (Eqs. A4-A6). GPS times are shifted by 70000 s and the DOG fractional seconds
-    converted from ns to s. ``save`` writes
+    59015) that all four receivers share and whose ellipsoidal heights all lie
+    between -38 and -35 m. GPS times are shifted by 70000 s and the DOG fractional
+    seconds converted from ns to s. ``save`` writes
     ``GPS_Data/Processed_GPS_Receivers_DOG_<n>.npz``.
     """
     print("Initializing Bermuda Data")
 
     paths = [
-        gps_data_path("GPS_Data/Bermuda_Testing/Antenna1-camp.mat"),
-        gps_data_path("GPS_Data/Bermuda_Testing/Antenna2-camp.mat"),
-        gps_data_path("GPS_Data/Bermuda_Testing/Antenna3-camp.mat"),
-        gps_data_path("GPS_Data/Bermuda_Testing/Antenna4-camp.mat"),
+        gps_data_path("GPS_Data/PRIDE_final/Antenna1-camp.mat"),
+        gps_data_path("GPS_Data/PRIDE_final/Antenna2-camp.mat"),
+        gps_data_path("GPS_Data/PRIDE_final/Antenna3-camp.mat"),
+        gps_data_path("GPS_Data/PRIDE_final/Antenna4-camp.mat"),
     ]
 
     all_data = [load_and_process_data(path, GNSS_start, GNSS_end) for path in paths]
@@ -89,7 +89,6 @@ def initialize_bermuda(GNSS_start, GNSS_end, DOG_num=3, save=False):
 
     # Hard cut on the ellipsoidal height (m) of all four receivers
     print("Filtering Data")
-    window = 5000
     elev_upper = -35
     elev_lower = -38
     mask = np.array(
@@ -107,17 +106,11 @@ def initialize_bermuda(GNSS_start, GNSS_end, DOG_num=3, save=False):
     indices = np.where(mask[0])[0]
     filtered_data = filtered_data[:, :, indices]
 
-    # Eq. A6: drop epochs where any receiver is over 2 MAD from its running median
-    mask = np.ones(filtered_data.shape[2], dtype=bool)
-    for i in range(4):
-        elev = filtered_data[i, 4, :]
-        median_elev = running_median(elev, window)
-        abs_dev = running_abs_dev(elev, window)
-        mask &= (elev >= median_elev - 2 * abs_dev) & (
-            elev <= median_elev + 2 * abs_dev
-        )
-    indices = np.where(mask)[0]
-    filtered_data = filtered_data[:, :, indices]
+    # No running-MAD filter (Eq. A6 of the submitted paper, 2 MAD over 5000 epochs).
+    # It removed antenna 4's height jumps in the submitted GNSS solutions; with the
+    # PRIDE_final solutions every baseline scatters by 1-2 cm, and dropping the
+    # filter (904 more epochs than a 4-MAD filter) moves the Gauss-Newton positions
+    # of DOGs 1/3/4 by at most 1.6 cm.
 
     print("End of Filtering Data")
     # GPS_Coordinates (N, 4, 3)
@@ -155,8 +148,5 @@ def initialize_bermuda(GNSS_start, GNSS_end, DOG_num=3, save=False):
 if __name__ == "__main__":
     GNSS_start = 25
     GNSS_end = 39
-    (
-        GPS_Coordinates,
-        GPS_data,
-        CDOG_data,
-    ) = initialize_bermuda(GNSS_start, GNSS_end, DOG_num=3, save=True)
+    for DOG_num in (1, 3, 4):
+        initialize_bermuda(GNSS_start, GNSS_end, DOG_num=DOG_num, save=True)

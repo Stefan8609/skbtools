@@ -4,6 +4,7 @@ import scipy.io as sio
 from itertools import combinations
 from scipy.stats import norm
 
+from bermuda_data import GPS1_TO_OTHERS
 from jacksonville_data import gps_data_path
 
 
@@ -38,14 +39,7 @@ if __name__ == "__main__":
     MAX_SIG_U = 0.10  # 10 cm
     MIN_SATELLITES = 10
 
-    gps1_to_others = np.array(
-        [
-            [0.0, 0.0, 0.0],
-            [-2.39341409, -4.22350344, 0.02941493],
-            [-12.09568416, -0.94568462, 0.0043972],
-            [-8.68674054, 5.16918806, 0.02499322],
-        ]
-    )
+    gps1_to_others = GPS1_TO_OTHERS
 
     paths = [
         gps_data_path("GPS_Data/JAX1.mat"),
