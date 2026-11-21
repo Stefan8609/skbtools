@@ -104,3 +104,34 @@ def test_compute_jacobian_biased_matches_finite_differences():
             2 * step[k]
         )
     assert np.allclose(jac, expected, rtol=1e-6, atol=1e-12)
+
+
+def test_vessel_rotations_recover_the_rotation_and_move_any_lever_arm():
+    angle = np.deg2rad(30.0)
+    R = np.array(
+        [
+            [np.cos(angle), -np.sin(angle), 0.0],
+            [np.sin(angle), np.cos(angle), 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+    )
+    gps1_to_others = np.array(
+        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [-1.0, 0.0, 0.0]]
+    )
+    translations = np.array([[10.0, -5.0, 2.0], [-4.0, 3.0, 1.0]])
+    GPS_Coordinates = translations[:, None, :] + gps1_to_others @ R.T
+
+    Find_Transponder = Inversion_Workflow.Forward_Model.Find_Transponder
+    rotations, displacements = Find_Transponder.vessel_rotations(
+        GPS_Coordinates, gps1_to_others
+    )
+    assert rotations.shape == (2, 3, 3) and displacements.shape == (2, 3)
+    assert np.allclose(rotations, R, atol=1e-9)
+    assert np.allclose(displacements, translations, atol=1e-9)
+    for lever in (np.array([0.5, 0.5, -1.0]), np.array([-12.7, 9.5, -15.1])):
+        np.testing.assert_array_equal(
+            Find_Transponder.transponder_from_rotations(
+                rotations, displacements, lever
+            ),
+            Find_Transponder.findTransponder(GPS_Coordinates, gps1_to_others, lever),
+        )

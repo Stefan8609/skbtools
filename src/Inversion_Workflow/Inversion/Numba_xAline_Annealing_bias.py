@@ -10,7 +10,10 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     modelled_times,
     NOMINAL_SOUND_SPEED_MPS,
 )
-from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
+from Inversion_Workflow.Forward_Model.Find_Transponder import (
+    transponder_from_rotations,
+    vessel_rotations,
+)
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     initial_bias_geiger,
     final_bias_geiger,
@@ -55,9 +58,12 @@ def simulated_annealing_bias(
     best_lever = initial_lever
     best_rmse = np.inf
 
+    # The vessel attitude does not change with the lever arm: fit it once
+    rotations, displacements = vessel_rotations(GPS_Coordinates, gps1_to_others)
+
     # Alignment and fit at the initial lever arm
-    transponder_coordinates = findTransponder(
-        GPS_Coordinates, gps1_to_others, best_lever
+    transponder_coordinates = transponder_from_rotations(
+        rotations, displacements, best_lever
     )
 
     inversion_estimate, offset = initial_bias_geiger(
@@ -101,8 +107,8 @@ def simulated_annealing_bias(
         displacement = ((np.random.rand(3) * 2.0) - np.array([1.0, 1.0, 1.0])) * temp
         lever = best_lever + displacement
 
-        transponder_coordinates = findTransponder(
-            GPS_Coordinates, gps1_to_others, lever
+        transponder_coordinates = transponder_from_rotations(
+            rotations, displacements, lever
         )
 
         (
@@ -148,8 +154,8 @@ def simulated_annealing_bias(
                 np.round(lever, 3),
             )
         if k % 50 == 0 and k > 0:
-            best_transponder_coordinates = findTransponder(
-                GPS_Coordinates, gps1_to_others, best_lever
+            best_transponder_coordinates = transponder_from_rotations(
+                rotations, displacements, best_lever
             )
 
             times_guess, esv = modelled_times(
@@ -179,8 +185,8 @@ def simulated_annealing_bias(
         best_lever_new = best_lever
         for dz in np.arange(-5, 5, 0.1):
             lever = best_lever + np.array([0.0, 0.0, dz])
-            transponder_coordinates = findTransponder(
-                GPS_Coordinates, gps1_to_others, lever
+            transponder_coordinates = transponder_from_rotations(
+                rotations, displacements, lever
             )
 
             (
@@ -221,8 +227,8 @@ def simulated_annealing_bias(
         best_lever = best_lever_new
 
     # Final fit at the best lever arm
-    transponder_coordinates = findTransponder(
-        GPS_Coordinates, gps1_to_others, best_lever
+    transponder_coordinates = transponder_from_rotations(
+        rotations, displacements, best_lever
     )
     inversion_estimate, CDOG_full, GPS_full, CDOG_clock, GPS_clock = final_bias_geiger(
         inversion_guess,
@@ -271,8 +277,9 @@ def anneal_with_offset_search(
     The workflow uses ``gauss_newton_offset_search`` instead (it solves the lever
     arm exactly at every integer second); this is kept to validate it.
     """
-    transponder_coordinates = findTransponder(
-        GPS_Coordinates, gps1_to_others, initial_lever
+    rotations, displacements = vessel_rotations(GPS_Coordinates, gps1_to_others)
+    transponder_coordinates = transponder_from_rotations(
+        rotations, displacements, initial_lever
     )
     aligned_estimate, aligned_offset = initial_bias_geiger(
         initial_guess,
@@ -312,7 +319,7 @@ def anneal_with_offset_search(
             offset,
             CDOG_data,
             GPS_data,
-            findTransponder(GPS_Coordinates, gps1_to_others, lever),
+            transponder_from_rotations(rotations, displacements, lever),
             dz_array,
             angle_array,
             esv_matrix,

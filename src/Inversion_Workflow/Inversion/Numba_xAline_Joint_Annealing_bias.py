@@ -5,7 +5,10 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     modelled_times,
     NOMINAL_SOUND_SPEED_MPS,
 )
-from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
+from Inversion_Workflow.Forward_Model.Find_Transponder import (
+    transponder_from_rotations,
+    vessel_rotations,
+)
 from Inversion_Workflow.Inversion.Numba_xAline import (
     find_subint_offset,
     two_pointer_index,
@@ -105,9 +108,12 @@ def simulated_annealing_bias_joint(
     drift_rates = np.zeros(n_dogs)
     offsets = initial_offset_list.copy()
 
+    # The vessel attitude does not change with the lever arm: fit it once
+    rotations, displacements = vessel_rotations(GPS_Coordinates, gps1_to_others)
+
     # Alignment and fit of every DOG at the initial lever arm
-    transponder_coordinates = findTransponder(
-        GPS_Coordinates, gps1_to_others, best_lever
+    transponder_coordinates = transponder_from_rotations(
+        rotations, displacements, best_lever
     )
 
     total_rmse = 0.0
@@ -186,8 +192,8 @@ def simulated_annealing_bias_joint(
         displacement = ((np.random.rand(3) * 2.0) - np.array([1.0, 1.0, 1.0])) * temp
         lever = best_lever + displacement
 
-        transponder_coordinates = findTransponder(
-            GPS_Coordinates, gps1_to_others, lever
+        transponder_coordinates = transponder_from_rotations(
+            rotations, displacements, lever
         )
 
         candidate_total_rmse = 0.0
@@ -251,8 +257,8 @@ def simulated_annealing_bias_joint(
             print("Best Offsets:", np.round(best_offsets, 3))
 
         if k % 50 == 0 and k > 0:
-            best_transponder_coordinates = findTransponder(
-                GPS_Coordinates, gps1_to_others, best_lever
+            best_transponder_coordinates = transponder_from_rotations(
+                rotations, displacements, best_lever
             )
 
             for j in range(n_dogs):
@@ -283,8 +289,8 @@ def simulated_annealing_bias_joint(
 
         for dz in np.arange(-5, 5, 0.1):
             lever = best_lever + np.array([0.0, 0.0, dz])
-            transponder_coordinates = findTransponder(
-                GPS_Coordinates, gps1_to_others, lever
+            transponder_coordinates = transponder_from_rotations(
+                rotations, displacements, lever
             )
 
             candidate_total_rmse = 0.0
@@ -333,8 +339,8 @@ def simulated_annealing_bias_joint(
         best_lever = best_lever_new
 
     # Final fit of every DOG at the best lever arm
-    best_transponder_coordinates = findTransponder(
-        GPS_Coordinates, gps1_to_others, best_lever
+    best_transponder_coordinates = transponder_from_rotations(
+        rotations, displacements, best_lever
     )
 
     final_inversion_estimates = np.empty((n_dogs, n_params))
