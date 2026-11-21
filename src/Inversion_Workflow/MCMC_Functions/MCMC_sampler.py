@@ -78,6 +78,9 @@ from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
     calculateTimesRayTracing_windows,
 )
 from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
+from Inversion_Workflow.Forward_Model.Find_Transponder import (
+    vessel_rotations as find_vessel_rotations,
+)
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import residual_inliers
 from bermuda_data import (
     CDOG_GUESS_AUGMENTS,
@@ -87,7 +90,6 @@ from bermuda_data import (
     gps_data_path,
     gps_output_path,
 )
-from geometry.Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 
 RANGE_CM_PER_S = NOMINAL_SOUND_SPEED_MPS * 100.0
 LIKELIHOOD_MODES = ("iid_fixed", "iid", "ar1", "ar1_white")
@@ -382,19 +384,14 @@ def time_block_mask(gps_time, block_s, parity):
 def vessel_rotations(GPS_Coordinates, gps1_to_others):
     """Per-epoch body-to-ECEF rotation R (N, 3, 3) and displacement d (N, 3).
 
-    The transducer position at epoch i is ``R[i] @ lever + d[i]``, as in
-    ``findTransponder``. With the receiver grid fixed, R and d do not depend on the
-    sampled parameters and are computed once.
+    ``Find_Transponder.vessel_rotations`` for a receiver grid given as a list, as
+    stored in CONFIG. With the grid fixed, R and d do not depend on the sampled
+    parameters and are computed once.
     """
-    grid = np.ascontiguousarray(np.asarray(gps1_to_others, dtype=float).T)
-    n_epochs = GPS_Coordinates.shape[0]
-    R = np.empty((n_epochs, 3, 3))
-    d = np.empty((n_epochs, 3))
-    for i in range(n_epochs):
-        R[i], d[i] = findRotationAndDisplacement(
-            grid, np.ascontiguousarray(GPS_Coordinates[i].T)
-        )
-    return R, d
+    return find_vessel_rotations(
+        np.asarray(GPS_Coordinates, dtype=float),
+        np.asarray(gps1_to_others, dtype=float),
+    )
 
 
 def dog_travel_times(
