@@ -31,7 +31,8 @@ short configuration block under `if __name__ == "__main__":`.
    `Inversion/Numba_xAline.py` (alignment and offset search),
    `Inversion/Numba_xAline_Geiger_bias.py` (Gauss-Newton) and
    `Inversion/Numba_xAline_Annealing_bias.py` (simulated annealing for the
-   lever arm).
+   lever arm). `run_inversion.py` runs any of these from one settings block
+   (next section).
 4. **MCMC:** `Inversion_Workflow/MCMC_Functions/MCMC_sampler.py` (one chain per
    process; see "Running on Adroit"). `run_local_chains.py` in the same folder
    runs a few chains in parallel on one machine. `MCMC_diagnostics.py` combines
@@ -47,6 +48,89 @@ short configuration block under `if __name__ == "__main__":`.
 The Puerto Rico workflow follows the same order in `Inversion_Workflow/PuertoRico/`
 (`Initialize_PuertoRico_Data.py` → `PuertoRico_Data_time_bias.py` →
 `PuertoRico_MCMC_sampler.py` → `PuertoRico_MCMC_best_sample.py`).
+
+## Running an inversion
+
+`src/run_inversion.py` inverts the arrival times of one or more DOGs for the DOG
+position, clock offset, time bias, ESV bias and lever arm. All options are
+module-level settings at the top of the file; edit them and run from `src/`:
+
+```bash
+cd src
+python run_inversion.py
+```
+
+With the defaults it repeats `Bermuda_Data_time_bias.py` for DOGs 1, 3 and 4
+(Gauss-Newton offset search, `global_table_esv_extended`) and writes the same
+files, so it overwrites that script's outputs:
+
+- `Bermuda_Data/Output/Plot_Data/integer_pick_metrics_DOG{n}.npz`
+- `Bermuda_Data/Output/Paper_Data/Processed_GPS_Receivers_DOG_{n}_sample.npz`
+- `Bermuda_Data/Figs/Inversion_Workflow/time_series_plot_DOG{n}_GN.pdf` and
+  `range_residual_DOG{n}_GN.pdf`
+
+The main settings:
+
+| Setting | Values |
+|---|---|
+| `DATA` | `"bermuda"`, `"puertorico"` (one clock segment, `CLOCK_SEGMENT`) or `"synthetic"` |
+| `DOGS` | Bermuda DOGs to invert, each on its own; for synthetics, the DOG whose track is used |
+| `METHOD` | `"gauss_newton"` (offset search), `"annealing"`, `"joint_annealing"` (one lever arm for all `DOGS`, Bermuda only) or `"fixed"` (Gauss-Newton at the starting lever arm) |
+| `ESV_TABLE` | inversion table name; `None` takes the default of `DATA` |
+| `INITIAL_LEVER_M`, `INITIAL_GUESS_M`, `OFFSET_HINT_S` | Bermuda starting values |
+| `CLOCK_DRIFT` | also fit a linear clock drift |
+| `TRAJECTORY`, `ESV_TABLE_GENERATE`, `TIME_NOISE_S`, `POSITION_NOISE_M`, `TIME_BIAS_S`, `ESV_BIAS_MPS`, `DRIFT_RATE` | synthetic data; the errors against the truth are printed |
+| `SEED` | NumPy and Numba random state (synthetics, annealing, the zoom window of the time-series plot) |
+| `OUTPUT_NAME`, `SAVE`, `PLOT` | outputs |
+
+For example, the Puerto Rico segment after the clock loss by annealing:
+
+```python
+DATA = "puertorico"
+CLOCK_SEGMENT = "after"
+METHOD = "annealing"
+```
+
+Puerto Rico outputs go to `PuertoRico_Data/`. The figures are the Bermuda ones;
+`PuertoRico/PuertoRico_Data_time_bias.py` still makes the Puerto Rico figures of
+the paper (narrower residual gate, outlier filter). `Bermuda_Data_Joint_Annealing.py`
+uses `DOWNSAMPLE = 10` and its own starting lever arm and DOG 1 guess; set those
+to repeat it with `METHOD = "joint_annealing"`.
+
+## Running MCMC chains
+
+Each chain is one process. A run is a variant of `RUN_VARIANTS` in
+`Inversion_Workflow/MCMC_Functions/MCMC_sampler.py` applied to its `CONFIG`; the
+final model is `ar1_common30` (AR(1) noise, 30-min dc windows shared by the DOGs).
+Chains are written to `Bermuda_Data/Output/MCMC_Chains/<run>/chain_<NN>.npz`, and
+rerunning the same run resumes every chain from its last checkpoint.
+
+**On one machine.** `run_local_chains.py` runs a few shorter chains in parallel.
+Edit its settings (`VARIANTS`, `CHAIN_INDICES`, `N_PROCESSES`, `N_BURN`,
+`N_SAMPLES`, and model or prior overrides, where `None` keeps the variant's value)
+and run from `src/`:
+
+```bash
+cd src
+python -m Inversion_Workflow.MCMC_Functions.run_local_chains
+```
+
+It prints the configuration it runs, writes to `<variant>_local` (`RUN_SUFFIX`),
+apart from the cluster runs, and ends with a table of speed and acceptance per
+chain.
+
+**On Adroit (Slurm).** `slurm/mcmc_warmup.sh` compiles the Numba kernels, then
+`slurm/mcmc_array.sh` runs one chain per array task, with `MCMC_RUN` naming the
+variant:
+
+```bash
+warmup=$(sbatch --parsable slurm/mcmc_warmup.sh)
+sbatch --dependency=afterok:$warmup --export=ALL,MCMC_RUN=ar1_common30 slurm/mcmc_array.sh
+```
+
+Setup, data, monitoring and resuming are under "Running on Adroit" below.
+`MCMC_diagnostics.py` and `MCMC_posterior_summary.py` then combine the chains of a
+run (pipeline step 4).
 
 ## Figures and tables of the paper
 
