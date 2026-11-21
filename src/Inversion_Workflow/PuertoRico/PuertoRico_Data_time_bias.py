@@ -24,12 +24,6 @@ from puertorico_data import gps_data_path, gps_output_path
 
 # Config
 clock_segment = "after"  # Change to "before" for the first clock segment.
-
-if clock_segment == "before":
-    initial_offset = -19.32
-elif clock_segment == "after":
-    initial_offset = -7458.6
-
 simulated_annealing = True
 annealing_iterations = 300
 annealing_z_sample = True
@@ -37,14 +31,26 @@ save = True
 downsample = 1
 mask_crossover_legs = True
 
+# Search center (s) of the DOG clock offset in each clock segment
+INITIAL_OFFSETS_S = {"before": -19.32, "after": -7458.6}
+
 # Known data
 dz_array, angle_array, esv_matrix = load_esv_table(
     gps_data_path("ESV_Tables/PuertoRico_table_transducer_60_DOG_2950_3050.mat")
 )
 
 
-def run_inversion():
-    """Run the Puerto Rico inversion for one clock segment."""
+def load_inversion_inputs(
+    clock_segment, dz_array, angle_array, mask_crossover_legs=True, downsample=1
+):
+    """GNSS epochs and DOG arrivals of one clock segment, masked for the inversion.
+
+    Keeps the epochs inside ``GPS_time_bounds`` whose dz and elevation angle at the
+    initial lever arm and DOG guess lie inside the ESV table and, with
+    ``mask_crossover_legs``, on the crossover legs; then every ``downsample``-th
+    epoch and arrival. Returns a dict of the arrays, ``GPS_source_indices`` into the
+    processed file, and the starting guesses stored with the data.
+    """
     if clock_segment not in ("before", "after"):
         raise ValueError("clock_segment must be 'before' or 'after'")
 
@@ -95,7 +101,6 @@ def run_inversion():
     GPS_Coordinates = GPS_Coordinates[inversion_mask][::downsample]
     GPS_data = GPS_data[inversion_mask][::downsample]
     GPS_source_indices = GPS_source_indices[inversion_mask][::downsample]
-    transponder_coordinates = transponder_coordinates[inversion_mask][::downsample]
     CDOG_data = CDOG_data[::downsample]
 
     if len(GPS_data) == 0:
@@ -108,16 +113,43 @@ def run_inversion():
     else:
         print("Crossover-leg mask disabled")
     print(f"Acoustic tags: {len(CDOG_data):,}")
+    return {
+        "GPS_Coordinates": GPS_Coordinates,
+        "GPS_data": GPS_data,
+        "GPS_source_indices": GPS_source_indices,
+        "CDOG_data": CDOG_data,
+        "CDOG_guess": CDOG_guess,
+        "gps1_to_others": gps1_to_others,
+        "initial_lever_guess": initial_lever_guess,
+        "crossover_leg_GPS_bounds": crossover_leg_GPS_bounds,
+    }
 
-    preliminary_times, _ = calculateTimesRayTracing_Bias_Real(
+
+def run_inversion():
+    """Run the Puerto Rico inversion for one clock segment."""
+    inputs = load_inversion_inputs(
+        clock_segment, dz_array, angle_array, mask_crossover_legs, downsample
+    )
+    GPS_Coordinates = inputs["GPS_Coordinates"]
+    GPS_data = inputs["GPS_data"]
+    GPS_source_indices = inputs["GPS_source_indices"]
+    CDOG_data = inputs["CDOG_data"]
+    CDOG_guess = inputs["CDOG_guess"]
+    gps1_to_others = inputs["gps1_to_others"]
+    initial_lever_guess = inputs["initial_lever_guess"]
+    crossover_leg_GPS_bounds = inputs["crossover_leg_GPS_bounds"]
+
+    # Unused, but calling this fastmath kernel before the Geiger functions compile
+    # changes their compiled code; without it the results move by about 1e-13.
+    calculateTimesRayTracing_Bias_Real(
         CDOG_guess,
-        transponder_coordinates,
+        findTransponder(GPS_Coordinates, gps1_to_others, initial_lever_guess),
         0.0,
         dz_array,
         angle_array,
         esv_matrix,
     )
-    offset_center = initial_offset
+    offset_center = INITIAL_OFFSETS_S[clock_segment]
     print(f"Offset search center: {offset_center:.6f} s")
 
     if simulated_annealing:
