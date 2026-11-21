@@ -8,6 +8,9 @@ same draws projected onto it as grey points (darker where denser), with the 68 %
 (solid) and 95 % (dashed) Gaussian covariance ellipses and the correlation ρ,
 coloured by sign (vermillion positive, blue negative).
 
+Message: each DOG position is a compact, nearly uncorrelated cloud a few
+centimetres wide horizontally and 10-15 cm vertically.
+
 Outputs: the three-DOG figure (main, 174 mm) and its equal-scale variant
 (supplement), one 120 mm figure per DOG, the encoding comparison (KDE vs joint log
 posterior) and the palette comparison (PNG only).
@@ -52,7 +55,8 @@ CLIP_PERCENTILE = 1.0  # colour values below this percentile take the lowest col
 CLOUD_CMAP = "magma"  # chosen from the palette comparison (README)
 PALETTES = ("viridis", "cividis", "magma")
 PANE_COLOR = (0.94, 0.955, 0.975, 1.0)
-GRID_COLOR = (0.80, 0.82, 0.86, 1.0)
+GRID_COLOR = (0.87, 0.885, 0.91, 1.0)
+TICKS_CM = (-40.0, 0.0, 40.0)  # on all three axes, clear of the box corners
 ELLIPSE_COLOR = "0.12"
 SEED = 20261118
 # -----------------------------------------------------------------------------------
@@ -166,12 +170,12 @@ def style_axes(ax, limits):
     ax.set_ylabel("ΔN (cm)", labelpad=0)
     ax.set_zlabel("ΔU (cm)", labelpad=-4)
     ax.tick_params(pad=-3.5, labelsize=paper_style.FONT_SIZE_PT)
-    tick = np.floor(0.75 * limits[0][1] / 10.0) * 10.0  # clear of the box corners
-    ticks = [-tick, 0.0, tick]
+    if TICKS_CM[-1] >= limits[0][1]:
+        raise ValueError(f"ticks {TICKS_CM} cm do not fit the box {limits[0]} cm")
     for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
         axis.set_pane_color(PANE_COLOR)
-        axis._axinfo["grid"].update(color=GRID_COLOR, linewidth=0.4)
-        axis.set_ticks(ticks)
+        axis._axinfo["grid"].update(color=GRID_COLOR, linewidth=0.3)
+        axis.set_ticks(TICKS_CM)
         axis.set_major_formatter(
             plt.FuncFormatter(lambda v, _: f"{v:g}".replace("-", fc.MINUS))
         )
@@ -193,7 +197,7 @@ def place_rho_labels(ax, rhos, limits):
     # Corner of each wall away from the ellipses: (i, j) fractions of the half-width.
     # Floor: in its open front part (high E, low N), between ellipse and edge.
     # Back and side walls: their upper outer corners, text above the box edge.
-    corners = {(0, 1): (0.40, -0.64), (0, 2): (1.0, 1.0), (1, 2): (-1.0, 1.0)}
+    corners = {(0, 1): (0.40, -0.56), (0, 2): (1.0, 1.0), (1, 2): (-1.0, 1.0)}
     alignment = {
         (0, 1): ("center", "center"),
         (0, 2): ("right", "bottom"),
@@ -217,7 +221,7 @@ def place_rho_labels(ax, rhos, limits):
             xycoords="data",
             xytext=(
                 {"right": -3, "left": 3, "center": 0}[ha],
-                2 if va == "bottom" else 0,
+                5 if va == "bottom" else 0,
             ),
             textcoords="offset points",
             ha=ha,
@@ -245,7 +249,7 @@ def shared_norm(values):
 
 
 ENCODING_LABEL = {
-    "kde": "ln(density / peak) of the 3-D marginal posterior",
+    "kde": "ln(density / peak)",
     "kde_short": "ln(density / peak)",
     "logpost": "Joint log posterior − max",
 }
@@ -255,28 +259,28 @@ def minus_formatter():
     return plt.FuncFormatter(lambda v, _: f"{v:g}".replace("-", fc.MINUS))
 
 
-def row_figure(panels, width_mm, height_mm, bar_label, shared_bar=True, prior_cm=None):
+def row_figure(panels, width_mm, height_mm, bar_label, shared_bar=True):
     """One row of 3-D panels in cubic boxes.
 
     Each panel is a dict with enu (shown draws), shadow_enu (all draws), values,
-    norm, cmap, title, subtitle and limits. With shared_bar one colourbar sits under
-    the row, with a legend for the ellipses on its left and, if prior_cm is given,
-    the position prior (cm, the same for every DOG) on its right; otherwise each panel
-    gets its own colourbar, labelled by bar_label (a string or a list per panel).
+    norm, cmap, title, subtitle and limits. With shared_bar one centred colourbar,
+    half the figure wide, sits under the row with the key for the ellipses beside
+    its label; otherwise each panel gets its own colourbar, labelled by bar_label
+    (a list per panel). The position prior is stated in the caption.
     """
     fig = plt.figure(figsize=(width_mm / 25.4, height_mm / 25.4))
     n = len(panels)
     step = 1.0 / n
     stacked = n == 1  # one panel: legend and prior go below the colourbar
-    bar_y = 0.145 if stacked else 0.135
-    bottom = 0.25 if stacked else (0.22 if shared_bar else 0.26)
-    top = 0.985 if stacked else 0.95  # top of the 3-D axes
+    bar_y = 0.145 if stacked else 0.125
+    bottom = 0.25 if stacked else (0.185 if shared_bar else 0.26)
+    top = 0.985 if stacked else 0.965  # top of the 3-D axes
     title_y, subtitle_y = (0.995, 0.945) if stacked else (0.985, 0.93)
     for k, panel in enumerate(panels):
         ax = fig.add_axes(
             [k * step - 0.06, bottom, step + 0.04, top - bottom]
             if stacked
-            else [k * step - 0.005, bottom, step - 0.03, top - bottom],
+            else [k * step - 0.022, bottom, step - 0.016, top - bottom],
             projection="3d",
             computed_zorder=False,
         )
@@ -301,33 +305,21 @@ def row_figure(panels, width_mm, height_mm, bar_label, shared_bar=True, prior_cm
             bar.ax.xaxis.set_major_formatter(minus_formatter())
             bar.ax.xaxis.set_major_locator(plt.MaxNLocator(4))
     if shared_bar:
-        cax = (
-            fig.add_axes([0.2, bar_y, 0.6, 0.024])
-            if stacked
-            else fig.add_axes([0.36, bar_y, 0.34, 0.026])
-        )
+        cax = fig.add_axes([0.25, bar_y, 0.5, 0.024 if stacked else 0.026])
         bar = fig.colorbar(cloud, cax=cax, orientation="horizontal", extend="min")
-        bar.set_label(bar_label)
+        bar.set_label(bar_label, labelpad=2)
         bar.ax.xaxis.set_major_formatter(minus_formatter())
+        # The ellipse key on the line of the colourbar label, right of it.
         handles = [plt.Line2D([], [], color=ELLIPSE_COLOR, lw=0.8)]
         fig.legend(
             handles,
             ["95 % ellipse"],
-            loc="lower left",
-            bbox_to_anchor=(0.0, 0.0 if stacked else 0.03),
+            loc="lower right",
+            bbox_to_anchor=(0.75, 0.0),
             frameon=False,
             handlelength=2.2,
             borderaxespad=0.2,
         )
-        if prior_cm is not None:
-            fig.text(
-                0.995,
-                0.03 if stacked else 0.06,
-                f"Prior on each position:{' ' if stacked else chr(10)}"
-                f"σ = {prior_cm / 100:g} m ({prior_cm:g} cm) per axis",
-                ha="right",
-                va="center",
-            )
     return fig
 
 
@@ -352,7 +344,7 @@ if __name__ == "__main__":
     prior_cm = {prior_sd_cm(pooled, dog) for dog in DOGS}
     if len(prior_cm) != 1:
         raise ValueError(f"DOG position priors differ (cm): {sorted(prior_cm)}")
-    prior_cm = prior_cm.pop()
+    print(f"position prior (caption): σ = {prior_cm.pop():g} cm per axis, all DOGs")
     limits = box_limits([enu.std(axis=0) for enu in enus.values()])
     rng = np.random.default_rng(SEED)
     shown = {
@@ -373,7 +365,7 @@ if __name__ == "__main__":
         dog_panel(dog, enus[dog], shown[dog], kde[dog], kde_norm, CLOUD_CMAP, limits)
         for dog in DOGS
     ]
-    fig = row_figure(panels, double, 82.0, ENCODING_LABEL["kde"], prior_cm=prior_cm)
+    fig = row_figure(panels, double, 82.0, ENCODING_LABEL["kde"])
     fc.save(fig, "fig_3d_posterior_three_dogs")
     plt.close(fig)
 
@@ -408,12 +400,6 @@ if __name__ == "__main__":
         panel = dog_panel(
             dog, enus[dog], shown[dog], kde[dog], kde_norm, CLOUD_CMAP, limits
         )
-        fig = row_figure(
-            [panel],
-            SINGLE_DOG_WIDTH_MM,
-            98.0,
-            ENCODING_LABEL["kde"],
-            prior_cm=prior_cm,
-        )
+        fig = row_figure([panel], SINGLE_DOG_WIDTH_MM, 98.0, ENCODING_LABEL["kde"])
         fc.save(fig, f"fig_3d_posterior_DOG{dog}", (SINGLE_DOG_WIDTH_MM,))
         plt.close(fig)

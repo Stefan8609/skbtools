@@ -1,16 +1,21 @@
 """Corner plot of the key parameters for one DOG, with priors and correlations (Fig. 7).
 
-Lower triangle: 2-D posterior histograms of the final MCMC run with the 68 % and
-95 % highest-density regions. Diagonal: 1-D posterior marginals with the prior
-density on the same density scale. Upper triangle: the posterior correlation
-matrix, one coloured cell per pair. Every axis is the deviation from the posterior
-mean in physical units, for one stated DOG (DOG 3, as in the submitted Fig. 7).
+Message: the data, not the priors, determine every parameter, and the only strong
+correlations tie U, the clock offset and the ESV-correction offset together.
+
+Lower triangle: the 68 % and 95 % highest-density regions of the 2-D posteriors of
+the final MCMC run. Diagonal: 1-D posterior marginals with the prior density on
+the same density scale (thin grey line). Upper triangle: the posterior correlation
+coefficients as plain numbers, lightly shaded where |ρ| ≥ 0.3. Every axis is the
+deviation from the posterior mean in physical units, for one stated DOG (DOG 3, as
+in the submitted Fig. 7).
 
 Quantities come from the linear map of ``reported_quantities`` (the same map as the
 run's analysis tables): DOG E, N, U in local ENU, the lever arm (body frame), the
-DOG's ESV-correction offset, its clock offset δt (Eq. 6) and l_z − U. The priors of
-these linear combinations follow exactly from the sampler's independent Gaussian
-priors (``fc.linear_gaussian_prior``).
+DOG's ESV-correction offset and its clock offset δt (Eq. 6). l_z − U is not drawn;
+its sd, prior and correlations are printed with the others for the caption or a
+table. The priors of these linear combinations follow exactly from the sampler's
+independent Gaussian priors (``fc.linear_gaussian_prior``).
 
 Reviewer comments: R4 m2 and R1 4k (units, reference, target DOG, lever symbols),
 R4 2b (prior on every marginal), R4 2c (signs of the δt correlations, printed by
@@ -21,8 +26,6 @@ PYTHONPATH=src.
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.cm import ScalarMappable
-from matplotlib.colors import Normalize
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from scipy.ndimage import gaussian_filter
@@ -36,18 +39,21 @@ RUN = fc.FINAL_RUN
 RUN_DIR = fc.CHAINS_DIR / RUN
 TARGET_DOG = 3
 OUTPUT_NAME = "fig_FX7_corner"
-HEIGHT_MM = 206.0
-MARGINS_MM = {"left": 18.5, "right": 15.0, "top": 15.0, "bottom": 20.0}
-COLUMN_GAP_MM = 1.2
-ROW_GAP_MM = 7.6  # room for the two-line sigma title above each diagonal panel
+HEIGHT_MM = 168.0
+MARGINS_MM = {"left": 18.5, "right": 2.0, "top": 9.0, "bottom": 15.0}
+COLUMN_GAP_MM = 1.5
+ROW_GAP_MM = 1.5
 HALF_WIDTH_SD = 4.0  # axis half-range in posterior sd
 N_BINS_2D = 36
 N_BINS_1D = 50
 SMOOTH_BINS = 1.0  # Gaussian smoothing (bins) of the 2-D histograms before contouring
 PROBABILITIES = (0.68, 0.95)
-CORRELATION_CMAP = "RdBu_r"
-POSTERIOR_FILL = "0.80"
-PRIOR_COLOR = fc.NEGATIVE_COLOR
+REGION_FILLS = ("0.84", "0.55")  # 95 % and 68 % regions
+POSTERIOR_FILL = "0.84"
+PRIOR_COLOR = "0.45"
+STRONG_CORRELATION = 0.3  # |ρ| from which an upper-triangle cell is shaded
+CORRELATION_SHADE = "0.90"
+N_DRAWN = 8  # the first entries of QUANTITIES are drawn; all are printed
 # (name in reported_quantities, axis symbol, unit, factor from SI units)
 QUANTITIES = [
     (f"DOG{TARGET_DOG}_E_minus_Table1", "ΔE", "cm", 100.0),
@@ -56,7 +62,7 @@ QUANTITIES = [
     ("lever_x", fc.LEVER_LABELS[0], "cm", 100.0),
     ("lever_y", fc.LEVER_LABELS[1], "cm", 100.0),
     ("lever_z", fc.LEVER_LABELS[2], "cm", 100.0),
-    (f"DOG{TARGET_DOG}_dc_mean", f"{fc.DC_SYMBOL} offset", "mm/s", 1000.0),
+    (f"DOG{TARGET_DOG}_dc_mean", "ESV offset", "mm/s", 1000.0),
     (f"DOG{TARGET_DOG}_dt_Eq6", fc.DT_SYMBOL, "µs", 1.0e6),
     (f"lever_z_minus_DOG{TARGET_DOG}_U", "$l_z$ − U", "cm", 100.0),
 ]
@@ -107,25 +113,12 @@ def label(i, two_lines=True):
     return f"{symbol}\n({unit})" if two_lines else f"{symbol} ({unit})"
 
 
-def short_number(value):
-    """Two significant figures for values below 10 (e.g. 2.0, 0.64), else integers."""
-    if value >= 10:
-        return f"{value:.0f}"
-    return f"{value:.1f}" if value >= 1 else f"{value:.2f}"
-
-
-def prior_text(value, unit):
-    """Prior sd with a larger unit for 10 ms and 2 m/s (1000 µs, 1000 mm/s)."""
-    if unit in ("µs", "mm/s") and value >= 1000:
-        return f"{value / 1000:g} {'ms' if unit == 'µs' else 'm/s'}"
-    return f"{value:.0f} {unit}"
-
-
 def draw_corner(fig, draws, prior_mean, prior_sd):
-    n = draws.shape[1]
+    """Corner of the first N_DRAWN quantities; returns all correlations and sds."""
+    n = N_DRAWN
     sd = draws.std(axis=0, ddof=1)
     rho = np.corrcoef(draws, rowvar=False)
-    ticks = [nice_tick(2.5 * s) for s in sd]
+    ticks = [nice_tick(2.0 * s) for s in sd]
     half = [max(HALF_WIDTH_SD * s, 1.3 * t) for s, t in zip(sd, ticks, strict=True)]
 
     width_mm, height_mm = paper_style.DOUBLE_COLUMN_MM, HEIGHT_MM
@@ -143,13 +136,12 @@ def draw_corner(fig, draws, prior_mean, prior_sd):
         wspace=COLUMN_GAP_MM / panel_w,
         hspace=ROW_GAP_MM / panel_h,
     )
-    norm_rho = Normalize(-1.0, 1.0)
-    cmap = plt.get_cmap(CORRELATION_CMAP)
     for i in range(n):
         for j in range(n):
             ax = fig.add_subplot(gs[i, j])
-            if j > i:  # upper triangle: correlation matrix
-                ax.set_facecolor(cmap(norm_rho(rho[i, j])))
+            if j > i:  # upper triangle: correlation coefficients
+                if abs(rho[i, j]) >= STRONG_CORRELATION:
+                    ax.set_facecolor(CORRELATION_SHADE)
                 ax.text(
                     0.5,
                     0.5,
@@ -157,7 +149,7 @@ def draw_corner(fig, draws, prior_mean, prior_sd):
                     transform=ax.transAxes,
                     ha="center",
                     va="center",
-                    color="white" if abs(rho[i, j]) > 0.6 else "black",
+                    color="black" if abs(rho[i, j]) >= STRONG_CORRELATION else "0.45",
                 )
                 ax.set_xticks([])
                 ax.set_yticks([])
@@ -165,30 +157,25 @@ def draw_corner(fig, draws, prior_mean, prior_sd):
                     spine.set_visible(False)
                 continue
             ax.set_xlim(-half[j], half[j])
-            ax.set_xticks([-ticks[j], 0.0, ticks[j]])
+            ax.set_xticks([-ticks[j], ticks[j]])
             if i == j:
                 draw_marginal(ax, draws[:, i], half[i], prior_mean[i], prior_sd[i])
-                unit = QUANTITIES[i][2]
-                ax.set_title(
-                    f"σ {short_number(sd[i])} {unit}\n"
-                    f"prior {prior_text(prior_sd[i], unit)}",
-                    pad=1.5,
-                )
             else:
                 draw_joint(ax, draws[:, j], draws[:, i], half[j], half[i])
                 ax.set_ylim(-half[i], half[i])
-                ax.set_yticks([-ticks[i], 0.0, ticks[i]])
+                ax.set_yticks([-ticks[i], ticks[i]])
+                fc.despine(ax)
             if j == 0 and i > 0:
                 ax.set_ylabel(label(i))
             elif i != j:
                 ax.tick_params(labelleft=False)
             if i == n - 1:
                 ax.set_xlabel(label(j))
-                # Vertical tick labels: horizontal ones of neighbouring columns touch.
-                ax.tick_params(axis="x", labelrotation=90)
             else:
                 ax.tick_params(labelbottom=False)
             ax.tick_params(length=2, pad=1.5)
+            ax.xaxis.set_major_formatter(lambda v, _: fc.signed(v, "g"))
+            ax.yaxis.set_major_formatter(lambda v, _: fc.signed(v, "g"))
     return rho, sd
 
 
@@ -199,14 +186,9 @@ def draw_marginal(ax, x, half, prior_mean, prior_sd):
     density *= np.mean(np.abs(x) <= half)
     ax.stairs(density, edges, fill=True, color=POSTERIOR_FILL, lw=0)
     ax.stairs(density, edges, color="black", lw=0.6)
+    ax.set_yticks([])
     grid = np.linspace(-half, half, 200)
-    ax.plot(
-        grid,
-        norm.pdf(grid, prior_mean, prior_sd),
-        color=PRIOR_COLOR,
-        lw=1.2,
-        ls=(0, (4, 1.5)),
-    )
+    ax.plot(grid, norm.pdf(grid, prior_mean, prior_sd), color=PRIOR_COLOR, lw=0.7)
     # The baseline sits above the axis line so the nearly flat prior stays visible.
     ax.set_ylim(-0.1 * density.max(), 1.15 * density.max())
     ax.set_yticks([])
@@ -215,79 +197,49 @@ def draw_marginal(ax, x, half, prior_mean, prior_sd):
 
 
 def draw_joint(ax, x, y, half_x, half_y):
+    """Filled 95 % and 68 % highest-density regions of a 2-D marginal."""
     edges_x = np.linspace(-half_x, half_x, N_BINS_2D + 1)
     edges_y = np.linspace(-half_y, half_y, N_BINS_2D + 1)
     counts, _, _ = np.histogram2d(x, y, [edges_x, edges_y])
-    mesh = ax.pcolormesh(
-        edges_x,
-        edges_y,
-        counts.T,
-        cmap="Greys",
-        vmin=0.0,
-        vmax=counts.max() * 1.25,
-        rasterized=True,
-    )
-    mesh.set_edgecolor("face")
     smooth = gaussian_filter(counts, SMOOTH_BINS)
-    levels = fc.density_levels(smooth, PROBABILITIES)
+    level_68, level_95 = fc.density_levels(smooth, PROBABILITIES)
     centres_x = 0.5 * (edges_x[1:] + edges_x[:-1])
     centres_y = 0.5 * (edges_y[1:] + edges_y[:-1])
-    ax.contour(
+    ax.contourf(
         centres_x,
         centres_y,
         smooth.T,
-        levels=sorted(levels),
-        colors="black",
-        linewidths=[0.5, 0.9],
-        linestyles=["--", "-"],
+        levels=[level_95, level_68, np.inf],
+        colors=REGION_FILLS,
     )
 
 
-def draw_legend_and_colourbar(fig, n):
+def draw_legend(fig):
     handles = [
+        Patch(facecolor=REGION_FILLS[1], lw=0, label="68 % region"),
+        Patch(facecolor=REGION_FILLS[0], lw=0, label="95 % region"),
         Patch(
             facecolor=POSTERIOR_FILL,
             edgecolor="black",
             lw=0.6,
             label="Posterior marginal",
         ),
-        Line2D([], [], color="black", lw=0.9, label="68 % region"),
-        Line2D([], [], color="black", lw=0.5, ls="--", label="95 % region"),
-        Line2D(
-            [],
-            [],
-            color=PRIOR_COLOR,
-            lw=1.2,
-            ls=(0, (4, 1.5)),
-            label="Prior density (same scale)",
+        Line2D([], [], color=PRIOR_COLOR, lw=0.7, label="Prior density"),
+        Patch(
+            facecolor=CORRELATION_SHADE,
+            lw=0,
+            label=f"Correlation ρ, |ρ| ≥ {STRONG_CORRELATION:g}",
         ),
     ]
-    width_mm = paper_style.DOUBLE_COLUMN_MM
     fig.legend(
         handles=handles,
-        loc="upper right",
-        bbox_to_anchor=(1 - MARGINS_MM["right"] / width_mm, 1.0),
-        ncol=2,
-        handlelength=2.2,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 1.0),
+        ncol=len(handles),
+        handlelength=1.6,
         columnspacing=1.2,
-        borderaxespad=0.3,
-        title=f"DOG {TARGET_DOG}; every axis is the deviation from the posterior mean",
+        borderaxespad=0.2,
     )
-    top = 1 - MARGINS_MM["top"] / HEIGHT_MM
-    grid_h = (HEIGHT_MM - MARGINS_MM["top"] - MARGINS_MM["bottom"]) / HEIGHT_MM
-    cax = fig.add_axes(
-        [
-            1 - (MARGINS_MM["right"] - 1.5) / width_mm,
-            top - 0.42 * grid_h - 1.0 / HEIGHT_MM,
-            2.5 / width_mm,
-            0.42 * grid_h,
-        ]
-    )
-    bar = fig.colorbar(ScalarMappable(Normalize(-1, 1), CORRELATION_CMAP), cax=cax)
-    bar.set_ticks([-1.0, 0.0, 1.0], labels=["−1", "0", "1"])
-    bar.ax.set_yticks([-0.5, 0.5], minor=True)
-    bar.set_label("Posterior correlation ρ (upper triangle)")
-    bar.ax.tick_params(length=2, pad=1.5)
 
 
 def report_signs(pooled, draws, rho):
@@ -327,7 +279,7 @@ if __name__ == "__main__":
         layout="none",
     )
     rho, sd = draw_corner(fig, draws, prior_mean, prior_sd)
-    draw_legend_and_colourbar(fig, len(QUANTITIES))
+    draw_legend(fig)
     fig.align_xlabels()
     fig.align_ylabels()
     for (name, _, unit, _), s, pm, ps in zip(
@@ -337,5 +289,8 @@ if __name__ == "__main__":
             f"{name:26s} posterior sd {s:9.3f} {unit:5s} prior mean {pm:+10.1f} "
             f"sd {ps:9.1f}  ratio {s / ps:.4f}"
         )
+    names = [symbol.replace("$", "") for _, symbol, _, _ in QUANTITIES]
+    print("posterior correlations (rows and columns: " + ", ".join(names) + ")")
+    print(np.array2string(rho, precision=2, suppress_small=True, max_line_width=120))
     report_signs(pooled, draws, rho)
     fc.save(fig, OUTPUT_NAME)

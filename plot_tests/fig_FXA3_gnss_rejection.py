@@ -1,13 +1,19 @@
 """GNSS height filter of the Bermuda survey (remade Fig. A3), per antenna and combined.
 
+Message: the height filter rejects an epoch when any one antenna leaves its
+running median ± 2 MAD band, which removes about a third of the epochs, spread
+over the whole survey.
+
 Panels (a)-(d): WGS84 ellipsoidal height of each antenna against time since survey
-start, with the 5000-epoch running median and median ± 2 MAD band. Points are
-coloured by what happened to the epoch: kept, failed this antenna's band, or
-dropped because another antenna failed. Panel (e) marks the rejected epochs of each
-antenna and of the combined rule ("an epoch is rejected if any antenna fails").
-Every count is computed here by re-running the filter of
-Inversion_Workflow/Bermuda/Initialize_Bermuda_Data.py on the raw antenna files, and
-the kept epochs are checked against the processed file the inversions read.
+start, with the 5000-epoch running median and median ± 2 MAD band. Kept epochs
+are grey; epochs where this antenna failed are in the accent colour; epochs
+dropped because another antenna failed are light grey. The strip (e) gives the
+share of rejected epochs per 10-min bin under the combined rule ("an epoch is
+rejected if any antenna fails"). The counts that were printed on the figure are
+printed to the terminal for the caption. Every count is computed here by
+re-running the filter of Inversion_Workflow/Bermuda/Initialize_Bermuda_Data.py on
+the raw antenna files, and the kept epochs are checked against the processed file
+the inversions read.
 
 Reviewer comments: R3 M7 (per-receiver vs combined counts, the "any receiver fails"
 rule and the hard cut-offs), R3 #11 (legible type).
@@ -29,13 +35,12 @@ GNSS_FILES = [
 ]
 PROCESSED_FILE = fc.REPO / "Bermuda_Data/GPS_Data/Processed_GPS_Receivers_DOG_1.npz"
 NAME = "fig_FXA3_gnss_rejection"
-HEIGHT_MM = 190.0
+HEIGHT_MM = 168.0
 Y_LIMITS_M = (-38.1, -34.9)  # just beyond the hard cut-offs: every point is shown
 BIN_H = 10 / 60  # time bin of panel (e)
-# Dark, mid and light so kept / this antenna / another antenna separate in greyscale.
-KEPT_COLOR = "#08306B"  # dark blue
-FAILED_COLOR = paper_style.CATEGORY_COLORS[1]
-OTHER_COLOR = "0.78"
+KEPT_COLOR = "0.55"
+FAILED_COLOR = fc.ACCENT  # this antenna failed
+OTHER_COLOR = "0.85"  # rejected because another antenna failed
 # -----------------------------------------------------------------------------------
 
 
@@ -72,6 +77,13 @@ def main():
         f"rejected {n_epochs - n_kept}; epochs before 0 h: {left_of_axis}"
     )
 
+    print(
+        f"step 1 (hard cut-offs) rejects {n_hard}; step 2 on {n_stage2} epochs "
+        f"rejects {band_any}; rejected {100 * (n_epochs - n_kept) / n_epochs:.1f} %; "
+        f"sum of per-antenna failures "
+        f"{int((band_per_antenna + hard_per_antenna).sum())}"
+    )
+
     fig = plt.figure(
         figsize=(
             paper_style.DOUBLE_COLUMN_MM / paper_style.MM_PER_INCH,
@@ -81,35 +93,13 @@ def main():
     grid = fig.add_gridspec(
         5,
         1,
-        height_ratios=[1, 1, 1, 1, 0.75],
-        left=0.10,
-        right=0.89,
-        top=0.885,
-        bottom=0.115,
-        hspace=0.32,
+        height_ratios=[1, 1, 1, 1, 0.22],
+        left=0.085,
+        right=0.905,
+        top=0.975,
+        bottom=0.14,
+        hspace=0.22,
     )
-    fig.text(
-        0.012,
-        0.995,
-        f"{thousands(n_epochs)} epochs common to all four antennas (25–39 h after "
-        f"MJD {fc.GNSS_DAY0_MJD} 0 h). An epoch is rejected if any antenna fails.\n"
-        f"Step 1, hard cut-offs: height outside "
-        f"{fc.signed(fc.GNSS_HEIGHT_LIMITS_M[0], '.0f')} to "
-        f"{fc.signed(fc.GNSS_HEIGHT_LIMITS_M[1], '.0f')} m: "
-        f"{thousands(n_hard)} epochs rejected.\n"
-        f"Step 2, on the {thousands(n_stage2)} epochs left: height outside its "
-        f"running median ± {fc.GNSS_MAD_FACTOR:.0f} MAD "
-        f"({thousands(fc.GNSS_MEDIAN_WINDOW)} epochs): "
-        f"{thousands(band_any)} rejected.\n"
-        f"Kept {thousands(n_kept)}, rejected {thousands(n_epochs - n_kept)} "
-        f"({100 * (n_epochs - n_kept) / n_epochs:.1f} %). Per-antenna failures "
-        f"overlap: their sum is "
-        f"{thousands(int((band_per_antenna + hard_per_antenna).sum()))}.",
-        va="top",
-        ha="left",
-        linespacing=1.4,
-    )
-
     axes = [fig.add_subplot(grid[k]) for k in range(4)]
     for k, ax in enumerate(axes):
         failed = masks["band_fail"][k] | masks["hard_fail"][k]
@@ -139,27 +129,24 @@ def main():
             )
         for j, limit in enumerate(fc.GNSS_HEIGHT_LIMITS_M):
             label = "Hard cut-offs" if j == 0 else None
-            ax.axhline(limit, color="0.35", lw=0.7, ls=":", label=label)
+            ax.axhline(limit, color=fc.CONTEXT, lw=0.6, ls=":", label=label)
         ax.set_ylim(Y_LIMITS_M)
         ax.set_xlim(paper_style.TIME_LIMITS_H)
-        ax.set_title(f"Antenna {k + 1}", loc="left", pad=2)
-        ax.set_title(
-            f"failed: band {thousands(band_per_antenna[k])}, "
-            f"cut-offs {thousands(hard_per_antenna[k])}",
-            loc="right",
-            pad=2,
-        )
-        ax.set_ylabel("Ellipsoidal height (m)")
+        ax.set_yticks([-37, -36])
+        ax.text(0.008, 0.9, f"Antenna {k + 1}", transform=ax.transAxes, va="top")
         ax.tick_params(labelbottom=False)
         ax.yaxis.set_major_formatter(
-            plt.FuncFormatter(lambda v, _: fc.signed(v, ".1f"))
+            plt.FuncFormatter(lambda v, _: fc.signed(v, ".0f"))
         )
         paper_style.panel_label(ax, "abcd"[k])
+    fc.despine(*axes)
+    fig.supylabel("Ellipsoidal height (m)", x=0.012, fontsize=paper_style.FONT_SIZE_PT)
 
     handles, labels = axes[0].get_legend_handles_labels()
+    order = [1, 2, 0, 3, 4, 5]  # kept, this antenna, another antenna, lines
     fig.legend(
-        handles,
-        labels,
+        [handles[i] for i in order],
+        [labels[i] for i in order],
         loc="lower center",
         bbox_to_anchor=(0.5, 0.0),
         ncol=3,
@@ -168,34 +155,27 @@ def main():
         columnspacing=1.5,
     )
 
-    # (e): share of rejected epochs per time bin, per antenna and combined.
+    # (e): share of rejected epochs per time bin under the combined rule.
     strip = fig.add_subplot(grid[4], sharex=axes[0])
     edges = np.arange(
         paper_style.TIME_LIMITS_H[0], paper_style.TIME_LIMITS_H[1] + 1e-9, BIN_H
     )
-    rows = [masks["band_fail"][k] | masks["hard_fail"][k] for k in range(4)]
-    rows.append(~masks["kept"])
     counts = np.histogram(hours, edges)[0]
-    share = np.array(
-        [
-            100 * np.histogram(hours[row], edges)[0] / np.maximum(counts, 1)
-            for row in rows
-        ]
-    )
-    share[:, counts == 0] = np.nan
+    share = 100 * np.histogram(hours[~masks["kept"]], edges)[0] / np.maximum(counts, 1)
+    share[counts == 0] = np.nan
     image = strip.pcolormesh(
-        edges, np.arange(6) - 0.5, share, cmap="cividis", vmin=0, vmax=100
+        edges, [0.0, 1.0], share[None, :], cmap="Greys", vmin=0, vmax=100
     )
-    strip.set_yticks(range(5), [f"Antenna {k + 1}" for k in range(4)] + ["Any"])
-    strip.set_ylim(4.5, -0.5)
-    strip.axhline(3.5, color="w", lw=1.2)
+    strip.set_yticks([])
+    strip.set_xticks(np.arange(0, 15, 2))
     strip.set_xlabel(paper_style.TIME_LABEL)
-    strip.set_title(f"Rejected epochs per {BIN_H * 60:.0f}-min bin", loc="left", pad=2)
     paper_style.panel_label(strip, "e")
     box = strip.get_position()
-    colorbar_axes = fig.add_axes([box.x1 + 0.012, box.y0, 0.012, box.height])
+    colorbar_axes = fig.add_axes([box.x1 + 0.012, box.y0, 0.012, 3.5 * box.height])
     colorbar = fig.colorbar(image, cax=colorbar_axes)
+    colorbar.set_ticks([0, 50, 100])
     colorbar.set_label("Rejected (%)")
+    colorbar.outline.set_linewidth(0.6)
     fc.save(fig, NAME)
 
 

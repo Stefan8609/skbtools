@@ -46,6 +46,13 @@ DT_SYMBOL = "δt"
 LEVER_LABELS = ("$l_x$", "$l_y$", "$l_z$")  # body frame
 MINUS = "−"
 
+# One accent colour for the one thing the eye should find on a figure (the final
+# solution, the chosen offset, the antenna-4 steps, rejected epochs); everything
+# that is context (alternatives, raw points, reference lines) is grey.
+ACCENT = "#D55E00"
+CONTEXT = "0.6"
+RAW_POINTS = "0.75"
+
 # Okabe-Ito colours for signed quantities (correlation signs).
 POSITIVE_COLOR = "#D55E00"
 NEGATIVE_COLOR = "#0072B2"
@@ -356,6 +363,12 @@ def save(fig, name, allowed_widths_mm=ALLOWED_WIDTHS_MM, strict=True):
     colour_previews(OUTPUT_DIR / f"{name}.png")
     print(f"saved {pdf}")
     return pdf
+
+
+def despine(*axes):
+    """Left and bottom spines only (no frame) on each of the axes."""
+    for ax in axes:
+        ax.spines[["top", "right"]].set_visible(False)
 
 
 def keep_iteration(name, label):
@@ -775,6 +788,16 @@ def abs_normal_bin_probability(edges):
     if edges.ndim != 1 or np.any(np.diff(edges) <= 0) or edges[0] < 0:
         raise ValueError("edges must be increasing and non-negative")
     return 2.0 * np.diff(norm.cdf(edges))
+
+
+def horizontal_rms(east_errors, north_errors):
+    """Rms horizontal error sqrt(mean(E² + N²)) of paired E and N errors."""
+    east, north = np.asarray(east_errors, float), np.asarray(north_errors, float)
+    if east.shape != north.shape or east.size == 0:
+        raise ValueError(
+            f"need equal, non-empty E and N errors; got {east.shape}, {north.shape}"
+        )
+    return float(np.sqrt(np.mean(east**2 + north**2)))
 
 
 # --- helpers added for FX-8, FIG-8 and appendix B (vessel, levers, synthetics) -----

@@ -47,3 +47,12 @@ def test_gapped_autocorrelation_rejects_fractional_seconds():
 def test_abs_normal_bin_probability():
     probability = fc.abs_normal_bin_probability([0.0, 1.0, 1.959964, np.inf])
     assert probability == pytest.approx([0.6827, 0.2673, 0.05], abs=1e-4)
+
+
+def test_horizontal_rms_combines_east_and_north():
+    assert fc.horizontal_rms([3.0, 0.0], [4.0, 0.0]) == pytest.approx(np.sqrt(12.5))
+
+
+def test_horizontal_rms_rejects_unequal_shapes():
+    with pytest.raises(ValueError, match="equal, non-empty"):
+        fc.horizontal_rms([1.0, 2.0], [1.0])

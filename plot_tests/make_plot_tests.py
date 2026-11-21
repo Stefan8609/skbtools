@@ -45,6 +45,7 @@ ORDER = [
     "fig_FXB10_synthetic_inversion.py",
     "fig_FXB11_noise_dependence.py",
     "fig_FXA3_gnss_rejection.py",
+    "fig_WORKFLOW_repo.py",
 ]
 
 

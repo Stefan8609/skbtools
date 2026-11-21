@@ -1,12 +1,16 @@
-"""FIG-5: each DOG's E, N, U under each δc and noise model, against the posterior sd.
+"""FIG-5: each DOG's E, N, U under each ESV-correction and noise model.
+
+Message: the DOG positions move between ESV-correction and noise models by many
+times the posterior sd of any one model, most of all in U.
 
 Answers R3 M2 (posterior width is not accuracy), R4 5 (realistic uncertainty,
 repeatability) and R1 3a/3c (how positions respond to a time-varying δc). Dots are
 posterior means of E, N, U minus the submitted Table 1 position (local ENU at the
 Table 1 position, cm) for eight MCMC runs; thick bars ±1 posterior sd, thin bars the
-95 % interval. The grey band, centred on the final run, is as wide as the difference
-between the two half-survey Gauss–Newton solutions (lever free, one δc; N5a): the
-real-data repeatability. Above each panel: model spread / median posterior sd.
+95 % interval. Alternative models are grey, the final model black. The light band,
+centred on the final run, is as wide as the difference between the two half-survey
+Gauss–Newton solutions (lever free, one δc; N5a): the real-data repeatability.
+The spread of the means over the median posterior sd is printed for the caption.
 
 Inputs: ``Output/MCMC_Chains/<run>/analysis/posterior_summary.csv`` and the first
 chain of each run (ESV table hash), and ``revision/analysis/realistic_synthetic/
@@ -35,25 +39,19 @@ from plotting import paper_style
 
 # --- configuration ------------------------------------------------------------------
 NAME = "fig_FIG5_model_sensitivity"
-DC = fc.DC_SYMBOL
-# δc models in the fixed category order (CATEGORY_COLORS index).
-CATEGORIES = (
-    f"Constant {DC}",
-    f"4 {DC} blocks",
-    f"Common {DC}(t) 60 min",
-    f"Common {DC}(t) 30 min",
-)
+# ESV-correction models, named on the y axis.
+CATEGORIES = ("Constant", "4 blocks", "Common, 60 min", "Common, 30 min")
 # (run in Output/MCMC_Chains, category index, noise and clock label, marker), drawn
 # top to bottom. Cluster runs only (8 chains each), not the *_local test runs.
 RUNS = (
     ("ar1_splits1", 0, "AR(1)", "o"),
     ("iid", 1, "iid", "D"),
     ("ar1", 1, "AR(1)", "o"),
-    ("ar1_white", 1, "AR(1)+white", "s"),
-    ("ar1_drift", 1, "AR(1)+drift", "v"),
+    ("ar1_white", 1, "AR(1) + white", "s"),
+    ("ar1_drift", 1, "AR(1) + drift", "v"),
     ("ar1_common60", 2, "AR(1)", "o"),
     (fc.FINAL_RUN, 3, "AR(1)", "o"),
-    ("ar1_common30_drift", 3, "AR(1)+drift", "v"),
+    ("ar1_common30_drift", 3, "AR(1) + drift", "v"),
 )
 CURRENT_ESV_SHA = "d1369cae"  # ESV table on disk since the ray-tracing fix (H2)
 REAL_REFERENCE_CSV = (
@@ -62,7 +60,10 @@ REAL_REFERENCE_CSV = (
 DOGS = (1, 3, 4)
 COMPONENTS = ("E", "N", "U")
 OLD_TABLE_MARK = "†"
-BAND_COLOR = "0.85"
+BAND_COLOR = "0.92"
+OTHER_COLOR = "0.55"  # alternative models
+FINAL_COLOR = "black"
+HEIGHT_MM = 135.0
 
 
 def summary_path(run):
@@ -134,7 +135,12 @@ def run_label(run, category, noise, old_table):
 def plot(rows, band):
     n_runs = len(RUNS)
     fig, axes = paper_style.figure(
-        "double", 150.0, nrows=len(DOGS), ncols=len(COMPONENTS), sharey=True
+        "double",
+        HEIGHT_MM,
+        nrows=len(DOGS),
+        ncols=len(COMPONENTS),
+        sharey=True,
+        sharex="col",
     )
     y = -np.arange(n_runs, dtype=float)
     order = [run for run, *_ in RUNS]
@@ -146,12 +152,8 @@ def plot(rows, band):
             final = cell.loc[fc.FINAL_RUN, "mean"]
             half = abs(band[dog][component]) / 2
             ax.axvspan(final - half, final + half, color=BAND_COLOR, lw=0, zorder=0)
-            ax.axvline(0.0, color="0.5", lw=0.6, ls=":", zorder=0)
-            for k in range(1, n_runs):
-                if RUNS[k][1] != RUNS[k - 1][1]:  # between δc model categories
-                    ax.axhline(y[k] + 0.5, color="0.75", lw=0.4, zorder=0)
             for yy, (run, row) in zip(y, cell.iterrows(), strict=True):
-                color = paper_style.CATEGORY_COLORS[row["category"]]
+                color = FINAL_COLOR if run == fc.FINAL_RUN else OTHER_COLOR
                 ax.plot([row["p2.5"], row["p97.5"]], [yy, yy], color=color, lw=0.7)
                 ax.plot(
                     [row["mean"] - row["sd"], row["mean"] + row["sd"]],
@@ -163,8 +165,8 @@ def plot(rows, band):
                 ax.plot(
                     row["mean"],
                     yy,
-                    marker=row["marker"],
-                    markersize=4.5 if run == fc.FINAL_RUN else 3.5,
+                    marker="o",
+                    markersize=4.0,
                     color=color,
                     markerfacecolor="white" if row["old_table"] else color,
                     markeredgewidth=0.8,
@@ -173,49 +175,46 @@ def plot(rows, band):
                 )
             ratio = fc.spread_over_sd(cell["mean"], cell["sd"])
             spread = cell["mean"].max() - cell["mean"].min()
-            ax.set_title(f"{spread:.0f} cm = {ratio:.0f} sd", loc="right")
+            print(
+                f"DOG {dog} {component}: spread of means {spread:.0f} cm = "
+                f"{ratio:.0f} median posterior sd"
+            )
             if i == len(DOGS) - 1:
                 ax.set_xlabel(f"Δ{component} from Table 1 (cm)")
-            ax.grid(axis="x", color="0.92", lw=0.5)
             ax.tick_params(axis="y", length=0)
+            ax.xaxis.set_major_locator(plt.MaxNLocator(4, steps=[1, 2, 5, 10]))
         style = paper_style.DOG_STYLE[dog]
-        axes[i, 0].set_ylabel(
-            style["label"], color=style["color"], fontweight="bold", fontsize=9
-        )
+        axes[i, 0].set_title(style["label"], color=style["color"], loc="left")
+    fc.despine(*axes.flat)
     labels = [
         run_label(run, category, noise, rows[rows["run"] == run]["old_table"].iloc[0])
         for run, category, noise, _ in RUNS
     ]
     axes[0, 0].set_yticks(y, labels)
     axes[0, 0].set_ylim(y[-1] - 0.7, y[0] + 0.7)
-    for ax in axes[:, 0]:
-        for tick, (run, category, *_) in zip(ax.get_yticklabels(), RUNS, strict=True):
-            tick.set_color(paper_style.CATEGORY_COLORS[category])
-            if run == fc.FINAL_RUN:
-                tick.set_fontweight("bold")
-    for ax, letter in zip(axes.flat, "abcdefghi", strict=True):
-        paper_style.panel_label(ax, letter)
     handles = [
-        Line2D([], [], color="0.3", marker="o", lw=2.2, label="Posterior mean ± 1 sd"),
-        Line2D([], [], color="0.3", lw=0.7, label="95 % interval"),
         Line2D(
             [],
             [],
-            color="0.3",
+            color=OTHER_COLOR,
+            marker="o",
+            lw=2.2,
+            label="Posterior mean ± 1 sd; thin: 95 % interval",
+        ),
+        Line2D(
+            [],
+            [],
+            color=OTHER_COLOR,
             marker="o",
             markerfacecolor="white",
             linestyle="none",
             label=f"{OLD_TABLE_MARK} old ESV table (provisional)",
         ),
-        Patch(
-            color=BAND_COLOR,
-            label="Final ± ½ |half 2 − half 1| (real data, GN, lever free)",
-        ),
-        Line2D(
-            [], [], linestyle="none", label="Title: spread of means = n × median sd"
-        ),
+        Patch(color=BAND_COLOR, label="Final ± ½ |half 2 − half 1| of the survey"),
     ]
-    fig.legend(handles=handles, loc="outside lower center", ncols=2)
+    if not rows["old_table"].any():
+        del handles[1]
+    fig.legend(handles=handles, loc="outside lower center", ncols=3)
     return fig
 
 

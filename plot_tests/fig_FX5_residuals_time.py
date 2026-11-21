@@ -1,5 +1,8 @@
 """FX-5: range residuals of the final model against time, all three DOGs.
 
+Message: the residuals of the final model stay within a few tens of centimetres
+of zero all survey long, with the largest excursions next to antenna-4 height steps.
+
 Replaces the submitted Figs. 5, 9, C12 and C13. One row per DOG on the common time
 axis (R1 2c, R1 4e): every residual as a light, rasterized point, with the median
 and 16-84 % band of 5-min bins on top. Residuals are observed minus modelled travel
@@ -30,7 +33,7 @@ Y_LIMITS_CM = (-75.0, 100.0)  # holds every residual of the final run (no clippi
 # Zoom window of the submitted Figs. 5 and 9: zoom_start = 35000 s of GPS_data and a
 # 1200 s length (src/plotting/Misc/Plot_from_saved_data.py, MCMC_best_sample.py).
 SUBMITTED_ZOOM_GPS_S = (35000.0, 36200.0)
-HEIGHT_MM = 150.0
+HEIGHT_MM = 140.0
 # -----------------------------------------------------------------------------------
 
 
@@ -54,21 +57,16 @@ def draw(residuals, steps_h):
         )
         ax.axhline(0.0, color="0.5", lw=0.5, zorder=1)
         for edge in zoom_h:
-            ax.axvline(edge, color="0.1", lw=1.0, ls="--", zorder=1)
-        count = f"{res_cm.size:,}".replace(",", " ")
-        inside = (hours >= zoom_h[0]) & (hours <= zoom_h[1])
+            ax.axvline(edge, color="0.3", lw=0.7, ls="--", zorder=1)
         points = ax.scatter(
             hours,
             res_cm,
             s=0.8,
             color=style["color"],
-            alpha=0.35,
+            alpha=0.25,
             lw=0,
             zorder=2,
-            label=(
-                f"{style['label']}: {count} pairs, σ = {res_cm.std():.1f} cm "
-                f"(zoom window: {res_cm[inside].std():.1f} cm)"
-            ),
+            label=f"{style['label']}, σ = {res_cm.std():.1f} cm",
         )
         paper_style.rasterize_dense(points, res_cm.size)
         ax.fill_between(
@@ -89,13 +87,14 @@ def draw(residuals, steps_h):
             zorder=4,
             label=f"Median per {BIN_MINUTES:.0f}-min bin",
         )
-        ax.plot(
+        # Short marks hanging from the top edge, the accent lines of FIG-4.
+        ax.vlines(
             steps_h,
-            np.full(steps_h.size, Y_LIMITS_CM[1]),
-            "v",
-            color="0.2",
-            ms=4,
-            clip_on=False,
+            0.93,
+            1.0,
+            transform=ax.get_xaxis_transform(),
+            color=fc.ACCENT,
+            lw=1.2,
             zorder=5,
             label="Antenna-4 height step",
         )
@@ -104,9 +103,17 @@ def draw(residuals, steps_h):
         ax.set_ylabel("Range residual (cm)")
         paper_style.panel_label(ax, "abc"[k])
         handles, labels = ax.get_legend_handles_labels()
-        legend = ax.legend(handles[:1], labels[:1], loc="upper right", markerscale=5)
+        legend = ax.legend(
+            handles[:1],
+            labels[:1],
+            loc="upper right",
+            bbox_to_anchor=(1.0, 0.94),
+            markerscale=5,
+            handletextpad=0.2,
+        )
         legend.legend_handles[0].set_alpha(1.0)
-    zoom = axes[0].plot([], [], color="0.1", lw=1.0, ls="--")[0]
+    fc.despine(*axes)
+    zoom = axes[0].plot([], [], color="0.3", lw=0.7, ls="--")[0]
     fig.legend(
         handles[1:] + [zoom],
         labels[1:] + ["Submitted Figs. 5, 9 zoom"],
@@ -116,6 +123,7 @@ def draw(residuals, steps_h):
         handlelength=1.6,
     )
     axes[-1].set_xlim(*paper_style.TIME_LIMITS_H)
+    axes[-1].set_xticks(np.arange(0, 15, 2))
     axes[-1].set_xlabel(paper_style.TIME_LABEL)
     return fig
 

@@ -1,5 +1,8 @@
 """FX-4 (remake of Fig. 4): observed and modelled one-way travel times, all DOGs.
 
+Message: the modelled one-way travel times follow the observed ones through every
+pass over each DOG, and none is shorter than the vertical travel time.
+
 Answers R4 m3 (travel times in Fig. 4 shorter than the ~3.4 s vertical travel time
 and inconsistent with Fig. 5 for DOG 3: values before applying δt), R1 4e/3f (time
 axis unified with the other time series) and R3 #10 (DOG naming and markers).
@@ -35,7 +38,7 @@ PICK_METRICS = str(
 )
 GAP_S = 60.0  # the modelled line breaks where pairs are further apart
 TRAVEL_TIME_LIMITS_S = (3.0, 9.0)
-FIGURE_HEIGHT_MM = 125.0
+FIGURE_HEIGHT_MM = 100.0
 
 
 def travel_times(pooled):
@@ -129,6 +132,7 @@ def draw(series):
     fig, axes = paper_style.figure(
         "double", FIGURE_HEIGHT_MM, nrows=3, sharex=True, sharey=True
     )
+    fc.despine(*axes)
     for ax, (dog, s), letter in zip(axes, series.items(), "abc", strict=True):
         style = paper_style.DOG_STYLE[dog]
         hours = paper_style.hours_since_start(s["gps_time_s"])
@@ -149,26 +153,26 @@ def draw(series):
             lw=0.5,
             label="Modelled (posterior mean)",
         )
-        vertical = s["vertical_s"].min()
         ax.axhline(
-            vertical, color="#777777", ls="--", lw=0.8, label="Vertical travel time"
+            s["vertical_s"].min(),
+            color=fc.CONTEXT,
+            ls="--",
+            lw=0.6,
+            label="Vertical travel time",
         )
-        pairs = f"{s['observed_s'].size:,}".replace(",", "\u2009")
-        ax.set_title(
-            f"{style['label']}: {pairs} pairs; vertical travel time {vertical:.2f} s",
-            pad=2,
-        )
-        ax.set_ylabel("Travel time (s)")
+        # Direct label in the corner that the early, near-vertical pass leaves empty.
+        ax.text(0.008, 0.95, style["label"], transform=ax.transAxes, va="top")
         paper_style.panel_label(ax, letter)
+    fig.supylabel("One-way travel time (s)", fontsize=paper_style.FONT_SIZE_PT)
     observed = Line2D(
         [],
         [],
         ls="none",
         marker="o",
         ms=3,
-        color="#999999",
+        color=fc.CONTEXT,
         mew=0,
-        label="Observed, Eq. A21 (DOG colour)",
+        label="Observed (DOG colour)",
     )
     handles, _ = axes[0].get_legend_handles_labels()
     fig.legend(
@@ -179,7 +183,9 @@ def draw(series):
     )
     axes[-1].set_xlabel(paper_style.TIME_LABEL)
     axes[-1].set_xlim(*paper_style.TIME_LIMITS_H)
+    axes[-1].set_xticks(np.arange(0, 15, 2))
     axes[-1].set_ylim(*TRAVEL_TIME_LIMITS_S)
+    axes[-1].set_yticks([4, 6, 8])
     return fig
 
 
@@ -195,7 +201,8 @@ if __name__ == "__main__":
     )
     for dog, s in series.items():
         print(
-            f"DOG {dog}: T_obs {s['observed_s'].min():.4f}-{s['observed_s'].max():.4f}"
+            f"DOG {dog}: {s['observed_s'].size} pairs; "
+            f"T_obs {s['observed_s'].min():.4f}-{s['observed_s'].max():.4f}"
             f" s, vertical ≥ {s['vertical_s'].min():.4f} s "
             f"({s['vertical_s'].min() * fastest_mps / 1515.0:.4f} s at 1515 m/s)"
         )

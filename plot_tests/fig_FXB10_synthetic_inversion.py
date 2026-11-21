@@ -7,10 +7,14 @@ and inverted with the strongly perturbed one, unknown clock offset, lever arm an
 DOG position solved by the Gauss–Newton offset search. (a) Observed and modelled
 travel times; (b) range residual (observed − modelled, 1515 m/s), its median in
 15-min bins and 16–84 % band; (c) residual histogram with the normal curve of the
-same mean and sd. The table gives the errors of the recovered parameters.
+same mean and sd. The errors of the recovered parameters and the residual sd are
+printed for the caption.
 
-Reviewer comment: R1 4n (Fig. B10 crowded and overlapping): three large panels and a
-table replace the submitted eight-panel layout and its random zoom window.
+Message: one synthetic inversion on the real track recovers the travel times to a
+few centimetres of range, with residuals close to normal.
+
+Reviewer comment: R1 4n (Fig. B10 crowded and overlapping): three large panels
+replace the submitted eight-panel layout and its random zoom window.
 
 Inputs: none on disk beyond the ESV tables and the GNSS file the synthetic reads.
 """
@@ -96,7 +100,7 @@ def main():
     )
     grid = fig.add_gridspec(2, 2, width_ratios=(4.0, 1.25), height_ratios=(1.2, 1.0))
     ax_tt = fig.add_subplot(grid[0, 0])
-    ax_table = fig.add_subplot(grid[0, 1])
+    ax_key = fig.add_subplot(grid[0, 1])
     ax_res = fig.add_subplot(grid[1, 0], sharex=ax_tt)
     ax_hist = fig.add_subplot(grid[1, 1], sharey=ax_res)
 
@@ -109,7 +113,6 @@ def main():
     )
     paper_style.rasterize_dense(modelled, len(hours))
     ax_tt.set_ylabel("One-way travel time (s)")
-    ax_tt.legend(loc="upper left", markerscale=4)
     ax_tt.tick_params(labelbottom=False)
     ax_tt.set_xlim(*paper_style.TIME_LIMITS_H)
 
@@ -121,7 +124,8 @@ def main():
         centres, bands[:, 0], bands[:, 2], color=OBSERVED_COLOR, alpha=0.35, lw=0
     )
     ax_res.plot(centres, bands[:, 1], color="k", lw=1.0)
-    ax_res.axhline(0.0, color="0.3", lw=0.5, ls="--")
+    ax_res.axhline(0.0, color=fc.CONTEXT, lw=0.5, zorder=0)
+    ax_res.set_xticks(np.arange(0, 15, 2))
     ax_res.set_xlabel(paper_style.TIME_LABEL)
     ax_res.set_ylabel("Range residual (cm)")
 
@@ -136,47 +140,30 @@ def main():
     )
     ax_hist.set_xlabel("Density (1/cm)")
     ax_hist.tick_params(labelleft=False)
-    # Headroom above the data for the legend; no residual is clipped.
-    ax_res.set_ylim(-limit, 1.5 * limit)
+    ax_res.set_ylim(-limit, limit)
     assert np.all(np.abs(residual) < limit)
-    ax_res.legend(
+    fc.despine(ax_tt, ax_res, ax_hist)
+
+    # One key for the three panels, in the empty cell beside (a).
+    ax_key.axis("off")
+    ax_key.legend(
         handles=[
+            Line2D([], [], ls="none", marker="o", ms=3, color=OBSERVED_COLOR),
+            Line2D([], [], ls="none", marker="o", ms=1.5, color=MODELLED_COLOR),
             Line2D([], [], ls="none", marker="o", ms=2, color="0.6"),
             Line2D([], [], color="k", lw=1.0),
             Patch(color=OBSERVED_COLOR, alpha=0.35, lw=0),
         ],
         labels=[
+            "Observed",
+            "Modelled",
             "Residual",
-            f"Median, {60 * MEDIAN_BIN_H:.0f}-min bins",
+            f"Median, {60 * MEDIAN_BIN_H:.0f}-min bins;\nnormal curve in (c)",
             "16–84 % band",
         ],
-        loc="upper left",
-        ncols=3,
+        loc="center left",
+        borderaxespad=0.0,
     )
-    ax_hist.set_title(f"sd = {sigma_cm:.2f} cm")
-
-    ax_table.set_xticks([])
-    ax_table.set_yticks([])
-    ax_table.axis("off")
-    rows = [
-        ["DOG ΔE", f"{fc.signed(round(dog_error[0], 2) + 0.0, '+.2f')} cm"],
-        ["DOG ΔN", f"{fc.signed(round(dog_error[1], 2) + 0.0, '+.2f')} cm"],
-        ["DOG ΔU", f"{fc.signed(round(dog_error[2], 2) + 0.0, '+.2f')} cm"],
-    ]
-    rows += [
-        [f"Lever Δ{label}", f"{fc.signed(round(value, 2) + 0.0, '+.2f')} cm"]
-        for label, value in zip(fc.LEVER_LABELS, lever_error, strict=True)
-    ]
-    rows.append(
-        [f"{fc.DT_SYMBOL} error", f"{fc.signed(result['dt_error_us'], '+.0f')} µs"]
-    )
-    table = ax_table.table(
-        cellText=rows, bbox=[0.0, 0.0, 1.0, 1.0], cellLoc="left", edges="open"
-    )
-    table.auto_set_font_size(False)
-    table.set_fontsize(paper_style.FONT_SIZE_PT)
-    table.set_in_layout(False)
-    ax_table.set_title("Recovered − true", loc="left")
 
     paper_style.panel_label(ax_tt, "a")
     paper_style.panel_label(ax_res, "b")
