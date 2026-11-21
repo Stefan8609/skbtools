@@ -499,3 +499,47 @@ def test_repeatability_variants():
     config = ms.run_config("ar1_common30_dog4")
     assert config["dogs"] == [4] and config["esv_model"] == "common_windows"
     assert ms.CONFIG["gps_time_blocks"] is None
+
+
+def test_split_index_matches_array_split_blocks():
+    n_epochs, num_splits = 10, 4  # blocks of 3, 3, 2, 2 epochs
+    expected = np.concatenate(
+        [
+            np.full(len(block), k)
+            for k, block in enumerate(np.array_split(np.arange(n_epochs), num_splits))
+        ]
+    )
+    epochs = np.array([0, 2, 3, 5, 6, 7, 8, 9])
+    np.testing.assert_array_equal(
+        ms.split_index(epochs, n_epochs, num_splits), expected[epochs]
+    )
+    np.testing.assert_array_equal(ms.split_index(np.arange(5), 5, 1), np.zeros(5))
+
+
+def test_split_residuals_use_the_block_of_each_paired_epoch():
+    # 50 of 60 epochs are paired, so splitting the pairs alone would move blocks.
+    config, problem = synthetic_problem(num_esv_splits=3, n_arrivals=50)
+    model = ms.build_model(config)
+    theta = model["start_theta"].copy()
+    theta[model["layout"]["esv_bias"]] = [0.3, -0.2, 0.5]
+    params = ms.unpack(theta, model)
+
+    trans = (problem["R_stacked"] @ params["lever"]).reshape(-1, 3) + problem["d"]
+    times_all_epochs = ms.dog_travel_times(
+        problem["CDOG_reference"] + params["CDOG_aug"][0],
+        trans,
+        params["esv_bias"][0],
+        problem["dz_array"],
+        problem["angle_array"],
+        problem["esv_matrix"],
+    )
+    expected = (
+        problem["pair_time_base"]
+        + params["time_bias"][0]
+        - params["drift_rate"][0] * problem["pair_t_from_mid"]
+        - times_all_epochs[problem["pair_gps_index"]]
+    ) * ms.RANGE_CM_PER_S
+    assert problem["pair_gps_index"].max() < problem["n_epochs"] - 1
+    np.testing.assert_allclose(
+        ms.residuals_cm(theta, model, problem), expected, rtol=0, atol=1e-9
+    )

@@ -74,6 +74,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     NOMINAL_SOUND_SPEED_MPS,
 )
 from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
+    calculateTimesRayTracing_heights,
     calculateTimesRayTracing_split,
     calculateTimesRayTracing_windows,
 )
@@ -82,6 +83,7 @@ from Inversion_Workflow.Forward_Model.Find_Transponder import (
     vessel_rotations as find_vessel_rotations,
 )
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import residual_inliers
+from geometry.ECEF_Geodetic import ECEF_Geodetic
 from bermuda_data import (
     CDOG_GUESS_AUGMENTS,
     CDOG_REFERENCE,
@@ -434,6 +436,17 @@ def dog_travel_times(
             esv_matrix,
         )
     return times
+
+
+def split_index(epochs, n_epochs, num_splits):
+    """Split of each epoch index when n_epochs are cut as ``np.array_split`` does.
+
+    The same blocks as ``calculateTimesRayTracing_split``, so a subset of epochs
+    keeps the dc of the block it came from.
+    """
+    sizes = [len(block) for block in np.array_split(np.arange(n_epochs), num_splits)]
+    starts = np.cumsum([0] + sizes[:-1])
+    return np.searchsorted(starts, epochs, side="right") - 1
 
 
 def window_index(times, edges):
@@ -886,22 +899,49 @@ def residuals_cm(theta, model, problem):
         raise ValueError("Model and problem disagree on the esv_model")
     params = unpack(theta, model)
     trans = (problem["R_stacked"] @ params["lever"]).reshape(-1, 3) + problem["d"]
+    # Travel times only at the paired epochs (the model is per epoch). With several
+    # dc blocks, each pair takes the block of its epoch, and the transducer heights
+    # are computed once for all DOGs.
+    pair_gps_index = problem["pair_gps_index"]
+    if epoch_window is not None:
+        pair_block = problem["pair_window"]
+    elif model["num_splits"] > 1:
+        pair_block = split_index(
+            pair_gps_index, problem["n_epochs"], model["num_splits"]
+        )
+    else:
+        pair_block = None
+    if pair_block is not None:
+        heights = ECEF_Geodetic(trans)[2]
     residuals = np.empty(problem["pair_dog"].shape[0])
     for j, sel in enumerate(problem["pair_slices"]):
-        times = dog_travel_times(
-            problem["CDOG_reference"] + params["CDOG_aug"][j],
-            trans,
-            params["esv_bias"][j],
-            problem["dz_array"],
-            problem["angle_array"],
-            problem["esv_matrix"],
-            epoch_window,
-        )
+        DOG_position = problem["CDOG_reference"] + params["CDOG_aug"][j]
+        epochs = pair_gps_index[sel]
+        if pair_block is None:
+            times, _ = calculateTimesRayTracing_Bias_Real(
+                DOG_position,
+                trans[epochs],
+                params["esv_bias"][j, 0],
+                problem["dz_array"],
+                problem["angle_array"],
+                problem["esv_matrix"],
+            )
+        else:
+            times, _ = calculateTimesRayTracing_heights(
+                DOG_position,
+                trans[epochs],
+                heights[epochs],
+                params["esv_bias"][j],
+                pair_block[sel],
+                problem["dz_array"],
+                problem["angle_array"],
+                problem["esv_matrix"],
+            )
         residuals[sel] = (
             problem["pair_time_base"][sel]
             + params["time_bias"][j]
             - params["drift_rate"][j] * problem["pair_t_from_mid"][sel]
-            - times[problem["pair_gps_index"][sel]]
+            - times
         ) * RANGE_CM_PER_S
     return residuals
 

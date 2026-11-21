@@ -50,6 +50,35 @@ def calculateTimesRayTracing_split(
 
 
 @njit(cache=True, fastmath=True)
+def calculateTimesRayTracing_heights(
+    guess,
+    transponder_coordinates,
+    transponder_heights,
+    block_biases,
+    epoch_block,
+    dz_array,
+    angle_array,
+    esv_matrix,
+):
+    """As ``calculateTimesRayTracing_Bias_Real``, with an ESV bias per block of epochs.
+
+    Epoch i gets the bias ``block_biases[epoch_block[i]]`` (m/s).
+    ``transponder_heights`` (N,) are the WGS84 heights (m) of the transducer
+    positions, passed in so several DOGs can share them. Returns ``(times, esv)``.
+    """
+    abs_dist = np.sqrt(np.sum((transponder_coordinates - guess) ** 2, axis=1))
+
+    guess = guess[np.newaxis, :]
+    lat, lon, depth = ECEF_Geodetic(guess)
+    dz = transponder_heights - depth
+    beta = np.arcsin(dz / abs_dist) * 180 / np.pi
+    esv = find_esv(beta, dz, dz_array, angle_array, esv_matrix)
+    esv = esv + block_biases[epoch_block]
+    times = abs_dist / esv
+    return times, esv
+
+
+@njit(cache=True, fastmath=True)
 def calculateTimesRayTracing_windows(
     guess,
     transponder_coordinates,
@@ -65,14 +94,13 @@ def calculateTimesRayTracing_windows(
     ``window_biases[epoch_window[i]]`` (m/s); ``epoch_window`` is an (N,) integer
     array of window indices. Returns ``(times, esv)``.
     """
-    abs_dist = np.sqrt(np.sum((transponder_coordinates - guess) ** 2, axis=1))
-    depth_arr = ECEF_Geodetic(transponder_coordinates)[2]
-
-    guess = guess[np.newaxis, :]
-    lat, lon, depth = ECEF_Geodetic(guess)
-    dz = depth_arr - depth
-    beta = np.arcsin(dz / abs_dist) * 180 / np.pi
-    esv = find_esv(beta, dz, dz_array, angle_array, esv_matrix)
-    esv = esv + window_biases[epoch_window]
-    times = abs_dist / esv
-    return times, esv
+    return calculateTimesRayTracing_heights(
+        guess,
+        transponder_coordinates,
+        ECEF_Geodetic(transponder_coordinates)[2],
+        window_biases,
+        epoch_window,
+        dz_array,
+        angle_array,
+        esv_matrix,
+    )
