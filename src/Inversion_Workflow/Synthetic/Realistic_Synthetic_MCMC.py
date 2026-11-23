@@ -8,7 +8,11 @@ windows plus per-DOG offsets, AR(1) noise) using the sampler's own priors, pairi
 outlier rule and epoch selection (time windows, survey legs). A per-DOG variant
 samples that DOG of the same survey, so its result pairs with the joint run's. One
 seed gives the same ocean, ship errors and DOG prior centres on every track and
-variant. Only what the real data supply from outside the sampler is replaced:
+variant. ``ONLY`` runs the error budget: one source group of the preset
+(``BUDGET_GROUPS`` of the ensemble) switched on alone over the measurement floor
+(``FLOOR_GROUPS``: timing noise and the real dropout pattern, so every budget run has
+the full run's pings and a noise level), or the floor alone ("floor"). Only what the
+real data supply from outside the sampler is replaced:
 
 - ESV table: ``INVERSION_TABLE`` of the ensemble (the generation table).
 - DOG prior centres and start: truth + N(0, ``PRIOR_CENTER_ERROR_SD_M``) per axis, as
@@ -55,19 +59,24 @@ from Inversion_Workflow.Synthetic.Realistic_Synthetic import (
     realistic_synthetic,
 )
 from Inversion_Workflow.Synthetic.Realistic_Synthetic_Ensemble import (
+    BUDGET_GROUPS,
     GENERATION_TABLE,
     INVERSION_TABLE,
     full_preset,
     load_table,
+    preset_group_knobs,
     with_random_directions,
 )
 
-# Config. slurm/realistic_synthetic_mcmc_array.sh sets the track and the variant
-# through SYN_TRACK and SYN_RUN.
+# Config. slurm/realistic_synthetic_mcmc_array.sh sets the track, the variant and
+# the budget group through SYN_TRACK, SYN_RUN and SYN_ONLY.
 PRESET = "random"
 AMPLITUDE_SET = "guess"  # "guess" | "models_low" | "models_high" (Ensemble AMPLITUDES)
 TRACK = os.environ.get("SYN_TRACK", "bermuda")  # bermuda | circle | grid | cross
 RUN_VARIANT = os.environ.get("SYN_RUN", "ar1_common30")
+# None: the full preset. "floor", or a BUDGET_GROUPS group other than the floor's.
+ONLY = os.environ.get("SYN_ONLY") or None
+FLOOR_GROUPS = ("timing_noise", "dropouts")
 N_SURVEYS = 20
 N_CHAINS = 2
 FIRST_SEED = 0
@@ -81,13 +90,29 @@ OUTPUT_DIR = gps_output_path("MCMC_Synthetic")
 
 def run_name():
     label = "" if AMPLITUDE_SET == "guess" else f"_{AMPLITUDE_SET}"
-    return f"mcmc_{RUN_VARIANT}_{PRESET}_{TRACK}{label}"
+    only = "" if ONLY is None else f"_only_{ONLY}"
+    return f"mcmc_{RUN_VARIANT}_{PRESET}_{TRACK}{only}{label}"
+
+
+def survey_knobs(seed):
+    """Knobs of the survey of ``seed``: the full preset, or the floor plus ONLY."""
+    if ONLY is None:
+        knobs = full_preset(PRESET, AMPLITUDE_SET)
+    else:
+        groups = [group for group in BUDGET_GROUPS if group not in FLOOR_GROUPS]
+        if ONLY != "floor" and ONLY not in groups:
+            raise ValueError(
+                f"SYN_ONLY must be 'floor' or one of {groups}; got {ONLY!r}"
+            )
+        knobs = {}
+        for group in FLOOR_GROUPS + (() if ONLY == "floor" else (ONLY,)):
+            knobs.update(preset_group_knobs(PRESET, group, AMPLITUDE_SET))
+    return {**with_random_directions(knobs, seed), "track": TRACK}
 
 
 def synthetic_problem(seed):
     """Sampler model, problem and truth for the survey of one seed."""
-    knobs = with_random_directions(full_preset(PRESET, AMPLITUDE_SET), seed)
-    knobs["track"] = TRACK
+    knobs = survey_knobs(seed)
     tables_gen = load_table(GENERATION_TABLE)
     tables_inv = load_table(INVERSION_TABLE)
     # All three DOGs are generated (and prior centres drawn) whatever DOGs the
@@ -117,7 +142,7 @@ def synthetic_problem(seed):
             "run_name": run_name(),
             "dogs": list(dogs),
             "esv_table": f"ESV_Tables/{INVERSION_TABLE}.mat",
-            "gps_file": f"synthetic seed {seed}, {PRESET}, {TRACK}, {AMPLITUDE_SET}",
+            "gps_file": f"synthetic seed {seed}, {run_name()}",
             "CDOG_reference": SITE_ORIGIN_ECEF.tolist(),
             "gps1_to_others": GPS1_TO_OTHERS.tolist(),
             "offsets_s": (np.round(dt_true / OFFSET_ROUND_S) * OFFSET_ROUND_S).tolist(),

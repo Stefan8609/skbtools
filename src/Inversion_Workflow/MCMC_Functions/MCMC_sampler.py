@@ -316,25 +316,21 @@ def select_dogs(dogs):
     return overrides
 
 
-# Survey legs of bermuda_data.LEG_WINDOWS_H under the final model: each leg alone
-# and both together, lever arm free. Positions from the legs are compared with
-# the full trajectory, jointly and per DOG (below).
-LEG_VARIANTS = {
-    "leg1": [list(LEG_WINDOWS_H[0])],
-    "leg2": [list(LEG_WINDOWS_H[1])],
-    "legs": [list(window) for window in LEG_WINDOWS_H],
+# The two survey legs of bermuda_data.LEG_WINDOWS_H together, a cross over the
+# array, under the final model with the lever arm free; compared with the full
+# trajectory, jointly and per DOG (below). Never one leg alone: on a straight
+# line, rotating a DOG about the line leaves every range unchanged, so a single
+# leg leaves its across-track position to ~1 m (0.5-1.6 m linearized sd).
+RUN_VARIANTS["ar1_common30_legs"] = {
+    **RUN_VARIANTS["ar1_common30"],
+    "gps_leg_windows_h": [list(window) for window in LEG_WINDOWS_H],
 }
-for _leg, _windows in LEG_VARIANTS.items():
-    RUN_VARIANTS[f"ar1_common30_{_leg}"] = {
-        **RUN_VARIANTS["ar1_common30"],
-        "gps_leg_windows_h": _windows,
-    }
 
 for _dog in (1, 3, 4):
     RUN_VARIANTS[f"ar1_dog{_dog}"] = {"likelihood": "ar1", **select_dogs([_dog])}
     # Per-DOG lever arm under the final model (30-min windows, one DOG, so the
     # "common" series is that DOG's own dc(t); sparse windows merge as usual).
-    for _suffix in ("", *(f"_{leg}" for leg in LEG_VARIANTS)):
+    for _suffix in ("", "_legs"):
         RUN_VARIANTS[f"ar1_common30{_suffix}_dog{_dog}"] = {
             **RUN_VARIANTS[f"ar1_common30{_suffix}"],
             **select_dogs([_dog]),

@@ -7,10 +7,13 @@
 # src/Inversion_Workflow/Synthetic/Realistic_Synthetic_MCMC.py (defaults: "random",
 # 20 surveys x 2 chains = tasks 0-39). SYN_TRACK (bermuda | circle | grid | cross,
 # default bermuda) picks the ship track and SYN_RUN a variant of RUN_VARIANTS in
-# MCMC_sampler.py (default ar1_common30; e.g. ar1_common30_leg1, ar1_common30_dog3).
+# MCMC_sampler.py (default ar1_common30; e.g. ar1_common30_legs, ar1_common30_dog3).
+# SYN_ONLY (error budget) switches one source group on alone over the measurement
+# floor (timing noise and real dropouts), or "floor" for the floor alone; unset runs
+# the full preset.
 # Seed s is the same survey (ocean, ship errors, prior centres) on every track and
 # variant, so results pair by seed. Chains go to
-# Bermuda_Data/Output/MCMC_Synthetic/mcmc_<run>_<preset>_<track>[_<amplitudes>]/;
+# Bermuda_Data/Output/MCMC_Synthetic/mcmc_<run>_<preset>_<track>[_only_<group>][_<amplitudes>]/;
 # AMPLITUDE_SET (guess | models_low | models_high) is set in the config block.
 # Resubmitting resumes unfinished chains from their checkpoints.
 #
@@ -46,6 +49,6 @@ export NUMBA_NUM_THREADS=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THRE
 export MPLBACKEND=Agg
 export PYTHONPATH="$SLURM_SUBMIT_DIR/src"
 
-echo "track ${SYN_TRACK:-bermuda}, run ${SYN_RUN:-ar1_common30}, task $SLURM_ARRAY_TASK_ID, summary ${SYN_MCMC_SUMMARY:-0}, host $(hostname), commit $(git -C "$SLURM_SUBMIT_DIR" rev-parse --short HEAD)"
+echo "track ${SYN_TRACK:-bermuda}, run ${SYN_RUN:-ar1_common30}, only ${SYN_ONLY:-all}, task $SLURM_ARRAY_TASK_ID, summary ${SYN_MCMC_SUMMARY:-0}, host $(hostname), commit $(git -C "$SLURM_SUBMIT_DIR" rev-parse --short HEAD)"
 cd "$SLURM_SUBMIT_DIR/src"
 python -u -m Inversion_Workflow.Synthetic.Realistic_Synthetic_MCMC

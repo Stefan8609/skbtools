@@ -529,15 +529,14 @@ def test_select_epochs_keeps_survey_legs_in_time_order():
 
 
 def test_leg_variants():
-    """Each leg alone, both legs, jointly and per DOG, on the final model."""
-    final = ms.run_config("ar1_common30")
-    both = [[9.0, 11.0], [12.4, 15.0]]
-    for leg, windows in (("leg1", both[:1]), ("legs", both)):
-        config = ms.run_config(f"ar1_common30_{leg}")
-        assert config["gps_leg_windows_h"] == windows
-        assert config["esv_model"] == final["esv_model"]
-        per_dog = ms.run_config(f"ar1_common30_{leg}_dog3")
-        assert per_dog["dogs"] == [3] and per_dog["gps_leg_windows_h"] == windows
+    """Both legs together (a cross), jointly and per DOG; no single-leg runs."""
+    legs = [[9.0, 11.0], [12.4, 15.0]]
+    config = ms.run_config("ar1_common30_legs")
+    assert config["gps_leg_windows_h"] == legs
+    assert config["esv_model"] == ms.run_config("ar1_common30")["esv_model"]
+    per_dog = ms.run_config("ar1_common30_legs_dog3")
+    assert per_dog["dogs"] == [3] and per_dog["gps_leg_windows_h"] == legs
+    assert not any("leg1" in name or "leg2" in name for name in ms.RUN_VARIANTS)
     assert ms.CONFIG["gps_leg_windows_h"] is None
 
 
