@@ -511,6 +511,36 @@ def test_repeatability_variants():
     assert ms.CONFIG["gps_time_blocks"] is None
 
 
+def test_select_epochs_keeps_survey_legs_in_time_order():
+    t = np.arange(8.0, 16.0, 0.5) * 3600  # GPS hours 8.0 ... 15.5
+    coords = np.arange(len(t))
+    legs = [[9.0, 11.0], [12.4, 15.0]]
+    kept_t, kept_coords = ms.select_epochs({"gps_leg_windows_h": legs}, t, coords)
+    np.testing.assert_array_equal(
+        kept_t / 3600, [9.0, 9.5, 10.0, 10.5, 11.0, 12.5, 13.0, 13.5, 14.0, 14.5, 15.0]
+    )
+    np.testing.assert_array_equal(kept_coords, coords[np.isin(t, kept_t)])
+    plain_t, _ = ms.select_epochs({}, t, coords)
+    np.testing.assert_array_equal(plain_t, t)
+    with pytest.raises(ValueError, match="gps_leg_windows_h"):
+        ms.select_epochs({"gps_leg_windows_h": [[11.0, 9.0]]}, t, coords)
+    with pytest.raises(ValueError, match="no GPS epochs"):
+        ms.select_epochs({"gps_leg_windows_h": [[20.0, 21.0]]}, t, coords)
+
+
+def test_leg_variants():
+    """Each leg alone, both legs, jointly and per DOG, on the final model."""
+    final = ms.run_config("ar1_common30")
+    both = [[9.0, 11.0], [12.4, 15.0]]
+    for leg, windows in (("leg1", both[:1]), ("legs", both)):
+        config = ms.run_config(f"ar1_common30_{leg}")
+        assert config["gps_leg_windows_h"] == windows
+        assert config["esv_model"] == final["esv_model"]
+        per_dog = ms.run_config(f"ar1_common30_{leg}_dog3")
+        assert per_dog["dogs"] == [3] and per_dog["gps_leg_windows_h"] == windows
+    assert ms.CONFIG["gps_leg_windows_h"] is None
+
+
 def test_split_index_matches_array_split_blocks():
     n_epochs, num_splits = 10, 4  # blocks of 3, 3, 2, 2 epochs
     expected = np.concatenate(

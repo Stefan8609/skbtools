@@ -104,19 +104,20 @@ def run_config(pooled):
 def run_model_and_problem(pooled):
     """Sampler model and fixed pairs of a run, rebuilt from its saved configuration.
 
-    Warns when the ESV table on disk differs from the one the chains used, since
+    Warns when the ESV table or GNSS file on disk differs from the one the chains used:
     the residuals would then not be those the chains saw.
     """
     config = run_config(pooled)
     model, problem = MCMC_sampler.setup_bermuda(config)
     used = json.loads(str(np.load(_first_chain(pooled["run_name"]))["metadata_json"]))
-    used_sha = used["input_files"]["esv_table"]["sha256"]
-    disk_sha = problem["input_files"]["esv_table"]["sha256"]
-    if used_sha != disk_sha:
-        print(
-            f"WARNING: {pooled['run_name']} used ESV table {used_sha[:8]}, "
-            f"disk has {disk_sha[:8]}"
-        )
+    for key, name in (("esv_table", "ESV table"), ("gps_file", "GNSS file")):
+        used_sha = used["input_files"][key]["sha256"]
+        disk_sha = problem["input_files"][key]["sha256"]
+        if used_sha != disk_sha:
+            print(
+                f"WARNING: {pooled['run_name']} used {name} {used_sha[:8]}, "
+                f"disk has {disk_sha[:8]}"
+            )
     return model, problem
 
 
@@ -863,3 +864,23 @@ def b36_range_sd_cm(
 
 
 # --- helpers added for the 3-D posterior figure -------------------------------------
+
+
+# --- helper added for the 2026-11-21 figures (model sensitivity, repeatability) -----
+
+
+def run_positions_cm(run, reference_ecef_m):
+    """Posterior mean and covariance of each DOG position of a run, in local ENU.
+
+    reference_ecef_m maps DOG number to an ECEF position (m); the result maps each
+    DOG of the run to (mean (3,), covariance (3, 3)) of E, N, U in cm relative to
+    that reference, in the local frame at the reference.
+    """
+    pooled = pooled_run(run)
+    out = {}
+    for j, dog in enumerate(run_config(pooled)["dogs"]):
+        to_enu = enu_rotation_at(reference_ecef_m[dog])
+        ecef = pooled["CDOG_reference"] + pooled["CDOG_aug"][:, j, :]
+        enu_cm = (ecef - reference_ecef_m[dog]) @ to_enu.T * 100.0
+        out[dog] = (enu_cm.mean(axis=0), np.cov(enu_cm.T))
+    return out

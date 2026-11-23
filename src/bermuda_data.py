@@ -73,10 +73,10 @@ OFFSET_HINTS_S = {1: 1866.0, 3: 3175.0, 4: 1939.0}
 LEG_WINDOWS_H = [(9.0, 11.0), (12.4, 15.0)]
 
 
-def leg_mask(GPS_data):
-    """Boolean mask of the GPS epochs (s) inside LEG_WINDOWS_H."""
-    hours = GPS_data / 3600
-    mask = np.zeros(len(GPS_data), dtype=bool)
-    for start, end in LEG_WINDOWS_H:
+def leg_mask(GPS_data, windows_h=LEG_WINDOWS_H):
+    """Boolean mask of the GPS epochs (s) inside any of ``windows_h`` (GPS hours)."""
+    hours = np.asarray(GPS_data) / 3600
+    mask = np.zeros(len(hours), dtype=bool)
+    for start, end in windows_h:
         mask |= (hours >= start) & (hours <= end)
     return mask

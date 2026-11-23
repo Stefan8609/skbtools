@@ -28,25 +28,17 @@ from plotting.Plot_Modular import time_series_plot, range_residual
 
 
 # Config
-DOG_num = 4
+DOG_num = 3
 # Lever arm and clock offset:
 #   "gauss_newton": integer second and lever arm by the Gauss-Newton offset search
-#       (no hint used; the found integer must match the hint below).
-#   "annealing": simulated annealing at the hinted integer, as in the submitted
-#       paper; kept as a validation of "gauss_newton".
+#   "annealing": simulated annealing at the hinted integer
 #   "fixed": lever arm fixed at the initial guess, Geiger inversion only.
 lever_method = "gauss_newton"
-# Paper I (Table 1, Figs. 5, 6, C12-C15) uses the full trajectory. The leg mask
-# (9-11 h and 12.4-15 h) is a sensitivity test: it lowers c*sigma to ~8 cm but
-# moves the DOG depths by metres.
 use_leg_mask = False
 save = True
 downsample = 1
-# Linear clock drift, as config["clock_drift"] in the MCMC. The estimate
-# then gets drift_rate (s/s, Eq. 6 convention) as a sixth entry, and the reported
-# offset is dt0, the offset at t_mid (half-way between the first and last paired
-# GPS epochs).
-clock_drift = False
+
+clock_drift = True
 
 # Known data
 

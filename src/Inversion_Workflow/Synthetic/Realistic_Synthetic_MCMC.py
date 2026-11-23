@@ -1,10 +1,14 @@
 """MCMC of the final model on realistic synthetic surveys: accuracy and coverage.
 
 Each seed generates one survey of DOGs 1, 3 and 4 with ``realistic_synthetic`` (the
-``PRESET`` of ``Realistic_Synthetic_Ensemble``) and samples it with the final real-data
-model (``RUN_VARIANT`` of ``MCMC_sampler.RUN_VARIANTS``, joint lever arm, common dc(t)
-windows plus per-DOG offsets, AR(1) noise) using the sampler's own priors, pairing and
-outlier rule. Only what the real data supply from outside the sampler is replaced:
+``PRESET`` of ``Realistic_Synthetic_Ensemble``) on ``TRACK`` ("bermuda", "circle",
+"grid" or "cross") and samples it with a real-data model (``RUN_VARIANT`` of
+``MCMC_sampler.RUN_VARIANTS``; default the final model: joint lever arm, common dc(t)
+windows plus per-DOG offsets, AR(1) noise) using the sampler's own priors, pairing,
+outlier rule and epoch selection (time windows, survey legs). A per-DOG variant
+samples that DOG of the same survey, so its result pairs with the joint run's. One
+seed gives the same ocean, ship errors and DOG prior centres on every track and
+variant. Only what the real data supply from outside the sampler is replaced:
 
 - ESV table: ``INVERSION_TABLE`` of the ensemble (the generation table).
 - DOG prior centres and start: truth + N(0, ``PRIOR_CENTER_ERROR_SD_M``) per axis, as
@@ -16,11 +20,12 @@ outlier rule. Only what the real data supply from outside the sampler is replace
 
 Outputs go to ``OUTPUT_DIR`` = ``Bermuda_Data/Output/MCMC_Synthetic``.
 ``run_synthetic_chain`` writes one chain per (seed, chain) to
-``<run>/seed<seed>_chain<chain>.npz`` (resumable, as on real data) and the truth to
-``<run>/seed<seed>_truth.npz``. ``summarize`` pools the chains of every seed and
-writes ``<run>.csv``: per seed and DOG, the ENU error of the posterior mean, the
-posterior sd, whether the central 68 % and 95 % intervals hold the truth, the same
-for the lever arm and dt, the dc error, and the max R-hat.
+``<run>/seed<seed>_chain<chain>.npz`` (``<run>`` from ``run_name``; resumable, as
+on real data) and the truth to ``<run>/seed<seed>_truth.npz``. ``summarize`` pools
+the chains of every seed and writes ``<run>.csv``: per seed and DOG, the ENU error
+of the posterior mean, the posterior sd, whether the central 68 % and 95 % intervals
+hold the truth, the same for the lever arm and dt, the dc error, the number of
+pairs, and the max R-hat.
 """
 
 import csv
@@ -38,8 +43,10 @@ from Inversion_Workflow.MCMC_Functions.MCMC_sampler import (
     build_problem,
     esv_bias_matrix,
     load_chain,
+    RUN_VARIANTS,
     run_chain,
     run_config,
+    select_epochs,
 )
 from Inversion_Workflow.Synthetic.Realistic_Synthetic import (
     GPS1_TO_OTHERS,
@@ -55,10 +62,12 @@ from Inversion_Workflow.Synthetic.Realistic_Synthetic_Ensemble import (
     with_random_directions,
 )
 
-# Config
+# Config. slurm/realistic_synthetic_mcmc_array.sh sets the track and the variant
+# through SYN_TRACK and SYN_RUN.
 PRESET = "random"
 AMPLITUDE_SET = "guess"  # "guess" | "models_low" | "models_high" (Ensemble AMPLITUDES)
-RUN_VARIANT = "ar1_common30"
+TRACK = os.environ.get("SYN_TRACK", "bermuda")  # bermuda | circle | grid | cross
+RUN_VARIANT = os.environ.get("SYN_RUN", "ar1_common30")
 N_SURVEYS = 20
 N_CHAINS = 2
 FIRST_SEED = 0
@@ -72,39 +81,54 @@ OUTPUT_DIR = gps_output_path("MCMC_Synthetic")
 
 def run_name():
     label = "" if AMPLITUDE_SET == "guess" else f"_{AMPLITUDE_SET}"
-    return f"mcmc_{RUN_VARIANT}_{PRESET}{label}"
+    return f"mcmc_{RUN_VARIANT}_{PRESET}_{TRACK}{label}"
 
 
 def synthetic_problem(seed):
     """Sampler model, problem and truth for the survey of one seed."""
     knobs = with_random_directions(full_preset(PRESET, AMPLITUDE_SET), seed)
+    knobs["track"] = TRACK
     tables_gen = load_table(GENERATION_TABLE)
     tables_inv = load_table(INVERSION_TABLE)
+    # All three DOGs are generated (and prior centres drawn) whatever DOGs the
+    # variant samples, so a per-DOG run sees the joint run's survey.
     surveys = [realistic_synthetic(dog, knobs, seed, *tables_gen) for dog in DOGS]
     _, _, GPS_Coordinates, GPS_data, _, _ = surveys[0]
+    rng = np.random.default_rng([seed, 3000])
+    prior_error = rng.normal(0.0, PRIOR_CENTER_ERROR_SD_M, (len(DOGS), 3))
+    dogs = run_config(RUN_VARIANT).get("dogs", list(DOGS))
+    index = [DOGS.index(dog) for dog in dogs]
+    surveys = [surveys[j] for j in index]
     truths = [survey[5] for survey in surveys]
 
     true_aug = np.array([survey[1] - SITE_ORIGIN_ECEF for survey in surveys])
-    rng = np.random.default_rng([seed, 3000])
-    prior_aug = true_aug + rng.normal(0.0, PRIOR_CENTER_ERROR_SD_M, true_aug.shape)
+    prior_aug = true_aug + prior_error[index]
     dt_true = np.array([truth["dt_s"] for truth in truths])
+    # A variant that centres the lever prior (the pinned-lever runs) centres it on
+    # the real-data estimate; here that is the synthetic truth.
+    lever_center = {}
+    if "prior_lever_center_m" in RUN_VARIANTS[RUN_VARIANT]:
+        true_lever = truths[0]["lever"].tolist()
+        lever_center = {"prior_lever_center_m": true_lever, "start_lever": true_lever}
     config = run_config(
         RUN_VARIANT,
         {
+            **lever_center,
             "run_name": run_name(),
-            "dogs": list(DOGS),
+            "dogs": list(dogs),
             "esv_table": f"ESV_Tables/{INVERSION_TABLE}.mat",
-            "gps_file": f"synthetic seed {seed}, {PRESET}, {AMPLITUDE_SET}",
+            "gps_file": f"synthetic seed {seed}, {PRESET}, {TRACK}, {AMPLITUDE_SET}",
             "CDOG_reference": SITE_ORIGIN_ECEF.tolist(),
             "gps1_to_others": GPS1_TO_OTHERS.tolist(),
             "offsets_s": (np.round(dt_true / OFFSET_ROUND_S) * OFFSET_ROUND_S).tolist(),
             "start_CDOG_aug": prior_aug.tolist(),
             "prior_CDOG_aug_center_m": prior_aug.tolist(),
-            "start_esv_bias": [0.0] * len(DOGS),
+            "start_esv_bias": [0.0] * len(dogs),
             "seed": int(20261119 + 1000 * seed),
             **OVERRIDES,
         },
     )
+    GPS_data, GPS_Coordinates = select_epochs(config, GPS_data, GPS_Coordinates)
     problem = build_problem(
         config,
         GPS_Coordinates,
@@ -115,20 +139,24 @@ def synthetic_problem(seed):
     if "esv_window_edges_s" in problem:
         config = {**config, "esv_window_edges_s": problem["esv_window_edges_s"]}
 
-    # dc truth per DOG and window: mean of the true dc(t) over that DOG's epochs.
+    # dc truth per DOG and window: mean of the true dc(t) over that DOG's received
+    # pings inside the run's epoch selection.
     edges = np.asarray(problem.get("esv_window_edges_s", [-np.inf, np.inf]))
-    true_dc = np.full((len(DOGS), len(edges) - 1), np.nan)
+    true_dc = np.full((len(dogs), len(edges) - 1), np.nan)
     for j, truth in enumerate(truths):
         t = truth["GPS_data_all"][truth["keep"]]
         dc = np.broadcast_to(truth["dc_mps"], truth["GPS_data_all"].shape)[
             truth["keep"]
         ]
-        window = np.clip(np.searchsorted(edges, t, side="right") - 1, 0, None)
+        t, dc = select_epochs(config, t, dc)
+        window = np.searchsorted(edges, t, side="right") - 1
         for k in range(len(edges) - 1):
             if np.any(window == k):
                 true_dc[j, k] = dc[window == k].mean()
     truth = {
         "seed": seed,
+        "track": TRACK,
+        "dogs": np.array(dogs),
         "knobs": repr(knobs),
         "CDOG_aug": true_aug,
         "lever": truths[0]["lever"],
@@ -194,7 +222,7 @@ def summarize(seeds):
         dc = esv_bias_matrix(theta, model)
 
         lever_in68, lever_in95 = interval_flags(lever, truth["lever"])
-        for j, dog in enumerate(DOGS):
+        for j, dog in enumerate(truth["dogs"]):
             enu = (aug[:, j] - truth["CDOG_aug"][j]) @ to_enu.T * 100
             in68, in95 = interval_flags(enu, 0.0)
             dt_us = (dt[:, j] - truth["dt_s"][j]) * 1e6
@@ -202,7 +230,13 @@ def summarize(seeds):
             prior_enu = (
                 to_enu @ (truth["prior_CDOG_aug_center_m"][j] - truth["CDOG_aug"][j])
             ) * 100
-            row = {"seed": seed, "DOG": dog, "max_rhat": rhat, "n_draws": len(theta)}
+            row = {
+                "seed": seed,
+                "DOG": int(dog),
+                "max_rhat": rhat,
+                "n_draws": len(theta),
+                "n_pairs": int(chains[0]["pair_counts"][j]),
+            }
             for a, axis in enumerate("ENU"):
                 row[f"{axis}_err_cm"] = enu[:, a].mean()
                 row[f"{axis}_sd_cm"] = enu[:, a].std()

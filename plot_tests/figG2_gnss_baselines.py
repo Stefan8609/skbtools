@@ -1,0 +1,88 @@
+"""Candidate GNSS figure 2: lengths of the baselines between the antennas.
+
+Question: how precise are the kinematic GNSS positions of the moving vessel?
+Message: the four antennas are fixed to the vessel, so the distance between any
+two of them must be constant. The six distances stay within 1 to 2 cm (robust sd)
+of their medians over the whole survey: that is the precision of the positions.
+
+Input: Processed_GPS_Receivers_DOG_1.npz (PRIDE PPP-AR positions, ECEF m).
+"""
+
+from itertools import combinations
+
+import numpy as np
+from scipy.stats import median_abs_deviation, norm
+
+import _figure_common as fc
+import _style as st
+
+NAME = "figG2_gnss_baselines"
+PROCESSED_FILE = fc.REPO / "Bermuda_Data/GPS_Data/Processed_GPS_Receivers_DOG_1.npz"
+LIMIT_CM = 10.0
+BIN_EDGES_CM = np.linspace(-LIMIT_CM, LIMIT_CM, 81)
+TIME_LIMITS_H = (0.0, 14.0)
+
+
+def main():
+    st.apply()
+    processed = np.load(PROCESSED_FILE)
+    hours = st.hours(processed["GPS_data"])
+    coordinates = processed["GPS_Coordinates"]
+    pairs = list(combinations(range(4), 2))
+    fig, axes = st.figure(
+        st.DOUBLE_MM,
+        150.0,
+        nrows=len(pairs),
+        ncols=2,
+        sharex="col",
+        sharey=True,
+        gridspec_kw={"width_ratios": [1.0, 5.0], "wspace": 0.03},
+    )
+    for (ax_hist, ax_time), (first, second) in zip(axes, pairs, strict=True):
+        length_m = np.linalg.norm(
+            coordinates[:, first] - coordinates[:, second], axis=1
+        )
+        deviation_cm = (length_m - np.median(length_m)) * 100.0
+        robust_sd_cm = median_abs_deviation(deviation_cm, scale="normal")
+        outside = np.mean(np.abs(deviation_cm) > LIMIT_CM)
+        ax_hist.hist(
+            deviation_cm,
+            bins=BIN_EDGES_CM,
+            density=True,
+            orientation="horizontal",
+            color=st.DATA_BLUE,
+            alpha=0.5,
+        )
+        grid_cm = np.linspace(-LIMIT_CM, LIMIT_CM, 300)
+        ax_hist.plot(norm.pdf(grid_cm, 0.0, robust_sd_cm), grid_cm, "k", lw=1.0)
+        ax_hist.invert_xaxis()
+        ax_time.scatter(
+            hours,
+            deviation_cm,
+            s=0.3,
+            color=st.DATA_BLUE,
+            linewidths=0,
+            rasterized=True,
+        )
+        ax_time.set_title(
+            f"Antennas {first + 1} and {second + 1}:  median length "
+            f"{np.median(length_m):.3f} m,  robust sd {robust_sd_cm:.1f} cm",
+            loc="left",
+            pad=2,
+        )
+        print(
+            f"antennas {first + 1}-{second + 1}: median {np.median(length_m):.4f} m, "
+            f"robust sd {robust_sd_cm:.2f} cm, sd {deviation_cm.std():.2f} cm, "
+            f"{100 * outside:.2f} % outside ±{LIMIT_CM:.0f} cm"
+        )
+    axes[0, 0].set_ylim(-LIMIT_CM, LIMIT_CM)
+    axes[0, 1].set_xlim(TIME_LIMITS_H)
+    axes[-1, 1].set_xticks(np.arange(0, 15, 2))
+    axes[-1, 1].set_xlabel(st.TIME_LABEL)
+    axes[-1, 0].set_xlabel("Density (1/cm)")
+    fig.supylabel("Baseline length minus its median (cm)", fontsize=st.FONT_PT)
+    st.save(fig, NAME)
+
+
+if __name__ == "__main__":
+    main()

@@ -88,9 +88,11 @@ from bermuda_data import (
     CDOG_GUESS_AUGMENTS,
     CDOG_REFERENCE,
     GPS1_TO_OTHERS,
+    LEG_WINDOWS_H,
     PROJECT_ROOT,
     gps_data_path,
     gps_output_path,
+    leg_mask,
 )
 
 RANGE_CM_PER_S = NOMINAL_SOUND_SPEED_MPS * 100.0
@@ -130,6 +132,9 @@ CONFIG = {
     # Short blocks give two subsets with nearly the same azimuth coverage, for the
     # geometry-balanced split; applied after gps_time_window_s.
     "gps_time_blocks": None,
+    # Survey legs [[start_h, end_h], ...] in GPS hours (bermuda_data.leg_mask): keep
+    # the epochs inside any of them; None uses all. Applied after the two above.
+    "gps_leg_windows_h": None,
     # Data (paths inside Bermuda_Data). The GPS epochs of the DOG 1 file are used
     # for all DOGs, as in the inversion of the joint model.
     "dogs": [1, 3, 4],
@@ -275,7 +280,9 @@ RUN_VARIANTS["ar1_common30_half2"] = {
 # (a) Lever arm pinned (1 mm prior sd) at the posterior mean of ar1_common30: it is
 # a property of the vessel, so the halves differ only through the DOG, clock and
 # sound-speed parameters.
-FINAL_LEVER_M = [-12.987376, 9.271818, -14.125968]
+# Posterior mean of ar1_common30 on the PRIDE_final GNSS (cluster chains, 2026-11-21).
+# The submitted-GNSS value was [-12.987376, 9.271818, -14.125968].
+FINAL_LEVER_M = [-12.963208, 9.369362, -14.637982]
 PINNED_LEVER = {"prior_lever_center_m": FINAL_LEVER_M, "prior_lever_sd_m": [0.001] * 3}
 for _half in (1, 2):
     RUN_VARIANTS[f"ar1_common30_half{_half}_pinlever"] = {
@@ -309,14 +316,29 @@ def select_dogs(dogs):
     return overrides
 
 
+# Survey legs of bermuda_data.LEG_WINDOWS_H under the final model: each leg alone
+# and both together, lever arm free. Positions from the legs are compared with
+# the full trajectory, jointly and per DOG (below).
+LEG_VARIANTS = {
+    "leg1": [list(LEG_WINDOWS_H[0])],
+    "leg2": [list(LEG_WINDOWS_H[1])],
+    "legs": [list(window) for window in LEG_WINDOWS_H],
+}
+for _leg, _windows in LEG_VARIANTS.items():
+    RUN_VARIANTS[f"ar1_common30_{_leg}"] = {
+        **RUN_VARIANTS["ar1_common30"],
+        "gps_leg_windows_h": _windows,
+    }
+
 for _dog in (1, 3, 4):
     RUN_VARIANTS[f"ar1_dog{_dog}"] = {"likelihood": "ar1", **select_dogs([_dog])}
     # Per-DOG lever arm under the final model (30-min windows, one DOG, so the
     # "common" series is that DOG's own dc(t); sparse windows merge as usual).
-    RUN_VARIANTS[f"ar1_common30_dog{_dog}"] = {
-        **RUN_VARIANTS["ar1_common30"],
-        **select_dogs([_dog]),
-    }
+    for _suffix in ("", *(f"_{leg}" for leg in LEG_VARIANTS)):
+        RUN_VARIANTS[f"ar1_common30{_suffix}_dog{_dog}"] = {
+            **RUN_VARIANTS[f"ar1_common30{_suffix}"],
+            **select_dogs([_dog]),
+        }
 
 
 def run_config(variant, overrides=None):
@@ -1321,7 +1343,13 @@ def laplace_approximation(model, problem, max_iterations=8):
     hessian, _, (sigma, phi, sigma_white) = whitened_system(theta)
     n_params = theta.shape[0]
     cov = np.zeros((n_params, n_params))
-    cov[geo, geo] = np.linalg.inv(hessian)
+    # Inverted in unit-diagonal form: dt (s) beside positions (m) puts the raw
+    # condition number past double precision when a parameter combination is held
+    # mainly by its prior (a single-circle track), and the raw inverse then fails
+    # to be positive definite.
+    scale = 1.0 / np.sqrt(np.diag(hessian))
+    cov[geo, geo] = scale[:, None] * np.linalg.inv(hessian * np.outer(scale, scale))
+    cov[geo, geo] *= scale[None, :]
     pair_counts = problem["pair_counts"].astype(float)
     layout = model["layout"]
     if "log_sigma" in layout:
@@ -1818,25 +1846,43 @@ def check_same_inputs(path, problem):
         )
 
 
-def setup_bermuda(config):
-    """Load the Bermuda data and build the sampler model and fixed pairs."""
-    inputs = load_bermuda_inputs(config)
+def select_epochs(config, GPS_data, GPS_Coordinates):
+    """GPS epochs of the run: ``gps_time_window_s``, ``gps_time_blocks`` and
+    ``gps_leg_windows_h`` of the configuration, in that order. Returns
+    ``(GPS_data, GPS_Coordinates)`` with time order kept."""
+    keep = np.ones(len(GPS_data), dtype=bool)
     window = config.get("gps_time_window_s")
     if window is not None:
         if len(window) != 2 or not window[0] < window[1]:
             raise ValueError(f"gps_time_window_s must be [start, end]; got {window}")
-        keep = (inputs["GPS_data"] >= window[0]) & (inputs["GPS_data"] < window[1])
-        inputs["GPS_data"] = inputs["GPS_data"][keep]
-        inputs["GPS_Coordinates"] = inputs["GPS_Coordinates"][keep]
+        keep &= (GPS_data >= window[0]) & (GPS_data < window[1])
     blocks = config.get("gps_time_blocks")
     if blocks is not None:
-        keep = time_block_mask(inputs["GPS_data"], blocks[0], int(blocks[1]))
-        inputs["GPS_data"] = inputs["GPS_data"][keep]
-        inputs["GPS_Coordinates"] = inputs["GPS_Coordinates"][keep]
+        # Blocks count from the first epoch left by the time window.
+        in_blocks = time_block_mask(GPS_data[keep], blocks[0], int(blocks[1]))
+        keep[np.flatnonzero(keep)[~in_blocks]] = False
+    legs = config.get("gps_leg_windows_h")
+    if legs is not None:
+        if any(len(leg) != 2 or not leg[0] < leg[1] for leg in legs):
+            raise ValueError(
+                f"gps_leg_windows_h must be [[start_h, end_h], ...]; got {legs}"
+            )
+        keep &= leg_mask(GPS_data, legs)
+    if not keep.any():
+        raise ValueError("no GPS epochs left after the time selection of the run")
+    return GPS_data[keep], GPS_Coordinates[keep]
+
+
+def setup_bermuda(config):
+    """Load the Bermuda data and build the sampler model and fixed pairs."""
+    inputs = load_bermuda_inputs(config)
+    GPS_data, GPS_Coordinates = select_epochs(
+        config, inputs["GPS_data"], inputs["GPS_Coordinates"]
+    )
     problem = build_problem(
         config,
-        inputs["GPS_Coordinates"],
-        inputs["GPS_data"],
+        GPS_Coordinates,
+        GPS_data,
         inputs["CDOG_all_data"],
         inputs["dz_array"],
         inputs["angle_array"],

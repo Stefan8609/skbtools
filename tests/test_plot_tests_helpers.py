@@ -74,3 +74,22 @@ def test_elevation_straight_up_and_horizontal():
     origin = np.array([6378137.0, 0.0, 0.0])  # equator, lon 0: up is +x
     assert fc.elevation_deg(origin, origin + [100.0, 0, 0])[0] == pytest.approx(90.0)
     assert fc.elevation_deg(origin, origin + [0, 100.0, 0])[0] == pytest.approx(0.0)
+
+
+def test_run_positions_cm_gives_enu_offsets_from_the_reference(monkeypatch):
+    reference = np.array([1976671.6, -5069622.5, 3306330.7])
+    to_enu = fc.enu_rotation_at(reference)
+    enu_m = np.array(
+        [[0.1, 0.0, 0.0], [0.3, 0.0, 0.0], [0.2, 0.0, 1.0], [0.2, 0.0, -1.0]]
+    )
+    pooled = {
+        "CDOG_reference": reference,
+        "CDOG_aug": (enu_m @ to_enu)[:, None, :],
+        "config_json": '{"dogs": [3]}',
+    }
+    monkeypatch.setattr(fc, "pooled_run", lambda run: pooled)
+    mean, covariance = fc.run_positions_cm("any", {3: reference})[3]
+    np.testing.assert_allclose(mean, [20.0, 0.0, 0.0], atol=1e-6)
+    np.testing.assert_allclose(
+        np.sqrt(np.diag(covariance)), np.std(enu_m, 0, ddof=1) * 100, atol=1e-6
+    )
