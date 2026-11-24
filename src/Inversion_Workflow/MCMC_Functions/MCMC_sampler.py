@@ -146,23 +146,26 @@ CONFIG = {
     "gps1_to_others": GPS1_TO_OTHERS.tolist(),
     # Alignment: integer plus sub-integer offsets (s) and the pairing window.
     # Gauss-Newton offset search of Bermuda_Data_time_bias.py on the PRIDE_final
-    # GNSS (2026-11-21). Submitted-GNSS values: 1866.016, 3175.017, 1939.0178.
-    "offsets_s": [1866.016727, 3175.016802, 1939.016538],
+    # GNSS, 17-h window (2026-11-24). The 14-h window gave 1866.016727,
+    # 3175.016802, 1939.016538; the submitted GNSS 1866.016, 3175.017, 1939.0178.
+    "offsets_s": [1866.016571, 3175.016767, 1939.016699],
     "pair_threshold_s": 0.4,
     # Pairs with start-model residuals beyond this many MADs are dropped (None: keep).
     "outlier_mad_factor": 6.0,
     # Start model: the pairing model and the start of the mode search. It does not
-    # enter the prior. Per-DOG Gauss-Newton solutions on the PRIDE_final GNSS
-    # (2026-11-21); the lever arm is the mean of the three per-DOG lever arms. The
+    # enter the prior. Per-DOG Gauss-Newton solutions on the PRIDE_final GNSS,
+    # 17-h window (2026-11-24); the lever arm is the mean of the three per-DOG
+    # lever arms. The 14-h window start was lever [-12.965, 9.471, -14.547], dc
+    # [-0.1633, -0.1478, -0.1858] m/s. The
     # submitted-GNSS start (inputs of the Fig. 7 chain) was lever
     # [-12.8, 9.5, -12.15], dc [-0.4078, -0.2667, -0.1230] m/s.
-    "start_lever": [-12.965, 9.471, -14.547],
+    "start_lever": [-12.927, 9.475, -14.274],
     "start_CDOG_aug": [
-        [-397.535, 371.119, 773.408],
-        [825.428, -111.056, -734.226],
-        [235.188, -1304.573, -2191.449],
+        [-397.560, 370.908, 773.555],
+        [825.415, -111.242, -734.084],
+        [235.272, -1304.841, -2191.259],
     ],
-    "start_esv_bias": [-0.1633, -0.1478, -0.1858],
+    "start_esv_bias": [-0.1880, -0.1530, -0.1588],
     # Priors (independent Gaussians unless noted).
     "prior_lever_center_m": PRIOR_LEVER_CENTER_M,
     "prior_lever_sd_m": PRIOR_LEVER_SD_M,
@@ -264,9 +267,10 @@ RUN_VARIANTS = {
     "ar1_white_common30": {**AR1_WHITE, **COMMON_WINDOWS, **WHITE_LONG_RUN},
 }
 # Repeatability. Halves of the survey split at the median GPS epoch of the
-# DOG 1 file (47135 s), each with the 30-min common dc(t), and each DOG alone (its
-# own lever arm) with the 4-split model of "ar1".
-HALF_SPLIT_GPS_S = 47135.0
+# DOG 1 file (50423.5 s with the 17-h window; 47135 s with the 14-h window), each
+# with the 30-min common dc(t), and each DOG alone (its own lever arm) with the
+# 4-split model of "ar1".
+HALF_SPLIT_GPS_S = 50423.5
 RUN_VARIANTS["ar1_common30_half1"] = {
     **RUN_VARIANTS["ar1_common30"],
     "gps_time_window_s": [0.0, HALF_SPLIT_GPS_S],
@@ -280,7 +284,8 @@ RUN_VARIANTS["ar1_common30_half2"] = {
 # (a) Lever arm pinned (1 mm prior sd) at the posterior mean of ar1_common30: it is
 # a property of the vessel, so the halves differ only through the DOG, clock and
 # sound-speed parameters.
-# Posterior mean of ar1_common30 on the PRIDE_final GNSS (cluster chains, 2026-11-21).
+# Posterior mean of ar1_common30 on the PRIDE_final GNSS, 14-h window (cluster
+# chains, 2026-11-21). Replace with the 17-h posterior mean before any *_pinlever run.
 # The submitted-GNSS value was [-12.987376, 9.271818, -14.125968].
 FINAL_LEVER_M = [-12.963208, 9.369362, -14.637982]
 PINNED_LEVER = {"prior_lever_center_m": FINAL_LEVER_M, "prior_lever_sd_m": [0.001] * 3}

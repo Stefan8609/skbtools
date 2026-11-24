@@ -30,29 +30,36 @@ Revised after the reviews of 2026-11-21 (the first set was "too minimalist").
 - Boxed axes, inward ticks on all sides, light grid, framed legends kept off the data.
 - One colour and marker per DOG only where DOGs share a panel; observations in the
   blue of `Plot_Modular`.
+- Dense scatters may be coloured by the number of nearby observations
+  (`st.density_scatter`), as in the Puerto Rico elevation plots.
 - `save` reports wrong sizes, text under 8 pt and overlapping text.
 
-## Figures (iteration 4, awaiting review)
+## Figures (iteration 7, awaiting review)
 
 | Script | Question | Size (mm) | Standing |
 |---|---|---|---|
-| `fig01_survey_geometry.py` | Where are the DOGs and how did the vessel sail over them? | 85 × 90 | liked; hour marks added |
-| `fig02_clock_offset.py` | Do the data alone fix each DOG's timing bias, including the integer second? | 170 × 125 | liked; panel d redrawn |
-| `fig03_residuals.py` | How large are the residuals, are they random in time, do the DOGs share them? | 170 × 125 | liked |
-| `fig05_posterior_3d.py` | How tightly is each DOG position constrained, and in which direction is it weakest? | 170 × 80 | liked |
+| `fig01_survey_geometry.py` | Where are the DOGs and how did the vessel sail over them? | 85 × 84 | liked; 17-h track |
+| `fig02_clock_offset.py` | Do the data alone fix each DOG's timing bias, including the integer second? | 170 × 125 | liked |
+| `fig03_residuals.py` | How large are the residuals of the final model, are they random in time, do the DOGs share them? (density-coloured) | 170 × 125 | liked |
+| `fig05_posterior_3d.py` | How tightly are a DOG position and the lever arm constrained, and which parameters trade off? (DOG 3 ENU; lever arm; δc, δt, l_z − U) | 170 × 80 | liked |
 | `fig06_vertical_tradeoff.py` | Why is the height weak and the horizontal position not? | 170 × 72 | supplementary at most |
 | `fig07_esv_correction.py` | Does the ESV bias change during the survey, and does the model of it matter? | 170 × 120 | liked |
 | `fig08_repeatability.py` | Do two parts of the survey give the same positions? | 170 × 76 | supplementary at most |
-| `figG1_gnss_height.py` | Is the GNSS solution continuous, and does it resolve the vessel's motion? | 170 × 105 | candidate |
-| `figG2_gnss_baselines.py` | How precise are the kinematic positions? (six inter-antenna distances) | 170 × 150 | candidate |
-| `figG3_gnss_rigid_body.py` | How well do the four antennas fit a rigid vessel, and where is the transducer? | 170 × 82 | candidate |
+| `figG1_gnss_height.py` | Is the GNSS solution continuous, and how good was the satellite geometry? (density-coloured) | 170 × 105 | liked |
+| `figG2_gnss_baselines.py` | How precise are the kinematic positions? (six inter-antenna distances, density-coloured) | 170 × 150 | liked |
 
 Not yet redrawn: realistic-synthetic error budget and coverage, track geometry, MCMC
 diagnostics, per-DOG lever arms, residuals against range, travel times, the
 processing flowchart and the appendix B synthetic figures.
 
-**Data state (2026-11-22):** GNSS reprocessed (commit 6e97be0) and every MCMC chain
-on disk rerun on it (2026-11-21 20:39), so all figures use one dataset. fig03 shows
-the Gauss-Newton residuals (Table 1 quantity), not the MCMC residuals.
+**Data state (2026-11-24): survey window extended from 14 h to 17 h.**
+`GNSS_end = 42` in `Initialize_Bermuda_Data.py` adds the third diagonal leg
+(59 992 GNSS epochs, was 49 552). Regenerated on the 17-h data: the processed GNSS
+files, the Gauss-Newton solutions and the integer-second analysis, and with them
+fig01, fig02, figG1 and figG2. **Every MCMC chain on disk is still a 14-h chain**,
+so fig03, fig05, fig06, fig07 and fig08 are stale until the chains are rerun (the
+loader prints a WARNING). The 14-h inputs are kept in
+`Bermuda_Data/GPS_Data/window_14h_2026-11-24/`. The time axis of every figure is
+`st.TIME_LIMITS_H` (0-17 h).
 
 `_figure_common.py` keeps the data loaders and the tested numerical helpers.

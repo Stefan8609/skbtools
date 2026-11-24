@@ -7,12 +7,12 @@ they wander over tens of minutes, and that slow part is largely common to the
 three DOGs (correlations of the 5-min medians are in the row titles).
 
 Layout follows Plot_Modular.time_series_plot: histogram with the fitted normal
-curve on the left, residuals against time on the right. All rows share one
+curve on the left, residuals against time on the right, coloured by the number
+of nearby residuals. All rows share one
 symmetric residual axis that holds every residual.
 
-Input: Output/Plot_Data/integer_pick_metrics_DOG{n}.npz, the observed and modelled
-travel times of the Gauss-Newton solution (the MCMC chains predate the GNSS
-reprocessing of 2026-11-21; switch to their residuals once they are rerun).
+Input: the final MCMC run (fc.FINAL_RUN); residuals of its best sample, the saved
+draw with the highest posterior density.
 """
 
 import numpy as np
@@ -22,26 +22,25 @@ import _figure_common as fc
 import _style as st
 
 NAME = "fig03_residuals"
-PICK_METRICS = str(
-    fc.REPO / "Bermuda_Data/Output/Plot_Data/integer_pick_metrics_DOG{}.npz"
-)
 SOUND_SPEED_MPS = 1515.0  # c in c·sigma_epsilon, as in Table 1
 MEDIAN_WINDOW_S = 300.0  # running median that shows the slow part
 MEDIAN_MIN_COUNT = 30
 N_BINS = 60
-TIME_LIMITS_H = (0.0, 14.0)
 MS_PER_CM = 10.0 / SOUND_SPEED_MPS
-
-
-def load_residuals(dog):
-    """Emission times (GPS s) and travel-time residuals (ms), observed − modelled."""
-    data = np.load(PICK_METRICS.format(dog))
-    return data["GPS_clock"], (data["CDOG_full"] - data["GPS_full"]) * 1e3
+# Radii within which neighbours are counted for the density colour.
+DENSITY_RADIUS_H = 0.1
+DENSITY_RADIUS_MS = 0.01
 
 
 def main():
     st.apply()
-    series = {dog: load_residuals(dog) for dog in st.DOGS}
+    scatters = []
+    pooled = fc.pooled_run(fc.FINAL_RUN)
+    residuals, _ = fc.final_residuals(pooled, fc.best_sample(pooled))
+    series = {
+        dog: (residuals[dog]["gps_time_s"], residuals[dog]["residual_cm"] * MS_PER_CM)
+        for dog in st.DOGS
+    }
     start_s = min(t_s[0] for t_s, _ in series.values())
     stop_s = max(t_s[-1] for t_s, _ in series.values())
     window_edges_s = np.arange(start_s, stop_s + MEDIAN_WINDOW_S, MEDIAN_WINDOW_S)
@@ -76,15 +75,16 @@ def main():
         ax_hist.invert_xaxis()
         ax_hist.set_ylabel("Residuals $\\epsilon$ (ms)")
 
-        points = ax_time.scatter(
+        points = st.density_scatter(
+            ax_time,
             st.hours(t_s),
             residual_ms,
+            DENSITY_RADIUS_H,
+            DENSITY_RADIUS_MS,
             s=1.0,
-            color=st.DATA_BLUE,
-            linewidths=0,
-            rasterized=True,
             label="Residuals $\\epsilon$",
         )
+        scatters.append(points)
         centres_s, median, _ = fc.binned_percentiles(
             t_s,
             residual_ms,
@@ -131,12 +131,24 @@ def main():
         columnspacing=1.2,
     )
     axes[0, 0].set_ylim(-limit_ms, limit_ms)
-    axes[0, 1].set_xlim(TIME_LIMITS_H)
-    axes[-1, 1].set_xticks(np.arange(0, 15, 2))
+    axes[0, 1].set_xlim(st.TIME_LIMITS_H)
+    axes[-1, 1].set_xticks(st.TIME_TICKS_H)
     axes[-1, 1].set_xlabel(st.TIME_LABEL)
     axes[-1, 0].set_xlabel("Density (1/ms)")
     for ax, letter in zip(axes[:, 0], "abc", strict=True):
         st.panel_letter(ax, letter, x_pt=-34.0)
+    highest = max(scatter.get_array().max() for scatter in scatters)
+    for scatter in scatters:  # one colour scale for the three DOGs
+        scatter.set_clim(1, highest)
+    colourbar = fig.colorbar(
+        scatters[0],
+        ax=axes[-1, 1],
+        location="bottom",
+        shrink=0.45,
+        aspect=40,
+        pad=0.04,
+    )
+    colourbar.set_label(st.DENSITY_LABEL)
     st.save(fig, NAME)
 
 

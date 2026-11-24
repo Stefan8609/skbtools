@@ -93,3 +93,12 @@ def test_run_positions_cm_gives_enu_offsets_from_the_reference(monkeypatch):
     np.testing.assert_allclose(
         np.sqrt(np.diag(covariance)), np.std(enu_m, 0, ddof=1) * 100, atol=1e-6
     )
+
+
+def test_nearby_counts_uses_separate_radii_and_counts_the_point_itself():
+    x = np.array([0.0, 0.5, 3.0, 0.0])
+    y = np.array([0.0, 0.0, 0.0, 5.0])
+    np.testing.assert_array_equal(fc.nearby_counts(x, y, 1.0, 1.0), [2, 2, 1, 1])
+    np.testing.assert_array_equal(fc.nearby_counts(x, y, 1.0, 10.0), [3, 3, 1, 3])
+    with pytest.raises(ValueError, match="radii must be positive"):
+        fc.nearby_counts(x, y, 0.0, 1.0)

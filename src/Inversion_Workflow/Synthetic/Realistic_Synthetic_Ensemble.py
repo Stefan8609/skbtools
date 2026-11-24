@@ -2,20 +2,14 @@
 
 Each realization generates DOGs 1, 3 and 4 from one seed (one ocean, one ship, three
 clocks; see ``realistic_synthetic``) and inverts each DOG with the paper's model
-(position, time bias, one constant dc, optionally a clock drift):
+(position, time bias, one constant dc, optionally a clock drift), the lever arm
+either fixed at its true value or free (see ``invert``).
 
-- ``"lever_fixed"``: lever arm at its true value (an externally measured lever),
-  ``initial_bias_geiger`` on every ``DOWNSAMPLE``-th epoch, then
-  ``final_bias_geiger`` on all epochs.
-- ``"lever_free"``: ``gauss_newton_offset_search`` (integer second and lever arm,
-  started ``LEVER_START_SD_M`` from the truth) on every ``DOWNSAMPLE``-th epoch, then
-  ``final_bias_geiger`` on all epochs at that lever arm.
-
-Per realization and DOG it records the position error (ENU, cm), the formal sd of the
-paper's least-squares model (white residuals, and inflated for AR(1) residuals), the
-clock and dc estimates, and residual statistics. One npz per realization goes to
-``OUTPUT_DIR/<experiment>/`` and one CSV row per realization and DOG to
-``OUTPUT_DIR/<experiment>.csv``. Every realization is reproducible from (seed, knobs).
+Per realization and DOG it records the position error (ENU, cm), the formal sd of
+the least-squares model (white residuals, and inflated for AR(1) residuals), the
+clock and dc estimates, and residual statistics: one CSV row in
+``OUTPUT_DIR/<experiment>.csv`` and one npz per realization in
+``OUTPUT_DIR/<experiment>/``. Every realization is reproducible from (seed, knobs).
 
 Experiments are defined in ``experiment_cells``; set ``EXPERIMENT`` and run the file.
 ``summary_table`` condenses an experiment CSV to one row per cell and DOG.
@@ -32,6 +26,9 @@ import pandas as pd
 
 from acoustics.synthetic_esv_tables import ESV_GENERATE
 from bermuda_data import PROJECT_ROOT, gps_data_path
+from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
+    NOMINAL_SOUND_SPEED_MPS,
+)
 from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
@@ -42,16 +39,12 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
 from Inversion_Workflow.MCMC_Functions.MCMC_sampler import ALT_BLOCK_S, time_block_mask
 from Inversion_Workflow.Synthetic.Realistic_Synthetic import (
     GPS1_TO_OTHERS,
-    M2_PERIOD_H,
     enu_rotation,
     realistic_synthetic,
 )
-from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
-    NOMINAL_SOUND_SPEED_MPS,
-)
 
 # Config
-EXPERIMENT = "sanity"
+EXPERIMENT = "coverage"
 AMPLITUDE_SET = "guess"  # key of AMPLITUDES: "guess" | "models_low" | "models_high"
 N_REALIZATIONS = 10
 FIRST_SEED = 0
@@ -61,9 +54,8 @@ DOGS = (1, 3, 4)
 GENERATION_TABLE = ESV_GENERATE
 INVERSION_TABLE = ESV_GENERATE
 DOWNSAMPLE = 50
-# The lever-free offset search needs more epochs: at 50 its integer-second
-# confidence test (delta chi^2 >= 50, white-noise formula) fails for about a quarter
-# of the "random" preset DOGs; at 10 it resolves them.
+# The lever-free offset search needs more epochs: at 50 its integer-second test
+# fails for about a quarter of the "random" preset DOGs.
 OFFSET_SEARCH_DOWNSAMPLE = 10
 # A fit that keeps fewer pairs than this has diverged; it is recorded as failed.
 MIN_PAIRS = 100
@@ -71,18 +63,13 @@ START_POSITION_SD_M = 20.0
 LEVER_START_SD_M = 0.3
 OUTPUT_DIR = PROJECT_ROOT / "revision/analysis/realistic_synthetic"
 
-# Amplitudes of the three sources that the acoustic data cannot constrain. Directions
-# of the current and the gradient are drawn per realization
-# (``with_random_directions``).
-# "guess" is the original assumption. "models_low" and "models_high" bracket the
-# external ocean-model values at the site on 16 June 2020 (revision/OCEAN_MODEL_PLAN.md
-# sections 3.1-3.3, scripts in revision/analysis/ocean_models_phase0/):
-# - depth-mean current: GLORYS12 3.0 cm/s (low), HYCOM GOFS 3.1 11 cm/s (high);
-# - ESV gradient of a vertical ray, 0-4 km: GLORYS12 2.6 mm/s/km (low, 1/12 degree
-#   smooths it), HYCOM 8 mm/s/km (7-9 over 10-50 km, high);
-# - M2 tidal current: HAMTIDE11a maximum speed 0.9 cm/s, used as the amplitude of the
-#   circular M2 knob (a conservative stand-in for its 0.78 x 0.46 cm/s ellipse);
-#   the same in both because only one tide model was used.
+# Amplitudes of the three sources the acoustic data cannot constrain. "guess" is
+# the original assumption; "models_low" and "models_high" bracket ocean models at
+# the site on 16 June 2020:
+# - depth-mean current: GLORYS12 3.0 cm/s, HYCOM GOFS 3.1 11 cm/s;
+# - ESV gradient of a vertical ray, 0-4 km: GLORYS12 2.6 mm/s/km, HYCOM 8 mm/s/km;
+# - M2 tidal current: HAMTIDE11a maximum speed 0.9 cm/s (its ellipse is
+#   0.78 x 0.46 cm/s; the knob is circular).
 AMPLITUDES = {
     "guess": {
         "current_speed_mps": 0.03,
@@ -110,32 +97,30 @@ COMMON = {
     "dropouts": "real_pattern",
 }
 PRESETS = {
-    # dc(t) shaped like our own estimate. That estimate already contains vessel-side
-    # GNSS error, so the relative GNSS error is only iid antenna noise here.
+    # dc(t) shaped like our own estimate, with iid antenna noise.
     "observed": {
         **COMMON,
         "dc_series": "observed",
         "position_noise_m": 0.02,
     },
-    # dc(t) as a random walk with the observed increment size (0.022 m/s per
-    # sqrt(hour) at 30-min windows on the PRIDE_final GNSS; 0.044 on the submitted
-    # GNSS, whose series held antenna 4's jumps) plus a 10 mm/s M2 sinusoid (the M2
-    # level of the observed series), a lateral gradient, and the real antenna misfit.
+    # dc(t) as a random walk with the increment size and M2 level of the observed
+    # series, plus a lateral gradient and the real antenna misfit.
     "random": {
         **COMMON,
         "dc_series": "random_walk",
         "dc_random_walk_mps_per_sqrt_h": 0.022,
         "dc_sinusoid_mps": 0.010,
-        "dc_sinusoid_period_h": M2_PERIOD_H,
         "gnss_relative": "real_misfit_shifted",
     },
 }
 # Knob groups for the error budget: switched on alone, or off from the full preset.
+# "gradient_mps_per_km" and "current_speed_mps" are sizes that
+# ``with_random_directions`` turns into the knobs of the same source.
 BUDGET_GROUPS = {
     "dc_series": ("dc_series", "dc_random_walk_mps_per_sqrt_h"),
     "dc_sinusoid": ("dc_sinusoid_mps",),
-    "dc_gradient": ("dc_gradient_mps_per_km",),
-    "current_steady": ("current_mps",),
+    "dc_gradient": ("gradient_mps_per_km",),
+    "current_steady": ("current_speed_mps",),
     "current_m2": ("current_m2_mps",),
     "clock_drift": ("drift_rate_s_per_s",),
     "transmit_delay": ("transmit_delay_s",),
@@ -147,97 +132,48 @@ BUDGET_GROUPS = {
 
 
 def with_random_directions(knobs, seed):
-    """Point the steady current and the dc gradient in directions drawn from seed."""
+    """Point a "current_speed_mps" and a "gradient_mps_per_km" in directions drawn
+    from seed, as the ``current_mps`` and ``dc_gradient_mps_per_km`` knobs."""
     rng = np.random.default_rng([seed, 1000])
     current_dir, gradient_dir = rng.uniform(0.0, 2 * np.pi, 2)
     knobs = dict(knobs)
-    current_speed = knobs.pop("current_speed_mps", None)
-    gradient_size = knobs.pop("gradient_mps_per_km", None)
-    if knobs.pop("random_current", False):
-        knobs["current_mps"] = tuple(
-            current_speed * np.array([np.sin(current_dir), np.cos(current_dir)])
-        )
-    if knobs.pop("random_gradient", False):
-        knobs["dc_gradient_mps_per_km"] = tuple(
-            gradient_size * np.array([np.sin(gradient_dir), np.cos(gradient_dir)])
-        )
+    if "current_speed_mps" in knobs:
+        east_north = np.array([np.sin(current_dir), np.cos(current_dir)])
+        knobs["current_mps"] = tuple(knobs.pop("current_speed_mps") * east_north)
+    if "gradient_mps_per_km" in knobs:
+        east_north = np.array([np.sin(gradient_dir), np.cos(gradient_dir)])
+        size = knobs.pop("gradient_mps_per_km")
+        knobs["dc_gradient_mps_per_km"] = tuple(size * east_north)
     return knobs
 
 
 def full_preset(name, amplitudes="guess"):
-    """Preset knobs plus random-direction current and gradient of an AMPLITUDES set."""
-    sizes = AMPLITUDES[amplitudes]
-    knobs = {
-        **PRESETS[name],
-        "current_m2_mps": sizes["current_m2_mps"],
-        "current_speed_mps": sizes["current_speed_mps"],
-        "gradient_mps_per_km": sizes["gradient_mps_per_km"],
-        "random_current": True,
-    }
-    if name == "random":
-        knobs["random_gradient"] = True
+    """Preset knobs plus the AMPLITUDES set (the gradient only for "random")."""
+    knobs = {**PRESETS[name], **AMPLITUDES[amplitudes]}
+    if name != "random":
+        del knobs["gradient_mps_per_km"]
     return knobs
 
 
 def preset_group_knobs(preset, group, amplitudes="guess"):
-    """Knobs of one budget group taken from the full preset (direction flags kept)."""
+    """Knobs of one budget group, taken from the full preset."""
     full = full_preset(preset, amplitudes)
-    knobs = {key: full[key] for key in BUDGET_GROUPS[group] if key in full}
-    if group == "current_steady":
-        knobs = {key: full[key] for key in ("random_current", "current_speed_mps")}
-    if group == "dc_gradient":
-        knobs = {}
-        if preset == "random":
-            keys = ("random_gradient", "gradient_mps_per_km")
-            knobs = {key: full[key] for key in keys}
-    return knobs
+    return {key: full[key] for key in BUDGET_GROUPS[group] if key in full}
 
 
 def experiment_cells(experiment, amplitudes="guess"):
     """List of (cell name, knobs, inversion settings) for an experiment.
 
-    ``amplitudes`` picks the AMPLITUDES set of the preset-based experiments (sanity,
-    coverage, budget, geometry, halfsplit); a set other than "guess" is appended to
-    every cell name. The fixed sweeps ("isolation", "currents") ignore it.
+    ``amplitudes`` picks the AMPLITUDES set of the preset-based experiments; a set
+    other than "guess" is appended to every cell name. The "currents" sweep
+    ignores it.
     """
     lever_fixed = {"lever": "lever_fixed", "clock_drift": False}
     cells = []
-    if experiment == "isolation":
-        # One knob at a time, fixed directions, so the size and the parameter it
-        # leaks into can be read directly (Phase 2 check).
-        single = {
-            "dc_observed": {"dc_series": "observed"},
-            "dc_random_walk": {
-                "dc_series": "random_walk",
-                "dc_random_walk_mps_per_sqrt_h": PRESETS["random"][
-                    "dc_random_walk_mps_per_sqrt_h"
-                ],
-            },
-            "dc_sinusoid_10mmps": {"dc_sinusoid_mps": 0.01},
-            "dc_gradient_5mmps_per_km_E": {"dc_gradient_mps_per_km": (0.005, 0.0)},
-            "current_3cmps_E": {"current_mps": (0.03, 0.0)},
-            "current_3cmps_N": {"current_mps": (0.0, 0.03)},
-            "current_m2_2cmps": {"current_m2_mps": 0.02},
-            "drift_1ppb": {"drift_rate_s_per_s": 1e-9},
-            "transmit_30us": {"transmit_delay_s": 30e-6},
-            "gnss_common": {"gnss_common_sd_m": (0.02, 0.02, 0.05)},
-            "gnss_real_misfit": {"gnss_relative": "real_misfit"},
-            "gnss_iid_2cm": {"position_noise_m": 0.02},
-            "timing_20us": {"timing_noise_s": 20e-6},
-            "dropouts_real": {"dropouts": "real_pattern"},
-        }
-        for name, knobs in single.items():
-            cells.append((name, knobs, lever_fixed))
-        drift = {"lever": "lever_fixed", "clock_drift": True}
-        cells.append(("drift_1ppb_drift_on", single["drift_1ppb"], drift))
-        cells.append(("dc_observed_drift_on", single["dc_observed"], drift))
-        cells.append(("none", {}, lever_fixed))
-    elif experiment in ("sanity", "coverage"):
+    if experiment == "coverage":
         for preset in PRESETS:
             for lever in ("lever_fixed", "lever_free"):
                 for drift in (False, True):
-                    if experiment == "sanity" and drift:
-                        continue
                     name = f"{preset}_{lever}" + ("_drift" if drift else "")
                     settings = {"lever": lever, "clock_drift": drift}
                     cells.append((name, full_preset(preset, amplitudes), settings))
@@ -250,35 +186,27 @@ def experiment_cells(experiment, amplitudes="guess"):
                 if not alone:
                     continue
                 cells.append((f"{preset}_only_{group}", alone, lever_fixed))
-                without = full_preset(preset, amplitudes)
-                for key in BUDGET_GROUPS[group]:
-                    without.pop(key, None)
-                if group == "current_steady":
-                    without.pop("random_current")
-                if group == "dc_gradient":
-                    without.pop("random_gradient")
+                without = {key: v for key, v in knobs.items() if key not in alone}
                 cells.append((f"{preset}_without_{group}", without, lever_fixed))
+                # Is a drift recovered alone, and does dc(t) alone produce one?
+                if group in ("clock_drift", "dc_series"):
+                    drift = {"lever": "lever_fixed", "clock_drift": True}
+                    cells.append((f"{preset}_only_{group}_drift", alone, drift))
     elif experiment == "geometry":
-        # The cross is centred on DOG CROSS_DOG: its bias against the other two DOGs'
-        # gives the effect of a track offset from the DOG. It is run without the lost
-        # quadrant, which is defined about the array centre.
-        for track in ("bermuda", "circle", "grid", "cross"):
-            for lost in (False,) if track == "cross" else (False, True):
-                for lever in ("lever_fixed", "lever_free"):
-                    knobs = {**full_preset("random", amplitudes), "track": track}
-                    knobs["lost_quadrant"] = lost
-                    name = f"{track}{'_lost' if lost else ''}_{lever}"
-                    cells.append((name, knobs, {"lever": lever, "clock_drift": False}))
+        for track in ("bermuda", "hourglass"):
+            for lever in ("lever_fixed", "lever_free"):
+                knobs = {**full_preset("random", amplitudes), "track": track}
+                settings = {"lever": lever, "clock_drift": False}
+                cells.append((f"{track}_{lever}", knobs, settings))
     elif experiment == "halfsplit":
-        # Each half of the survey inverted alone (lever free), as the real-data
-        # half-split: is the half-to-half spread a fair measure of the error?
+        # Each half of the survey inverted alone, as the real-data half-split: is
+        # the half-to-half spread a fair measure of the error?
         for preset in PRESETS:
             for half in (1, 2):
                 settings = {"lever": "lever_free", "clock_drift": False, "half": half}
                 knobs = full_preset(preset, amplitudes)
                 cells.append((f"{preset}_half{half}", knobs, settings))
-            # Geometry-balanced split, as the real-data ar1_common30_alt15a/b runs:
-            # alternating 15-min blocks of GPS epochs.
+            # Alternating 15-min blocks, as the real-data ar1_common30_alt15a/b runs.
             for parity, name in ((0, "a"), (1, "b")):
                 settings = {
                     "lever": "lever_free",
@@ -312,11 +240,15 @@ def load_table(name):
 
 
 def invert(CDOG_data, GPS_Coordinates, GPS_data, start, lever_start, settings, tables):
-    """Paper's Gauss-Newton inversion. Returns (estimate, offset, lever, pairs).
+    """Paper's Gauss-Newton inversion on every ``DOWNSAMPLE``-th epoch, then
+    ``final_bias_geiger`` on all epochs.
 
-    ``estimate`` = [x, y, z, time_bias, esv_bias(, drift_rate)]; the Eq. 6 clock
-    offset is ``offset - time_bias``. ``pairs`` is the output of
-    ``final_bias_geiger`` after the estimate.
+    ``"lever_fixed"`` keeps ``lever_start`` (an externally measured lever);
+    ``"lever_free"`` runs ``gauss_newton_offset_search`` for the integer second and
+    the lever arm. Returns ``(estimate, offset, lever, pairs, transponder)``:
+    ``estimate`` = [x, y, z, time_bias, esv_bias(, drift_rate)], the Eq. 6 clock
+    offset being ``offset - time_bias``; ``pairs`` is the rest of the output of
+    ``final_bias_geiger``.
     """
     drift = settings["clock_drift"]
     ds = slice(None, None, DOWNSAMPLE)
@@ -384,8 +316,7 @@ def residual_summary(estimate, pairs, transponder, GPS_data, clock_drift):
         columns.append(((t - 0.5 * (t.min() + t.max())) / 1e4)[:, None])
     J = np.hstack(columns)
     sigma = residual.std()
-    # pinv: on a circle centred near a DOG the slant range barely changes, so the
-    # dt and dc columns are collinear; the condition number records it.
+    # pinv: where the slant range barely changes, the dt and dc columns are collinear.
     scale = np.linalg.norm(J, axis=0)
     normal = (J / scale).T @ (J / scale)
     cov = sigma**2 * np.linalg.pinv(normal) / np.outer(scale, scale)
@@ -604,7 +535,7 @@ def run_experiment(
 
 if __name__ == "__main__":
     os.environ.setdefault("NUMBA_NUM_THREADS", "1")
-    Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     # slurm/realistic_synthetic_array.sh sets these; locally the config above is used.
     experiment = os.environ.get("RS_EXPERIMENT", EXPERIMENT)
     n_realizations = int(os.environ.get("RS_SEEDS_PER_TASK", N_REALIZATIONS))

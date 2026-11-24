@@ -3,7 +3,7 @@
 #
 # RS_EXPERIMENT picks an experiment of experiment_cells() in
 # src/Inversion_Workflow/Synthetic/Realistic_Synthetic_Ensemble.py (budget, coverage,
-# geometry, currents, isolation, sanity). Task i runs seeds
+# geometry, halfsplit, currents). Task i runs seeds
 # [i * RS_SEEDS_PER_TASK, (i + 1) * RS_SEEDS_PER_TASK) of every cell on
 # RS_WORKERS cores and writes
 # revision/analysis/realistic_synthetic/<experiment>_seed<first>.csv plus one npz
@@ -16,7 +16,7 @@
 # Submit from the repository root, e.g. 1000 coverage realizations as 20 tasks:
 #   sbatch --array=0-19 --export=ALL,RS_EXPERIMENT=coverage,RS_SEEDS_PER_TASK=50 \
 #       slurm/realistic_synthetic_array.sh
-# or 300 geometry surveys (14 cells, cross included; about 32 core-h) as 15 tasks:
+# or 300 geometry surveys (4 cells) as 15 tasks:
 #   sbatch --array=0-14 --export=ALL,RS_EXPERIMENT=geometry,RS_SEEDS_PER_TASK=20 \
 #       slurm/realistic_synthetic_array.sh
 #

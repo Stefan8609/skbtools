@@ -32,7 +32,7 @@ RASTERIZE_ABOVE_POINTS = 5000
 
 SURVEY_START_GPS_S = 20056.0  # first epoch of Processed_GPS_Receivers_DOG_*.npz
 TIME_LABEL = "Time since survey start (h)"
-TIME_LIMITS_H = (0.0, 14.0)
+TIME_LIMITS_H = (0.0, 17.0)
 RANGE_SOUND_SPEED_MPS = NOMINAL_SOUND_SPEED_MPS
 
 # Okabe-Ito colours with distinct markers.

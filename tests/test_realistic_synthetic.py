@@ -75,35 +75,27 @@ def test_gauss_markov_sd_and_correlation_time():
     assert abs(lagged - np.exp(-1)) < 0.1
 
 
-def test_random_dropout_fraction():
-    keep = rs.random_dropout_mask(50000, 0.2, np.random.default_rng(1))
-    assert 0.2 <= 1 - keep.mean() <= 0.2 + 500 / 50000
-
-
-def test_tracks_keep_speed_and_radius():
+def test_hourglass_keeps_speed_and_balance():
     centre = np.array([100.0, -200.0])
-    circle, _ = rs.track_en_m("circle", 3000, centre)
-    radius = np.linalg.norm(circle - centre, axis=1)
-    np.testing.assert_allclose(radius, rs.CIRCLE_RADIUS_M, rtol=1e-4)
-    grid, heading = rs.track_en_m("grid", 3000, centre)
-    step = np.linalg.norm(np.diff(grid, axis=0), axis=1)
+    hourglass, _ = rs.track_en_m("hourglass", 50401, centre)  # the Bermuda length
+    step = np.linalg.norm(np.diff(hourglass, axis=0), axis=1)
     np.testing.assert_allclose(np.median(step), rs.TRACK_SPEED_MPS)
-    assert set(np.round(np.degrees(heading)).astype(int)) <= {90, -90, 0, 180}
-    cross, _ = rs.track_en_m("cross", 30000, centre)
-    offset = cross - centre
-    assert np.all(np.min(np.abs(offset), axis=1) < 1e-6)  # on one of the two lines
-    assert rs.CROSS_HALF_LENGTH_M - rs.TRACK_SPEED_MPS < np.max(np.abs(offset))
-    assert np.max(np.abs(offset)) <= rs.CROSS_HALF_LENGTH_M
+    offset = hourglass - centre
+    assert np.all(np.abs(offset) <= rs.HOURGLASS_HALF_SIZE_M + 1e-6)
+    # Two whole loops: every quadrant gets the same share of the survey.
+    quadrant_counts = np.unique(np.sign(offset), axis=0, return_counts=True)[1]
+    assert quadrant_counts.min() > 0.99 * quadrant_counts.max()
 
 
-def test_geometry_cross_cells_and_summary_table(tmp_path):
+def test_geometry_cells_and_summary_table(tmp_path):
     cells = [name for name, _, _ in ens.experiment_cells("geometry")]
-    assert [c for c in cells if c.startswith("cross")] == [
-        "cross_lever_fixed",
-        "cross_lever_free",
+    assert cells == [
+        f"{track}_{lever}"
+        for track in ("bermuda", "hourglass")
+        for lever in ("lever_fixed", "lever_free")
     ]
     rows = {
-        "cell": ["cross_lever_fixed"] * 3,
+        "cell": ["hourglass_lever_fixed"] * 3,
         "DOG": [3, 3, 3],
         "failed": ["", "", "diverged"],
         "wrong_second": [0, 0, 0],
@@ -128,7 +120,7 @@ def test_geometry_cross_cells_and_summary_table(tmp_path):
 
 def test_merge_task_csvs_joins_tasks_and_rejects_repeats(tmp_path, monkeypatch):
     monkeypatch.setattr(ens, "OUTPUT_DIR", tmp_path)
-    row = {"cell": "cross_lever_fixed", "DOG": 3, "E_err_cm": 1.0}
+    row = {"cell": "hourglass_lever_fixed", "DOG": 3, "E_err_cm": 1.0}
     ens.pd.DataFrame([{**row, "seed": 0}]).to_csv(tmp_path / "geometry.csv")
     ens.pd.DataFrame([{**row, "seed": 1}]).to_csv(tmp_path / "geometry_seed0001.csv")
     merged = ens.pd.read_csv(ens.merge_task_csvs("geometry"))
@@ -145,7 +137,7 @@ def test_merge_task_csvs_joins_tasks_and_rejects_repeats(tmp_path, monkeypatch):
         {"dc_series": "spline"},
         {"current_mps": (0.1, 0.0, 0.0)},
         {"timing_noise_s": -1e-6},
-        {"dropout_fraction": 1.0},
+        {"dropouts": "random"},
         {"gnss_common_tau_s": 0.0},
     ],
 )
@@ -194,8 +186,8 @@ def test_knobs_act_as_documented():
     moved_enu = (observed - transponder) @ rs.enu_rotation().T
     np.testing.assert_allclose(moved_enu, truth["gnss_common_enu_m"], atol=1e-6)
 
-    # 22 824 of 29 595 GPS epochs have a DOG 1 pair in the real data.
-    assert abs(keep.mean() - 22824 / 29595) < 0.01
+    # 38 073 of 49 552 GPS epochs have a DOG 1 pair in the real data.
+    assert abs(keep.mean() - 38073 / 49552) < 0.01
 
 
 @pytest.mark.parametrize(

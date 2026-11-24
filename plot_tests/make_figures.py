@@ -18,7 +18,6 @@ FIGURES = (
     "fig08_repeatability",
     "figG1_gnss_height",
     "figG2_gnss_baselines",
-    "figG3_gnss_rigid_body",
 )
 
 if __name__ == "__main__":

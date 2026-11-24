@@ -147,6 +147,6 @@ def initialize_bermuda(GNSS_start, GNSS_end, DOG_num=3, save=False):
 
 if __name__ == "__main__":
     GNSS_start = 25
-    GNSS_end = 39
+    GNSS_end = 42  # 17 h of survey: the hourglass and the third diagonal leg
     for DOG_num in (1, 3, 4):
         initialize_bermuda(GNSS_start, GNSS_end, DOG_num=DOG_num, save=True)

@@ -10,6 +10,7 @@ Use: ``apply()`` once, ``fig, axes = figure(170, 70, ncols=2)``, plot,
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import numpy as np
 
 import _figure_common as fc
 
@@ -119,6 +120,8 @@ def hours(gps_seconds):
 
 
 TIME_LABEL = "Time $t$ since survey start (h)"
+TIME_LIMITS_H = (0.0, 17.0)  # as plotting.paper_style.TIME_LIMITS_H
+TIME_TICKS_H = (0, 2, 4, 6, 8, 10, 12, 14, 16)
 DATA_BLUE = "#1f77b4"  # observations, as in the residual plots of Plot_Modular
 SIGMA_RED = "#d62728"  # ±1 sd lines, as in Plot_Modular
 
@@ -131,3 +134,26 @@ def save(fig, name):
     fig.savefig(OUTPUT_DIR / f"{name}.pdf")
     fig.savefig(OUTPUT_DIR / f"{name}.png")
     print(f"saved {OUTPUT_DIR / name}.pdf")
+
+
+DENSITY_CMAP = "viridis"
+DENSITY_LABEL = "Nearby observations"
+
+
+def density_scatter(ax, x, y, x_radius, y_radius, **scatter_kwargs):
+    """Scatter coloured by the number of points near each point (densest on top).
+
+    Same encoding as the Puerto Rico elevation plots: the colour is the count of
+    points within x_radius and y_radius of each point (fc.nearby_counts).
+    """
+    counts = fc.nearby_counts(x, y, x_radius, y_radius)
+    order = np.argsort(counts)
+    return ax.scatter(
+        np.asarray(x)[order],
+        np.asarray(y)[order],
+        c=counts[order],
+        cmap=DENSITY_CMAP,
+        linewidths=0,
+        rasterized=True,
+        **scatter_kwargs,
+    )

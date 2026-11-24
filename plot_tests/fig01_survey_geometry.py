@@ -2,7 +2,8 @@
 
 Question: where are the DOGs, and how did the vessel sail over them?
 Message: three DOGs about 2 km apart on a nearly flat seafloor 5.2 km deep; the
-vessel crossed the array on an hourglass track that reaches 9 km from its centre.
+vessel crossed the array on an hourglass track with a third diagonal leg, reaching
+9 km from the centre of the array.
 
 The bathymetry is drawn cell by cell on the GEBCO 2025 grid (15 arc-seconds, depth
 below mean sea level), without interpolation or smoothing.
@@ -24,8 +25,6 @@ NAME = "fig01_survey_geometry"
 PROCESSED_FILE = fc.REPO / "Bermuda_Data/GPS_Data/Processed_GPS_Receivers_DOG_1.npz"
 GEBCO_GRID = fc.REPO / "Bermuda_Data/gebco_2025_bermuda_region_ascii.asc"
 HALF_WIDTH_DEG = (0.095, 0.115)  # longitude, latitude half-widths of the map
-HOUR_MARKS_H = np.arange(0.0, 14.1, 2.0)  # time marks along the track
-HOUR_LABEL_OFFSET_PT = (5, 5)
 TRACK_GAP_S = 60.0  # the track line is broken where GNSS epochs are missing
 # Ocean blues, light (shallow) to dark (deep); kept light enough for black labels.
 OCEAN = LinearSegmentedColormap.from_list(
@@ -67,12 +66,11 @@ def main():
     track_lat, track_lon, _ = ecef2geodetic(
         *processed["GPS_Coordinates"].mean(axis=1).T
     )
-    mark_lat, mark_lon = track_lat, track_lon  # before the gap breaks are inserted
     gaps = np.flatnonzero(np.diff(processed["GPS_data"]) > TRACK_GAP_S) + 1
     track_lon = np.insert(track_lon, gaps, np.nan)
     track_lat = np.insert(track_lat, gaps, np.nan)
 
-    fig, ax = st.figure(st.SINGLE_MM, 90.0)
+    fig, ax = st.figure(st.SINGLE_MM, 84.0)
     lon_edges, lat_edges, depth = gebco_cells(centre_lat, centre_lon)
     cells = ax.pcolormesh(lon_edges, lat_edges, depth, cmap=OCEAN, rasterized=True)
     colourbar = fig.colorbar(cells, ax=ax, shrink=0.85, aspect=28, pad=0.03)
@@ -80,31 +78,6 @@ def main():
     colourbar.ax.invert_yaxis()  # deeper is lower
 
     ax.plot(track_lon, track_lat, color="black", lw=1.1, label="Vessel track")
-    hours = st.hours(processed["GPS_data"])
-    for mark_h in HOUR_MARKS_H:
-        nearest = np.argmin(np.abs(hours - mark_h))
-        if abs(hours[nearest] - mark_h) > 0.05:
-            continue  # no GNSS epoch within 3 min of this mark
-        position = (mark_lon[nearest], mark_lat[nearest])
-        ax.plot(*position, "o", ms=3.5, mfc="white", mec="black", mew=0.8, zorder=4)
-        ax.annotate(
-            f"{mark_h:.0f} h",
-            position,
-            HOUR_LABEL_OFFSET_PT,
-            textcoords="offset points",
-            path_effects=HALO,
-            zorder=4,
-        )
-    ax.plot(
-        [],
-        [],
-        "o",
-        ms=3.5,
-        mfc="white",
-        mec="black",
-        mew=0.8,
-        label="Time $t$ since survey start",
-    )
     for dog, lon, lat in zip(st.DOGS, dog_lon, dog_lat, strict=True):
         ax.plot(lon, lat, ls="", zorder=5, **DOG_MARKER)
         offset = LABEL_OFFSET_PT[dog]
@@ -119,10 +92,10 @@ def main():
             zorder=6,
         )
     ax.plot([], [], ls="", label="DOG", **DOG_MARKER)
-    ax.legend(loc="lower center", ncols=2, columnspacing=1.0)
+    fig.legend(loc="outside upper center", ncols=2, columnspacing=2.5, frameon=False)
     ax.set_xlim(centre_lon - HALF_WIDTH_DEG[0], centre_lon + HALF_WIDTH_DEG[0])
     ax.set_ylim(
-        centre_lat - HALF_WIDTH_DEG[1] - 0.008, centre_lat + HALF_WIDTH_DEG[1] - 0.02
+        centre_lat - HALF_WIDTH_DEG[1] + 0.02, centre_lat + HALF_WIDTH_DEG[1] - 0.02
     )
     ax.set_aspect(1.0 / np.cos(np.deg2rad(centre_lat)))
     ax.xaxis.set_major_locator(MultipleLocator(0.05))

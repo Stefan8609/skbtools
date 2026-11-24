@@ -1,41 +1,33 @@
 """MCMC of the final model on realistic synthetic surveys: accuracy and coverage.
 
-Each seed generates one survey of DOGs 1, 3 and 4 with ``realistic_synthetic`` (the
-``PRESET`` of ``Realistic_Synthetic_Ensemble``) on ``TRACK`` ("bermuda", "circle",
-"grid" or "cross") and samples it with a real-data model (``RUN_VARIANT`` of
-``MCMC_sampler.RUN_VARIANTS``; default the final model: joint lever arm, common dc(t)
-windows plus per-DOG offsets, AR(1) noise) using the sampler's own priors, pairing,
-outlier rule and epoch selection (time windows, survey legs). A per-DOG variant
-samples that DOG of the same survey, so its result pairs with the joint run's. One
-seed gives the same ocean, ship errors and DOG prior centres on every track and
-variant. ``ONLY`` runs the error budget: one source group of the preset
-(``BUDGET_GROUPS`` of the ensemble) switched on alone over the measurement floor
-(``FLOOR_GROUPS``: timing noise and the real dropout pattern, so every budget run has
-the full run's pings and a noise level), or the floor alone ("floor").
-``"esv_profile"`` is the one budget entry that is not a knob: the floor survey
-inverted with ``PROFILE_ERROR_TABLE``, an ESV table from the reference profile
-perturbed by a 10 m mode-1 internal-wave heave, so the inversion's sound-speed
-profile has the wrong shape. Only what the real data supply from outside the sampler
-is replaced:
+Each seed generates one survey of DOGs 1, 3 and 4 (``PRESET`` of the ensemble, on
+``TRACK``) and samples it with a real-data model (``RUN_VARIANT`` of
+``MCMC_sampler.RUN_VARIANTS``; default the final model) using the sampler's own
+priors, pairing, outlier rule and epoch selection. One seed gives the same ocean,
+ship errors and DOG prior centres on every track and variant, so a per-DOG or legs
+run pairs with the joint run.
 
-- ESV table: ``INVERSION_TABLE`` of the ensemble (the generation table), or
-  ``PROFILE_ERROR_TABLE`` for "esv_profile".
+``ONLY`` runs the error budget: one source group of the preset switched on alone
+over the measurement floor (``FLOOR_GROUPS``, so every budget run has the full
+run's pings and a noise level), or the floor alone ("floor"). "esv_profile" is the
+one entry that is not a knob: the floor survey inverted with
+``PROFILE_ERROR_TABLE``, whose sound-speed profile has the wrong shape (10 m of
+mode-1 internal-wave heave).
+
+Only what the real data supply from outside the sampler is replaced:
+
+- ESV table: ``INVERSION_TABLE`` of the ensemble (the generation table).
 - DOG prior centres and start: truth + N(0, ``PRIOR_CENTER_ERROR_SD_M``) per axis, as
   the real prior centres are Gauss-Newton guesses within metres of the solution.
-- Alignment offsets: the true clock offset rounded to ``OFFSET_ROUND_S`` (the dt prior,
-  10 ms sd, is centred there).
-- GNSS: DOG 1's vessel positions for all DOGs. In the "random" preset the three DOGs
-  share them exactly; in "observed" the iid antenna noise differs per DOG.
+- Alignment offsets: the true clock offset rounded to ``OFFSET_ROUND_S``.
+- GNSS: DOG 1's vessel positions for all DOGs (in "observed" the iid antenna noise
+  is drawn per DOG).
 
-Outputs go to ``OUTPUT_DIR`` = ``Bermuda_Data/Output/MCMC_Synthetic``.
-``run_synthetic_chain`` writes one chain per (seed, chain) to
-``<run>/seed<seed>_chain<chain>.npz`` (``<run>`` from ``run_name``; resumable, as
-on real data) and the truth to ``<run>/seed<seed>_truth.npz``. ``summarize`` pools
-the chains of every seed and writes ``<run>.csv``: per seed and DOG, the ENU error
-of the posterior mean, the posterior sd, whether the central 68 % and 95 % intervals
-hold the truth, the same for the lever arm and dt, the dc error, the posterior mean
-of the residual sd and AR(1) phi (the residual each source leaves after the fit),
-the number of pairs, and the max R-hat.
+``run_synthetic_chain`` writes ``OUTPUT_DIR/<run>/seed<seed>_chain<chain>.npz``
+(resumable, as on real data) and the truth once per seed. ``summarize`` pools the
+chains of every finished seed into ``<run>.csv``: per seed and DOG, the error of
+the posterior mean, the posterior sd and whether the central intervals hold the
+truth, for position, lever arm and dt; the dc error; the fitted noise; max R-hat.
 """
 
 import csv
@@ -76,11 +68,11 @@ from Inversion_Workflow.Synthetic.Realistic_Synthetic_Ensemble import (
     with_random_directions,
 )
 
-# Config. slurm/realistic_synthetic_mcmc_array.sh sets the track, the variant and
-# the budget group through SYN_TRACK, SYN_RUN and SYN_ONLY.
-PRESET = "random"
+# Config. slurm/realistic_synthetic_mcmc_array.sh sets the preset, the track, the
+# variant and the budget group through SYN_PRESET, SYN_TRACK, SYN_RUN and SYN_ONLY.
+PRESET = os.environ.get("SYN_PRESET", "random")  # random | observed
 AMPLITUDE_SET = "guess"  # "guess" | "models_low" | "models_high" (Ensemble AMPLITUDES)
-TRACK = os.environ.get("SYN_TRACK", "bermuda")  # bermuda | circle | grid | cross
+TRACK = os.environ.get("SYN_TRACK", "bermuda")  # bermuda | hourglass
 RUN_VARIANT = os.environ.get("SYN_RUN", "ar1_common30")
 # None: the full preset. "floor", "esv_profile", or a BUDGET_GROUPS group other
 # than the floor's.
@@ -183,10 +175,7 @@ def synthetic_problem(seed):
     true_dc = np.full((len(dogs), len(edges) - 1), np.nan)
     for j, truth in enumerate(truths):
         t = truth["GPS_data_all"][truth["keep"]]
-        dc = np.broadcast_to(truth["dc_mps"], truth["GPS_data_all"].shape)[
-            truth["keep"]
-        ]
-        t, dc = select_epochs(config, t, dc)
+        t, dc = select_epochs(config, t, truth["dc_mps"][truth["keep"]])
         window = np.searchsorted(edges, t, side="right") - 1
         for k in range(len(edges) - 1):
             if np.any(window == k):

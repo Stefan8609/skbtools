@@ -125,14 +125,21 @@ def _first_chain(run):
     return sorted((CHAINS_DIR / run).glob("chain_*.npz"))[0]
 
 
-def final_residuals(pooled):
-    """Range residuals (cm, 1515 m/s) of a run at its posterior mean, per DOG.
+def best_sample(pooled):
+    """The saved draw with the highest posterior density (the run's MAP estimate)."""
+    return pooled["theta_samples"][int(np.argmax(pooled["logpost"]))]
 
-    Returns {dog: dict(gps_time_s, residual_cm, transducer_ecef_m, dog_ecef_m,
-    slant_range_m, elevation_deg)} in time order, plus the posterior-mean theta.
+
+def final_residuals(pooled, theta=None):
+    """Range residuals (cm, 1515 m/s) of a run at one parameter vector, per DOG.
+
+    theta defaults to the posterior mean. Returns {dog: dict(gps_time_s,
+    residual_cm, transducer_ecef_m, dog_ecef_m, slant_range_m, elevation_deg)} in
+    time order, plus the theta used.
     """
     model, problem = run_model_and_problem(pooled)
-    theta = pooled["theta_samples"].mean(axis=0)
+    if theta is None:
+        theta = pooled["theta_samples"].mean(axis=0)
     residuals = MCMC_sampler.residuals_cm(theta, model, problem)
     params = MCMC_sampler.unpack(theta, model)
     trans = (problem["R_stacked"] @ params["lever"]).reshape(-1, 3) + problem["d"]
@@ -884,3 +891,23 @@ def run_positions_cm(run, reference_ecef_m):
         enu_cm = (ecef - reference_ecef_m[dog]) @ to_enu.T * 100.0
         out[dog] = (enu_cm.mean(axis=0), np.cov(enu_cm.T))
     return out
+
+
+# --- helper added for the density-coloured scatters (2026-11-24) ----------------------
+
+
+def nearby_counts(x, y, x_radius, y_radius):
+    """Number of points within an ellipse of the given radii about each point.
+
+    The count includes the point itself, as in the density scatters of
+    plotting/Analysis_Plots/PuertoRico_GPS_Plots.py. x and y are equal 1-D arrays.
+    """
+    from scipy.spatial import cKDTree
+
+    x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
+    if x.shape != y.shape or x.ndim != 1:
+        raise ValueError(f"x and y must be equal 1-D arrays; got {x.shape}, {y.shape}")
+    if x_radius <= 0 or y_radius <= 0:
+        raise ValueError(f"radii must be positive; got {x_radius}, {y_radius}")
+    scaled = np.column_stack([x / x_radius, y / y_radius])
+    return cKDTree(scaled).query_ball_point(scaled, r=1.0, return_length=True)
