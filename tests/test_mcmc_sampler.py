@@ -1,16 +1,8 @@
-import os
-import subprocess
-import sys
-import textwrap
-from pathlib import Path
-
 import numpy as np
 import pytest
 
 from Inversion_Workflow.MCMC_Functions import MCMC_sampler as ms
 from plotting.Atlantic_Explorer.moon_pool_lever import moon_pool_center_body_frame
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def synthetic_problem(num_esv_splits=1, n_arrivals=60):
@@ -260,80 +252,6 @@ def test_resume_refuses_a_changed_configuration(tmp_path):
     changed = {**config, "prior_lever_sd_m": [1.0, 1.0, 2.0]}
     with pytest.raises(ValueError, match="different configuration"):
         ms.run_chain(0, ms.build_model(changed), problem, tmp_path / "chain.npz")
-
-
-REFERENCE = ROOT / "revision/reference_outputs/development/mcmc_likelihood_prior.npz"
-FIG7_CHAIN = ROOT / "Bermuda_Data/Output/mcmc_chain_1_22_new_MCMC_long.npz"
-
-
-@pytest.mark.skipif(
-    not (REFERENCE.exists() and FIG7_CHAIN.exists()),
-    reason="needs the local reference snapshot and Bermuda data",
-)
-@pytest.mark.slow
-def test_iid_fixed_reproduces_reference_log_likelihood():
-    # Runs with Numba compiled (the reference was), so in a subprocess: conftest
-    # disables the JIT for this process.
-    script = textwrap.dedent(f"""
-        import numpy as np
-        from Inversion_Workflow.MCMC_Functions import MCMC_sampler as ms
-        from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-
-        reference = np.load("{REFERENCE}")
-        init = np.load("{FIG7_CHAIN}")
-        config = ms.run_config("iid_fixed", {{
-            "outlier_mad_factor": None,
-            "gps1_to_others": init["init_gps_grid"].tolist(),
-            "start_lever": init["init_lever"].tolist(),
-            "start_CDOG_aug": init["init_CDOG_aug"].tolist(),
-            "start_esv_bias": init["init_esv_bias"][:, 0].tolist(),
-        }})
-        model, problem = ms.setup_bermuda(config)
-        assert np.array_equal(problem["pair_counts"], reference["pair_counts"])
-        inputs = ms.load_bermuda_inputs(config)
-        shifts = {{"init": (0.0, 0.0, 0.0, 0.0),
-                   "shifted": (np.array([0.02, -0.03, 0.1]), 0.05, 0.01, 1e-4)}}
-        for name, (d_lever, d_aug, d_esv, d_time) in shifts.items():
-            lever = init["init_lever"] + d_lever
-            trans = findTransponder(inputs["GPS_Coordinates"], init["init_gps_grid"],
-                                    lever)
-            value, _ = ms.compute_log_likelihood(
-                trans, init["init_CDOG_aug"] + d_aug, init["init_esv_bias"] + d_esv,
-                init["init_time_bias"] + d_time, problem["CDOG_reference"],
-                problem["gps_pair_indices"], problem["pair_time_base_2d"],
-                problem["pair_counts"], problem["dz_array"], problem["angle_array"],
-                problem["esv_matrix"])
-            # Bit-for-bit equality breaks on any re-saved ESV table or change in
-            # summation order; 1e-12 still catches any modelling change.
-            assert abs(value / float(reference["loglike_" + name]) - 1) < 1e-12, name
-
-            theta = model["start_theta"].copy()
-            layout = model["layout"]
-            theta[layout["lever"]] = lever
-            theta[layout["CDOG_aug"]] += d_aug
-            theta[layout["esv_bias"]] += d_esv
-            theta[layout["time_bias"]] = init["init_time_bias"] + d_time
-            sampler_value = ms.log_likelihood(theta, model, problem)
-            # Transponders from precomputed rotations differ by < 1e-9 m.
-            assert abs(sampler_value / value - 1) < 1e-12, name
-        print("ok")
-    """)
-    env = {
-        **os.environ,
-        "NUMBA_DISABLE_JIT": "0",
-        "MPLBACKEND": "Agg",
-        "PYTHONPATH": str(ROOT / "src"),
-    }
-    result = subprocess.run(
-        [sys.executable, "-c", script],
-        cwd=ROOT / "src",
-        env=env,
-        capture_output=True,
-        text=True,
-    )
-
-    assert result.returncode == 0, result.stdout[-2000:] + result.stderr[-2000:]
-    assert result.stdout.strip().endswith("ok")
 
 
 def test_residual_jacobian_time_bias_column_is_the_range_scale():

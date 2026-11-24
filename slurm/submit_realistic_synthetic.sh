@@ -1,35 +1,58 @@
 #!/bin/bash
 # Submit every realistic-synthetic run of the Paper I revision, from the
-# repository root:
-#   bash slurm/submit_realistic_synthetic.sh
+# repository root. The cluster caps the jobs one user may have queued, so each
+# submission is retried every 10 minutes until it fits: run it where it survives
+# a logout,
+#   nohup bash slurm/submit_realistic_synthetic.sh > slurm/logs/submit.log 2>&1 &
+# and, when every chain has finished, write the MCMC summary CSVs. That needs no
+# cluster: run it wherever the chains are (a few minutes per run), with the
+# project's Python active:
+#   bash slurm/submit_realistic_synthetic.sh summary
 # Gauss-Newton ensembles take about 120 core-h in all; each MCMC chain takes
-# 1.5-2 h on the 17-h survey (12 runs, 360 chains, about 650 core-h). Comment out
-# what is already done.
+# 1.5-2 h on the 17-h survey (12 runs, 360 chains, about 650 core-h).
 set -euo pipefail
+phase=${1:-runs}
+
+submit() {
+    until job=$(sbatch --parsable "$@" 2>&1); do
+        if [[ $job != *QOSMaxSubmitJobPerUserLimit* ]]; then
+            echo "$job" >&2
+            exit 1
+        fi
+        sleep 600
+    done
+    echo "submitted $job: $*"
+}
 
 # Gauss-Newton ensembles: experiment, array tasks, seeds per task, amplitude set.
 gauss_newton() {
-    sbatch --array=0-$(($2 - 1)) \
+    submit --array=0-$(($2 - 1)) \
         --export=ALL,RS_EXPERIMENT=$1,RS_SEEDS_PER_TASK=$3,RS_AMPLITUDES=${4:-guess} \
         slurm/realistic_synthetic_array.sh
 }
-for amplitudes in guess models_low models_high; do
-    gauss_newton coverage 20 50 $amplitudes  # 1000 surveys: R3 M2, R1 3a
-    gauss_newton budget 5 20 $amplitudes     # 100 surveys: R1 2g, R3 M8, M1
-done
-gauss_newton geometry 15 20   # 300 surveys: R1 3e
-gauss_newton halfsplit 10 20  # 200 surveys: R4 5
-gauss_newton currents 1 10    # R2 2
+if [[ $phase == runs ]]; then
+    for amplitudes in guess models_low models_high; do
+        gauss_newton coverage 10 100 $amplitudes  # 1000 surveys: R3 M2, R1 3a
+        gauss_newton budget 2 50 $amplitudes      # 100 surveys: R1 2g, R3 M8, M1
+    done
+    gauss_newton geometry 6 50   # 300 surveys: R1 3e
+    gauss_newton halfsplit 4 50  # 200 surveys: R4 5
+    gauss_newton currents 1 10   # R2 2
+    # Compile the Numba kernels before any chain starts.
+    submit --wait slurm/mcmc_warmup.sh
+fi
 
 # Final-model MCMC: settings, then the number of surveys (default 20; two chains
-# each, so twice as many array tasks), then the summary CSV of the finished seeds.
-warmup=$(sbatch --parsable slurm/mcmc_warmup.sh)
+# each, so twice as many array tasks). The "summary" phase writes the CSV of the
+# finished seeds instead, in this shell.
 mcmc() {
-    chains=$(sbatch --parsable --dependency=afterok:$warmup \
-        --array=0-$((2 * ${2:-20} - 1)) \
-        --export=ALL,$1 slurm/realistic_synthetic_mcmc_array.sh)
-    sbatch --dependency=afterok:$chains --array=0 --time=00:30:00 \
-        --export=ALL,SYN_MCMC_SUMMARY=1,$1 slurm/realistic_synthetic_mcmc_array.sh
+    if [[ $phase == summary ]]; then
+        (cd src && env "$1" SYN_MCMC_SUMMARY=1 PYTHONPATH=. \
+            python -m Inversion_Workflow.Synthetic.Realistic_Synthetic_MCMC)
+    else
+        submit --array=0-$((2 * ${2:-20} - 1)) --export=ALL,$1 \
+            slurm/realistic_synthetic_mcmc_array.sh
+    fi
 }
 # Accuracy and coverage of the published model, by track (R3 M2, M3, R1 3e).
 for track in bermuda hourglass; do
