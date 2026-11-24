@@ -2,8 +2,9 @@
 # Submit every realistic-synthetic run of the Paper I revision, from the
 # repository root:
 #   bash slurm/submit_realistic_synthetic.sh
-# Gauss-Newton ensembles take about 100 core-h in all; each MCMC run is 40 chains
-# of 1-1.5 h (12 runs, about 550 core-h). Comment out what is already done.
+# Gauss-Newton ensembles take about 120 core-h in all; each MCMC chain takes
+# 1.5-2 h on the 17-h survey (12 runs, 360 chains, about 650 core-h). Comment out
+# what is already done.
 set -euo pipefail
 
 # Gauss-Newton ensembles: experiment, array tasks, seeds per task, amplitude set.

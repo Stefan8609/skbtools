@@ -110,7 +110,7 @@ def realism_figure():
 
     # (a) DOG 3 residual in 15-min bins, real (lever fixed) and five synthetics.
     ax = axes[0]
-    bins_h = np.arange(0.0, 15.0, 0.25)
+    bins_h = np.arange(0.0, 17.25, 0.25)
     centre = 0.5 * (bins_h[1:] + bins_h[:-1])
     for seed in range(5):
         for preset, colour in (("observed", "0.55"), ("random", "#56B4E9")):

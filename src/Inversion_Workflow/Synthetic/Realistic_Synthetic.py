@@ -51,27 +51,28 @@ CDOG_AUGMENTS = {
 
 # Common dc(t) estimated from the Bermuda data: Laplace mode of the "ar1_common30"
 # model (one zero-mean series shared by DOGs 1/3/4 on 30-min windows) on the
-# PRIDE_final GNSS, 2026-11-21. It may still hold common-mode vessel GNSS error.
+# 17-h PRIDE_final GNSS, 2026-11-24. It may still hold common-mode vessel GNSS
+# error.
 OBSERVED_DC_EDGES_GPS_S = np.array(
-    list(np.arange(20111.0, 68711.1, 1800.0)) + [70400.0]
+    list(np.arange(20111.0, 79511.1, 1800.0)) + [81200.0]
 )
 OBSERVED_DC_MPS = 1e-3 * np.array(
-    [9.1, -12.0, -23.2, -30.8, -8.8, -14.6, -25.4, -32.6, -17.3, -7.8, -8.8, -21.6,
-     -24.7, -25.4, -27.5, -20.7, -14.5, -3.4, -10.1, 6.9, 2.3, 7.5, 61.0, 51.0, 54.4,
-     65.7, 37.6, 33.8]
+    [7.5, -15.7, -27.1, -26.9, -0.6, -7.0, -19.1, -25.5, -15.0, -12.7, -17.3, -29.1,
+     -27.4, -25.0, -30.2, -24.4, -20.3, -9.0, -14.2, 3.3, -2.0, 3.0, 60.7, 55.5, 59.3,
+     68.3, 32.5, 22.6, 25.6, 3.8, 12.4, 10.7, 5.0, -21.9]
 )  # fmt: skip
 
 # Real clock offsets (MCMC_sampler CONFIG["offsets_s"]), used only to copy which
 # pings each DOG received.
-REAL_DOG_OFFSET_S = {1: 1866.016727, 3: 3175.016802, 4: 1939.016538}
+REAL_DOG_OFFSET_S = {1: 1866.016571, 3: 3175.016767, 4: 1939.016699}
 REAL_PAIR_GATE_S = 0.05
 
-# Idealized tracks last as long as the Bermuda survey (50401 s) at its median speed,
+# Idealized tracks last as long as the Bermuda survey (61201 s) at its median speed,
 # with 1 Hz pings.
 TRACK_SPEED_MPS = 2.2
 # Hourglass: the Bermuda pattern made symmetric about the array centre (a square
 # with both diagonals), sized for two whole loops.
-HOURGLASS_HALF_SIZE_M = 5740.0
+HOURGLASS_HALF_SIZE_M = 6970.0
 
 ZERO_KNOBS = {
     # 1. Sound speed: dc added to the ESV, m/s, depth-uniform.

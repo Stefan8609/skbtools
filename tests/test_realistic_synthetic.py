@@ -51,7 +51,7 @@ def test_dc_series_random_walk_size_and_seed():
 
 
 def test_dc_series_observed_and_sinusoid():
-    t = np.array([20111.0, 21911.0 + 1.0, 70399.0])
+    t = np.array([20111.0, 21911.0 + 1.0, 81199.0])
     observed = rs.dc_series_mps(t, {**rs.ZERO_KNOBS, "dc_series": "observed"}, 0)
     np.testing.assert_allclose(observed, rs.OBSERVED_DC_MPS[[0, 1, -1]])
     sine = {**rs.ZERO_KNOBS, "dc_sinusoid_mps": 0.01, "dc_sinusoid_phase_rad": 0.0}
@@ -77,7 +77,7 @@ def test_gauss_markov_sd_and_correlation_time():
 
 def test_hourglass_keeps_speed_and_balance():
     centre = np.array([100.0, -200.0])
-    hourglass, _ = rs.track_en_m("hourglass", 50401, centre)  # the Bermuda length
+    hourglass, _ = rs.track_en_m("hourglass", 61201, centre)  # the Bermuda length
     step = np.linalg.norm(np.diff(hourglass, axis=0), axis=1)
     np.testing.assert_allclose(np.median(step), rs.TRACK_SPEED_MPS)
     offset = hourglass - centre
@@ -186,8 +186,8 @@ def test_knobs_act_as_documented():
     moved_enu = (observed - transponder) @ rs.enu_rotation().T
     np.testing.assert_allclose(moved_enu, truth["gnss_common_enu_m"], atol=1e-6)
 
-    # 38 073 of 49 552 GPS epochs have a DOG 1 pair in the real data.
-    assert abs(keep.mean() - 38073 / 49552) < 0.01
+    # 46 221 of 59 992 GPS epochs have a DOG 1 pair in the real data.
+    assert abs(keep.mean() - 46221 / 59992) < 0.01
 
 
 @pytest.mark.parametrize(

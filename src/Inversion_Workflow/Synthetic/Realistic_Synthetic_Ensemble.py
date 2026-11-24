@@ -108,7 +108,7 @@ PRESETS = {
     "random": {
         **COMMON,
         "dc_series": "random_walk",
-        "dc_random_walk_mps_per_sqrt_h": 0.022,
+        "dc_random_walk_mps_per_sqrt_h": 0.023,
         "dc_sinusoid_mps": 0.010,
         "gnss_relative": "real_misfit_shifted",
     },
@@ -326,7 +326,7 @@ def residual_summary(estimate, pairs, transponder, GPS_data, clock_drift):
     elevation = np.degrees(np.arcsin(line[:, 2] / slant))
     hours = (GPS_data[epoch] - GPS_data[0]) / 3600.0
     residual_cm = residual * NOMINAL_SOUND_SPEED_MPS * 100
-    time_bins = np.arange(0.0, 15.0, 0.25)
+    time_bins = np.arange(0.0, 17.25, 0.25)
     slant_bins = np.arange(5000.0, 13500.0, 500.0)
     return {
         "condition_number": float(np.linalg.cond(normal)),
