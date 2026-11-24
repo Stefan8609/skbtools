@@ -37,8 +37,9 @@ the internal convention; every output reports ``dt`` in the Eq. 6 convention. Wi
 drift, ``dt(t) = dt0 + drift_rate * (t - t_mid)``, so internally the observation
 gets ``time_bias - drift_rate * (t - t_mid)``.
 
-Fixed pairing. Each DOG arrival is paired with a GPS epoch once, by the alignment
-two-pointer search at the start model with threshold ``pair_threshold_s``, and the
+Fixed pairing. Each DOG arrival is paired with a GPS epoch once, by ``pair_indices``
+(the pairing of the inversion) at the start model with gate ``pair_threshold_s``
+(``PAIRING_GATE_S``), and the
 pairs then stay fixed for every chain. Re-pairing inside the sampler would change
 the number of data with the parameters and make the likelihood discontinuous. The
 pairing is insensitive to the parameters: the 0.4 s window is about 600 m of range,
@@ -82,6 +83,7 @@ from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import (
     vessel_rotations as find_vessel_rotations,
 )
+from Inversion_Workflow.Inversion.Numba_xAline import PAIRING_GATE_S, pair_indices
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import residual_inliers
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from bermuda_data import (
@@ -149,7 +151,7 @@ CONFIG = {
     # GNSS, 17-h window (2026-11-24). The 14-h window gave 1866.016727,
     # 3175.016802, 1939.016538; the submitted GNSS 1866.016, 3175.017, 1939.0178.
     "offsets_s": [1866.016571, 3175.016767, 1939.016699],
-    "pair_threshold_s": 0.4,
+    "pair_threshold_s": PAIRING_GATE_S,
     # Pairs with start-model residuals beyond this many MADs are dropped (None: keep).
     "outlier_mad_factor": 6.0,
     # Start model: the pairing model and the start of the mode search. It does not
@@ -367,48 +369,6 @@ def run_config(variant, overrides=None):
     }
 
 
-@njit(cache=True)
-def find_fixed_pair_indices(
-    offset,
-    threshold,
-    CDOG_data,
-    GPS_data,
-    GPS_travel_times,
-):
-    """CDOG and GPS row indices of the pairs at the start model (Eqs. A19-A20).
-
-    A DOG arrival and a GPS epoch pair when the predicted arrival is within
-    ``threshold`` s; the first such match in time order is taken.
-    """
-    max_pairs = min(CDOG_data.shape[0], GPS_data.shape[0])
-    cdog_indices = np.empty(max_pairs, dtype=np.int64)
-    gps_indices = np.empty(max_pairs, dtype=np.int64)
-
-    cdog_pointer = 0
-    gps_pointer = 0
-    count = 0
-
-    while cdog_pointer < CDOG_data.shape[0] and gps_pointer < GPS_data.shape[0]:
-        cdog_time = CDOG_data[cdog_pointer, 0] + CDOG_data[cdog_pointer, 1] - offset
-        gps_time = GPS_data[gps_pointer] + GPS_travel_times[gps_pointer]
-
-        if abs(gps_time - cdog_time) < threshold:
-            cdog_indices[count] = cdog_pointer
-            gps_indices[count] = gps_pointer
-
-            cdog_pointer += 1
-            gps_pointer += 1
-            count += 1
-
-        elif gps_time < cdog_time:
-            gps_pointer += 1
-
-        else:
-            cdog_pointer += 1
-
-    return cdog_indices[:count], gps_indices[:count]
-
-
 def time_block_mask(gps_time, block_s, parity):
     """Epochs in alternating GPS-time blocks of length block_s with this parity."""
     gps_time = np.asarray(gps_time, dtype=float)
@@ -617,7 +577,7 @@ def build_problem(
             angle_array,
             esv_matrix,
         )
-        cdog_idx, gps_idx = find_fixed_pair_indices(
+        cdog_idx, gps_idx = pair_indices(
             offsets[j], config["pair_threshold_s"], tags, GPS_data, times
         )
         base = tags[cdog_idx, 0] + tags[cdog_idx, 1] - offsets[j] - GPS_data[gps_idx]

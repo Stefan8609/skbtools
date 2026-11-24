@@ -26,7 +26,10 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
 )
 from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
+from Inversion_Workflow.Inversion.Numba_xAline import (
+    PAIRING_GATE_S,
+    two_pointer_index,
+)
 from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
     anneal_with_offset_search,
     simulated_annealing_bias,
@@ -493,7 +496,7 @@ def report(inputs, result, dz_array, angle_array, esv_matrix):
         if CLOCK_DRIFT:
             print(f"Drift rate error: {drift_rate - DRIFT_RATE:.3e} s/s")
 
-    # Travel times at the final estimate, paired with a wide gate for the residuals
+    # Travel times at the final estimate, paired within the gate for the residuals
     times_guess, esv = modelled_times(
         inversion_guess,
         transponder_coordinates,
@@ -522,7 +525,7 @@ def report(inputs, result, dz_array, angle_array, esv_matrix):
         CDOG_full_ex, GPS_clock_ex, GPS_full_ex, trans_coords_full, esv_full = (
             two_pointer_index(
                 best_offset_eff,
-                0.6,
+                PAIRING_GATE_S,
                 inputs["CDOG_data"],
                 inputs["GPS_data"],
                 times_guess,

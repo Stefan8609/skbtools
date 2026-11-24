@@ -2,39 +2,30 @@ import numpy as np
 from numba import njit
 
 
+# Pairing gate gamma (s) of Eq. A20, used wherever arrivals are paired with a model
+# near the solution. Any gate far wider than the fitted residuals (~0.1 ms) and below
+# the 0.5 s half-period of the 1 Hz pulses gives the same pairs
+# (Bermuda/Gamma_Sensitivity.py).
+PAIRING_GATE_S = 0.4
+# Search window (s) used while the offset or lever arm is still being searched, when
+# the trial model can be up to half a pulse period from the arrivals.
 OFFSET_SEARCH_THRESHOLD_SECONDS = 0.5
 
 
 @njit(cache=True)
-def two_pointer_index(
-    offset,
-    threshold,
-    CDOG_data,
-    GPS_data,
-    GPS_travel_times,
-    transponder_coordinates,
-    esv,
-):
-    """Pair each GPS emission with the nearest DOG arrival within ``threshold`` (s).
+def pair_indices(offset, threshold, CDOG_data, GPS_data, GPS_travel_times):
+    """CDOG and GPS row indices of the arrival-emission pairs (Eqs. A19-A20).
 
-    Eqs. A19-A20: arrival t' pairs with emission t when |(t' - offset) - (t + T_mod)|
-    < gamma; of several arrivals in the gate the nearest is taken, and each arrival is
-    used once. The paper's gamma is 0.4 s; the call sites use 0.05-0.6 s.
-    ``CDOG_data`` is (N, 2) integer and fractional seconds. Returns ``(CDOG_clock,
-    CDOG_full, GPS_clock, GPS_full, transponder_coordinates_full, esv_full)``: shifted
-    arrival time, observed travel time (Eq. A21), predicted arrival time and modelled
-    travel time of each pair, with the pair's transducer position and ESV.
+    Arrival t' pairs with emission t when |(t' - offset) - (t + T_mod)| <
+    ``threshold`` (s); of several arrivals in the gate the nearest is taken, and each
+    arrival is used once. ``CDOG_data`` is (N, 2) integer and fractional seconds.
     """
     CDOG_times = CDOG_data[:, 0] + CDOG_data[:, 1] - offset
     GPS_times = GPS_data + GPS_travel_times
 
-    # Preallocate arrays
-    max_len = len(CDOG_data) + len(GPS_data)
-    CDOG_clock = np.zeros(max_len)
-    GPS_clock = np.zeros(max_len)
-    GPS_full = np.zeros(max_len)
-    transponder_coordinates_full = np.zeros((max_len, 3))
-    esv_full = np.zeros(max_len)
+    max_pairs = min(len(CDOG_data), len(GPS_data))
+    cdog_indices = np.empty(max_pairs, dtype=np.int64)
+    gps_indices = np.empty(max_pairs, dtype=np.int64)
 
     CDOG_pointer, count = 0, 0
 
@@ -58,21 +49,39 @@ def two_pointer_index(
             candidate += 1
 
         if best_pointer >= 0:
-            GPS_clock[count] = GPS_times[GPS_pointer]
-            GPS_full[count] = GPS_travel_times[GPS_pointer]
-            transponder_coordinates_full[count] = transponder_coordinates[GPS_pointer]
-            esv_full[count] = esv[GPS_pointer]
-
-            CDOG_clock[count] = CDOG_times[best_pointer]
+            cdog_indices[count] = best_pointer
+            gps_indices[count] = GPS_pointer
             CDOG_pointer = best_pointer + 1
             count += 1
 
-    # Trim arrays to actual size
-    CDOG_clock = CDOG_clock[:count]
-    GPS_clock = GPS_clock[:count]
-    GPS_full = GPS_full[:count]
-    transponder_coordinates_full = transponder_coordinates_full[:count]
-    esv_full = esv_full[:count]
+    return cdog_indices[:count], gps_indices[:count]
+
+
+@njit(cache=True)
+def two_pointer_index(
+    offset,
+    threshold,
+    CDOG_data,
+    GPS_data,
+    GPS_travel_times,
+    transponder_coordinates,
+    esv,
+):
+    """Pair each GPS emission with the nearest DOG arrival within ``threshold`` (s).
+
+    Pairs as in ``pair_indices`` (Eqs. A19-A20). Returns ``(CDOG_clock, CDOG_full,
+    GPS_clock, GPS_full, transponder_coordinates_full, esv_full)``: shifted arrival
+    time, observed travel time (Eq. A21), predicted arrival time and modelled travel
+    time of each pair, with the pair's transducer position and ESV.
+    """
+    cdog_indices, gps_indices = pair_indices(
+        offset, threshold, CDOG_data, GPS_data, GPS_travel_times
+    )
+    CDOG_clock = CDOG_data[cdog_indices, 0] + CDOG_data[cdog_indices, 1] - offset
+    GPS_clock = GPS_data[gps_indices] + GPS_travel_times[gps_indices]
+    GPS_full = GPS_travel_times[gps_indices]
+    transponder_coordinates_full = transponder_coordinates[gps_indices]
+    esv_full = esv[gps_indices]
 
     # Observed travel times (Eq. A21)
     CDOG_full = CDOG_clock - (GPS_clock - GPS_full)

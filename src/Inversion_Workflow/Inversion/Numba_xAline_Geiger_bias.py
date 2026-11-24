@@ -1,6 +1,8 @@
 import numpy as np
 
 from Inversion_Workflow.Inversion.Numba_xAline import (
+    OFFSET_SEARCH_THRESHOLD_SECONDS,
+    PAIRING_GATE_S,
     align_offset,
     filter_close_receptions,
     find_subint_offset,
@@ -155,12 +157,13 @@ def _geiger_at_offset(
     real_data,
     initial_offset,
     clock_drift,
+    gate=PAIRING_GATE_S,
 ):
     """Alignment and Gauss-Newton fit for one starting offset.
 
     With ``initial_offset=None`` the offset is searched over the full range with the
     circular-variance score at ``guess``; otherwise only within 0.5 s of the rounded
-    ``initial_offset``.
+    ``initial_offset``. The fit pairs arrivals within ``gate`` (s).
     """
     epsilon = 10**-5
     k = 0
@@ -211,7 +214,13 @@ def _geiger_at_offset(
             transponder_coordinates_full,
             esv_full,
         ) = two_pointer_index(
-            offset, 0.2, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
+            offset,
+            gate,
+            CDOG_data,
+            GPS_data,
+            times_guess,
+            transponder_coordinates,
+            esv,
         )
         t_from_mid = np.zeros(len(GPS_full))
         if clock_drift:
@@ -394,10 +403,12 @@ def final_bias_geiger(
     real_data=False,
     clock_drift=False,
     drift_rate=0.0,
+    gate=PAIRING_GATE_S,
 ):
     """Gauss-Newton fit (Eq. A25) of position and biases at a fixed clock offset.
 
-    The pairs are made at ``offset`` (0.05 s gate) and kept through the iterations.
+    The pairs are made at ``offset`` within ``gate`` (s, gamma of Eq. A20) and kept
+    through the iterations.
     Returns ``(estimate, CDOG_full, GPS_full, CDOG_clock, GPS_clock)``, the last four
     for the inlier pairs re-made at ``offset - time_bias``. With ``clock_drift`` the
     estimate gets a sixth entry, ``drift_rate`` (s/s, Eq. 6 convention), started from
@@ -429,7 +440,7 @@ def final_bias_geiger(
         esv_full,
     ) = two_pointer_index(
         offset,
-        0.05,
+        gate,
         CDOG_data,
         GPS_data,
         times_guess,
@@ -491,7 +502,7 @@ def final_bias_geiger(
     # time bias.
     shifted_GPS_data = GPS_data - time_bias
     if clock_drift:
-        # The drift moves arrivals by ~40 us at most, far inside the 0.05 s gate,
+        # The drift moves arrivals by ~40 us at most, far inside the gate,
         # but is included so the returned pairs carry the fitted clock model.
         shifted_GPS_data = shifted_GPS_data + drift_rate * (GPS_data - t_mid)
     (
@@ -503,7 +514,7 @@ def final_bias_geiger(
         esv_full,
     ) = two_pointer_index(
         offset,
-        0.05,
+        gate,
         CDOG_data,
         shifted_GPS_data,
         times_guess,
@@ -532,8 +543,8 @@ MIN_OFFSET_DELTA_CHI2 = 50.0
 # Delta chi^2 = 176 against its neighbours.
 MAX_OFFSET_RMS_SECONDS = 0.5 / NOMINAL_SOUND_SPEED_MPS
 LEVER_GN_MAX_ITERATIONS = 50
-# Iterations paired with the wide gate before narrowing it, so the time bias can
-# absorb a fractional misalignment of a few tenths of a second.
+# Iterations paired within the search window before the pairing gate, so the time
+# bias can absorb a fractional misalignment of a few tenths of a second.
 LEVER_GN_WIDE_GATE_ITERATIONS = 6
 
 
@@ -564,13 +575,15 @@ def lever_bias_geiger(
     esv_matrix,
     real_data=False,
     clock_drift=False,
+    gate=PAIRING_GATE_S,
 ):
     """Gauss-Newton for position, biases and the lever arm at a fixed clock offset.
 
     Fits ``[x, y, z, time_bias, esv_bias]`` (plus ``drift_rate`` with ``clock_drift``)
     and the lever arm, with transducer positions ``lever_origin + lever_rotation @
     lever`` (see ``lever_basis``). Pairs are re-made every iteration at
-    ``offset - time_bias``, first within 0.5 s, then 0.05 s. The vertical lever arm is
+    ``offset - time_bias``, first within ``OFFSET_SEARCH_THRESHOLD_SECONDS``, then
+    ``gate``. The vertical lever arm is
     nearly degenerate with the DOG depth; the least-squares solve takes the
     minimum-norm step along that direction.
 
@@ -593,7 +606,10 @@ def lever_bias_geiger(
             esv_matrix,
             real_data,
         )
-        gate = 0.5 if iteration < LEVER_GN_WIDE_GATE_ITERATIONS else 0.05
+        if iteration < LEVER_GN_WIDE_GATE_ITERATIONS:
+            pairing_gate = OFFSET_SEARCH_THRESHOLD_SECONDS
+        else:
+            pairing_gate = gate
         (
             CDOG_clock,
             CDOG_full,
@@ -603,7 +619,7 @@ def lever_bias_geiger(
             esv_full,
         ) = two_pointer_index(
             offset - estimate[3],
-            gate,
+            pairing_gate,
             CDOG_data,
             GPS_data,
             times,
@@ -682,6 +698,7 @@ def gauss_newton_offset_search(
     real_data=False,
     clock_drift=False,
     halfwindow=OFFSET_SEARCH_HALFWINDOW_SECONDS,
+    gate=PAIRING_GATE_S,
 ):
     """Find the DOG clock offset and lever arm when the integer second is unknown.
 
@@ -699,7 +716,8 @@ def gauss_newton_offset_search(
     best and second-best seconds (white noise). Below ``MIN_OFFSET_DELTA_CHI2``, or
     with a best-second RMS above ``MAX_OFFSET_RMS_SECONDS`` (a local minimum at a
     wrong second), the search is repeated once over four times the window, then
-    raises ``ValueError``.
+    raises ``ValueError``. Arrivals are paired within ``gate`` (s) once the search
+    window phase of each fit is over.
 
     Returns ``(lever, offset, estimate, diagnostics)``. The time bias is folded into
     the offset: ``estimate[3]`` is 0 and ``offset`` is the Eq. 6 clock offset dt
@@ -720,6 +738,7 @@ def gauss_newton_offset_search(
             real_data,
             initial_offset,
             clock_drift,
+            gate,
         )[1]
     except np.linalg.LinAlgError:
         # Too few pairs for the fit after the circular-variance alignment: keep
@@ -761,6 +780,7 @@ def gauss_newton_offset_search(
                         esv_matrix,
                         real_data,
                         clock_drift,
+                        gate,
                     )
             best = min(fits, key=lambda s: fits[s][2])
             if abs(best - center) < window:

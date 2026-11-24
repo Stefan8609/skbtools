@@ -14,7 +14,10 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
     NOMINAL_SOUND_SPEED_MPS,
 )
-from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
+from Inversion_Workflow.Inversion.Numba_xAline import (
+    PAIRING_GATE_S,
+    two_pointer_index,
+)
 from bermuda_data import (
     CDOG_GUESS_AUGMENTS,
     CDOG_REFERENCE,
@@ -246,7 +249,7 @@ time_series_plot(
     DOG_num=file_tag,
 )
 
-# Range residuals: travel times at the final estimate, paired with a wide gate
+# Range residuals: travel times at the final estimate, paired within the gate
 times_guess, esv = calculateTimesRayTracing_Bias_Real(
     inversion_guess,
     transponder_coordinates,
@@ -259,7 +262,7 @@ times_guess, esv = calculateTimesRayTracing_Bias_Real(
 CDOG_clock_ex, CDOG_full_ex, GPS_clock_ex, GPS_full_ex, trans_coords_full, esv_full = (
     two_pointer_index(
         best_offset_eff,
-        0.6,
+        PAIRING_GATE_S,
         CDOG_data,
         GPS_data,
         times_guess,

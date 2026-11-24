@@ -10,7 +10,10 @@ from plotting.Plot_Modular import (
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
 )
-from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
+from Inversion_Workflow.Inversion.Numba_xAline import (
+    PAIRING_GATE_S,
+    two_pointer_index,
+)
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
 from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
     calculateTimesRayTracing_split,
@@ -137,7 +140,7 @@ def plot_best_sample(
         esv_full,
     ) = two_pointer_index(
         offsets[CDOG_index],
-        0.6,
+        PAIRING_GATE_S,
         CDOG_data,
         GPS_data - time_bias[CDOG_index],
         times_guess,

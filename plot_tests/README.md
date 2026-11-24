@@ -41,7 +41,7 @@ Revised after the reviews of 2026-11-21 (the first set was "too minimalist").
 | `fig01_survey_geometry.py` | Where are the DOGs and how did the vessel sail over them? | 85 × 84 | liked; 17-h track |
 | `fig02_clock_offset.py` | Do the data alone fix each DOG's timing bias, including the integer second? | 170 × 125 | liked |
 | `fig03_residuals.py` | How large are the residuals of the final model, are they random in time, do the DOGs share them? (density-coloured) | 170 × 125 | liked |
-| `fig05_posterior_3d.py` | How tightly are a DOG position and the lever arm constrained, and which parameters trade off? (DOG 3 ENU; lever arm; δc, δt, l_z − U) | 170 × 80 | liked |
+| `fig05_posterior_3d.py` | How tightly are a DOG position and the lever arm constrained, and which parameters trade off? (2 × 2: DOG 3 ENU; lever arm, equal axes; δc, δt, l_z − U; east of the three DOGs; sd and correlations above each panel) | 170 × 160 | 2 × 2 layout awaiting review |
 | `fig06_vertical_tradeoff.py` | Why is the height weak and the horizontal position not? | 170 × 72 | supplementary at most |
 | `fig07_esv_correction.py` | Does the ESV bias change during the survey, and does the model of it matter? | 170 × 120 | liked |
 | `fig08_repeatability.py` | Do two parts of the survey give the same positions? | 170 × 76 | supplementary at most |

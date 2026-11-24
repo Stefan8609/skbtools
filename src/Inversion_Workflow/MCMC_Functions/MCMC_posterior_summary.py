@@ -5,6 +5,7 @@
   relative to the submitted Table 1 position (so ENU is the change since the
   submission), and in WGS84 geodetic coordinates. A markdown table in the layout
   of Table 1, and the posterior lever arm against its drawing-based prior.
+- Posterior covariance of all DOG positions in local ENU (m^2).
 - Linearized comparison at the MAP: J^T W J (W from the per-DOG sigma), its
   condition number, the formal covariance (J^T W J)^-1 and its correlations,
   against the posterior; also with AR(1) weighting.
@@ -185,6 +186,27 @@ def posterior_summary(theta, logpost, model, offsets, CDOG_reference):
         ):
             rows.append(percentile_row(f"DOG{dog}_{label}", unit, values, values[best]))
     return rows
+
+
+def position_covariance_enu(theta, model, CDOG_reference):
+    """Posterior covariance (m^2) of every DOG position in local ENU.
+
+    Each DOG's ECEF draws are rotated into ENU at its own posterior-mean position
+    (WGS84 latitude). Rows and columns are DOG{d}_E, _N, _U in DOG order, so the
+    off-diagonal 3x3 blocks are the covariances between DOGs.
+    """
+    aug_start = model["layout"]["CDOG_aug"].start
+    names, enu_draws = [], []
+    for j, dog in enumerate(model["config"]["dogs"]):
+        ecef = theta[:, aug_start + 3 * j : aug_start + 3 * j + 3]
+        lat, lon, _ = ecef2geodetic(*(ecef.mean(axis=0) + CDOG_reference))
+        enu_draws.append(ecef @ enu_rotation(lat, lon).T)
+        names += [f"DOG{dog}_{axis}" for axis in "ENU"]
+    covariance = np.cov(np.hstack(enu_draws), rowvar=False)
+    return [
+        {"quantity": name, **dict(zip(names, covariance[i], strict=True))}
+        for i, name in enumerate(names)
+    ]
 
 
 def table1_markdown(rows, model, run_name):
@@ -497,6 +519,8 @@ def summarize_run(run_name, linearized=True):
     rows = posterior_summary(theta, logpost, model, offsets, CDOG_reference)
     write_csv(rows, out_dir / "posterior_summary.csv")
     (out_dir / "table1_posterior.md").write_text(table1_markdown(rows, model, run_name))
+    covariance = position_covariance_enu(theta, model, CDOG_reference)
+    write_csv(covariance, out_dir / "position_covariance_enu.csv")
     lever = lever_against_prior(rows, model)
     write_csv(lever, out_dir / "lever_vs_prior.csv")
     sensitivity = prior_sensitivity(theta, model, offsets, CDOG_reference)
@@ -512,6 +536,13 @@ def summarize_run(run_name, linearized=True):
 
     print(f"\nRun {run_name}: {theta.shape[0]} draws from {len(chains)} chains")
     print((out_dir / "table1_posterior.md").read_text())
+    print("ENU position covariance per DOG (cm^2):")
+    for i in range(0, len(covariance), 3):
+        block = covariance[i : i + 3]
+        print(f"  {block[0]['quantity'][:-2]}")
+        for row in block:
+            values = [1e4 * row[other["quantity"]] for other in block]
+            print("    " + " ".join(f"{v:9.3f}" for v in values))
     print("Lever arm vs drawing-based prior (m):")
     for row in lever:
         print(

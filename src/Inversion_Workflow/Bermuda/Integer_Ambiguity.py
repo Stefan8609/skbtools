@@ -28,7 +28,10 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
 )
 from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
+from Inversion_Workflow.Inversion.Numba_xAline import (
+    PAIRING_GATE_S,
+    two_pointer_index,
+)
 from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
     final_bias_geiger,
     initial_bias_geiger,
@@ -38,7 +41,7 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
 # Config
 DOG_num = 3
 N_SHIFT = 5
-GATE_SECONDS = 0.4  # gamma of paper Eq. A20
+GATE_SECONDS = PAIRING_GATE_S  # gamma of paper Eq. A20
 # Current table. Paper I (Table 1) used the table from before the 2026-10-08
 # ray-tracing fix, "ESV_Tables/global_table_esv_extended_before_ray_fix_20261008.mat",
 # with TABLE1_LEVER (set LEVER_SOURCE = "table1" to repeat that check).

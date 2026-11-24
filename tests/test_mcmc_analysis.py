@@ -13,6 +13,7 @@ from Inversion_Workflow.MCMC_Functions.MCMC_posterior_summary import (
     SUBMITTED_TABLE1_AUG_M,
     enu_rotation,
     linearized_comparison,
+    position_covariance_enu,
     reported_quantities,
 )
 from test_mcmc_sampler import synthetic_problem
@@ -87,6 +88,31 @@ def test_reported_quantities_follow_the_paper_conventions():
     for axis in "ENU":
         assert value[f"DOG3_{axis}_minus_Table1"] == pytest.approx(0.0, abs=1e-6)
     assert value["lever_z_minus_DOG3_U"] == pytest.approx(theta[2], abs=1e-6)
+
+
+def test_position_covariance_enu_rotates_each_dog_into_its_own_frame():
+    config = ms.run_config("ar1_drift")
+    model = ms.build_model(config)
+    CDOG_reference = np.array(config["CDOG_reference"])
+    aug = model["layout"]["CDOG_aug"]
+    rng = np.random.default_rng(0)
+    theta = np.tile(model["start_theta"], (4000, 1))
+    # DOG 3 moves only along its local up (sd 0.1 m), DOG 4 only east (sd 0.2 m).
+    for j, sd, axis in ((1, 0.1, 2), (2, 0.2, 0)):
+        start = aug.start + 3 * j
+        lat, lon, _ = ecef2geodetic(*(theta[0, start : start + 3] + CDOG_reference))
+        direction = enu_rotation(lat, lon)[axis]
+        theta[:, start : start + 3] += sd * rng.normal(size=(4000, 1)) * direction
+
+    rows = position_covariance_enu(theta, model, CDOG_reference)
+    names = [row["quantity"] for row in rows]
+    covariance = np.array([[row[name] for name in names] for row in rows])
+
+    assert names[3:6] == ["DOG3_E", "DOG3_N", "DOG3_U"]
+    np.testing.assert_allclose(covariance, covariance.T)
+    expected_diagonal = [0, 0, 0, 0, 0, 0.01, 0.04, 0, 0]
+    np.testing.assert_allclose(np.diag(covariance), expected_diagonal, atol=2e-3)
+    assert covariance[3, 5] == pytest.approx(0.0, abs=1e-8)
 
 
 def test_old_plot_helpers_read_the_new_prior():

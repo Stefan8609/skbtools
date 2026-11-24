@@ -14,6 +14,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     NOMINAL_SOUND_SPEED_MPS,
 )
 from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
+from Inversion_Workflow.Inversion.Numba_xAline import pair_indices
 from Inversion_Workflow.PuertoRico.Crossover_Mask import crossover_leg_mask
 from geometry.Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 from puertorico_data import gps_data_path, gps_output_path
@@ -24,53 +25,6 @@ PAIR_OUTLIER_THRESHOLD_SECONDS = 0.002
 PAIR_OUTLIER_HALF_WINDOW = 10
 PAIR_OUTLIER_MAD_MULTIPLIER = 10.0
 PAIR_OUTLIER_SEGMENT_GAP_SECONDS = 60.0
-
-
-@njit(cache=True)
-def find_fixed_pair_indices(
-    offset,
-    threshold,
-    CDOG_data,
-    GPS_data,
-    GPS_travel_times,
-):
-    """Find nearest one-to-one CDOG and GPS pairs using the initial model."""
-    max_pairs = min(CDOG_data.shape[0], GPS_data.shape[0])
-    cdog_indices = np.empty(max_pairs, dtype=np.int64)
-    gps_indices = np.empty(max_pairs, dtype=np.int64)
-
-    CDOG_times = CDOG_data[:, 0] + CDOG_data[:, 1] - offset
-    GPS_times = GPS_data + GPS_travel_times
-    cdog_pointer = 0
-    count = 0
-
-    for gps_pointer in range(GPS_data.shape[0]):
-        lower = GPS_times[gps_pointer] - threshold
-        upper = GPS_times[gps_pointer] + threshold
-
-        while cdog_pointer < CDOG_data.shape[0] and CDOG_times[cdog_pointer] <= lower:
-            cdog_pointer += 1
-
-        if cdog_pointer == CDOG_data.shape[0]:
-            break
-
-        candidate = cdog_pointer
-        best_pointer = -1
-        best_difference = np.inf
-        while candidate < CDOG_data.shape[0] and CDOG_times[candidate] < upper:
-            difference = abs(GPS_times[gps_pointer] - CDOG_times[candidate])
-            if difference < best_difference:
-                best_pointer = candidate
-                best_difference = difference
-            candidate += 1
-
-        if best_pointer >= 0:
-            cdog_indices[count] = best_pointer
-            gps_indices[count] = gps_pointer
-            cdog_pointer = best_pointer + 1
-            count += 1
-
-    return cdog_indices[:count], gps_indices[:count]
 
 
 @njit(cache=True)
@@ -347,7 +301,7 @@ def mcmc_sampler(
         survey_GPS_data = GPS_data[start:end]
         survey_travel_times = travel_times_curr[start:end]
 
-        cdog_indices, gps_indices = find_fixed_pair_indices(
+        cdog_indices, gps_indices = pair_indices(
             offsets[survey],
             PAIR_THRESHOLD_SECONDS,
             CDOG_all_data[survey],
