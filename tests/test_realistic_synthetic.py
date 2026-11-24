@@ -224,3 +224,21 @@ def test_amplitude_cells_are_labelled_and_budget_groups_follow_the_set():
     assert np.linalg.norm(knobs["current_mps"]) == pytest.approx(0.11)
     with pytest.raises(KeyError):
         ens.experiment_cells("budget", "models_middle")
+
+
+def test_synthetic_mcmc_budget_knobs(monkeypatch):
+    """Budget runs: the floor plus one group, same directions as the full preset."""
+    from Inversion_Workflow.Synthetic import Realistic_Synthetic_MCMC as sm
+
+    monkeypatch.setattr(sm, "ONLY", None)
+    full = sm.survey_knobs(3)
+    monkeypatch.setattr(sm, "ONLY", "current_steady")
+    knobs = sm.survey_knobs(3)
+    assert knobs["current_mps"] == full["current_mps"]
+    assert knobs["dropouts"] == "real_pattern" and knobs["timing_noise_s"] > 0
+    assert "dc_series" not in knobs
+    monkeypatch.setattr(sm, "ONLY", "esv_profile")
+    assert set(sm.survey_knobs(3)) == {"timing_noise_s", "dropouts", "track"}
+    monkeypatch.setattr(sm, "ONLY", "transmit")
+    with pytest.raises(ValueError, match="SYN_ONLY"):
+        sm.survey_knobs(3)

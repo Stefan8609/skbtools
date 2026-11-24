@@ -11,10 +11,15 @@ seed gives the same ocean, ship errors and DOG prior centres on every track and
 variant. ``ONLY`` runs the error budget: one source group of the preset
 (``BUDGET_GROUPS`` of the ensemble) switched on alone over the measurement floor
 (``FLOOR_GROUPS``: timing noise and the real dropout pattern, so every budget run has
-the full run's pings and a noise level), or the floor alone ("floor"). Only what the
-real data supply from outside the sampler is replaced:
+the full run's pings and a noise level), or the floor alone ("floor").
+``"esv_profile"`` is the one budget entry that is not a knob: the floor survey
+inverted with ``PROFILE_ERROR_TABLE``, an ESV table from the reference profile
+perturbed by a 10 m mode-1 internal-wave heave, so the inversion's sound-speed
+profile has the wrong shape. Only what the real data supply from outside the sampler
+is replaced:
 
-- ESV table: ``INVERSION_TABLE`` of the ensemble (the generation table).
+- ESV table: ``INVERSION_TABLE`` of the ensemble (the generation table), or
+  ``PROFILE_ERROR_TABLE`` for "esv_profile".
 - DOG prior centres and start: truth + N(0, ``PRIOR_CENTER_ERROR_SD_M``) per axis, as
   the real prior centres are Gauss-Newton guesses within metres of the solution.
 - Alignment offsets: the true clock offset rounded to ``OFFSET_ROUND_S`` (the dt prior,
@@ -28,8 +33,9 @@ Outputs go to ``OUTPUT_DIR`` = ``Bermuda_Data/Output/MCMC_Synthetic``.
 on real data) and the truth to ``<run>/seed<seed>_truth.npz``. ``summarize`` pools
 the chains of every seed and writes ``<run>.csv``: per seed and DOG, the ENU error
 of the posterior mean, the posterior sd, whether the central 68 % and 95 % intervals
-hold the truth, the same for the lever arm and dt, the dc error, the number of
-pairs, and the max R-hat.
+hold the truth, the same for the lever arm and dt, the dc error, the posterior mean
+of the residual sd and AR(1) phi (the residual each source leaves after the fit),
+the number of pairs, and the max R-hat.
 """
 
 import csv
@@ -38,6 +44,7 @@ import os
 
 import numpy as np
 
+from acoustics.synthetic_esv_tables import ESV_MODERATE
 from bermuda_data import gps_output_path
 from Inversion_Workflow.MCMC_Functions.MCMC_diagnostics import (
     rank_normalized_split_rhat,
@@ -47,6 +54,7 @@ from Inversion_Workflow.MCMC_Functions.MCMC_sampler import (
     build_problem,
     esv_bias_matrix,
     load_chain,
+    noise_parameters,
     RUN_VARIANTS,
     run_chain,
     run_config,
@@ -74,9 +82,11 @@ PRESET = "random"
 AMPLITUDE_SET = "guess"  # "guess" | "models_low" | "models_high" (Ensemble AMPLITUDES)
 TRACK = os.environ.get("SYN_TRACK", "bermuda")  # bermuda | circle | grid | cross
 RUN_VARIANT = os.environ.get("SYN_RUN", "ar1_common30")
-# None: the full preset. "floor", or a BUDGET_GROUPS group other than the floor's.
+# None: the full preset. "floor", "esv_profile", or a BUDGET_GROUPS group other
+# than the floor's.
 ONLY = os.environ.get("SYN_ONLY") or None
 FLOOR_GROUPS = ("timing_noise", "dropouts")
+PROFILE_ERROR_TABLE = ESV_MODERATE
 N_SURVEYS = 20
 N_CHAINS = 2
 FIRST_SEED = 0
@@ -100,12 +110,14 @@ def survey_knobs(seed):
         knobs = full_preset(PRESET, AMPLITUDE_SET)
     else:
         groups = [group for group in BUDGET_GROUPS if group not in FLOOR_GROUPS]
-        if ONLY != "floor" and ONLY not in groups:
+        if ONLY not in ("floor", "esv_profile", *groups):
             raise ValueError(
-                f"SYN_ONLY must be 'floor' or one of {groups}; got {ONLY!r}"
+                f"SYN_ONLY must be 'floor', 'esv_profile' or one of {groups}; "
+                f"got {ONLY!r}"
             )
         knobs = {}
-        for group in FLOOR_GROUPS + (() if ONLY == "floor" else (ONLY,)):
+        added = (ONLY,) if ONLY in groups else ()
+        for group in FLOOR_GROUPS + added:
             knobs.update(preset_group_knobs(PRESET, group, AMPLITUDE_SET))
     return {**with_random_directions(knobs, seed), "track": TRACK}
 
@@ -113,8 +125,9 @@ def survey_knobs(seed):
 def synthetic_problem(seed):
     """Sampler model, problem and truth for the survey of one seed."""
     knobs = survey_knobs(seed)
+    inversion_table = PROFILE_ERROR_TABLE if ONLY == "esv_profile" else INVERSION_TABLE
     tables_gen = load_table(GENERATION_TABLE)
-    tables_inv = load_table(INVERSION_TABLE)
+    tables_inv = load_table(inversion_table)
     # All three DOGs are generated (and prior centres drawn) whatever DOGs the
     # variant samples, so a per-DOG run sees the joint run's survey.
     surveys = [realistic_synthetic(dog, knobs, seed, *tables_gen) for dog in DOGS]
@@ -141,7 +154,7 @@ def synthetic_problem(seed):
             **lever_center,
             "run_name": run_name(),
             "dogs": list(dogs),
-            "esv_table": f"ESV_Tables/{INVERSION_TABLE}.mat",
+            "esv_table": f"ESV_Tables/{inversion_table}.mat",
             "gps_file": f"synthetic seed {seed}, {run_name()}",
             "CDOG_reference": SITE_ORIGIN_ECEF.tolist(),
             "gps1_to_others": GPS1_TO_OTHERS.tolist(),
@@ -245,6 +258,7 @@ def summarize(seeds):
         lever = np.concatenate([c["lever"] for c in chains])
         dt = np.concatenate([c["dt"] for c in chains])
         dc = esv_bias_matrix(theta, model)
+        sigma, phi = np.array([noise_parameters(t, model) for t in theta]).mean(axis=0)
 
         lever_in68, lever_in95 = interval_flags(lever, truth["lever"])
         for j, dog in enumerate(truth["dogs"]):
@@ -280,6 +294,8 @@ def summarize(seeds):
             dc_err = dc[:, j].mean(axis=0) - truth["dc_window_mps"][j]
             row["dc_mean_err_mps"] = np.nanmean(dc_err)
             row["dc_window_rms_err_mps"] = np.sqrt(np.nanmean(dc_err**2))
+            row["sigma_cm"] = sigma[j]
+            row["phi"] = phi[j]
             rows.append(row)
     if not rows:
         print("no finished seeds")

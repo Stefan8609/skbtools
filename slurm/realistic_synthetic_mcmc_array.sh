@@ -9,8 +9,9 @@
 # default bermuda) picks the ship track and SYN_RUN a variant of RUN_VARIANTS in
 # MCMC_sampler.py (default ar1_common30; e.g. ar1_common30_legs, ar1_common30_dog3).
 # SYN_ONLY (error budget) switches one source group on alone over the measurement
-# floor (timing noise and real dropouts), or "floor" for the floor alone; unset runs
-# the full preset.
+# floor (timing noise and real dropouts), "floor" for the floor alone, or
+# "esv_profile" for the floor inverted with a wrongly shaped sound-speed profile
+# (10 m mode-1 heave); unset runs the full preset.
 # Seed s is the same survey (ocean, ship errors, prior centres) on every track and
 # variant, so results pair by seed. Chains go to
 # Bermuda_Data/Output/MCMC_Synthetic/mcmc_<run>_<preset>_<track>[_only_<group>][_<amplitudes>]/;

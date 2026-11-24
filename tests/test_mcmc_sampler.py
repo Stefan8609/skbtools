@@ -508,6 +508,13 @@ def test_repeatability_variants():
         assert max(config["prior_lever_sd_m"]) <= 0.001
     config = ms.run_config("ar1_common30_dog4")
     assert config["dogs"] == [4] and config["esv_model"] == "common_windows"
+    for suffix in ("", "_legs"):
+        pinned = ms.run_config(f"ar1_common30{suffix}_dog4_pinlever")
+        plain = ms.run_config(f"ar1_common30{suffix}_dog4")
+        assert pinned["dogs"] == [4]
+        assert pinned["gps_leg_windows_h"] == plain["gps_leg_windows_h"]
+        assert pinned["prior_lever_center_m"] == ms.FINAL_LEVER_M
+        assert max(pinned["prior_lever_sd_m"]) <= 0.001
     assert ms.CONFIG["gps_time_blocks"] is None
 
 

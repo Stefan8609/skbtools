@@ -330,10 +330,17 @@ for _dog in (1, 3, 4):
     RUN_VARIANTS[f"ar1_dog{_dog}"] = {"likelihood": "ar1", **select_dogs([_dog])}
     # Per-DOG lever arm under the final model (30-min windows, one DOG, so the
     # "common" series is that DOG's own dc(t); sparse windows merge as usual).
+    # With the lever pinned at the joint value, a DOG's change from the joint run
+    # comes from its own dc(t), offset and dt alone; on the legs, pinning also
+    # removes the lever-arm/horizontal degeneracy of two headings.
     for _suffix in ("", "_legs"):
         RUN_VARIANTS[f"ar1_common30{_suffix}_dog{_dog}"] = {
             **RUN_VARIANTS[f"ar1_common30{_suffix}"],
             **select_dogs([_dog]),
+        }
+        RUN_VARIANTS[f"ar1_common30{_suffix}_dog{_dog}_pinlever"] = {
+            **RUN_VARIANTS[f"ar1_common30{_suffix}_dog{_dog}"],
+            **PINNED_LEVER,
         }
 
 
