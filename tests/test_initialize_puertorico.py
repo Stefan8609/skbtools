@@ -1,13 +1,23 @@
 import numpy as np
+import pytest
 from pymap3d import Ellipsoid, ecef2geodetic
 
 from Inversion_Workflow.PuertoRico.Initialize_PuertoRico_Data import (
     CDOG_guess,
+    clock_files,
     find_valid_receivers,
     gps1_to_others,
     initial_lever_guess,
     load_cdog_data,
     reconstruct_gps_grid,
+)
+from puertorico_data import gps_data_path
+
+needs_cdog_data = pytest.mark.skipif(
+    not all(
+        gps_data_path(f"CDOG_Data/{name}").exists() for name in clock_files.values()
+    ),
+    reason="Puerto Rico C-DOG data not present",
 )
 
 
@@ -87,6 +97,7 @@ def test_triplet_reconstructs_four_receiver_grid():
     assert np.allclose(fitted[0], expected, atol=1e-9)
 
 
+@needs_cdog_data
 def test_cdog_clock_segments_have_separate_adjustments():
     before = load_cdog_data("before")
     after = load_cdog_data("after")

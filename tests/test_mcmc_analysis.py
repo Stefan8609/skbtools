@@ -149,8 +149,10 @@ def test_linearized_comparison_leaves_out_an_esv_split_without_data():
     offsets = np.array(config["offsets_s"])
     CDOG_reference = np.array(config["CDOG_reference"])
 
-    # 40 s of a 1 km circle barely separates lever arm from DOG position, so the
-    # formal covariance is near-singular; only its NaN pattern is tested here.
+    # One DOG under a level vessel cannot separate lever_z from DOG depth, nor
+    # (equal slant ranges) time bias from ESV bias, so the formal covariance is
+    # singular to working precision. Its other entries are roundoff that can come
+    # out NaN depending on the LAPACK build; only the masking is tested here.
     with np.errstate(invalid="ignore"):
         sd_rows, _, condition = linearized_comparison(
             theta, logpost, model, problem, offsets, CDOG_reference
@@ -161,5 +163,3 @@ def test_linearized_comparison_leaves_out_an_esv_split_without_data():
     formal_sd = {row["quantity"]: row["formal_iid_sd"] for row in sd_rows}
     for name in ("DOG1_dc_split2", "DOG1_dc_mean"):
         assert np.isnan(formal_sd[name])
-    for name in ("lever_z", "DOG1_U_minus_Table1", "DOG1_dt_Eq6", "DOG1_dc_split0"):
-        assert np.isfinite(formal_sd[name])

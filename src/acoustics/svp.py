@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import xarray as xr
 
 from scipy.interpolate import PchipInterpolator
 
@@ -130,6 +129,9 @@ def DelGrosso_SV(S, T, P):
 
 
 if __name__ == "__main__":
+    # xarray is an optional dependency (puertorico extra), needed only here.
+    import xarray as xr
+
     latitude = 19.000
     longitude = -66.3333
 
