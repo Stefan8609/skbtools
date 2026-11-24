@@ -14,13 +14,13 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     NOMINAL_SOUND_SPEED_MPS,
 )
 from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
-from Inversion_Workflow.Inversion.Numba_xAline import pair_indices
+from Inversion_Workflow.Inversion.Numba_xAline import PAIRING_GATE_S, pair_indices
+from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import residual_inliers
 from Inversion_Workflow.PuertoRico.Crossover_Mask import crossover_leg_mask
 from geometry.Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 from puertorico_data import gps_data_path, gps_output_path
 
 
-PAIR_THRESHOLD_SECONDS = 0.05
 PAIR_OUTLIER_THRESHOLD_SECONDS = 0.002
 PAIR_OUTLIER_HALF_WINDOW = 10
 PAIR_OUTLIER_MAD_MULTIPLIER = 10.0
@@ -36,7 +36,12 @@ def filter_pair_outliers(
     cdog_indices,
     gps_indices,
 ):
-    """Remove isolated timing residuals using a local median and MAD."""
+    """Remove isolated timing residuals using a local median and MAD.
+
+    The survivors then pass the 6-MAD rule of the inversion (``residual_inliers``),
+    which catches a mismatched pair alone in its segment, where the local median is
+    the pair itself.
+    """
     pair_count = cdog_indices.shape[0]
     residuals = np.empty(pair_count)
     keep = np.ones(pair_count, dtype=np.bool_)
@@ -79,6 +84,8 @@ def filter_pair_outliers(
 
         segment_start = segment_end
 
+    kept = np.flatnonzero(keep)
+    keep[kept[~residual_inliers(residuals[kept])]] = False
     return cdog_indices[keep], gps_indices[keep]
 
 
@@ -303,7 +310,7 @@ def mcmc_sampler(
 
         cdog_indices, gps_indices = pair_indices(
             offsets[survey],
-            PAIR_THRESHOLD_SECONDS,
+            PAIRING_GATE_S,
             CDOG_all_data[survey],
             survey_GPS_data - tbias_curr[survey],
             survey_travel_times,

@@ -5,10 +5,9 @@ import numpy as np
 
 from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-from Inversion_Workflow.Inversion.Numba_xAline import pair_indices
+from Inversion_Workflow.Inversion.Numba_xAline import PAIRING_GATE_S, pair_indices
 from Inversion_Workflow.PuertoRico.Crossover_Mask import crossover_leg_mask
 from Inversion_Workflow.PuertoRico.PuertoRico_MCMC_sampler import (
-    PAIR_THRESHOLD_SECONDS,
     calculate_travel_times,
     filter_pair_outliers,
 )
@@ -126,7 +125,7 @@ def plot_best_sample(
     offsets = np.array([-19.32504165, -7458.62104948])
     cdog_indices, gps_indices = pair_indices(
         offsets[survey],
-        PAIR_THRESHOLD_SECONDS,
+        PAIRING_GATE_S,
         CDOG_data,
         GPS_data - initial_time_bias,
         initial_times,

@@ -2,6 +2,7 @@ import numpy as np
 
 
 from Inversion_Workflow.Inversion.Numba_xAline import (
+    PAIRING_GATE_S,
     filter_close_receptions,
     find_subint_offset,
     two_pointer_index,
@@ -96,7 +97,13 @@ def simulated_annealing_bias(
     )
 
     CDOG_full, GPS_clock, GPS_full = two_pointer_index(
-        offset, 0.5, CDOG_data, GPS_data, times_guess, transponder_coordinates, esv
+        offset,
+        PAIRING_GATE_S,
+        CDOG_data,
+        GPS_data,
+        times_guess,
+        transponder_coordinates,
+        esv,
     )[1:4]
     best_rmse = np.sqrt(np.nanmean((GPS_full - CDOG_full) ** 2))
 

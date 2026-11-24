@@ -20,8 +20,6 @@ simulated_annealing = True
 save = True
 
 derivative_gap = 5.0
-preliminary_gate = 0.2
-final_gate = 0.05
 
 receiver_names = np.array(["PF", "SF", "PA", "SA"])
 receiver_sets = (

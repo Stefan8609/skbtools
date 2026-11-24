@@ -8,7 +8,10 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
 )
 from Inversion_Workflow.Forward_Model.Find_ESV import load_esv_table
 from Inversion_Workflow.Forward_Model.Find_Transponder import findTransponder
-from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
+from Inversion_Workflow.Inversion.Numba_xAline import (
+    PAIRING_GATE_S,
+    two_pointer_index,
+)
 from Inversion_Workflow.Inversion.Numba_xAline_Annealing_bias import (
     simulated_annealing_bias,
 )
@@ -296,7 +299,7 @@ def run_inversion():
         esv_full,
     ) = two_pointer_index(
         best_offset,
-        0.05,
+        PAIRING_GATE_S,
         CDOG_data,
         GPS_data - time_bias,
         times_guess,
