@@ -7,6 +7,7 @@ from bermuda_data import gps_data_path, gps_output_path
 
 
 def running_median(data, window=50):
+    """Centred running median over ``window`` samples."""
     half = window // 2
     n = len(data)
     result = np.empty(n)
@@ -18,6 +19,7 @@ def running_median(data, window=50):
 
 
 def running_abs_dev(data, window=50):
+    """Centred running median absolute deviation over ``window`` samples."""
     half = window // 2
     n = len(data)
     result = np.empty(n)
@@ -31,6 +33,7 @@ def running_abs_dev(data, window=50):
 
 
 def load_and_process_data(path, GNSS_start, GNSS_end):
+    """Times (s) and positions of one receiver between GNSS_start and GNSS_end (h)."""
     data = sio.loadmat(path)
     days = data["days"].flatten() - 59015
     times = data["times"].flatten()
@@ -48,6 +51,7 @@ def load_and_process_data(path, GNSS_start, GNSS_end):
 
 
 def load_common_filtered_data(GNSS_start=25, GNSS_end=39):
+    """Positions of the four Bermuda receivers on their common epochs."""
     paths = [
         gps_data_path("GPS_Data/Unit1-camp_bis.mat"),
         gps_data_path("GPS_Data/Unit2-camp_bis.mat"),
@@ -86,6 +90,7 @@ def save_elevation_plot_cache(
     elev_lower=-38,
     save_path="bermuda_elevation_plot_cache.npz",
 ):
+    """Save the filtered receiver heights and filter bands to ``save_path``."""
     filtered_data = load_common_filtered_data(GNSS_start, GNSS_end)
 
     coarse_mask = np.array(
@@ -143,6 +148,7 @@ def plot_elevation_density_from_cache(
     figsize=(14, 8),
     save_path=None,
 ):
+    """Hexbin density plot of the cached receiver heights."""
     cache = np.load(cache_path)
 
     fig, axs = plt.subplots(2, 2, figsize=figsize, sharex=True, sharey=True)

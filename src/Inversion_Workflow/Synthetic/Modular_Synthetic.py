@@ -55,7 +55,7 @@ BERMUDA_GPS1_TO_OTHERS = np.array(
         [-8.70446831, 5.165195, 0.04880436],
     ]
 )
-# A recovered clock offset (Eq. 6 dt) further than this from the truth is a failure.
+# A recovered clock offset dt further than this from the truth is a failure.
 OFFSET_FAIL_S = 0.01
 
 
@@ -81,9 +81,8 @@ def modular_synthetic(
     ``true_offset`` is the DOG clock offset in seconds put into the synthetic data;
     it is drawn from U(1000, 10000) s when None. It is never given to the inversion.
 
-    ``in_drift_rate`` is the true clock drift (s/s, Eq. 6 convention) put into the
-    synthetic data; ``clock_drift`` adds drift_rate to the inversion as a sixth
-    entry of ``inversion_result``.
+    ``in_drift_rate`` is the true clock drift (s/s); ``clock_drift`` adds drift_rate
+    to the inversion as a sixth entry of ``inversion_result``.
     """
     np.set_printoptions(suppress=True)
     # ESV tables for generation and inversion
@@ -156,8 +155,7 @@ def modular_synthetic(
             drift_rate=in_drift_rate,
         )
 
-        # Paper I synthetics use the full trajectory, downsampled. The leg mask
-        # (9-11 h and 12.4-15 h, not downsampled) is a sensitivity test only.
+        # Full trajectory, downsampled; the leg mask is a sensitivity test only.
         if use_leg_mask:
             keep = leg_mask(GPS_data)
         else:
@@ -166,8 +164,8 @@ def modular_synthetic(
         GPS_data = GPS_data[keep]
         true_transponder_coordinates = true_transponder_coordinates[keep]
         z_sample = True
-    # The DOG clock offset of Eq. 6 is offset + time_bias at generation, and
-    # offset - time_bias at inversion; only this combination is identified.
+    # Only the clock offset dt is identified: offset + time_bias at generation,
+    # offset - time_bias at inversion.
     true_dt = true_offset + in_time_bias
     print("True clock offset", true_dt)
     # Inversion:
@@ -363,8 +361,8 @@ def synthetic_trials(
     """Repeat ``modular_synthetic`` with an unknown clock offset and summarize.
 
     Each trial draws a new true offset, noise and starting guesses. A trial that
-    raises is recorded as NaN. Returns per-trial arrays: ``dt_error_s`` (Eq. 6
-    clock offset error), ``residual_std_cm`` and ``residual_mean_cm`` (c times the
+    raises is recorded as NaN. Returns per-trial arrays: ``dt_error_s`` (clock
+    offset error), ``residual_std_cm`` and ``residual_mean_cm`` (c times the
     CDOG-GPS residual), ``position_error_cm`` (CDOG, 3-D) and ``lever_error_cm``.
     Saved to ``Plot_Data/<save_name>.npz`` when ``save_name`` is given.
     """

@@ -1,4 +1,4 @@
-"""Helpers of plot_tests/_figure_common.py (vessel frame, intervals, Eq. B36)."""
+"""Helpers of plot_tests/_figure_common.py (vessel frame, intervals, ranging sd)."""
 
 import numpy as np
 import pytest

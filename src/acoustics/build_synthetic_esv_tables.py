@@ -1,20 +1,10 @@
 """Build the ESV tables used by the synthetic experiments, all on one grid.
 
-``synth_ref`` (generation) and the perturbed tables (inversion) share the dz range,
-angle range and step, and transducer depth; only the sound-speed profile differs.
-The legacy ``global_table_esv*.mat`` tables are not touched.
-
-Grid choices
-------------
-dz: 5100-5350 m, 1 m step. The Bermuda trajectory queries dz = 5198.9-5225.7 m over
-DOG 1/3/4 and the unaligned generator about 5195-5245 m, so the margin is at least
-99 m below and 124 m above. That also covers the +-150 m excursions of the
-inversion's initial DOG guess (50 m per axis) and lever-arm trials.
-Angle: 10-90 deg; the Bermuda geometry spans 22.9-89.8 deg and the unaligned
-generator down to about 16 deg. The step (0.1 deg below 25 deg, 0.25 deg above) is
-chosen by ``check_interpolation_error``
-so that bilinear interpolation of the table changes the travel time by far less
-than the 20 us timing noise (lookup error: max 2.9 us, rms 0.3 us).
+``synth_ref`` (generation) and the perturbed tables (inversion) differ only in the
+sound-speed profile. Grid: dz 5100-5350 m in 1 m steps (the synthetics query
+~5195-5245 m) and 10-90 deg in 0.1 deg steps below 25 deg, 0.25 deg above, which
+keeps the bilinear lookup error (rms 0.3 us, see ``check_interpolation_error``) far
+below the 20 us timing noise.
 """
 
 import numpy as np

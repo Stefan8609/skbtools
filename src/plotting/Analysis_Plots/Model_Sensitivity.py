@@ -1,11 +1,9 @@
-"""FIG-5: each DOG's position under each model, as dots with error bars.
+"""Each DOG's position under each model, as dots with error bars.
 
-Shows how much the Bermuda positions depend on the dc and clock model, next to the
-posterior widths. For every run in ``RUNS`` that has an
-``analysis/posterior_summary.csv`` (written by ``MCMC_posterior_summary``), plots the
-posterior mean of E, N, U minus the submitted Table 1, with +-1 sd (thick) and the
-95 % interval (thin). Runs without chains are skipped, so the half-split and per-DOG
-runs appear once they exist. Run from the repository root with PYTHONPATH=src.
+For every run in ``RUNS`` with an ``analysis/posterior_summary.csv``, plots the
+posterior mean E, N, U minus the submitted Table 1 position, with +-1 sd (thick) and
+the 95 % interval (thin). Runs without chains are skipped. Run from the repository
+root with PYTHONPATH=src.
 """
 
 import csv

@@ -1,16 +1,9 @@
-"""Names of the ESV tables behind the synthetic experiments (App. B, Figs. B8-B11).
+"""Names of the ESV tables behind the synthetic experiments.
 
-``SYNTHETIC_ESV_TABLES`` selects the set every synthetic driver uses:
-
-- ``"new"``: tables from ``build_synthetic_esv_tables.py``. Generation and inversion
-  tables share one grid that covers the synthetic geometry, and the inversion tables
-  differ from the generation table only by a physically motivated sound-speed
-  perturbation (``svp_perturbation.py``).
-- ``"submitted"``: the tables behind the submitted figures. They do not cover the DOG
-  depth, so inversion lookups are clamped to the table edge (SYNTHETIC_AUDIT.md, G8).
-
-``moderate`` replaces ``global_table_esv_perturbed`` (B8, B9, B11); ``strong``
-replaces ``global_table_esv_realistic_perturbed`` (B10).
+``SYNTHETIC_ESV_TABLES`` selects the set every synthetic driver uses: ``"new"``
+(``build_synthetic_esv_tables.py``: one grid, inversion tables perturbed with
+``svp_perturbation.py``) or ``"submitted"`` (the original tables, which do not cover
+the DOG depth, so lookups clamp to the table edge).
 """
 
 SYNTHETIC_ESV_TABLES = "new"

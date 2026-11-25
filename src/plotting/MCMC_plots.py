@@ -743,7 +743,7 @@ def corner_plot(
 
 
 if __name__ == "__main__":
-    # Fig. 7 of Paper I: campaign = "bermuda", "mcmc_chain_1_22_new_MCMC_long".
+    # Fig. 7: campaign = "bermuda", "mcmc_chain_1_22_new_MCMC_long".
     campaign = "puertorico"
     file_name = "mcmc_chain_puertorico_cross"
     if campaign == "bermuda":

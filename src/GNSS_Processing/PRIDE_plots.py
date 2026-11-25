@@ -5,9 +5,11 @@ from bermuda_data import gps_data_path
 
 
 def load_simple(path_mat):
+    """Dict of lon, lat, ht, pdop, nsats and t arrays from a PRIDE .mat file."""
     m = loadmat(path_mat, squeeze_me=True, struct_as_record=False)
 
     def a(name):
+        """Field ``name`` of the .mat file as a float array."""
         if name not in m:
             raise KeyError(f"Missing '{name}' in {path_mat}")
         return np.squeeze(np.asarray(m[name], dtype=float))
@@ -37,6 +39,7 @@ def load_simple(path_mat):
 
 
 def plot_GNSS(path, nthresh=4, pthresh=15.0, downsample=1, save=False, show=False):
+    """Plot the track, height, PDOP and satellite count of a PRIDE .mat file."""
     data = load_simple(path)
 
     lon = np.asarray(data["lon"], dtype=float)[::downsample]

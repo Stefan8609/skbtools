@@ -1,20 +1,18 @@
 """Survey map.
 
 Question: where are the DOGs, and how did the vessel sail over them?
-Message: three DOGs about 2 km apart on a nearly flat seafloor 5.2 km deep; the
-vessel crossed the array on an hourglass track with a third diagonal leg, reaching
-9 km from the centre of the array.
+Message: three DOGs ~2 km apart on a flat seafloor 5.2 km deep, crossed by an
+hourglass track with a diagonal leg.
 
-The bathymetry is drawn cell by cell on the GEBCO 2025 grid (15 arc-seconds, depth
-below mean sea level), without interpolation or smoothing.
-
-Inputs: processed GNSS epochs, the final MCMC run (DOG positions), the GEBCO grid.
+Inputs: processed GNSS epochs, the final MCMC run, the GEBCO 2025 grid (drawn cell
+by cell, unsmoothed).
 """
 
 import matplotlib.patheffects as patheffects
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.collections import LineCollection
+from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.ticker import FormatStrFormatter, MultipleLocator
 from pymap3d import ecef2geodetic
 
@@ -25,6 +23,7 @@ NAME = "fig01_survey_geometry"
 PROCESSED_FILE = fc.REPO / "Bermuda_Data/GPS_Data/Processed_GPS_Receivers_DOG_1.npz"
 GEBCO_GRID = fc.REPO / "Bermuda_Data/gebco_2025_bermuda_region_ascii.asc"
 HALF_WIDTH_DEG = (0.095, 0.115)  # longitude, latitude half-widths of the map
+FONT_PT = 10.0  # larger than the 8 pt of the other figures: the map has little text
 TRACK_GAP_S = 60.0  # the track line is broken where GNSS epochs are missing
 # Ocean blues, light (shallow) to dark (deep); kept light enough for black labels.
 OCEAN = LinearSegmentedColormap.from_list(
@@ -32,6 +31,8 @@ OCEAN = LinearSegmentedColormap.from_list(
 )
 DOG_MARKER = {"marker": "^", "ms": 7.0, "mfc": "#ffd23f", "mec": "black", "mew": 0.8}
 LABEL_OFFSET_PT = {1: (-8, 4), 3: (9, 0), 4: (-8, -6)}  # clear of the track
+TRACK_CMAP = "plasma"  # time along the track; warm colours stand out on the blues
+TRACK_EDGE = [patheffects.withStroke(linewidth=2.2, foreground="black")]
 HALO = [patheffects.withStroke(linewidth=2.0, foreground="white")]
 
 
@@ -55,8 +56,21 @@ def gebco_cells(centre_lat, centre_lon):
 
 
 def main():
+    """Draw and save the figure."""
     st.apply()
     plt.rcParams["axes.grid"] = False
+    plt.rcParams.update(
+        {
+            key: FONT_PT
+            for key in (
+                "font.size",
+                "axes.labelsize",
+                "xtick.labelsize",
+                "ytick.labelsize",
+                "legend.fontsize",
+            )
+        }
+    )
     processed = np.load(PROCESSED_FILE)
     pooled = fc.pooled_run(fc.FINAL_RUN)
     dog_ecef = pooled["CDOG_reference"] + pooled["CDOG_aug"].mean(axis=0)
@@ -66,18 +80,34 @@ def main():
     track_lat, track_lon, _ = ecef2geodetic(
         *processed["GPS_Coordinates"].mean(axis=1).T
     )
-    gaps = np.flatnonzero(np.diff(processed["GPS_data"]) > TRACK_GAP_S) + 1
-    track_lon = np.insert(track_lon, gaps, np.nan)
-    track_lat = np.insert(track_lat, gaps, np.nan)
+    track_hours = st.hours(processed["GPS_data"])
+    points = np.column_stack([track_lon, track_lat])
+    connected = np.diff(processed["GPS_data"]) <= TRACK_GAP_S
+    segments = np.stack([points[:-1], points[1:]], axis=1)[connected]
 
-    fig, ax = st.figure(st.SINGLE_MM, 84.0)
+    fig, ax = st.figure(st.MEDIUM_MM, 119.0)
+    fig.get_layout_engine().set(w_pad=0.08)
     lon_edges, lat_edges, depth = gebco_cells(centre_lat, centre_lon)
     cells = ax.pcolormesh(lon_edges, lat_edges, depth, cmap=OCEAN, rasterized=True)
-    colourbar = fig.colorbar(cells, ax=ax, shrink=0.85, aspect=28, pad=0.03)
-    colourbar.set_label("Seafloor depth (m)")
+    colourbar = fig.colorbar(cells, ax=ax, shrink=1.0, aspect=30, pad=0.03)
+    colourbar.set_label("GEBCO depth (m)")
     colourbar.ax.invert_yaxis()  # deeper is lower
 
-    ax.plot(track_lon, track_lat, color="black", lw=1.1, label="Vessel track")
+    ax.add_collection(LineCollection(segments, color="black", lw=2.4, capstyle="round"))
+    track = LineCollection(
+        segments,
+        array=track_hours[:-1][connected],
+        cmap=TRACK_CMAP,
+        norm=Normalize(*st.TIME_LIMITS_H),
+        lw=1.4,
+        capstyle="round",
+    )
+    ax.add_collection(track)
+    time_bar = fig.colorbar(
+        track, ax=ax, location="top", shrink=0.95, aspect=32, pad=0.03
+    )
+    time_bar.set_label(st.TIME_LABEL)
+    time_bar.set_ticks(st.TIME_TICKS_H)
     for dog, lon, lat in zip(st.DOGS, dog_lon, dog_lat, strict=True):
         ax.plot(lon, lat, ls="", zorder=5, **DOG_MARKER)
         offset = LABEL_OFFSET_PT[dog]
@@ -91,8 +121,16 @@ def main():
             path_effects=HALO,
             zorder=6,
         )
+    ax.plot(
+        [],
+        [],
+        color=plt.get_cmap(TRACK_CMAP)(0.5),
+        lw=1.4,
+        path_effects=TRACK_EDGE,
+        label="Vessel track",
+    )
     ax.plot([], [], ls="", label="DOG", **DOG_MARKER)
-    fig.legend(loc="outside upper center", ncols=2, columnspacing=2.5, frameon=False)
+    ax.legend(loc="lower center", ncols=2, columnspacing=2.5, frameon=False)
     ax.set_xlim(centre_lon - HALF_WIDTH_DEG[0], centre_lon + HALF_WIDTH_DEG[0])
     ax.set_ylim(
         centre_lat - HALF_WIDTH_DEG[1] + 0.02, centre_lat + HALF_WIDTH_DEG[1] - 0.02

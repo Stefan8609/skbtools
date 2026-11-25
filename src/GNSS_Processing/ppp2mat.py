@@ -5,6 +5,7 @@ from bermuda_data import gps_data_path
 
 
 def save_mat(input_path, output_path):
+    """Convert a PRIDE PPP kinematic text file to a .mat file."""
     fin = Path(input_path)
     fout = Path(output_path)
     fout.parent.mkdir(parents=True, exist_ok=True)
@@ -15,6 +16,7 @@ def save_mat(input_path, output_path):
     i, n = 0, len(lines)
 
     def looks_data(s):
+        """Whether a line is a numeric data record."""
         if not s or "*" in s:
             return False
         toks = s.split()

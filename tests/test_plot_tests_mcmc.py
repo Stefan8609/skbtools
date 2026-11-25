@@ -1,4 +1,4 @@
-"""Helpers of plot_tests/_figure_common.py used by FX-7 (corner) and FIG-9 (MCMC)."""
+"""Helpers of plot_tests/_figure_common.py used by the MCMC figures."""
 
 import numpy as np
 import pytest

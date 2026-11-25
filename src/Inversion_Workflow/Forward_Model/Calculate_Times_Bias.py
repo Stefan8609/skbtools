@@ -6,8 +6,8 @@ from numba import njit
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from Inversion_Workflow.Forward_Model.Find_ESV import find_esv, find_esv_gradient
 
-# Nominal sound speed (m/s) that turns travel-time residuals into range, as in the
-# paper's c*sigma. Reporting only; the forward model uses the ESV table.
+# Nominal sound speed (m/s) that turns travel-time residuals into range (c*sigma).
+# Reporting only; the forward model uses the ESV table.
 NOMINAL_SOUND_SPEED_MPS = 1515.0
 
 
@@ -17,7 +17,7 @@ def calculateTimesRayTracing_Bias(
 ):
     """Travel times (s) and ESVs (m/s) to each transducer, depths from ECEF z.
 
-    Eq. A18: T = |x - s| / (c_eff(beta, dz) + esv_bias), with beta the elevation
+    T = |x - s| / (c_eff(beta, dz) + esv_bias), with beta the elevation
     angle (deg) and dz the vertical separation (m) looked up in the ESV table. Used
     for the synthetics.
     """
@@ -82,8 +82,7 @@ def esv_gradient(
     h_x geodetic height difference, beta = arcsin(dz / range), with grad h the
     ellipsoid normal). The table's beta is in degrees. Where beta is +-90 degrees
     (vertical path, direction undefined) its gradient is set to 0; the table clamps
-    there. Gives the -(T/c) grad c_eff term of the Jacobian, which the paper's A26
-    leaves out (it holds c_eff fixed).
+    there. Gives the -(T/c) grad c_eff term of the Jacobian.
     """
     to_deg = 180.0 / np.pi
     d = guess - transponder_coordinates  # x - s

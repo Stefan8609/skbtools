@@ -8,6 +8,7 @@ from pymap3d import geodetic2enu
 
 # Quick check against GEBCO data for the same location
 def read_arc_ascii_grid(path):
+    """Header values and data (NaN for no data) of an ESRI ASCII grid."""
     header = {}
     with open(path, "r") as f:
         for _ in range(6):
@@ -35,6 +36,7 @@ def read_arc_ascii_grid(path):
 
 
 def query_depth_nearest(grid, lat, lon):
+    """Elevation and depth (m) of the grid cell nearest (lat, lon)."""
     xll = grid["xll"]
     yll = grid["yll"]
     cell = grid["cellsize"]

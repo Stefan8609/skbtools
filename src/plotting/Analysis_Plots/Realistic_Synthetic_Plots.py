@@ -1,14 +1,9 @@
-"""Figures of the realistic synthetic experiments (FIG-6, FIG-7, per-obstacle figure).
+"""Figures of the realistic synthetic experiments.
 
-- ``obstacle_figure``: for each knob alone, the range residual it leaves at the true
-  DOG position, clock and lever arm, against time and against the ship's azimuth
-  from the DOG (Bermuda track, DOG 3). It shows how each obstacle enters the data
-  before any fit.
-- ``realism_figure`` (FIG-6): (a) residual vs time, real data and synthetic
-  realizations; (b) error budget, position error per obstacle; (c) coverage of the
-  true position by the formal intervals.
-- ``geometry_figure`` (FIG-7): horizontal and vertical errors per track, lever arm
-  fixed vs free.
+- ``obstacle_figure``: the unfitted range residual of each knob alone, against time
+  and ship azimuth (DOG 3).
+- ``realism_figure``: residual vs time, error budget and interval coverage.
+- ``geometry_figure``: horizontal and vertical errors per track, lever fixed vs free.
 
 Inputs are the CSV/npz files of ``Realistic_Synthetic_Ensemble`` and
 ``revision/analysis/realistic_synthetic/real_reference.py``. Run from the
@@ -104,7 +99,7 @@ def obstacle_figure(DOG_num=3, seed=0):
 
 
 def realism_figure():
-    """FIG-6: (a) residual vs time, (b) error budget, (c) coverage."""
+    """(a) Residual vs time, (b) error budget, (c) coverage."""
     paper_style.apply()
     fig, axes = paper_style.figure("double", 82.0, ncols=3)
 
@@ -174,12 +169,11 @@ def realism_figure():
 
 
 def geometry_figure():
-    """FIG-7: horizontal and vertical error per track, lever fixed vs free."""
+    """Horizontal and vertical error per track, lever fixed vs free."""
     paper_style.apply()
     data = pd.read_csv(RESULTS / "geometry.csv")
     data = data[(data["failed"].fillna("") == "") & (data["wrong_second"] == 0)]
-    # A single circle leaves dt, dc and U inseparable: the paper's model is singular
-    # there (stated in the caption), so only solvable tracks are plotted.
+    # A single circle leaves dt, dc and U inseparable, so it is not plotted.
     data = data[~data["cell"].str.startswith("circle")]
     fig, axes = paper_style.figure("double", 60.0, ncols=2)
     cells = list(

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Bermuda MCMC: one chain per Slurm array task (Paper I revision).
+# Bermuda MCMC: one chain per Slurm array task.
 #
 # The array index sets each chain's seed, start point and output file
 # (Bermuda_Data/Output/MCMC_Chains/<MCMC_RUN>/chain_<index>.npz). MCMC_RUN picks

@@ -1,4 +1,4 @@
-"""Helpers of plot_tests/_figure_common.py behind FIG-1, FIG-2 and FX-A3."""
+"""Helpers of plot_tests/_figure_common.py behind the map and GNSS figures."""
 
 import numpy as np
 import pytest

@@ -1,58 +1,25 @@
-"""Bayesian sampler for the joint Bermuda model (DOGs 1, 3, 4).
+"""Adaptive Metropolis sampler for the joint Bermuda model (DOGs 1, 3, 4).
 
-Parameters, in the order of the sampled vector ``theta``:
+Sampled vector ``theta``, in order:
 
-- ``lever`` (3): GPS1 to transducer lever arm, vessel body frame, metres.
-- ``CDOG_aug`` (n_dogs, 3): DOG positions as ECEF offsets from ``CDOG_reference``, m.
-- ``esv_bias`` (n_dogs, n_splits): dc, additive ESV bias, m/s, one per consecutive
-  block of GPS epochs (blocks as in ``np.array_split`` over all epochs, so every
-  DOG shares the block edges). Default ``esv_model`` "splits".
-- ``esv_model`` "common_windows" replaces ``esv_bias`` by ``esv_offset`` (n_dogs)
-  and ``esv_common`` (n_windows - 1): dc of DOG j in window k is
-  ``esv_offset[j] + common[k]``, with one common series shared by all DOGs on
-  fixed GPS-time windows. The common series has zero mean over the windows (its
-  last window is minus the sum of the others), so ``esv_offset`` is each DOG's
-  mean dc. Windows are ``esv_window_s`` long from the first to the last paired
-  GPS time; a window with fewer than ``esv_window_min_pairs`` pairs (all DOGs)
-  is merged into a neighbour, so every window is constrained by data. The edges
-  are stored in the configuration (``esv_window_edges_s``) and saved with the
-  chain. No smoothness prior: each window has the same Gaussian prior as dc.
-- ``time_bias`` (n_dogs): internal clock correction, s (see sign convention below).
-- ``drift_rate`` (n_dogs, optional): clock drift, s/s, Eq. 6 convention.
-- ``log_sigma`` (n_dogs, modes "iid", "ar1", "ar1_white"): log of the residual sd
-  in cm; in "ar1_white" the sd of the slowly varying AR(1) component.
-- ``phi`` (n_dogs, modes "ar1" and "ar1_white" unless fixed): lag-one
-  autocorrelation of the AR(1) component.
-- ``log_sigma_white`` (n_dogs, mode "ar1_white"): log of the white-noise sd in cm.
-- ``atanh_phi`` (n_dogs, mode "ar1_white" unless phi is fixed): phi is sampled as
-  atanh(phi). Its posterior sits close to 1, where log sigma depends on phi
-  along a curve that a random walk follows poorly; in atanh(phi) that relation
-  is nearly linear. The prior on phi itself stays uniform (Jacobian term).
+- ``lever`` (3): GPS1-to-transducer lever arm, body frame, m.
+- ``CDOG_aug`` (n_dogs, 3): DOG positions, ECEF offsets from ``CDOG_reference``, m.
+- ``esv_bias`` (n_dogs, n_splits): ESV bias dc, m/s, per ``np.array_split`` block
+  of GPS epochs. With ``esv_model`` "common_windows" it is replaced by
+  ``esv_offset`` (n_dogs) plus a zero-mean ``esv_common`` series on fixed GPS-time
+  windows shared by all DOGs.
+- ``time_bias`` (n_dogs): internal clock correction, s.
+- ``drift_rate`` (n_dogs, optional): clock drift, s/s.
+- Noise parameters per DOG, depending on the likelihood: ``log_sigma`` (log cm),
+  ``phi`` or ``atanh_phi`` (AR(1) correlation) and ``log_sigma_white`` (log cm).
 
-Time-bias sign convention. The code models the observed travel time of a pair as
-``T_obs = (t_DOG - offset) - t_GPS + time_bias``, so ``time_bias`` is added to the
-observation, whereas Eq. 6 subtracts the clock offset dt. The two are related by
-``dt = offset - time_bias`` (the same relation used for Table 1). The sampler keeps
-the internal convention; every output reports ``dt`` in the Eq. 6 convention. With
-drift, ``dt(t) = dt0 + drift_rate * (t - t_mid)``, so internally the observation
-gets ``time_bias - drift_rate * (t - t_mid)``.
+Sign convention: ``T_obs = (t_DOG - offset) - t_GPS + time_bias``; outputs report
+the clock offset ``dt = offset - time_bias`` (with drift,
+``dt(t) = dt0 + drift_rate * (t - t_mid)``).
 
-Fixed pairing. Each DOG arrival is paired with a GPS epoch once, by ``pair_indices``
-(the pairing of the inversion) at the start model with gate ``pair_threshold_s``
-(``PAIRING_GATE_S``), and the
-pairs then stay fixed for every chain. Re-pairing inside the sampler would change
-the number of data with the parameters and make the likelihood discontinuous. The
-pairing is insensitive to the parameters: the 0.4 s window is about 600 m of range,
-while the posterior spans centimetres. Pairs whose start-model residual fails the
-6xMAD rule of the inversion (``residual_inliers``) are dropped and recorded.
-
-Residuals are in centimetres of range at a nominal 1515 m/s (the c*sigma convention
-of Table 1). Log-likelihoods omit the constant ``-n/2 log(2 pi)``.
-
-The file follows the flow of a run: configuration and run variants, the fixed-pair
-problem, the parameter layout and priors, forward model and residuals, likelihood,
-the start point (Laplace approximation), adaptive Metropolis, save and resume, and
-the entry points.
+Arrivals are paired once at the start model and the pairs stay fixed, so the
+likelihood is continuous in the parameters. Residuals are cm of range at
+``NOMINAL_SOUND_SPEED_MPS``; log-likelihoods omit ``-n/2 log(2 pi)``.
 """
 
 import hashlib
@@ -72,6 +39,7 @@ from numba import njit
 
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     calculateTimesRayTracing_Bias_Real,
+    esv_gradient,
     NOMINAL_SOUND_SPEED_MPS,
 )
 from Inversion_Workflow.Forward_Model.Calculate_Time_Split import (
@@ -84,7 +52,10 @@ from Inversion_Workflow.Forward_Model.Find_Transponder import (
     vessel_rotations as find_vessel_rotations,
 )
 from Inversion_Workflow.Inversion.Numba_xAline import PAIRING_GATE_S, pair_indices
-from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import residual_inliers
+from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
+    compute_Jacobian_biased,
+    residual_inliers,
+)
 from geometry.ECEF_Geodetic import ECEF_Geodetic
 from bermuda_data import (
     CDOG_GUESS_AUGMENTS,
@@ -100,67 +71,48 @@ from bermuda_data import (
 RANGE_CM_PER_S = NOMINAL_SOUND_SPEED_MPS * 100.0
 LIKELIHOOD_MODES = ("iid_fixed", "iid", "ar1", "ar1_white")
 
-# Lever-arm prior, vessel body frame, metres from GPS1. The horizontal center is
-# the moon-pool center from the R/V Atlantic Explorer General Arrangement drawings
-# (Rev 02-Jun-2014), digitized in plotting/Atlantic_Explorer/ and transformed to
-# the body frame with GPS1_OFFSET = (39.5, 2.2, 14.2) m (measured from the
-# schematic) and ROTATION_DEG = 29.5 (GNSS grid orientation: x-axis perpendicular
-# to and bisecting the line between the two forward receivers). Reproduced by
-# plotting/Atlantic_Explorer/moon_pool_lever.py. The 0.5 m horizontal sd covers the
-# ~1 m moon-pool opening. The vertical center assumes the transducer sits near the
-# keel, about 14 m below GPS1; that depth is not measured, hence the 2 m sd.
+# Lever-arm prior, body frame, m from GPS1. Horizontal: the moon-pool center from
+# the ship drawings (plotting/Atlantic_Explorer/moon_pool_lever.py), sd 0.5 m for
+# the ~1 m opening. Vertical: an unmeasured keel depth of ~14 m, hence sd 2 m.
 PRIOR_LEVER_CENTER_M = [-13.1, 9.7, -14.0]
 PRIOR_LEVER_SD_M = [0.5, 0.5, 2.0]
 
-# Everything that defines a run. Kept JSON-serializable: it is saved with every
-# chain, and a resumed chain must have the same configuration.
+# Run definition; JSON-serializable because it is saved with each chain and
+# checked on resume.
 CONFIG = {
     "run_name": "bermuda_ar1",
-    # "iid_fixed": old likelihood (iid, sigma fixed at fixed_sigma_cm);
-    # "iid": iid with a sampled sigma per DOG; "ar1": AR(1) residuals per DOG.
+    # "iid_fixed" (sigma = fixed_sigma_cm), "iid", "ar1" or "ar1_white".
     "likelihood": "ar1",
     "fixed_sigma_cm": 20.0,
-    # ar1: fix phi at its estimate from the start-mode residuals instead of sampling.
+    # Fix phi at its mode estimate instead of sampling it.
     "fix_phi": False,
-    # ar1: consecutive pairs further apart than this start a new AR(1) segment.
+    # A gap longer than this starts a new AR(1) segment.
     "ar1_gap_threshold_s": 30.0,
     # Linear clock drift per DOG.
     "clock_drift": False,
-    # GPS-time window [start, end] (s) of the epochs used; None uses all. For the
-    # half-split repeatability runs.
+    # Epoch selection, applied in this order; None keeps all.
+    # [start_s, end_s] GPS-time window.
     "gps_time_window_s": None,
-    # Alternating GPS-time blocks [block_s, parity]: keep the epochs whose block
-    # index floor((t - t_first) / block_s) has this parity (0 or 1); None uses all.
-    # Short blocks give two subsets with nearly the same azimuth coverage, for the
-    # geometry-balanced split; applied after gps_time_window_s.
+    # [block_s, parity]: alternating GPS-time blocks of this parity.
     "gps_time_blocks": None,
-    # Survey legs [[start_h, end_h], ...] in GPS hours (bermuda_data.leg_mask): keep
-    # the epochs inside any of them; None uses all. Applied after the two above.
+    # [[start_h, end_h], ...]: survey legs (bermuda_data.leg_mask).
     "gps_leg_windows_h": None,
-    # Data (paths inside Bermuda_Data). The GPS epochs of the DOG 1 file are used
-    # for all DOGs, as in the inversion of the joint model.
+    # Data, paths inside Bermuda_Data; the DOG 1 GPS file serves all DOGs.
     "dogs": [1, 3, 4],
     "esv_table": "ESV_Tables/global_table_esv_extended.mat",
     "gps_file": "GPS_Data/Processed_GPS_Receivers_DOG_1.npz",
     "num_esv_splits": 4,
     "CDOG_reference": CDOG_REFERENCE.tolist(),
-    # Receiver grid (body frame, m from GPS1) as in the inversion drivers.
+    # Receiver grid, body frame, m from GPS1.
     "gps1_to_others": GPS1_TO_OTHERS.tolist(),
-    # Alignment: integer plus sub-integer offsets (s) and the pairing window.
-    # Gauss-Newton offset search of Bermuda_Data_time_bias.py on the PRIDE_final
-    # GNSS, 17-h window (2026-11-24). The 14-h window gave 1866.016727,
-    # 3175.016802, 1939.016538; the submitted GNSS 1866.016, 3175.017, 1939.0178.
+    # Clock offsets (s) from the Gauss-Newton offset search of
+    # Bermuda_Data_time_bias.py (PRIDE_final GNSS, 17-h window).
     "offsets_s": [1866.016571, 3175.016767, 1939.016699],
     "pair_threshold_s": PAIRING_GATE_S,
-    # Pairs with start-model residuals beyond this many MADs are dropped (None: keep).
+    # Drop pairs whose start-model residual exceeds this many MADs (None: keep).
     "outlier_mad_factor": 6.0,
-    # Start model: the pairing model and the start of the mode search. It does not
-    # enter the prior. Per-DOG Gauss-Newton solutions on the PRIDE_final GNSS,
-    # 17-h window (2026-11-24); the lever arm is the mean of the three per-DOG
-    # lever arms. The 14-h window start was lever [-12.965, 9.471, -14.547], dc
-    # [-0.1633, -0.1478, -0.1858] m/s. The
-    # submitted-GNSS start (inputs of the Fig. 7 chain) was lever
-    # [-12.8, 9.5, -12.15], dc [-0.4078, -0.2667, -0.1230] m/s.
+    # Start model for pairing and the mode search (not a prior): per-DOG
+    # Gauss-Newton solutions, lever arm averaged over DOGs.
     "start_lever": [-12.927, 9.475, -14.274],
     "start_CDOG_aug": [
         [-397.560, 370.908, 773.555],
@@ -168,28 +120,25 @@ CONFIG = {
         [235.272, -1304.841, -2191.259],
     ],
     "start_esv_bias": [-0.1880, -0.1530, -0.1588],
-    # Priors (independent Gaussians unless noted).
+    # Independent Gaussian priors, except a uniform phi.
     "prior_lever_center_m": PRIOR_LEVER_CENTER_M,
     "prior_lever_sd_m": PRIOR_LEVER_SD_M,
-    # DOG positions: the Gauss-Newton starting guesses of Bermuda_Data_time_bias.py.
-    # Replace with deployment positions when they are available.
+    # Centered on the Gauss-Newton starting guesses.
     "prior_CDOG_aug_center_m": [CDOG_GUESS_AUGMENTS[dog].tolist() for dog in (1, 3, 4)],
     "prior_CDOG_aug_sd_m": 5.0,
     "prior_esv_bias_center_m_s": 0.0,
     "prior_esv_bias_sd_m_s": 2.0,
-    # dt is centered on the alignment offset, i.e. time_bias on zero.
+    # time_bias centered on zero, i.e. dt on the alignment offset.
     "prior_dt_sd_s": 0.01,
     "prior_drift_rate_sd": 1e-6,
     "prior_log_sigma_center": float(np.log(20.0)),
     "prior_log_sigma_sd": 1.0,
-    # Uniform prior on phi.
     "prior_phi_bounds": [-0.999, 0.999],
-    # Adaptive Metropolis.
     "n_burn": 20000,
     "n_samples": 200000,
     "thin": 10,
     "first_adapt_window": 1000,
-    # Final part of burn-in in which only the proposal scale adapts.
+    # Last part of burn-in in which only the proposal scale adapts.
     "scale_only_fraction": 0.2,
     "target_acceptance": 0.234,
     "overdispersion": 3.0,
@@ -198,10 +147,7 @@ CONFIG = {
     "log_every": 1000,
 }
 
-# AR(1) + white noise: residuals are a slowly varying AR(1) component plus
-# independent ping-to-ping noise. The white-noise sd gets the same weak prior as
-# sigma. phi may come closer to 1 because the slow component decorrelates over
-# minutes (hundreds of pairs). phi near 1 mixes slowly, so burn-in is longer.
+# AR(1) plus white noise. phi near 1 mixes slowly, hence the longer burn-in.
 AR1_WHITE = {
     "likelihood": "ar1_white",
     "prior_log_sigma_white_center": float(np.log(20.0)),
@@ -209,13 +155,10 @@ AR1_WHITE = {
     "prior_phi_bounds": [-0.9999, 0.9999],
     "n_burn": 40000,
 }
-# 16 ESV splits per DOG roughly double the dimension: burn in and sample longer.
-# With white noise as well, the 20k-iteration smoke runs had not converged.
+# Longer runs for high-dimensional variants.
 LONG_RUN = {"n_burn": 40000, "n_samples": 400000}
 WHITE_LONG_RUN = {"n_burn": 80000, "n_samples": 600000}
-# Sensitivity model: one dc(t) series shared by all DOGs on fixed
-# GPS-time windows plus a constant dc per DOG. The minimum of 300 pairs (all DOGs
-# together) is about 10 min of one DOG; a typical 30-min window holds 1000-4000.
+# One dc(t) series shared by all DOGs on fixed GPS-time windows, plus a dc per DOG.
 COMMON_WINDOWS = {
     "esv_model": "common_windows",
     "num_esv_splits": 1,
@@ -229,21 +172,17 @@ RUN_VARIANTS = {
     "iid": {"likelihood": "iid"},
     "ar1": {"likelihood": "ar1"},
     "ar1_drift": {"likelihood": "ar1", "clock_drift": True},
-    # ESV-split test with AR(1) noise (ar1 itself has 4 splits).
     "ar1_splits1": {"likelihood": "ar1", "num_esv_splits": 1},
     "ar1_splits8": {"likelihood": "ar1", "num_esv_splits": 8},
     "ar1_splits16": {"likelihood": "ar1", "num_esv_splits": 16, **LONG_RUN},
-    # AR(1) + white noise, alone (4 splits) and with the ESV-split test.
     "ar1_white": AR1_WHITE,
     "ar1_white_splits1": {**AR1_WHITE, "num_esv_splits": 1},
     "ar1_white_splits8": {**AR1_WHITE, "num_esv_splits": 8},
     "ar1_white_splits16": {**AR1_WHITE, "num_esv_splits": 16, **WHITE_LONG_RUN},
-    # Linear clock drift under AR(1) + white noise, whose slow component could
-    # absorb a drift. No 16-split run: DOG 4 has two 16-split blocks with no pairs.
+    # No 16-split drift run: DOG 4 has two empty 16-split blocks.
     "ar1_white_drift": {**AR1_WHITE, "clock_drift": True},
     "ar1_white_drift_splits1": {**AR1_WHITE, "clock_drift": True, "num_esv_splits": 1},
     "ar1_white_drift_splits8": {**AR1_WHITE, "clock_drift": True, "num_esv_splits": 8},
-    # Common dc(t) on 30-min (about 28 windows) and 1-h windows, and with drift.
     "ar1_common30": {"likelihood": "ar1", **COMMON_WINDOWS, **LONG_RUN},
     "ar1_common30_drift": {
         "likelihood": "ar1",
@@ -257,21 +196,15 @@ RUN_VARIANTS = {
         "esv_window_s": 3600.0,
         **LONG_RUN,
     },
-    # Window-length convergence: 60 -> 30 min moved DOG heights by up to 84 cm.
     "ar1_common15": {
         "likelihood": "ar1",
         **COMMON_WINDOWS,
         "esv_window_s": 900.0,
         **LONG_RUN,
     },
-    # Common dc(t) with the AR(1) + white likelihood: does the shared series take
-    # up the slow component that AR(1) + white alone assigns to each DOG?
     "ar1_white_common30": {**AR1_WHITE, **COMMON_WINDOWS, **WHITE_LONG_RUN},
 }
-# Repeatability. Halves of the survey split at the median GPS epoch of the
-# DOG 1 file (50423.5 s with the 17-h window; 47135 s with the 14-h window), each
-# with the 30-min common dc(t), and each DOG alone (its own lever arm) with the
-# 4-split model of "ar1".
+# Repeatability: survey halves split at the median GPS epoch of the DOG 1 file.
 HALF_SPLIT_GPS_S = 50423.5
 RUN_VARIANTS["ar1_common30_half1"] = {
     **RUN_VARIANTS["ar1_common30"],
@@ -281,14 +214,8 @@ RUN_VARIANTS["ar1_common30_half2"] = {
     **RUN_VARIANTS["ar1_common30"],
     "gps_time_window_s": [HALF_SPLIT_GPS_S, np.inf],
 }
-# The time halves see the DOGs from different azimuths (half 2 has almost no E/SE
-# sector for DOGs 3 and 4), and each half also re-estimates the lever arm.
-# (a) Lever arm pinned (1 mm prior sd) at the posterior mean of ar1_common30: it is
-# a property of the vessel, so the halves differ only through the DOG, clock and
-# sound-speed parameters.
-# Posterior mean of ar1_common30 on the PRIDE_final GNSS, 14-h window (cluster
-# chains, 2026-11-21). Replace with the 17-h posterior mean before any *_pinlever run.
-# The submitted-GNSS value was [-12.987376, 9.271818, -14.125968].
+# Lever arm pinned (1 mm sd) at the ar1_common30 posterior mean. This is the 14-h
+# window value; update it to the 17-h posterior mean before any *_pinlever run.
 FINAL_LEVER_M = [-12.963208, 9.369362, -14.637982]
 PINNED_LEVER = {"prior_lever_center_m": FINAL_LEVER_M, "prior_lever_sd_m": [0.001] * 3}
 for _half in (1, 2):
@@ -296,11 +223,7 @@ for _half in (1, 2):
         **RUN_VARIANTS[f"ar1_common30_half{_half}"],
         **PINNED_LEVER,
     }
-# (b) Geometry-balanced split: alternating 15-min blocks. The two subsets cover the
-# same azimuths (total-variation distance of the 30-degree azimuth histograms
-# 0.05-0.08 per DOG, vs 0.65 for the time halves) and every 30-min dc(t) window
-# keeps data from both. They share the slow ocean state, so their difference tests
-# the noise model and fast errors, not slow time-varying error.
+# Geometry-balanced split: alternating 15-min blocks with the same azimuth coverage.
 ALT_BLOCK_S = 900.0
 for _parity, _name in ((0, "a"), (1, "b")):
     RUN_VARIANTS[f"ar1_common30_alt15{_name}"] = {
@@ -310,7 +233,7 @@ for _parity, _name in ((0, "a"), (1, "b")):
 
 
 def select_dogs(dogs):
-    """Overrides that keep these DOGs of CONFIG, in this order (per-DOG entries)."""
+    """CONFIG overrides restricting every per-DOG entry to ``dogs``, in that order."""
     index = [CONFIG["dogs"].index(dog) for dog in dogs]
     overrides = {"dogs": list(dogs)}
     for key in (
@@ -323,11 +246,8 @@ def select_dogs(dogs):
     return overrides
 
 
-# The two survey legs of bermuda_data.LEG_WINDOWS_H together, a cross over the
-# array, under the final model with the lever arm free; compared with the full
-# trajectory, jointly and per DOG (below). Never one leg alone: on a straight
-# line, rotating a DOG about the line leaves every range unchanged, so a single
-# leg leaves its across-track position to ~1 m (0.5-1.6 m linearized sd).
+# Both survey legs together. A single straight leg cannot fix a DOG's across-track
+# position, so legs are never run alone.
 RUN_VARIANTS["ar1_common30_legs"] = {
     **RUN_VARIANTS["ar1_common30"],
     "gps_leg_windows_h": [list(window) for window in LEG_WINDOWS_H],
@@ -335,11 +255,7 @@ RUN_VARIANTS["ar1_common30_legs"] = {
 
 for _dog in (1, 3, 4):
     RUN_VARIANTS[f"ar1_dog{_dog}"] = {"likelihood": "ar1", **select_dogs([_dog])}
-    # Per-DOG lever arm under the final model (30-min windows, one DOG, so the
-    # "common" series is that DOG's own dc(t); sparse windows merge as usual).
-    # With the lever pinned at the joint value, a DOG's change from the joint run
-    # comes from its own dc(t), offset and dt alone; on the legs, pinning also
-    # removes the lever-arm/horizontal degeneracy of two headings.
+    # One DOG with its own dc(t), lever arm free or pinned at the joint value.
     for _suffix in ("", "_legs"):
         RUN_VARIANTS[f"ar1_common30{_suffix}_dog{_dog}"] = {
             **RUN_VARIANTS[f"ar1_common30{_suffix}"],
@@ -352,10 +268,9 @@ for _dog in (1, 3, 4):
 
 
 def run_config(variant, overrides=None):
-    """Return CONFIG with a run variant and any overrides applied.
+    """CONFIG with ``RUN_VARIANTS[variant]`` and ``overrides`` applied.
 
-    The run is named after the variant unless the overrides set ``run_name``;
-    outputs go to ``Output/MCMC_Chains/<run_name>/``.
+    ``run_name`` defaults to the variant name.
     """
     if variant not in RUN_VARIANTS:
         raise ValueError(
@@ -370,7 +285,7 @@ def run_config(variant, overrides=None):
 
 
 def time_block_mask(gps_time, block_s, parity):
-    """Epochs in alternating GPS-time blocks of length block_s with this parity."""
+    """Boolean mask of epochs whose ``block_s``-long GPS-time block has ``parity``."""
     gps_time = np.asarray(gps_time, dtype=float)
     if block_s <= 0 or parity not in (0, 1):
         raise ValueError(f"need block_s > 0 and parity 0 or 1; got {block_s}, {parity}")
@@ -379,12 +294,7 @@ def time_block_mask(gps_time, block_s, parity):
 
 
 def vessel_rotations(GPS_Coordinates, gps1_to_others):
-    """Per-epoch body-to-ECEF rotation R (N, 3, 3) and displacement d (N, 3).
-
-    ``Find_Transponder.vessel_rotations`` for a receiver grid given as a list, as
-    stored in CONFIG. With the grid fixed, R and d do not depend on the sampled
-    parameters and are computed once.
-    """
+    """Body-to-ECEF rotations R (N, 3, 3) and displacements d (N, 3), m."""
     return find_vessel_rotations(
         np.asarray(GPS_Coordinates, dtype=float),
         np.asarray(gps1_to_others, dtype=float),
@@ -400,11 +310,10 @@ def dog_travel_times(
     esv_matrix,
     epoch_window=None,
 ):
-    """Modelled travel times (s) from the DOG to every transducer epoch.
+    """Modelled travel times (s) from one DOG to every transducer epoch.
 
-    With ``epoch_window`` (window index per epoch, "common_windows" model) epoch i
-    gets ``esv_bias_row[epoch_window[i]]``. Otherwise uses the split forward model
-    for more than one ESV block, as in ``compute_log_likelihood``.
+    ``esv_bias_row`` holds dc per split, or per window when ``epoch_window`` (the
+    window index of each epoch) is given.
     """
     if epoch_window is not None:
         times, _ = calculateTimesRayTracing_windows(
@@ -434,36 +343,23 @@ def dog_travel_times(
 
 
 def split_index(epochs, n_epochs, num_splits):
-    """Split of each epoch index when n_epochs are cut as ``np.array_split`` does.
-
-    The same blocks as ``calculateTimesRayTracing_split``, so a subset of epochs
-    keeps the dc of the block it came from.
-    """
+    """``np.array_split`` block of each epoch index out of ``n_epochs``."""
     sizes = [len(block) for block in np.array_split(np.arange(n_epochs), num_splits)]
     starts = np.cumsum([0] + sizes[:-1])
     return np.searchsorted(starts, epochs, side="right") - 1
 
 
 def window_index(times, edges):
-    """Window of each time for GPS-time edges (s); the last window is closed.
-
-    Times before the first edge or after the last fall in the first or last
-    window (only unpaired epochs do, and they do not enter the likelihood).
-    """
+    """Window index of each time for GPS-time ``edges`` (s), clipped to the ends."""
     edges = np.asarray(edges, dtype=float)
     inside = np.searchsorted(edges, times, side="right") - 1
     return np.clip(inside, 0, edges.size - 2).astype(np.int64)
 
 
 def common_window_edges(pair_gps_time, window_s, min_pairs):
-    """GPS-time edges (s) of the shared dc windows; every window holds data.
+    """GPS-time edges (s) of ``window_s`` windows over the pairs, and merge count.
 
-    Windows of ``window_s`` seconds run from the first to the last paired GPS
-    time (all DOGs); the last one ends at the final pair and may be shorter. A
-    window with fewer than ``min_pairs`` pairs (all DOGs together) is merged into
-    the previous window (the first into the next) until none is left, so no
-    window value rests on the prior alone. Returns the edges and the number of
-    merges.
+    Windows with fewer than ``min_pairs`` pairs are merged into a neighbour.
     """
     if window_s <= 0:
         raise ValueError(f"esv_window_s must be positive; got {window_s}")
@@ -486,7 +382,7 @@ def common_window_edges(pair_gps_time, window_s, min_pairs):
 
 
 def load_bermuda_inputs(config):
-    """Read the ESV table, GPS epochs and DOG arrivals named in the configuration."""
+    """ESV table, GPS epochs, DOG arrivals and input-file hashes of ``config``."""
     paths = {
         "esv_table": gps_data_path(config["esv_table"]),
         "gps_file": gps_data_path(config["gps_file"]),
@@ -520,6 +416,7 @@ def load_bermuda_inputs(config):
 
 
 def _sha256(path):
+    """SHA-256 hex digest of a file."""
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
@@ -533,10 +430,10 @@ def build_problem(
     esv_matrix,
     input_files=None,
 ):
-    """Fix the CDOG-GPS pairs at the start model and collect the sampler data.
+    """Pair arrivals at the start model and return the fixed-pair problem dict.
 
-    GPS_Coordinates is (N, 4, 3) ECEF metres, GPS_data (N,) GPS seconds, and each
-    CDOG_all_data[j] is (M_j, 2) with integer and fractional DOG-clock seconds.
+    GPS_Coordinates is (N, 4, 3) ECEF m, GPS_data (N,) GPS s, and each
+    CDOG_all_data[j] (M_j, 2) integer and fractional DOG-clock s.
     """
     num_dogs = len(config["dogs"])
     num_splits = config["num_esv_splits"]
@@ -753,11 +650,7 @@ def parameter_layout(config):
 
 
 def build_model(config):
-    """Parameter layout, prior centers and sds, and the start vector.
-
-    Every parameter except phi has an independent Gaussian prior; phi is uniform
-    on ``prior_phi_bounds``.
-    """
+    """Parameter layout, priors and start vector."""
     if config["likelihood"] not in LIKELIHOOD_MODES:
         raise ValueError(
             f"likelihood must be one of {LIKELIHOOD_MODES}; "
@@ -779,7 +672,6 @@ def build_model(config):
         )
 
     num_dogs = len(config["dogs"])
-    # Columns of the per-DOG dc matrix: splits, or windows of the common series.
     num_splits = num_esv_windows(config) if common_windows else config["num_esv_splits"]
     layout, names = parameter_layout(config)
     n_params = len(names)
@@ -798,7 +690,6 @@ def build_model(config):
     else:
         center[layout["esv_bias"]] = config["prior_esv_bias_center_m_s"]
         sd[layout["esv_bias"]] = config["prior_esv_bias_sd_m_s"]
-    # dt = offset - time_bias is centered on the alignment offset.
     center[layout["time_bias"]] = 0.0
     sd[layout["time_bias"]] = config["prior_dt_sd_s"]
     if "drift_rate" in layout:
@@ -825,17 +716,8 @@ def build_model(config):
     if "log_sigma_white" in layout:
         start[layout["log_sigma_white"]] = config["prior_log_sigma_white_center"]
 
-    # Finite-difference steps for the residual Jacobian of the geometric block.
-    fd_step = np.zeros(n_params)
-    fd_step[layout["lever"]] = 1e-3
-    fd_step[layout["CDOG_aug"]] = 1e-3
-    for block in ("esv_bias", "esv_offset", "esv_common"):
-        if block in layout:
-            fd_step[layout[block]] = 1e-3
-    fd_step[layout["time_bias"]] = 1e-6
     geometric_end = layout["time_bias"].stop
     if "drift_rate" in layout:
-        fd_step[layout["drift_rate"]] = 1e-10
         geometric_end = layout["drift_rate"].stop
 
     return {
@@ -848,18 +730,13 @@ def build_model(config):
         "prior_sd": sd,
         "gaussian": np.isfinite(sd),
         "start_theta": start,
-        "fd_step": fd_step,
         "geometric_end": geometric_end,
         "fixed_phi": None,
     }
 
 
 def esv_bias_matrix(theta, model):
-    """dc (m/s) per DOG and split or window, (..., n_dogs, num_splits).
-
-    theta is (n_params,) or (n_draws, n_params). In the "common_windows" model dc
-    of DOG j in window k is ``esv_offset[j] + common[k]``.
-    """
+    """dc (m/s), (..., n_dogs, num_splits), from theta (..., n_params)."""
     layout = model["layout"]
     shape = theta.shape[:-1] + (model["num_dogs"], model["num_splits"])
     if "esv_bias" in layout:
@@ -894,9 +771,7 @@ def residuals_cm(theta, model, problem):
         raise ValueError("Model and problem disagree on the esv_model")
     params = unpack(theta, model)
     trans = (problem["R_stacked"] @ params["lever"]).reshape(-1, 3) + problem["d"]
-    # Travel times only at the paired epochs (the model is per epoch). With several
-    # dc blocks, each pair takes the block of its epoch, and the transducer heights
-    # are computed once for all DOGs.
+    # Each pair takes the dc block of its epoch; heights are shared by all DOGs.
     pair_gps_index = problem["pair_gps_index"]
     if epoch_window is not None:
         pair_block = problem["pair_window"]
@@ -956,10 +831,7 @@ def compute_log_likelihood(
     esv_matrix,
     sigma_cm=20.0,
 ):
-    """iid Gaussian log-likelihood with sd ``sigma_cm``, the "iid_fixed" mode.
-
-    The original likelihood, kept unchanged. Returns ``(value, n_pairs)``.
-    """
+    """iid Gaussian log-likelihood with fixed ``sigma_cm``; returns (value, n_pairs)."""
     split_esv = esv_bias.shape[1] > 1
 
     total_sse = 0.0
@@ -1012,12 +884,9 @@ def compute_log_likelihood(
 
 
 def whiten_ar1(x, segment_start, pair_dog, sigma_cm, phi):
-    """Map AR(1) residuals, or Jacobian columns, to unit-variance innovations.
+    """Unit-variance AR(1) innovations of x (n,) or (n, k) and their sds (cm).
 
-    x is (n,) or (n, k), ordered in time within each DOG. Within a segment,
-    ``e_t = phi * e_(t-1) + eta_t`` with marginal sd sigma, so eta has sd
-    ``sigma * sqrt(1 - phi**2)``; the first pair of a segment has sd sigma. Returns
-    the whitened array and the innovation sds (n,), in cm.
+    x is time-ordered within each DOG; each segment restarts the process.
     """
     rho = np.where(segment_start, 0.0, phi[pair_dog])
     innovation_sd = sigma_cm[pair_dog] * np.sqrt(1.0 - rho * rho)
@@ -1038,18 +907,9 @@ def ar1_log_likelihood(residuals, segment_start, pair_dog, sigma_cm, phi):
 
 @njit(cache=True)
 def kalman_whiten(x, segment_start, pair_dog, sigma_cm, phi, sigma_white_cm):
-    """Standardized innovations of an AR(1) plus white-noise model, per column.
+    """Kalman-filter whitening of x (n, k) under AR(1) plus white noise.
 
-    Each residual is ``e_t = a_t + w_t``: ``a_t`` is AR(1) with lag-one
-    correlation phi and marginal sd sigma, restarting at each segment start, and
-    ``w_t`` is white noise with sd sigma_white. A scalar Kalman filter predicts
-    each residual from the previous ones; its gain does not depend on the data,
-    so the same linear map whitens residuals and Jacobian columns alike.
-
-    x is (n, k), time-ordered within each DOG. Returns the innovations divided by
-    their sd, (n, k), and the innovation variances (n,), in cm^2. With
-    sigma_white = 0 this is whiten_ar1; with phi = 0 it is iid with variance
-    sigma^2 + sigma_white^2.
+    Returns the standardized innovations (n, k) and their variances (n,), cm^2.
     """
     n, k = x.shape
     whitened = np.empty((n, k))
@@ -1078,11 +938,7 @@ def kalman_whiten(x, segment_start, pair_dog, sigma_cm, phi, sigma_white_cm):
 
 
 def whiten_residuals(x, problem, sigma_cm, phi, sigma_white_cm=None):
-    """Whiten residuals (n,) or Jacobian columns (n, k) under the noise model.
-
-    AR(1) (``whiten_ar1``) when sigma_white_cm is None, otherwise AR(1) plus white
-    noise (``kalman_whiten``). Returns the whitened array and the innovation sds.
-    """
+    """Whitened x (n,) or (n, k) and innovation sds (cm); AR(1) if no white noise."""
     segment_start, pair_dog = problem["segment_start"], problem["pair_dog"]
     if sigma_white_cm is None:
         return whiten_ar1(x, segment_start, pair_dog, sigma_cm, phi)
@@ -1126,7 +982,7 @@ def log_prior(theta, model):
         phi = theta[layout["phi"]]
     elif "atanh_phi" in layout:
         phi = np.tanh(theta[layout["atanh_phi"]])
-        # Uniform prior on phi, expressed in atanh(phi): d phi / d atanh = 1 - phi^2.
+        # Jacobian of the uniform prior on phi.
         jacobian = np.sum(np.log1p(-phi * phi))
     else:
         phi = None
@@ -1199,13 +1055,7 @@ def residual_noise_estimates(residuals, problem):
 
 
 def ar1_white_noise_estimates(residuals, problem, phi_high):
-    """Per-DOG slow sd (cm), phi and white-noise sd (cm) from residual moments.
-
-    Within segments, the AR(1) plus white-noise model has autocovariances
-    c0 = s^2 + w^2, c1 = phi s^2 and c2 = phi^2 s^2 at lags of 0, 1 and 2 pairs,
-    so phi = c2 / c1, s^2 = c1 / phi and w^2 = c0 - s^2. The values only start
-    the mode search; they are kept inside the prior support.
-    """
+    """Per-DOG slow sd (cm), phi and white sd (cm) from lag-0, 1, 2 autocovariances."""
     num_dogs = len(problem["pair_slices"])
     sigma, phi, sigma_white = np.empty(num_dogs), np.empty(num_dogs), np.empty(num_dogs)
     start = problem["segment_start"]
@@ -1224,34 +1074,79 @@ def ar1_white_noise_estimates(residuals, problem, phi_high):
 
 
 def residual_jacobian(theta, model, problem):
-    """Central finite-difference Jacobian of residuals_cm, (n_pairs, n_geometric).
+    """Analytic Jacobian (n_pairs, n_geometric) of residuals_cm, cm per unit.
 
-    Columns are the geometric parameters (lever, DOG positions, dc, time bias,
-    drift), in cm of range per unit of each parameter.
+    With r = (T_obs + time_bias - drift_rate * (t - t_mid) - T) * RANGE_CM_PER_S and
+    T = |x - s| / (c0 + dc): dT/dx and dT/ddc from ``compute_Jacobian_biased``
+    (including the ESV-table gradient of c0), dT/ds = -(x - s) / (|x - s| c) -
+    (T / c) grad_s c0, and ds/dlever = R for each epoch's body-to-ECEF rotation.
     """
-    n_geo = model["geometric_end"]
-    jacobian = np.empty((problem["pair_dog"].shape[0], n_geo))
-    for k in range(n_geo):
-        step = model["fd_step"][k]
-        plus = theta.copy()
-        minus = theta.copy()
-        plus[k] += step
-        minus[k] -= step
-        jacobian[:, k] = (
-            residuals_cm(plus, model, problem) - residuals_cm(minus, model, problem)
-        ) / (2 * step)
-    return jacobian
+    layout = model["layout"]
+    params = unpack(theta, model)
+    n_pairs = problem["pair_dog"].shape[0]
+    pair_gps_index = problem["pair_gps_index"]
+    rotations = problem["R_stacked"].reshape(-1, 3, 3)
+    trans = rotations @ params["lever"] + problem["d"]
+    if problem.get("epoch_window") is not None:
+        pair_block = problem["pair_window"]
+    else:
+        pair_block = split_index(
+            pair_gps_index, problem["n_epochs"], model["num_splits"]
+        )
+
+    jacobian = np.zeros((n_pairs, model["geometric_end"]))
+    for j, sel in enumerate(problem["pair_slices"]):
+        DOG_position = problem["CDOG_reference"] + params["CDOG_aug"][j]
+        epochs = pair_gps_index[sel]
+        transducers = trans[epochs]
+        times, esv = calculateTimesRayTracing_heights(
+            DOG_position,
+            transducers,
+            ECEF_Geodetic(transducers)[2],
+            params["esv_bias"][j],
+            pair_block[sel],
+            problem["dz_array"],
+            problem["angle_array"],
+            problem["esv_matrix"],
+        )
+        grad_x, grad_s = esv_gradient(
+            DOG_position,
+            transducers,
+            problem["dz_array"],
+            problem["angle_array"],
+            problem["esv_matrix"],
+            True,
+        )
+        J = compute_Jacobian_biased(DOG_position, transducers, times, esv, grad_x)
+        dT_ds = (transducers - DOG_position) / (times * esv * esv)[:, None]
+        dT_ds -= (times / esv)[:, None] * grad_s
+        rows = np.arange(sel.start, sel.stop)
+        block = pair_block[sel]
+
+        jacobian[sel, layout["lever"]] = -np.einsum(
+            "na,nab->nb", dT_ds, rotations[epochs]
+        )
+        dog_start = layout["CDOG_aug"].start + 3 * j
+        jacobian[sel, dog_start : dog_start + 3] = -J[:, :3]
+        dr_ddc = -J[:, 4]
+        if "esv_bias" in layout:
+            columns = layout["esv_bias"].start + j * model["num_splits"] + block
+            jacobian[rows, columns] = dr_ddc
+        else:
+            jacobian[sel, layout["esv_offset"].start + j] = dr_ddc
+            series = common_series_matrix(model["num_splits"])[block]
+            jacobian[sel, layout["esv_common"]] = dr_ddc[:, None] * series
+        jacobian[sel, layout["time_bias"].start + j] = 1.0
+        if "drift_rate" in layout:
+            drift_column = layout["drift_rate"].start + j
+            jacobian[sel, drift_column] = -problem["pair_t_from_mid"][sel]
+    return jacobian * RANGE_CM_PER_S
 
 
 def laplace_approximation(model, problem, max_iterations=8):
-    """Posterior mode estimate and Gaussian approximation, for starting the chains.
+    """Gauss-Newton mode and Gaussian covariance of the posterior, to start chains.
 
-    The geometric parameters (lever, DOG positions, dc, time bias, drift) follow
-    Gauss-Newton steps on the AR(1)-whitened residuals with a finite-difference
-    Jacobian and the Gaussian priors; sigma and phi are set to their residual
-    estimates at each step. Returns the mode estimate, its covariance (geometric
-    block from the inverse Gauss-Newton Hessian; sigma and phi from their
-    asymptotic variances), and the residual estimates of sigma (cm) and phi.
+    Returns ``(theta, cov, sigma_cm, phi)``.
     """
     config = model["config"]
     mode = config["likelihood"]
@@ -1262,6 +1157,7 @@ def laplace_approximation(model, problem, max_iterations=8):
     theta = model["start_theta"].copy()
 
     def noise_for_whitening(residuals):
+        """Noise parameters estimated from the residuals."""
         if mode == "ar1_white":
             return ar1_white_noise_estimates(residuals, problem, high)
         sigma, phi = residual_noise_estimates(residuals, problem)
@@ -1272,12 +1168,14 @@ def laplace_approximation(model, problem, max_iterations=8):
         return sigma, np.clip(phi, low + 1e-6, high - 1e-6), None
 
     def objective(theta_trial, noise):
+        """Negative log posterior of the geometric block, up to a constant."""
         residuals = residuals_cm(theta_trial, model, problem)
         w, _ = whiten_residuals(residuals, problem, *noise)
         z = theta_trial[geo] - center
         return 0.5 * np.dot(w, w) + 0.5 * np.dot(precision * z, z)
 
     def whitened_system(theta_point):
+        """Gauss-Newton Hessian, gradient and noise estimates at theta_point."""
         residuals = residuals_cm(theta_point, model, problem)
         noise = noise_for_whitening(residuals)
         jacobian = residual_jacobian(theta_point, model, problem)
@@ -1311,10 +1209,7 @@ def laplace_approximation(model, problem, max_iterations=8):
     hessian, _, (sigma, phi, sigma_white) = whitened_system(theta)
     n_params = theta.shape[0]
     cov = np.zeros((n_params, n_params))
-    # Inverted in unit-diagonal form: dt (s) beside positions (m) puts the raw
-    # condition number past double precision when a parameter combination is held
-    # mainly by its prior (a single-circle track), and the raw inverse then fails
-    # to be positive definite.
+    # Invert in unit-diagonal form: the raw Hessian can be too ill-conditioned.
     scale = 1.0 / np.sqrt(np.diag(hessian))
     cov[geo, geo] = scale[:, None] * np.linalg.inv(hessian * np.outer(scale, scale))
     cov[geo, geo] *= scale[None, :]
@@ -1329,7 +1224,6 @@ def laplace_approximation(model, problem, max_iterations=8):
         cov[layout["phi"], layout["phi"]] = np.diag((1.0 - phi**2) / pair_counts)
     if "atanh_phi" in layout:
         theta[layout["atanh_phi"]] = np.arctanh(phi)
-        # var(phi) ~ (1 - phi^2) / n, and d atanh(phi) / d phi = 1 / (1 - phi^2).
         cov[layout["atanh_phi"], layout["atanh_phi"]] = np.diag(
             1.0 / (pair_counts * (1.0 - phi**2))
         )
@@ -1344,7 +1238,7 @@ def laplace_approximation(model, problem, max_iterations=8):
 def initial_state(
     chain_index, model, problem, n_kept_total, n_burn_kept_total, n_windows
 ):
-    """Seed the chain, find the mode, and draw an overdispersed start point."""
+    """Fresh chain state: seeded RNG, Laplace start, overdispersed first draw."""
     config = model["config"]
     seed_sequence = np.random.SeedSequence([config["seed"], chain_index])
     rng = np.random.Generator(np.random.PCG64(seed_sequence))
@@ -1362,8 +1256,7 @@ def initial_state(
         flush=True,
     )
 
-    # Overdispersed start: the mode plus `overdispersion` times a draw from the
-    # Gaussian approximation. Redraw if the prior support (phi bounds) is left.
+    # Mode plus an overdispersed Gaussian draw, redrawn outside the prior support.
     cholesky = np.linalg.cholesky(laplace_cov)
     d = laplace_theta.shape[0]
     for _ in range(100):
@@ -1393,7 +1286,7 @@ def initial_state(
         "laplace_phi": phi_hat.tolist(),
         "dropped_pairs": problem["dropped_pairs"],
         "input_files": problem["input_files"],
-        "time_bias_convention": "dt (Eq. 6) = offset - time_bias; outputs report dt",
+        "time_bias_convention": "dt = offset - time_bias; outputs report dt",
         "runs": [],
     }
     return {
@@ -1426,10 +1319,7 @@ def initial_state(
 
 
 def adaptation_window_ends(n_burn, first_window):
-    """End iterations of the burn-in adaptation windows (doubling lengths).
-
-    A remainder shorter than twice the next window is folded into the last one.
-    """
+    """End iterations of doubling adaptation windows covering ``n_burn``."""
     ends = []
     start = 0
     size = first_window
@@ -1444,18 +1334,11 @@ def adaptation_window_ends(n_burn, first_window):
 
 
 def run_chain(chain_index, model, problem, out_path, stop_at=None):
-    """Run or resume one adaptive Metropolis chain, checkpointing to out_path.
+    """Run or resume one adaptive Metropolis chain, checkpointing to ``out_path``.
 
-    Burn-in (``n_burn`` iterations): the proposal is Gaussian with covariance
-    ``lambda**2 * 2.38**2 / d * C``. C starts at the Laplace covariance and is
-    re-estimated from the chain at the end of each adaptation window (windows
-    double in length), in the style of Haario et al. (2001). The last
-    ``scale_only_fraction`` of burn-in keeps C fixed. log lambda follows a
-    Robbins-Monro update toward ``target_acceptance``, restarted after every
-    change of C. Both are frozen after burn-in, so the saved samples come from a
-    fixed-kernel Metropolis chain.
-    ``stop_at`` (an iteration count) ends this call early with a checkpoint, as a
-    job time limit would; calling again resumes.
+    During burn-in the proposal covariance adapts on doubling windows (Haario et
+    al. 2001) and its scale by Robbins-Monro; both are frozen afterwards.
+    ``stop_at`` ends the call early at that iteration. Returns the chain state.
     """
     config = model["config"]
     n_burn = config["n_burn"]
@@ -1615,6 +1498,7 @@ def git_revision():
 
 
 def _run_record(start_iteration):
+    """Host, time and Slurm job of one (re)start of a chain."""
     return {
         "started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "start_iteration": int(start_iteration),
@@ -1627,7 +1511,7 @@ def _run_record(start_iteration):
 
 
 def derived_outputs(theta_samples, model, problem):
-    """Named parameter arrays for saved samples, with dt in the Eq. 6 convention."""
+    """Named arrays of theta_samples (n, n_params); dt = offset - time_bias."""
     n = theta_samples.shape[0]
     layout = model["layout"]
     num_dogs = model["num_dogs"]
@@ -1635,7 +1519,6 @@ def derived_outputs(theta_samples, model, problem):
         "lever": theta_samples[:, layout["lever"]],
         "CDOG_aug": theta_samples[:, layout["CDOG_aug"]].reshape(n, num_dogs, 3),
         "esv_bias": esv_bias_matrix(theta_samples, model),
-        # Eq. 6 clock offset: dt = offset - time_bias.
         "dt": problem["offsets"] - theta_samples[:, layout["time_bias"]],
         "drift_rate": (
             theta_samples[:, layout["drift_rate"]]
@@ -1650,7 +1533,6 @@ def derived_outputs(theta_samples, model, problem):
     out["sigma_cm"] = sigma
     out["phi"] = phi
     if "esv_common" in layout:
-        # Common dc series (m/s) per window, zero mean over the windows.
         out["esv_common"] = theta_samples[:, layout["esv_common"]] @ (
             common_series_matrix(model["num_splits"]).T
         )
@@ -1665,9 +1547,7 @@ def save_chain(path, state, model, problem):
     n_burn_kept = state["n_burn_kept"]
     theta_samples = state["theta_samples"][:n_kept]
     arrays = {
-        # Samples after burn-in (thinned). The named arrays of derived_outputs
-        # (three quarters of the file in the common-window runs) are not stored;
-        # load_chain rebuilds them exactly from theta_samples.
+        # Thinned samples; load_chain rebuilds the derived_outputs arrays.
         "loglike": state["loglike_samples"][:n_kept],
         "logpost": state["logpost_samples"][:n_kept],
         "theta_samples": theta_samples,
@@ -1721,11 +1601,7 @@ def save_chain(path, state, model, problem):
 
 
 def load_chain(path):
-    """Arrays of a chain file plus the named arrays of derived_outputs.
-
-    The named arrays are rebuilt from theta_samples and the saved configuration.
-    Files written before they were dropped from save_chain are returned as stored.
-    """
+    """Arrays of a chain file plus the derived_outputs arrays, as a dict."""
     with np.load(path) as saved:
         chain = {key: saved[key] for key in saved.files}
     if "lever" not in chain:
@@ -1793,11 +1669,7 @@ def load_state(path, model, n_kept_total, n_burn_kept_total):
 
 
 def check_same_inputs(path, problem):
-    """Refuse to resume a chain written from different input files (e.g. ESV table).
-
-    The configuration check of load_state compares file paths only, so a chain
-    sampled on an older ESV table would otherwise count as finished.
-    """
+    """Raise if the chain at ``path`` was written from input files with other hashes."""
     with np.load(path) as saved:
         saved_files = json.loads(str(saved["metadata_json"])).get("input_files", {})
     current = problem.get("input_files") or {}
@@ -1815,9 +1687,7 @@ def check_same_inputs(path, problem):
 
 
 def select_epochs(config, GPS_data, GPS_Coordinates):
-    """GPS epochs of the run: ``gps_time_window_s``, ``gps_time_blocks`` and
-    ``gps_leg_windows_h`` of the configuration, in that order. Returns
-    ``(GPS_data, GPS_Coordinates)`` with time order kept."""
+    """``(GPS_data, GPS_Coordinates)`` of the epochs selected by ``config``."""
     keep = np.ones(len(GPS_data), dtype=bool)
     window = config.get("gps_time_window_s")
     if window is not None:
@@ -1826,7 +1696,6 @@ def select_epochs(config, GPS_data, GPS_Coordinates):
         keep &= (GPS_data >= window[0]) & (GPS_data < window[1])
     blocks = config.get("gps_time_blocks")
     if blocks is not None:
-        # Blocks count from the first epoch left by the time window.
         in_blocks = time_block_mask(GPS_data[keep], blocks[0], int(blocks[1]))
         keep[np.flatnonzero(keep)[~in_blocks]] = False
     legs = config.get("gps_leg_windows_h")
@@ -1842,7 +1711,7 @@ def select_epochs(config, GPS_data, GPS_Coordinates):
 
 
 def setup_bermuda(config):
-    """Load the Bermuda data and build the sampler model and fixed pairs."""
+    """Load the Bermuda data; return ``(model, problem)``."""
     inputs = load_bermuda_inputs(config)
     GPS_data, GPS_Coordinates = select_epochs(
         config, inputs["GPS_data"], inputs["GPS_Coordinates"]
@@ -1858,7 +1727,6 @@ def setup_bermuda(config):
         input_files=inputs["input_files"],
     )
     if "esv_window_edges_s" in problem:
-        # The windows depend on the pairs; keep them in the saved configuration.
         config = {**config, "esv_window_edges_s": problem["esv_window_edges_s"]}
     return build_model(config), problem
 
@@ -1880,7 +1748,6 @@ def run_bermuda_chain(chain_index, config):
 
 def warm_up_numba(config):
     """Compile and cache the Numba kernels once, before parallel chains start."""
-    # The splits-model kernels, whatever the esv_model of the run.
     config = {**config, "esv_model": "splits"}
     model, problem = setup_bermuda({**config, "likelihood": "ar1", "clock_drift": True})
     log_posterior(model["start_theta"], model, problem)
@@ -1904,8 +1771,7 @@ def warm_up_numba(config):
 
 
 if __name__ == "__main__":
-    # One chain per process. The Slurm array index sets the chain's seed, start
-    # point and output file; MCMC_RUN picks a variant from RUN_VARIANTS.
+    # One chain per process: MCMC_RUN picks the variant, the array index the chain.
     run_name = os.environ.get("MCMC_RUN", "ar1")
     chain_index = int(os.environ.get("SLURM_ARRAY_TASK_ID", "0"))
     run_bermuda_chain(chain_index, run_config(run_name))

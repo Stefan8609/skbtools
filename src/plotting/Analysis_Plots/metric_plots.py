@@ -21,6 +21,7 @@ def _rmse_cm_for_offset(
     esv,
     thresh=OFFSET_SEARCH_THRESHOLD_SECONDS,
 ):
+    """RMSE (cm) and pair count of the residuals paired at ``offset`` (s)."""
     CDOG_full, GPS_clock, GPS_full = two_pointer_index(
         offset,
         thresh,

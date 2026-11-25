@@ -1,9 +1,7 @@
-"""Candidate GNSS figure 2: lengths of the baselines between the antennas.
+"""Lengths of the baselines between the GNSS antennas.
 
-Question: how precise are the kinematic GNSS positions of the moving vessel?
-Message: the four antennas are fixed to the vessel, so the distance between any
-two of them must be constant. The six distances stay within 1 to 2 cm (robust sd)
-of their medians over the whole survey: that is the precision of the positions.
+Message: the six antenna distances stay within 1-2 cm (robust sd) of their medians,
+the precision of the kinematic positions.
 
 Input: Processed_GPS_Receivers_DOG_1.npz (PRIDE PPP-AR positions, ECEF m).
 """
@@ -26,6 +24,7 @@ DENSITY_RADIUS_CM = 0.25
 
 
 def main():
+    """Draw and save the figure."""
     st.apply()
     processed = np.load(PROCESSED_FILE)
     hours = st.hours(processed["GPS_data"])
@@ -85,7 +84,7 @@ def main():
     axes[-1, 1].set_xticks(st.TIME_TICKS_H)
     axes[-1, 1].set_xlabel(st.TIME_LABEL)
     axes[-1, 0].set_xlabel("Density (1/cm)")
-    fig.supylabel("Baseline length minus its median (cm)", fontsize=st.FONT_PT)
+    fig.supylabel("Baseline length minus median (cm)", fontsize=st.FONT_PT)
     st.save(fig, NAME)
 
 

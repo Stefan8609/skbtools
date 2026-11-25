@@ -10,7 +10,7 @@ from puertorico_data import gps_data_path
 
 @njit
 def construct_esv(depth, cz, transducer_depth, dog_depths, beta_array):
-    """ESV table (Eq. A16) for each DOG depth and elevation angle."""
+    """ESV table for each DOG depth and elevation angle."""
     esv_matrix = np.zeros((len(dog_depths), len(beta_array)))
     beta_rad = beta_array * np.pi / 180
     tan_beta = np.tan(beta_rad)

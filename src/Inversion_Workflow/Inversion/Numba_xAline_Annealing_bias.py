@@ -41,15 +41,14 @@ def simulated_annealing_bias(
     z_sample=True,
     clock_drift=False,
 ):
-    """Lever arm, offset and estimate by simulated annealing (Eqs. A28-A29).
+    """Lever arm, offset and estimate by simulated annealing.
 
     300 lever-arm moves U(-Theta, Theta) m with Theta = exp(-7 k / iter) around the
-    best lever arm; a move is kept only if it lowers the RMSE, so A30 (accepting a
-    worse move) is not implemented. The fraction of the offset is refit every 50
-    moves; ``z_sample`` then scans the lever-arm z over +-5 m in 0.1 m steps.
+    best lever arm; a move is kept only if it lowers the RMSE (worse moves are never
+    accepted). The fraction of the offset is refit every 50 moves; ``z_sample``
+    then scans the lever-arm z over +-5 m in 0.1 m steps.
     Returns ``(lever, offset, estimate)``. With ``clock_drift`` the estimate carries
-    ``drift_rate`` (s/s, Eq. 6 convention) as a sixth entry, as in
-    ``final_bias_geiger``.
+    ``drift_rate`` (s/s) as a sixth entry.
     """
     inversion_guess = initial_guess
     time_bias = 0.0
@@ -274,15 +273,9 @@ def anneal_with_offset_search(
 ):
     """Anneal when the DOG clock offset is unknown.
 
-    A wrong integer second is partly absorbed by the lever arm during annealing, so
-    the fit cannot tell it from the right one until the lever arm is good. The data
-    are aligned at the initial lever arm, every integer second within
-    ``INT_OFFSET_SHIFT_SECONDS`` of that offset is annealed in full, and the lowest
-    final RMS wins. Returns ``(lever, offset, estimate)`` like
-    ``simulated_annealing_bias``.
-
-    The workflow uses ``gauss_newton_offset_search`` instead (it solves the lever
-    arm exactly at every integer second); this is kept to validate it.
+    Every integer second within ``INT_OFFSET_SHIFT_SECONDS`` of the initial alignment
+    is annealed in full and the lowest final RMS wins. Returns ``(lever, offset,
+    estimate)``. Kept to validate ``gauss_newton_offset_search``.
     """
     rotations, displacements = vessel_rotations(GPS_Coordinates, gps1_to_others)
     transponder_coordinates = transponder_from_rotations(

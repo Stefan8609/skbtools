@@ -24,7 +24,7 @@ def load_and_process_data(path, GNSS_start, GNSS_end):
 
 # Filtering Functions
 def running_median(data, window=50):
-    """Running median (Eq. A4) of ``data`` over ``window`` samples."""
+    """Running median of ``data`` over ``window`` samples."""
     half = window // 2
     n = len(data)
     result = np.empty(n)
@@ -36,7 +36,7 @@ def running_median(data, window=50):
 
 
 def running_abs_dev(data, window=50):
-    """Running median absolute deviation (Eq. A5) over ``window`` samples."""
+    """Running median absolute deviation over ``window`` samples."""
     half = window // 2
     n = len(data)
     result = np.empty(n)
@@ -106,11 +106,8 @@ def initialize_bermuda(GNSS_start, GNSS_end, DOG_num=3, save=False):
     indices = np.where(mask[0])[0]
     filtered_data = filtered_data[:, :, indices]
 
-    # No running-MAD filter (Eq. A6 of the submitted paper, 2 MAD over 5000 epochs).
-    # It removed antenna 4's height jumps in the submitted GNSS solutions; with the
-    # PRIDE_final solutions every baseline scatters by 1-2 cm, and dropping the
-    # filter (904 more epochs than a 4-MAD filter) moves the Gauss-Newton positions
-    # of DOGs 1/3/4 by at most 1.6 cm.
+    # No running-MAD filter: the PRIDE_final baselines scatter by only 1-2 cm, and
+    # dropping it moves the Gauss-Newton DOG positions by at most 1.6 cm.
 
     print("End of Filtering Data")
     # GPS_Coordinates (N, 4, 3)

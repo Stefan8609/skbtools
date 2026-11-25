@@ -51,17 +51,10 @@ def corner_plot_with_corr(
     tb_lim_ms=1.0,
     esv_lim_native=0.2,
 ):
-    """
-    Corner plot in the SAME style as the original corner_plot, but:
-      - lower triangle: corner scatter + ellipses
-      - diagonal: hist + posterior Gaussian + prior overlay + sigma box
-      - upper triangle: correlation matrix cell with annotated r (white box)
+    """Corner plot of DOG ENU, lever arm, mean ESV, time bias and lever z - DOG U.
 
-    Parameters included:
-      DOG E,N,U ; Lever x,y,z ; ESV mean ; Time bias ; (Lever z - DOG U)
-
-    Adds only:
-      - per-parameter axis limits for time-bias and ESV (hard-coded)
+    Lower triangle: scatter and ellipses; diagonal: histogram, posterior Gaussian and
+    prior; upper triangle: correlation coefficients.
     """
 
     # Objective for coloring
@@ -83,7 +76,7 @@ def corner_plot_with_corr(
     cdog_aug = np.asarray(chain["CDOG_aug"][::downsample])[order]  # (T,D,3)
     esv = _as_TDS(chain["esv_bias"][::downsample])[order]  # (T,D,S)
     if "dt" in chain:
-        # Eq. 6 clock offset minus the alignment offset (its prior center).
+        # Clock offset dt minus the alignment offset (its prior center).
         tb = np.asarray(chain["dt"][::downsample])[order] - chain["offsets_s"]
     else:
         tb = np.asarray(chain["time_bias"][::downsample])[order]  # (T,...) dims vary
@@ -124,6 +117,7 @@ def corner_plot_with_corr(
     }
 
     def _display_label(key: str) -> str:
+        """Axis label of a parameter key."""
         return display_labels.get(key, key)
 
     pars = {
@@ -229,6 +223,7 @@ def corner_plot_with_corr(
     cm_keys = [k for k in keys if k not in (key_tb, key_esv)]
 
     def _get_lim(key: str) -> float:
+        """Symmetric axis limit of a parameter."""
         if key in axis_limits:
             return axis_limits[key]
 

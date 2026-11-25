@@ -1,4 +1,4 @@
-"""Shared pieces of the revision figures in plot_tests/ (not yet paper code).
+"""Shared pieces of the figures in plot_tests/.
 
 - Names and notation used on every figure (``FINAL_RUN``, ``DC_NAME``, lever labels).
 - Loaders: pooled MCMC draws, the run's model, the residuals of the final model at
@@ -35,11 +35,11 @@ CHECKS_DIR = OUTPUT_DIR / "checks"
 ITERATIONS_DIR = OUTPUT_DIR / "iterations"
 CHAINS_DIR = REPO / "Bermuda_Data" / "Output" / "MCMC_Chains"
 
-# The reported solution (FIG-1) and the run behind every "final" figure: common
+# The reported solution and the run behind every "final" figure: common
 # 30-min delta-c(t) windows plus a per-DOG offset, AR(1) noise, one dt per DOG.
 FINAL_SOLUTION = "MCMC posterior mean"
 FINAL_RUN = "ar1_common30"
-# R3 #7: delta-c is an empirical correction, not an oceanographic parameter.
+# delta-c is an empirical correction, not an oceanographic parameter.
 DC_NAME = "ESV correction"
 DC_SYMBOL = "δc"
 DT_SYMBOL = "δt"
@@ -122,6 +122,7 @@ def run_model_and_problem(pooled):
 
 
 def _first_chain(run):
+    """Path of the first chain file of a run."""
     return sorted((CHAINS_DIR / run).glob("chain_*.npz"))[0]
 
 
@@ -387,7 +388,7 @@ def keep_iteration(name, label):
     return target
 
 
-# --- helpers added for FX-7 and FIG-9 (MCMC) ------------------------------------------
+# --- MCMC helpers ---------------------------------------------------------------
 
 
 def linear_gaussian_prior(coefficients, prior_center, prior_sd, constant=0.0):
@@ -431,11 +432,11 @@ def density_levels(density, probabilities):
     return levels
 
 
-# --- helpers added for FIG-3 and FX-4 (clock offset, travel times) ------------------
+# --- clock offset and travel times -----------------------------------------------
 
 
 def wrap_to_period(values_s, period_s=1.0):
-    """Values wrapped into [-period/2, period/2): the fractional part of Eq. A22."""
+    """Values wrapped into [-period/2, period/2): the fractional travel-time part."""
     values = np.asarray(values_s, dtype=float)
     return (values + 0.5 * period_s) % period_s - 0.5 * period_s
 
@@ -445,7 +446,7 @@ def alignment_scan(dt_values_s, CDOG_data, GPS_data, travel_times_s, gate_s=0.5)
 
     CDOG_data (M, 2) holds integer and fractional DOG-clock seconds, GPS_data (N,)
     the emission epochs (GPS s) and travel_times_s (N,) the modelled travel times
-    (s). Each δt re-derives the pairing with ``two_pointer_index`` (Eq. A20); the
+    (s). Each δt re-derives the pairing with ``two_pointer_index``; the
     0.5 s gate is the one of the offset search (``find_int_offset``).
     """
     from Inversion_Workflow.Inversion.Numba_xAline import two_pointer_index
@@ -509,7 +510,7 @@ def vertical_travel_time_s(dog_ecef_m, transducer_ecef_m, sound_speed_mps):
     return (np.asarray(heights) - dog_height) / sound_speed_mps
 
 
-# --- helpers added for FX-5, FX-6 and FIG-4 (residuals, delta-c) -------------------
+# --- residuals and delta-c -------------------------------------------------------
 
 
 def window_steps(draws):
@@ -586,7 +587,7 @@ def antenna4_height_anomaly(gps_coordinates, gps_grid, up):
     return anomaly
 
 
-# Antenna-4 height steps shown in FX-5 and FIG-4: |median of 3 min after minus
+# Antenna-4 height steps: |median of 3 min after minus
 # 3 min before| > 0.15 m, with >= 20 epochs on each side (none across data gaps).
 ANTENNA4_STEP_HALF_WINDOW_S = 180.0
 ANTENNA4_STEP_MIN_M = 0.15
@@ -611,7 +612,7 @@ def antenna4_steps(config):
     return inputs["GPS_data"], anomaly, step_s, step_m
 
 
-# --- helpers added for FIG-1, FIG-2 and FX-A3 (flowchart, map, GNSS) ---------------
+# --- flowchart, map and GNSS -----------------------------------------------------
 
 # GNSS quality control as run by Inversion_Workflow/Bermuda/Initialize_Bermuda_Data.py
 # (initialize_bermuda and its __main__), which wrote Processed_GPS_Receivers_DOG_*.npz.
@@ -751,11 +752,11 @@ def read_esri_ascii(path):
     return grid, extent
 
 
-# --- helpers added for FIG-5, FIG-6 and FIG-7 (models, synthetics) -----------------
+# --- models and synthetics -------------------------------------------------------
 
 
 def spread_over_sd(means, sds):
-    """Range of the means (max - min) divided by the median sd (FIG-5)."""
+    """Range of the means (max - min) divided by the median sd."""
     means, sds = np.asarray(means, dtype=float), np.asarray(sds, dtype=float)
     if means.shape != sds.shape or means.size < 2:
         raise ValueError(f"need >= 2 equal-length means and sds; got {means.shape}")
@@ -781,6 +782,7 @@ def gapped_autocorrelation(t_s, x, max_lag):
     values[index], mask[index] = x - x.mean(), 1.0
 
     def lagged_sum(a, b):
+        """Sums of a[t] * b[t + k] for lags k = 0..max_lag, via FFT."""
         spectrum = np.fft.rfft(a, 2 * n) * np.conj(np.fft.rfft(b, 2 * n))
         return np.fft.irfft(spectrum)[: max_lag + 1]
 
@@ -808,7 +810,7 @@ def horizontal_rms(east_errors, north_errors):
     return float(np.sqrt(np.mean(east**2 + north**2)))
 
 
-# --- helpers added for FX-8, FIG-8 and appendix B (vessel, levers, synthetics) -----
+# --- vessel, lever arms and synthetics -------------------------------------------
 
 
 def receivers_in_body_frame(gps_coordinates, gps_grid):
@@ -860,20 +862,17 @@ def mean_with_ci(values, probability=0.95):
 def b36_range_sd_cm(
     sigma_d_m, sigma_t_s, gain=1.0, sound_speed_mps=paper_style.RANGE_SOUND_SPEED_MPS
 ):
-    """Eq. B36 ranging sd c·σε (cm) = c·sqrt(σt² + (g σd / c)²).
+    """Ranging sd c·σε (cm) = c·sqrt(σt² + (g σd / c)²).
 
-    gain g maps receiver noise σd to transducer range noise (submitted B36: g = 1;
-    K8: g ≈ 1.6 for the Bermuda antenna geometry).
+    The gain g maps receiver noise σd to transducer range noise (g ≈ 1.6 for the
+    Bermuda antenna geometry).
     """
     sigma_d_m, sigma_t_s = np.asarray(sigma_d_m), np.asarray(sigma_t_s)
     sigma_eps_s = np.sqrt(sigma_t_s**2 + (gain * sigma_d_m / sound_speed_mps) ** 2)
     return sigma_eps_s * sound_speed_mps * 100.0
 
 
-# --- helpers added for the 3-D posterior figure -------------------------------------
-
-
-# --- helper added for the 2026-11-21 figures (model sensitivity, repeatability) -----
+# --- model sensitivity and repeatability -----------------------------------------
 
 
 def run_positions_cm(run, reference_ecef_m):
@@ -893,7 +892,7 @@ def run_positions_cm(run, reference_ecef_m):
     return out
 
 
-# --- helper added for the density-coloured scatters (2026-11-24) ----------------------
+# --- density-coloured scatters ---------------------------------------------------
 
 
 def nearby_counts(x, y, x_radius, y_radius):

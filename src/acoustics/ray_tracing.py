@@ -6,7 +6,7 @@ from bermuda_data import gps_data_path
 
 @njit
 def ray_tracing(iga, z_a, z_b, depth, cz):
-    """Ray from depth z_a to z_b (m) at launch elevation iga (deg), Eqs. A14-A15.
+    """Ray from depth z_a to z_b (m) at launch elevation iga (deg).
 
     The integrals are summed over the profile layers. Returns horizontal range,
     vertical separation (m) and travel time (s); range and time are NaN when the
@@ -60,7 +60,7 @@ def ray_tracing(iga, z_a, z_b, depth, cz):
     c_ratios = 0.5 * (cz_slice[1:] + cz_slice[:-1]) / c
     thetas = np.arcsin(c_ratios * sin_theta)
 
-    # Eqs. A14-A15 per layer, at the mean sound speed of its ends
+    # Ray integrals per layer, at the mean sound speed of its ends
     dx = dz * np.tan(thetas)
     ds = np.sqrt(dx**2 + dz**2)
     dt = ds / (c_ratios * c)

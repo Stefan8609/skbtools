@@ -2,10 +2,8 @@ import numpy as np
 from numba import njit
 
 
-# Pairing gate gamma (s) of Eq. A20, used wherever arrivals are paired with a model
-# near the solution. Any gate far wider than the fitted residuals (~0.1 ms) and below
-# the 0.5 s half-period of the 1 Hz pulses gives the same pairs
-# (Bermuda/Gamma_Sensitivity.py).
+# Pairing gate gamma (s). Any gate well above the residuals (~0.1 ms) and below the
+# 0.5 s half-period of the 1 Hz pulses gives the same pairs (Gamma_Sensitivity.py).
 PAIRING_GATE_S = 0.4
 # Search window (s) used while the offset or lever arm is still being searched, when
 # the trial model can be up to half a pulse period from the arrivals.
@@ -14,7 +12,7 @@ OFFSET_SEARCH_THRESHOLD_SECONDS = 0.5
 
 @njit(cache=True)
 def pair_indices(offset, threshold, CDOG_data, GPS_data, GPS_travel_times):
-    """CDOG and GPS row indices of the arrival-emission pairs (Eqs. A19-A20).
+    """CDOG and GPS row indices of the arrival-emission pairs.
 
     Arrival t' pairs with emission t when |(t' - offset) - (t + T_mod)| <
     ``threshold`` (s); of several arrivals in the gate the nearest is taken, and each
@@ -69,9 +67,9 @@ def two_pointer_index(
 ):
     """Pair each GPS emission with the nearest DOG arrival within ``threshold`` (s).
 
-    Pairs as in ``pair_indices`` (Eqs. A19-A20). Returns ``(CDOG_clock, CDOG_full,
+    Pairs as in ``pair_indices``. Returns ``(CDOG_clock, CDOG_full,
     GPS_clock, GPS_full, transponder_coordinates_full, esv_full)``: shifted arrival
-    time, observed travel time (Eq. A21), predicted arrival time and modelled travel
+    time, observed travel time, predicted arrival time and modelled travel
     time of each pair, with the pair's transducer position and ESV.
     """
     cdog_indices, gps_indices = pair_indices(
@@ -83,7 +81,7 @@ def two_pointer_index(
     transponder_coordinates_full = transponder_coordinates[gps_indices]
     esv_full = esv[gps_indices]
 
-    # Observed travel times (Eq. A21)
+    # Observed travel times
     CDOG_full = CDOG_clock - (GPS_clock - GPS_full)
 
     return (
@@ -113,8 +111,8 @@ def _coherence_score_from_pairs(CDOG_full, GPS_full):
     """Circular-variance score (1 - R) / sqrt(N) of the fractional residuals.
 
     R = |mean(exp(2 pi i w))| for w = CDOG_full - GPS_full wrapped into [-0.5, 0.5)
-    s; smaller is better. Eq. A22 uses 2 (1 - R); the 1 / sqrt(N) factor favours
-    offsets that pair more arrivals.
+    s; smaller is better. The 1 / sqrt(N) factor favours offsets that pair more
+    arrivals.
     """
     N = len(CDOG_full)
     if N == 0:
@@ -201,7 +199,7 @@ def find_int_offset(
 def find_subint_offset(
     offset, CDOG_data, GPS_data, travel_times, transponder_coordinates, esv
 ):
-    """Offset (s) within 0.5 s of ``offset`` minimizing the RMSE (Eq. A23)."""
+    """Offset (s) within 0.5 s of ``offset`` minimizing the RMSE."""
     # Initialize values for loop
     search_lower, search_upper = offset - 0.5, offset + 0.5
     lower, upper = search_lower, search_upper

@@ -6,7 +6,7 @@ from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
 from numba import njit
 from bermuda_data import GPS1_TO_OTHERS
 
-# Fraction of DOG tags dropped in total (App. B.3: "10-20%").
+# Fraction of DOG tags dropped in total.
 MIN_DROP_FRACTION = 0.10
 MAX_DROP_FRACTION = 0.20
 
@@ -26,12 +26,11 @@ def generateUnaligned(
     gps1_to_transponder=None,
     drift_rate=0.0,
 ):
-    """Box-pattern synthetic arrivals (Eq. B35) with dropped tags (App. B.3).
+    """Box-pattern synthetic arrivals with dropped tags.
 
     The DOG clock reads ``t + T + offset + time_bias`` plus ``time_noise`` (s) and
-    ``drift_rate * (t - t_mid)`` (s/s, Eq. 6 convention; ``t_mid`` half-way through
-    the GPS epochs, while the inversion's uses the paired epochs). So the offset of
-    Eq. 6 is ``offset + time_bias`` and the inversion recovers ``offset_est -
+    ``drift_rate * (t - t_mid)`` (s/s, ``t_mid`` half-way through the GPS epochs),
+    so the inversion recovers ``offset + time_bias`` as ``offset_est -
     time_bias_est``. ``position_noise`` (m) is added to every receiver coordinate.
     Returns ``(CDOG_mat, CDOG, GPS_Coordinates, GPS_time, transponder_coordinates)``;
     ``CDOG_mat`` is (m, 2) integer and fractional seconds.
@@ -77,7 +76,7 @@ def generateUnaligned(
 
     CDOG_mat = np.stack((CDOG_int, CDOG_remain), axis=1)
 
-    # Dropped arrivals (App. B.3): 10-20 % of the tags in total, as isolated random
+    # Dropped arrivals: 10-20 % of the tags in total, as isolated random
     # tags plus contiguous blocks of 200-500 tags (blocks may overlap).
     drop_fraction = np.random.uniform(MIN_DROP_FRACTION, MAX_DROP_FRACTION)
     keep = np.random.random(len(CDOG_mat)) >= drop_fraction / 2

@@ -1,4 +1,4 @@
-"""Style of the revision figures, sized for Satellite Navigation (SpringerOpen).
+"""Style of the plot_tests figures, sized for Satellite Navigation (SpringerOpen).
 
 Journal rules (submission guidelines, read 2026-11-21): figures print 85 mm (half
 page) or 170 mm (full page) wide and at most 225 mm high including the legend; lines
@@ -16,8 +16,12 @@ import _figure_common as fc
 
 SINGLE_MM = 85.0
 DOUBLE_MM = 170.0
+# Between the two journal widths, for a figure that is too small at half a page and
+# too large at a full page (the map). Not a width the guidelines name.
+MEDIUM_MM = 120.0
+WIDTHS_MM = (SINGLE_MM, MEDIUM_MM, DOUBLE_MM)
 MM_PER_INCH = 25.4
-FONT_PT = 8.0  # every text on a figure (R3 #11 asks for at least 8 pt)
+FONT_PT = 8.0  # every text on a figure (at least 8 pt)
 PANEL_LETTER_PT = 10.0
 
 # Grey scale: text and results are INK, comparisons CONTEXT, guides FAINT.
@@ -91,8 +95,8 @@ def apply():
 
 def figure(width_mm, height_mm, **subplots_kwargs):
     """``plt.subplots`` at the printed size (mm)."""
-    if width_mm not in (SINGLE_MM, DOUBLE_MM):
-        raise ValueError(f"width must be {SINGLE_MM} or {DOUBLE_MM} mm; got {width_mm}")
+    if width_mm not in WIDTHS_MM:
+        raise ValueError(f"width must be one of {WIDTHS_MM} mm; got {width_mm}")
     size = (width_mm / MM_PER_INCH, height_mm / MM_PER_INCH)
     return plt.subplots(figsize=size, **subplots_kwargs)
 
@@ -128,7 +132,7 @@ SIGMA_RED = "#d62728"  # ±1 sd lines, as in Plot_Modular
 
 def save(fig, name):
     """Report size, font and text-overlap problems, then write name.pdf and name.png."""
-    for problem in fc.figure_problems(fig, (SINGLE_MM, DOUBLE_MM)):
+    for problem in fc.figure_problems(fig, WIDTHS_MM):
         print(f"CHECK {name}: {problem}")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUTPUT_DIR / f"{name}.pdf")
@@ -137,7 +141,7 @@ def save(fig, name):
 
 
 DENSITY_CMAP = "viridis"
-DENSITY_LABEL = "Nearby observations"
+DENSITY_LABEL = "Point density"
 
 
 def density_scatter(ax, x, y, x_radius, y_radius, **scatter_kwargs):

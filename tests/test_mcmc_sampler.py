@@ -264,6 +264,39 @@ def test_residual_jacobian_time_bias_column_is_the_range_scale():
     np.testing.assert_allclose(time_bias_column, ms.RANGE_CM_PER_S, rtol=1e-6)
 
 
+def test_residual_jacobian_matches_central_differences():
+    config, problem = synthetic_problem(num_esv_splits=2)
+    model = ms.build_model(config)
+    # An ESV table linear in dz and beta, so grad c0 is nonzero and has no kinks.
+    problem["esv_matrix"] = (
+        1480.0
+        + 0.005 * problem["dz_array"][:, None]
+        + 0.2 * problem["angle_array"][None, :]
+    )
+    theta = model["start_theta"]
+    # Steps large enough that roundoff in the differences stays below 1e-5.
+    steps = np.full(model["geometric_end"], 0.1)
+    steps[model["layout"]["time_bias"]] = 1e-5
+    steps[model["layout"]["drift_rate"]] = 1e-9
+
+    jacobian = ms.residual_jacobian(theta, model, problem)
+
+    for k, step in enumerate(steps):
+        plus, minus = theta.copy(), theta.copy()
+        plus[k] += step
+        minus[k] -= step
+        difference = ms.residuals_cm(plus, model, problem) - ms.residuals_cm(
+            minus, model, problem
+        )
+        np.testing.assert_allclose(
+            jacobian[:, k],
+            difference / (2 * step),
+            rtol=1e-5,
+            atol=1e-5 * np.max(np.abs(jacobian[:, k])),
+            err_msg=model["names"][k],
+        )
+
+
 def test_ar1_white_likelihood_matches_dense_gaussian():
     # Two segments ([0:4] and [4:6]); AR(1) sd 3 cm, phi 0.7, white-noise sd 1.5 cm.
     residuals = np.array([1.0, 2.5, -0.5, 0.8, 3.0, 1.0])

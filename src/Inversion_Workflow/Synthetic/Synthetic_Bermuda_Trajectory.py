@@ -21,14 +21,13 @@ def bermuda_trajectory(
     DOG_num=3,
     drift_rate=0.0,
 ):
-    """Synthetic arrivals (Eq. B35) on the real Bermuda track of one DOG.
+    """Synthetic arrivals on the real Bermuda track of one DOG.
 
     The GNSS grid is the rigid ``gps1_to_others`` (vessel frame, m) fitted to the
     real receivers at each epoch, so only GPS1 keeps its real noise. The DOG clock
     reads ``t + T + time_bias + offset`` plus ``time_noise`` (s) and
-    ``drift_rate * (t - t_mid)`` (s/s, Eq. 6 convention; ``t_mid`` half-way through
-    the GPS epochs, while the inversion's uses the paired epochs). ``position_noise``
-    (m) is then added to every receiver. Returns ``(CDOG_data, CDOG,
+    ``drift_rate * (t - t_mid)`` (s/s, ``t_mid`` half-way through the GPS epochs).
+    ``position_noise`` (m) is then added to every receiver. Returns ``(CDOG_data, CDOG,
     GPS_Coordinates, GPS_data, transponder_coordinates)``.
     """
     if gps1_to_others is None:
@@ -49,11 +48,8 @@ def bermuda_trajectory(
     GPS_Coordinates_real = data["GPS_Coordinates"]
     GPS_data = data["GPS_data"]
 
-    # Reconstruct a rigid GNSS array at every epoch.
-    #
-    # GPS1 retains its real position, while the orientation is estimated
-    # from the measured four-receiver grid. The fixed gps1_to_others
-    # geometry removes the relative positioning noise between receivers.
+    # Rigid GNSS array at every epoch: GPS1 keeps its real position, the
+    # orientation comes from the measured grid.
     GPS_Coordinates = np.empty_like(GPS_Coordinates_real)
 
     for i in range(len(GPS_Coordinates_real)):

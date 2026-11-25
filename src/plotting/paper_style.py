@@ -1,4 +1,4 @@
-"""One figure style for Paper I.
+"""One figure style for the paper figures.
 
 - Figures are drawn at their printed width (single or double column) and saved as
   vector PDF, with a PNG preview for slides. Only dense scatter layers are

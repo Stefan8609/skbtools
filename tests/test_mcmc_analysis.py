@@ -81,9 +81,9 @@ def test_reported_quantities_follow_the_paper_conventions():
 
     value = dict(zip(names, A @ theta + b, strict=False))
 
-    # dt in the Eq. 6 convention: offset - time_bias.
-    assert value["DOG1_dt_Eq6"] == pytest.approx(offsets[0] - 1e-4, abs=1e-12)
-    assert value["DOG4_dt_Eq6"] == pytest.approx(offsets[2] + 2e-4, abs=1e-12)
+    # dt = offset - time_bias.
+    assert value["DOG1_dt"] == pytest.approx(offsets[0] - 1e-4, abs=1e-12)
+    assert value["DOG4_dt"] == pytest.approx(offsets[2] + 2e-4, abs=1e-12)
     assert value["DOG1_dc_mean"] == pytest.approx(0.25)
     for axis in "ENU":
         assert value[f"DOG3_{axis}_minus_Table1"] == pytest.approx(0.0, abs=1e-6)

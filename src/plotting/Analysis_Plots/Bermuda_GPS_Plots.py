@@ -12,6 +12,7 @@ from Inversion_Workflow.Bermuda.Initialize_Bermuda_Data import (
 
 
 def filtered_elevation_plots(window=5000, save=False, paper=False):
+    """Receiver heights with the running-median filter band over ``window`` epochs."""
     if save and paper:
         plt.rcParams.update(
             {
@@ -207,6 +208,7 @@ def filtered_elevation_plots(window=5000, save=False, paper=False):
 
 
 def barycenter_elevation_plot(save=False, paper=False):
+    """Height of the receiver barycenter over the survey."""
     data = np.load(gps_data_path("GPS_Data/Processed_GPS_Receivers_full.npz"))
     GPS_Coordinates = data["GPS_Coordinates"]
     GPS_data = data["GPS_data"]

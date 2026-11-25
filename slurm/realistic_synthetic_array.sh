@@ -1,12 +1,12 @@
 #!/bin/bash
-# Realistic synthetic ensembles (Paper I revision): one block of seeds per array task.
+# Realistic synthetic ensembles: one block of seeds per array task.
 #
 # RS_EXPERIMENT picks an experiment of experiment_cells() in
 # src/Inversion_Workflow/Synthetic/Realistic_Synthetic_Ensemble.py (budget, coverage,
 # geometry, halfsplit, currents). Task i runs seeds
 # [i * RS_SEEDS_PER_TASK, (i + 1) * RS_SEEDS_PER_TASK) of every cell on
 # RS_WORKERS cores and writes
-# revision/analysis/realistic_synthetic/<experiment>_seed<first>.csv plus one npz
+# Bermuda_Data/Output/Realistic_Synthetic/<experiment>_seed<first>.csv plus one npz
 # per realization (task 0 writes <experiment>.csv). Merge and summarize afterwards,
 # from the repository root:
 #   PYTHONPATH=src python -c "from Inversion_Workflow.Synthetic.Realistic_Synthetic_Ensemble \

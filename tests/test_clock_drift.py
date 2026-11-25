@@ -222,15 +222,15 @@ def test_gauss_newton_and_mcmc_residuals_agree_with_drift():
     np.testing.assert_allclose(mcmc_residuals, -gn_residuals_cm, rtol=0, atol=1e-6)
 
 
-def test_drift_jacobian_column_matches_finite_difference():
+def test_drift_jacobian_column_matches_gauss_newton():
     """The Gauss-Newton drift column is +(t - t_mid), s per s/s: minus the MCMC's
-    finite-difference column divided by the range scale."""
+    column divided by the range scale."""
     config, problem, _ = _mcmc_problem_with_drift()
     model = ms.build_model(config)
     jacobian = ms.residual_jacobian(model["start_theta"], model, problem)
-    fd_column = jacobian[:, model["layout"]["drift_rate"].start]
+    mcmc_column = jacobian[:, model["layout"]["drift_rate"].start]
     gn_column = problem["pair_t_from_mid"]
-    np.testing.assert_allclose(-fd_column / ms.RANGE_CM_PER_S, gn_column, rtol=1e-6)
+    np.testing.assert_allclose(-mcmc_column / ms.RANGE_CM_PER_S, gn_column, rtol=1e-6)
 
 
 def test_drift_step_solves_a_pure_drift_residual_in_one_step():

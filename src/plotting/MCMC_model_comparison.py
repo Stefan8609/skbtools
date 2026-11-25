@@ -1,11 +1,8 @@
 """Vertical and clock posteriors of the Bermuda MCMC under different noise models.
 
-Compares runs with different noise models (iid, AR(1), AR(1) + white noise,
-drift) and numbers of ESV splits, for the vertical lever arm and, per DOG, the up
-coordinate (relative to the submitted Table 1 position), the Eq. 6 clock offset
-dt (relative to the alignment offset) and the mean ESV bias. When these move
-between models by more than their posterior widths, the widths understate the
-model-dependent uncertainty.
+Compares the vertical lever arm and, per DOG, the up coordinate (from the submitted
+Table 1 position), the clock offset dt (from the alignment offset) and the mean ESV
+bias across noise models and ESV splits.
 """
 
 import json
@@ -22,7 +19,7 @@ from plotting.save import save_plot
 # (quantity name template, axis label, scale to plot units, subtract the offset)
 ROWS = [
     ("DOG{dog}_U_minus_Table1", "up - Table 1 (m)", 1.0, False),
-    ("DOG{dog}_dt_Eq6", r"$\delta t$ - alignment offset ($\mu$s)", 1e6, True),
+    ("DOG{dog}_dt", r"$\delta t$ - alignment offset ($\mu$s)", 1e6, True),
     ("DOG{dog}_dc_mean", r"mean $\delta c$ (m/s)", 1.0, False),
 ]
 
@@ -50,6 +47,7 @@ def noise_model_comparison(runs, save=True, bins=60):
     fig, axes = plt.subplots(len(ROWS) + 1, len(dogs), figsize=(4.2 * len(dogs), 12))
 
     def overlay(ax, key, scale, offset, label):
+        """Overlay the histograms of one quantity for every run."""
         ax.set_xlabel(label)
         for name, legend in runs.items():
             draws = results[name][2][key]

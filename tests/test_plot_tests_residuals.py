@@ -1,4 +1,4 @@
-"""Helpers behind the numbers printed on FX-5, FX-6 and FIG-4 (plot_tests/)."""
+"""Helpers behind the numbers printed on the residual and delta-c figures."""
 
 import numpy as np
 import pytest

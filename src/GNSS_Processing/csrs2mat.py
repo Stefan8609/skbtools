@@ -14,12 +14,14 @@ DOYS = [163, 164]
 
 
 def dms_to_decimal(degrees, minutes, seconds):
+    """Decimal degrees from signed degrees, minutes and seconds."""
     sign = -1.0 if degrees < 0.0 else 1.0
 
     return sign * (abs(degrees) + minutes / 60.0 + seconds / 3600.0)
 
 
 def read_csrs_pos(path):
+    """Rows (dicts) of the final epochs of a CSRS-PPP .pos file."""
     rows = []
 
     with path.open("r", encoding="ascii", errors="replace") as file:

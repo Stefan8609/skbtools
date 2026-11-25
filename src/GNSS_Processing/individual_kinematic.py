@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 def _get_files_and_apply_function(directory_path, function, pattern="*.kin"):
+    """Apply ``function`` to every file in ``directory_path`` matching ``pattern``."""
     # Find files matching a pattern
     for file_path in directory_path.glob(pattern):
         if file_path.is_file():
@@ -15,9 +16,11 @@ def _get_files_and_apply_function(directory_path, function, pattern="*.kin"):
 
 
 def process_kinematic_files(individual_kinematic_dir, downsample=1):
+    """Convert every .kin file in a directory to .mat and plot it."""
     directory_path = Path(individual_kinematic_dir)
 
     def process_file(file_path):
+        """Convert one .kin file to .mat and save its plot."""
         output_path = file_path.with_suffix(".mat")
         print(f"Processing file: {file_path}")
         save_mat(file_path, output_path)

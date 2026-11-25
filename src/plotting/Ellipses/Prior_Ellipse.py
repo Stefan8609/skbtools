@@ -4,6 +4,7 @@ from matplotlib.patches import Ellipse
 
 
 def plot_prior_ellipse(mean=0, cov=None, confidence=0.68, zorder=1, label=None):
+    """Draw the ``confidence`` ellipse of a 2-D Gaussian on the current axes."""
     if cov is None:
         cov = np.eye(2)
     # Eigen-decomposition

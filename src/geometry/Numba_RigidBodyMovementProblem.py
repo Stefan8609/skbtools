@@ -6,7 +6,7 @@ from numba import njit
 def findRotationAndDisplacement(xyzs_init, xyzs_final):
     """Rotation R (3, 3) and translation d (3,) best mapping xyzs_init onto xyzs_final.
 
-    Both are (3, N). Eqs. A10-A11: the SVD solution of Soderkvist, "Using SVD for
+    Both are (3, N). The SVD solution of Soderkvist, "Using SVD for
     some fitting problems"; the determinant term rules out a reflection.
     """
     # Centroids of the two point clouds

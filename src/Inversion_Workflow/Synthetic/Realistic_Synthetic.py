@@ -1,27 +1,14 @@
-"""Realistic synthetic one-way GNSS-A data: the paper's generator plus six knobs.
+"""Realistic synthetic one-way GNSS-A data: ``bermuda_trajectory`` plus six knobs.
 
-The paper's synthetics (App. B) have iid noise and a time-invariant sound speed, so
-they miss the error that dominates the Bermuda residuals. ``realistic_synthetic``
-starts from the paper's generator and adds, in the order they act on the data:
+The knobs, in the order they act on the data: (1) sound speed dc(t, x) as a time
+series, M2 sinusoid and horizontal gradient; (2) depth-mean current, steady plus M2;
+(3) clock offset, drift and transmit delay; (4) common-mode and per-antenna vessel
+GNSS error; (5) timing noise and the real dropout pattern; (6) the real Bermuda
+track or an idealized one. All knobs are in ``ZERO_KNOBS`` (units in the names) and
+default to off, which reproduces ``bermuda_trajectory`` bit for bit.
 
-1. Sound speed: a depth-uniform ESV change dc(t, x), through the ESV-bias term the
-   inversion estimates. A time series (random walk, or our estimated common dc(t)),
-   an M2 sinusoid and a linear horizontal gradient.
-2. Current: depth-mean, steady plus a rotating M2 part. One-way ranging does not
-   cancel it.
-3. Clock and transmit side: offset, linear drift and a constant transmit delay.
-4. Vessel GNSS: a common-mode Gauss-Markov error that moves the transducer 1:1, and
-   a per-antenna error that tilts the vessel frame through the 20 m lever.
-5. Detection: timing noise and the real pattern of dropped arrivals.
-6. Geometry: the real Bermuda track, or an idealized hourglass.
-
-Every knob is in ``ZERO_KNOBS`` (units in the names) and defaults to off. With every
-knob off the output equals ``bermuda_trajectory`` bit for bit, given the same seed.
-
-Conventions: time is GPS seconds; positions are local ENU (m) at
-``SITE_ORIGIN_ECEF``. Arrival = emission + travel time + delays + clock offset +
-drift + noise, a delay being positive when the sound arrives late. dc is added to
-the ESV (m/s) like the inversion's ``esv_bias``: positive dc means earlier arrivals.
+Times are GPS s; positions local ENU (m) at ``SITE_ORIGIN_ECEF``. Delays are
+positive when sound arrives late; dc adds to the ESV like ``esv_bias``.
 """
 
 from functools import lru_cache
@@ -49,10 +36,8 @@ CDOG_AUGMENTS = {
     4: np.array([235.77476616, -1305.38300727, -2190.89445398]),
 }
 
-# Common dc(t) estimated from the Bermuda data: Laplace mode of the "ar1_common30"
-# model (one zero-mean series shared by DOGs 1/3/4 on 30-min windows) on the
-# 17-h PRIDE_final GNSS, 2026-11-24. It may still hold common-mode vessel GNSS
-# error.
+# Common dc(t) estimated from the Bermuda data (Laplace mode of "ar1_common30");
+# it may still hold common-mode vessel GNSS error.
 OBSERVED_DC_EDGES_GPS_S = np.array(
     list(np.arange(20111.0, 79511.1, 1800.0)) + [81200.0]
 )
@@ -401,7 +386,7 @@ def realistic_synthetic(DOG_num, knobs, seed, dz_array, angle_array, esv_matrix)
 
     Returns ``(CDOG_data, CDOG, GPS_Coordinates, GPS_data, transponder_coordinates,
     truth)``, the first five as in ``bermuda_trajectory``. ``truth`` holds the lever
-    arm, the clock offset (Eq. 6 dt, s) and drift, and, per GPS epoch before
+    arm, the clock offset (dt, s) and drift, and, per GPS epoch before
     dropouts (``GPS_data_all``, equal to ``GPS_data``): each obstacle's travel-time
     contribution (``delay_s``), dc (m/s), the common GNSS error (m, ENU) and
     ``keep``, the pings the DOG received.
@@ -412,8 +397,7 @@ def realistic_synthetic(DOG_num, knobs, seed, dz_array, angle_array, esv_matrix)
             f"DOG_num must be one of {sorted(CDOG_AUGMENTS)}, got {DOG_num}"
         )
 
-    # The paper's generator (or the same steps on an idealized track): geometry,
-    # travel times, clock offset and drift, iid timing and antenna noise.
+    # Baseline generator: geometry, travel times, clock, iid timing and antenna noise.
     np.random.seed([seed, DOG_num])
     tables = (dz_array, angle_array, esv_matrix)
     paper_args = (k["timing_noise_s"], k["position_noise_m"], 0.0, 0.0, *tables)

@@ -1,18 +1,12 @@
 """Travel-time residuals, one row per DOG.
 
-Question: how large are the travel-time residuals, are they random in time, and do
-the three DOGs share them?
-Message: the residuals are close to normal in distribution but not white in time:
-they wander over tens of minutes, and that slow part is largely common to the
-three DOGs (correlations of the 5-min medians are in the row titles).
+Question: how large are the residuals, are they random in time, and do the DOGs
+share them?
+Message: near-normal but not white: they wander over tens of minutes, largely in
+common between DOGs.
 
-Layout follows Plot_Modular.time_series_plot: histogram with the fitted normal
-curve on the left, residuals against time on the right, coloured by the number
-of nearby residuals. All rows share one
-symmetric residual axis that holds every residual.
-
-Input: the final MCMC run (fc.FINAL_RUN); residuals of its best sample, the saved
-draw with the highest posterior density.
+Layout as Plot_Modular.time_series_plot (histogram and density-coloured time series
+on one shared axis). Input: the best sample of the final MCMC run.
 """
 
 import numpy as np
@@ -33,6 +27,7 @@ DENSITY_RADIUS_MS = 0.01
 
 
 def main():
+    """Draw and save the figure."""
     st.apply()
     scatters = []
     pooled = fc.pooled_run(fc.FINAL_RUN)
@@ -98,7 +93,7 @@ def main():
         )
         ax_time.set_title(
             f"{st.DOG[dog]['label']}:  $\\sigma_\\epsilon$ = {sd_ms:.3f} ms,  "
-            f"$c\\,\\sigma_\\epsilon$ = {sd_ms / MS_PER_CM:.1f} cm",
+            f"$c\\,\\sigma_\\epsilon$ = {sd_ms / MS_PER_CM:.2f} cm",
             loc="left",
             pad=3,
         )

@@ -127,8 +127,8 @@ def error_ellipse(
     Inverts ``num_points`` synthetics on the Bermuda track of ``DOG_num``, with
     ``time_noise`` (s) and ``position_noise`` (m) and the clean GNSS trajectory taken
     every ``downsample`` epochs, or loads the saved results when ``generate`` is
-    False. ``use_leg_mask`` keeps only the 9-11 h and 12.4-15 h legs (the paper uses
-    the full track). ``inversion_esv`` is the inversion's ESV table; ESV_GENERATE is
+    False. ``use_leg_mask`` keeps only the 9-11 h and 12.4-15 h legs (a sensitivity
+    test). ``inversion_esv`` is the inversion's ESV table; ESV_GENERATE is
     the identical-table control. Results are saved per table name.
     """
 
@@ -179,8 +179,7 @@ def error_ellipse(
                 on_outside="warn",
             )
 
-        # Paper I synthetics use the full trajectory; the leg mask (9-11 h and
-        # 12.4-15 h) is a sensitivity test only.
+        # Full trajectory by default; the leg mask is a sensitivity test only.
         if use_leg_mask:
             keep = leg_mask(correct_GPS_data)
             correct_GPS_Coordinates = correct_GPS_Coordinates[keep]

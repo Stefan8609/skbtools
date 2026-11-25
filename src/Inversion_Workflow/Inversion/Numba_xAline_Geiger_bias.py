@@ -21,11 +21,10 @@ from numba import njit
 def compute_Jacobian_biased(guess, transponder_coordinates, times, esv, grad_x_c0=None):
     """Jacobian (N, 5) of the travel-time residual in (x, y, z, time_bias, esv_bias).
 
-    Eq. A26. ``esv`` already includes the ESV bias (c_eff + dc), as returned by
-    ``modelled_times``. The residual is (T_mod - time_bias) - T_obs with T_mod =
-    range / esv. ``grad_x_c0`` (N, 3), the gradient of the table ESV with respect to
-    the DOG (``esv_gradient``), adds -(T / esv) grad c0, which A26 leaves out (it
-    holds c_eff fixed, as happens here without ``grad_x_c0``).
+    The residual is (T_mod - time_bias) - T_obs with T_mod = range / esv, and
+    ``esv`` includes the ESV bias (c_eff + dc). The optional ``grad_x_c0`` (N, 3),
+    the table-ESV gradient from ``esv_gradient``, adds -(T / esv) grad c0; without
+    it c_eff is held fixed.
     """
     diffs = transponder_coordinates - guess
 
@@ -77,13 +76,9 @@ def paired_time_mid(emission_times):
 def drift_step(J, residuals, t_from_mid):
     """Gauss-Newton step for (x, y, z, time_bias, esv_bias, drift_rate).
 
-    ``J`` is the 5-column Jacobian of ``compute_Jacobian_biased``. The residual is
-    ``(T_mod - time_bias + drift_rate * (t - t_mid)) - T_obs`` (internal
-    ``time_bias - drift_rate * (t - t_mid)``), so the drift column is
-    ``+(t - t_mid)``. It is up to ~4e4 s against ~1e-9 s/s, so it is divided by
-    the largest ``|t - t_mid|`` (the solved parameter is then the accumulated clock
-    error at the survey end, s) and the step is a least-squares solve rather than
-    an inverse of ``J.T @ J``.
+    ``J`` is the 5-column Jacobian of ``compute_Jacobian_biased``; the drift column
+    ``+(t - t_mid)`` is scaled by its largest magnitude for conditioning, and the
+    step is a least-squares solve.
     """
     half_span = np.max(np.abs(t_from_mid))
     J_drift = np.empty((J.shape[0], 6))
@@ -110,7 +105,7 @@ def gauss_newton_step(
     real_data,
     clock_drift,
 ):
-    """One Gauss-Newton step (Eq. A27) on the paired arrivals, outliers excluded.
+    """One Gauss-Newton step on the paired arrivals, outliers excluded.
 
     The residual is ``(travel_times - time_bias) - CDOG_times`` (plus
     ``drift_rate * t_from_mid`` with ``clock_drift``). Returns the update of
@@ -312,18 +307,13 @@ def initial_bias_geiger(
 ):
     """Initial inversion including time and ESV bias parameters.
 
-    Returns ``(estimate, offset)`` with ``estimate = [x, y, z, time_bias, esv_bias]``.
-    The clock offset of Eq. 6 is ``offset - time_bias``. With ``clock_drift`` the
-    estimate gets a sixth entry, ``drift_rate`` (s/s, Eq. 6 convention), and
-    ``offset - time_bias`` is dt0, the offset at ``t_mid`` (see
-    ``paired_time_mid``).
+    Returns ``(estimate, offset)`` with ``estimate = [x, y, z, time_bias, esv_bias]``
+    and clock offset dt = ``offset - time_bias``. With ``clock_drift`` the estimate
+    gets a sixth entry, ``drift_rate`` (s/s), and dt is the offset at ``t_mid``.
 
-    With ``initial_offset`` the alignment is searched within 0.5 s of it. Without
-    one, the integer second picked by the circular-variance score at ``guess`` is
-    biased by about the position error divided by the vessel speed, so it is
-    re-selected with the converged fit: shifts of up to
-    ``INT_OFFSET_SHIFT_SECONDS`` are refitted around the best offset until none
-    lowers the misfit RMS.
+    With ``initial_offset`` the alignment is searched within 0.5 s of it; otherwise
+    the integer second is re-selected after convergence, trying shifts of up to
+    ``INT_OFFSET_SHIFT_SECONDS``.
     """
     estimate, offset = _geiger_at_offset(
         guess,
@@ -405,14 +395,12 @@ def final_bias_geiger(
     drift_rate=0.0,
     gate=PAIRING_GATE_S,
 ):
-    """Gauss-Newton fit (Eq. A25) of position and biases at a fixed clock offset.
+    """Gauss-Newton fit of position and biases at a fixed clock offset.
 
-    The pairs are made at ``offset`` within ``gate`` (s, gamma of Eq. A20) and kept
-    through the iterations.
-    Returns ``(estimate, CDOG_full, GPS_full, CDOG_clock, GPS_clock)``, the last four
-    for the inlier pairs re-made at ``offset - time_bias``. With ``clock_drift`` the
-    estimate gets a sixth entry, ``drift_rate`` (s/s, Eq. 6 convention), started from
-    ``drift_rate``; t_mid is set by the pairs made here.
+    Pairs are made once at ``offset`` within ``gate`` (s). Returns ``(estimate,
+    CDOG_full, GPS_full, CDOG_clock, GPS_clock)``, the last four for the inlier pairs
+    re-made at ``offset - time_bias``. With ``clock_drift`` the estimate gets a sixth
+    entry, ``drift_rate`` (s/s), started from ``drift_rate``.
     """
     epsilon = 10**-5
     k = 0
@@ -498,8 +486,7 @@ def final_bias_geiger(
         real_data,
     )
 
-    # Pair at offset - time_bias (Eq. 6), so the returned travel times include the
-    # time bias.
+    # Pair at offset - time_bias, so the returned travel times include the time bias.
     shifted_GPS_data = GPS_data - time_bias
     if clock_drift:
         # The drift moves arrivals by ~40 us at most, far inside the gate,
@@ -532,15 +519,12 @@ def final_bias_geiger(
 
 
 # Gauss-Newton offset search: integer seconds tried on each side of the aligned
-# offset, and the smallest best-vs-second-best Delta chi^2 accepted. In small
-# synthetic tests (DOG 3, 20 trials) right picks had Delta chi^2 >= 156
-# and picks outside the window <= 23.
+# offset, and the smallest accepted best-vs-second-best Delta chi^2 (synthetic right
+# picks had >= 156, wrong ones <= 23).
 OFFSET_SEARCH_HALFWINDOW_SECONDS = 15
 MIN_OFFSET_DELTA_CHI2 = 50.0
-# Largest accepted misfit RMS of the best second: 50 cm of range at 1515 m/s. Right
-# seconds fit at 13-24 cm on the real data; a local minimum at a wrong second
-# (Puerto Rico crossover legs, -10 s instead of -19 s) fit at 94 cm and still had
-# Delta chi^2 = 176 against its neighbours.
+# Largest accepted misfit RMS of the best second, 50 cm of range. Right seconds fit
+# at 13-24 cm on real data; a wrong-second local minimum fit at 94 cm.
 MAX_OFFSET_RMS_SECONDS = 0.5 / NOMINAL_SOUND_SPEED_MPS
 LEVER_GN_MAX_ITERATIONS = 50
 # Iterations paired within the search window before the pairing gate, so the time
@@ -583,9 +567,8 @@ def lever_bias_geiger(
     and the lever arm, with transducer positions ``lever_origin + lever_rotation @
     lever`` (see ``lever_basis``). Pairs are re-made every iteration at
     ``offset - time_bias``, first within ``OFFSET_SEARCH_THRESHOLD_SECONDS``, then
-    ``gate``. The vertical lever arm is
-    nearly degenerate with the DOG depth; the least-squares solve takes the
-    minimum-norm step along that direction.
+    ``gate``. The vertical lever arm is nearly degenerate with the DOG depth; the
+    least-squares solve takes the minimum-norm step along that direction.
 
     Returns ``(estimate, lever, rms, n_pairs)``: ``rms`` (s) of the inlier residuals,
     ``np.inf`` with fewer than 20 pairs.
@@ -702,27 +685,17 @@ def gauss_newton_offset_search(
 ):
     """Find the DOG clock offset and lever arm when the integer second is unknown.
 
-    A wrong integer second pairs each arrival with the ship position that many
-    seconds earlier. The ship's body-frame velocity is nearly constant, so a lever
-    arm moved by about that many seconds of travel absorbs most of it, and a misfit
-    compared at one fixed lever arm prefers the wrong second. Here the data are
-    aligned once at ``initial_lever`` (circular variance and one Gauss-Newton fit,
-    or within 0.5 s of ``initial_offset`` when given). ``lever_bias_geiger`` then
-    solves position, biases and the lever arm at every integer second within
-    ``halfwindow`` of that alignment, and the lowest misfit RMS wins. The window is
-    recentred while the best second lies on its edge.
+    A wrong second can be absorbed by a shifted lever arm, so position, biases and
+    lever arm are refitted (``lever_bias_geiger``) at every integer second within
+    ``halfwindow`` of an initial alignment, and the lowest misfit RMS wins. If the
+    best-vs-second-best ``delta_chi2`` is below ``MIN_OFFSET_DELTA_CHI2`` or the RMS
+    above ``MAX_OFFSET_RMS_SECONDS``, the search is retried over four times the
+    window, then raises ``ValueError``.
 
-    Confidence: ``delta_chi2 = n_pairs * (rms_2**2 - rms**2) / rms**2`` between the
-    best and second-best seconds (white noise). Below ``MIN_OFFSET_DELTA_CHI2``, or
-    with a best-second RMS above ``MAX_OFFSET_RMS_SECONDS`` (a local minimum at a
-    wrong second), the search is repeated once over four times the window, then
-    raises ``ValueError``. Arrivals are paired within ``gate`` (s) once the search
-    window phase of each fit is over.
-
-    Returns ``(lever, offset, estimate, diagnostics)``. The time bias is folded into
-    the offset: ``estimate[3]`` is 0 and ``offset`` is the Eq. 6 clock offset dt
-    (dt0 at t_mid with ``clock_drift``). ``diagnostics`` holds ``rms`` and
-    ``second_rms`` (s), ``second_offset`` (s), ``delta_chi2`` and ``n_pairs``.
+    Returns ``(lever, offset, estimate, diagnostics)``: ``offset`` is the clock
+    offset dt with the time bias folded in (``estimate[3]`` is 0), and
+    ``diagnostics`` holds ``rms``, ``second_rms`` and ``second_offset`` (s),
+    ``delta_chi2`` and ``n_pairs``.
     """
     lever_origin, lever_rotation = lever_basis(GPS_Coordinates, gps1_to_others)
     transponder_coordinates = lever_origin + lever_rotation @ initial_lever

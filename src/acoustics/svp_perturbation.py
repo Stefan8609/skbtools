@@ -1,34 +1,13 @@
 """Physically motivated perturbations of a reference sound-speed profile.
 
-Used to build the ESV tables that invert the synthetic data (the generation table
-uses the unperturbed profile). Everything here is a pure function of its arguments
-(no I/O, no global state), so a later time- or space-dependent experiment can drive
-``heave_amplitude_m`` and ``mixed_layer_dT`` with A(t) or A(x, y), for example an M2
-internal tide.
+Used for the ESV tables that invert the synthetic data.
 
-Physics
--------
-Internal waves and tides move water parcels vertically, so the sound speed seen at
-depth z is the reference value from a displaced depth, c'(z) = c(z + eta(z)), with
-eta(z) = A * phi(z). ``phi`` is the first vertical mode of the displacement,
-phi'' + lambda N(z)^2 phi = 0 with phi = 0 at the surface and the seabed, normalised
-to a maximum of one, and ``A`` is the peak displacement in metres. For a
-Garrett-Munk buoyancy profile N(z) = N0 exp(-z / b) the mode peaks near 1 km depth,
-in the thermocline, and decays towards the seabed. The cast's own temperature and
-salinity would give N(z) directly, but that needs a seawater equation of state that
-this repository does not carry, and only the position of the peak depends on it.
-
-A mixed-layer term represents a surface temperature change dT (a few tenths of a
-degree), c' += dc/dT * dT * w(z), with w = 1 in the mixed layer tapering to 0 below
-it. dc/dT = 2.5 m/s per degC at the 24 degC surface of the Bermuda cast (Medwin 1975).
-
-Heave moves the temperature and salinity structure, not the pressure, so only the
-temperature-salinity part of the sound speed is displaced:
-c'(z) = c(z) + [c_ts(z + eta) - c_ts(z)] with c_ts = c - gamma z, where gamma is the
-pressure gradient of sound speed, taken from the deep slope of the reference profile
-(below ``DEEP_GRADIENT_FROM_M``, where temperature and salinity are nearly uniform).
-Deep water therefore changes by only about 0.01 m/s, as observed, whereas displacing
-the full c(z) would add gamma * eta = 0.017 m/s per metre of heave at any depth.
+Internal-wave heave displaces the temperature-salinity part of the sound speed by
+eta(z) = A * phi(z), phi the first vertical mode of a Garrett-Munk N(z):
+c'(z) = c(z) + c_ts(z + eta) - c_ts(z), with c_ts = c - gamma z and gamma the deep
+pressure gradient (not displacing pressure keeps the deep change ~0.01 m/s). A
+mixed-layer term adds dc/dT * dT tapering to zero below the layer, dc/dT = 2.5 m/s
+per degC (Medwin 1975).
 """
 
 import numpy as np
@@ -78,7 +57,7 @@ def perturb_profile(
     mixed_layer_depth_m=30.0,
     mixed_layer_taper_m=30.0,
 ):
-    """Perturbed profile (Eq. B34): c(z + eta(z)) plus a mixed-layer change, m/s.
+    """Perturbed profile: c(z + eta(z)) plus a mixed-layer change, m/s.
 
     ``depth`` (m, increasing) and ``c`` (m/s) are the reference profile.
     ``heave_amplitude_m`` is the peak displacement A, positive moving the profile

@@ -1,14 +1,9 @@
 """ESV bias over the survey under models of increasing time resolution.
 
-Question: does the ESV bias change during the survey, and does the answer depend
-on how its time variation is modelled?
-Message: a single constant hides changes of about 0.1 m/s. Four blocks per DOG
-and a 30-min series common to the three DOGs agree on those changes, and the
-series hardly moves when white noise or a clock drift is added to the model; only
-the level differs between models (it trades off with the timing bias and height).
-
-Each line is the posterior mean of the ESV bias applied to one DOG: the common
-series plus that DOG's offset. The band is the 95 % interval of the 30-min model.
+Question: does the ESV bias change during the survey, and does that depend on the
+model?
+Message: a constant hides ~0.1 m/s changes; finer models agree on them and differ
+only in level. The band is the 95 % interval of the 30-min model.
 
 Input: MCMC runs listed in MODELS.
 """
@@ -43,6 +38,7 @@ def esv_series(run):
 
 
 def main():
+    """Draw and save the figure."""
     st.apply()
     fig, axes = st.figure(st.DOUBLE_MM, 120.0, nrows=3, sharex=True, sharey=True)
     for run, label, color, width in MODELS:

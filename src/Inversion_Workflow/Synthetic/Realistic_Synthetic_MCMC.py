@@ -1,33 +1,18 @@
 """MCMC of the final model on realistic synthetic surveys: accuracy and coverage.
 
-Each seed generates one survey of DOGs 1, 3 and 4 (``PRESET`` of the ensemble, on
-``TRACK``) and samples it with a real-data model (``RUN_VARIANT`` of
-``MCMC_sampler.RUN_VARIANTS``; default the final model) using the sampler's own
-priors, pairing, outlier rule and epoch selection. One seed gives the same ocean,
-ship errors and DOG prior centres on every track and variant, so a per-DOG or legs
-run pairs with the joint run.
+Each seed generates one survey of DOGs 1, 3 and 4 (``PRESET`` on ``TRACK``) and
+samples it with ``RUN_VARIANT`` of ``MCMC_sampler.RUN_VARIANTS``. Only inputs the
+real data supply from outside the sampler are replaced: the ESV table, DOG prior
+centres (truth plus ``PRIOR_CENTER_ERROR_SD_M`` noise), alignment offsets (truth
+rounded to ``OFFSET_ROUND_S``) and DOG 1's vessel positions for all DOGs.
 
-``ONLY`` runs the error budget: one source group of the preset switched on alone
-over the measurement floor (``FLOOR_GROUPS``, so every budget run has the full
-run's pings and a noise level), or the floor alone ("floor"). "esv_profile" is the
-one entry that is not a knob: the floor survey inverted with
-``PROFILE_ERROR_TABLE``, whose sound-speed profile has the wrong shape (10 m of
-mode-1 internal-wave heave).
+``ONLY`` runs one error-budget group over the measurement floor, the floor alone
+("floor"), or the floor inverted with the wrong-profile ``PROFILE_ERROR_TABLE``
+("esv_profile").
 
-Only what the real data supply from outside the sampler is replaced:
-
-- ESV table: ``INVERSION_TABLE`` of the ensemble (the generation table).
-- DOG prior centres and start: truth + N(0, ``PRIOR_CENTER_ERROR_SD_M``) per axis, as
-  the real prior centres are Gauss-Newton guesses within metres of the solution.
-- Alignment offsets: the true clock offset rounded to ``OFFSET_ROUND_S``.
-- GNSS: DOG 1's vessel positions for all DOGs (in "observed" the iid antenna noise
-  is drawn per DOG).
-
-``run_synthetic_chain`` writes ``OUTPUT_DIR/<run>/seed<seed>_chain<chain>.npz``
-(resumable, as on real data) and the truth once per seed. ``summarize`` pools the
-chains of every finished seed into ``<run>.csv``: per seed and DOG, the error of
-the posterior mean, the posterior sd and whether the central intervals hold the
-truth, for position, lever arm and dt; the dc error; the fitted noise; max R-hat.
+``run_synthetic_chain`` writes ``OUTPUT_DIR/<run>/seed<seed>_chain<chain>.npz``;
+``summarize`` pools finished seeds into ``<run>.csv`` (per seed and DOG: posterior
+mean error, sd, interval coverage, dc error, noise and max R-hat).
 """
 
 import csv
@@ -91,6 +76,7 @@ OUTPUT_DIR = gps_output_path("MCMC_Synthetic")
 
 
 def run_name():
+    """Output folder name of the configured run."""
     label = "" if AMPLITUDE_SET == "guess" else f"_{AMPLITUDE_SET}"
     only = "" if ONLY is None else f"_only_{ONLY}"
     return f"mcmc_{RUN_VARIANT}_{PRESET}_{TRACK}{only}{label}"
@@ -196,6 +182,7 @@ def synthetic_problem(seed):
 
 
 def seed_paths(seed):
+    """Truth file and chain files of one seed."""
     folder = OUTPUT_DIR / run_name()
     return folder / f"seed{seed:04d}_truth.npz", [
         folder / f"seed{seed:04d}_chain{c:02d}.npz" for c in range(N_CHAINS)

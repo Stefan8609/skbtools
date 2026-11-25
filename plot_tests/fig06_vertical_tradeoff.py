@@ -1,16 +1,9 @@
 """Why the height of a DOG is poorly determined and its horizontal position is not.
 
-Question: why is the vertical position so much weaker than the horizontal one?
-Message: moving a DOG north lengthens the ranges on one side of it and shortens
-them on the other; no timing bias or ESV bias can copy that, so the horizontal
-position is well determined (a). Raising a DOG shortens every range, which a
-timing bias plus an ESV bias copy to within millimetres, so the height is poorly
-determined (b).
-
-Each point is one range of the survey. Moving the DOG by a vector d changes the
-range by −d·u, u being the unit vector from the DOG to the vessel. A timing bias
-changes every range by the same amount and an ESV bias dc changes a range R by
-−R·dc/c; the pair that best copies each DOG movement is found by least squares.
+Message: a horizontal move lengthens ranges on one side and shortens them on the
+other, which no timing or ESV bias can copy (a); a vertical move shortens every
+range, which they copy to millimetres (b). The best-copying biases are found by
+least squares.
 
 Input: geometry of the paired epochs (final MCMC run and the GNSS file).
 """
@@ -52,6 +45,7 @@ def best_copy(signature_cm, slant_range_m):
 
 
 def main():
+    """Draw and save the figure."""
     st.apply()
     residuals, _ = fc.final_residuals(fc.pooled_run(fc.FINAL_RUN))
     fig, axes = st.figure(st.DOUBLE_MM, 72.0, ncols=2, sharey=True)

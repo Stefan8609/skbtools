@@ -121,7 +121,7 @@ for i, DOG_num in enumerate(DOG_nums):
     print(f"\nDOG {DOG_num}")
     print(f"Estimate: {np.round(inversion_result, 4)}")
     if clock_drift:
-        print(f"Drift rate: {inversion_result[5]:.4e} s/s (Eq. 6 convention)")
+        print(f"Drift rate: {inversion_result[5]:.4e} s/s")
     print(
         f"Offset: {np.round(best_offset_eff, 4)}, "
         f"Inversion Guess (from base): {np.round(inversion_guess - CDOG_REFERENCE, 5)}"

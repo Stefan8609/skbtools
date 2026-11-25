@@ -211,7 +211,7 @@ else:
 
 
 # Summary + diagnostics
-# Eq. 6 clock offset: dt = offset - time_bias
+# Clock offset dt = offset - time_bias
 best_offset_eff = best_offset - time_bias
 drift_rate = inversion_result[5] if clock_drift else 0.0
 
@@ -228,7 +228,7 @@ print(
 )
 print("RMSE:", np.round(RMSE_cm, 3), "cm")
 if clock_drift:
-    print(f"Drift rate: {drift_rate:.4e} s/s (Eq. 6 convention)")
+    print(f"Drift rate: {drift_rate:.4e} s/s")
 
 
 # Plots

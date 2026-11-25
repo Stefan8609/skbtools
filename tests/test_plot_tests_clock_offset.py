@@ -1,4 +1,4 @@
-"""Helpers of plot_tests/_figure_common.py behind FIG-3 (clock offset) and FX-4."""
+"""Helpers of plot_tests/_figure_common.py behind the clock-offset figures."""
 
 import numpy as np
 import pytest

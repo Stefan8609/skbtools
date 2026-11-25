@@ -28,7 +28,7 @@ OTHERS = np.array(
 )
 LEVER = np.array([-12.5, 9.6, -13.3])
 OFFSET, TIME_BIAS = 3141.5926, 0.2
-# Eq. 6 clock offset recovered by the inversion.
+# Clock offset dt recovered by the inversion.
 TRUE_DT = OFFSET + TIME_BIAS
 
 

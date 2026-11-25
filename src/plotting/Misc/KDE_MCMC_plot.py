@@ -28,6 +28,7 @@ def plot_kde_mcmc(
     ax2=None,
     fig=None,
 ):
+    """KDE plot of MCMC DOG position samples with optional prior and ellipses."""
     if CDOG_reference is None:
         CDOG_reference = CDOG_REFERENCE
 

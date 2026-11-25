@@ -1,15 +1,11 @@
 """Posterior summaries of a Bermuda MCMC run.
 
-- Summary per parameter and DOG: MAP (the highest-posterior saved draw), mean, sd
-  and the 2.5/50/97.5 percentiles. DOG positions are also given in local ENU,
-  relative to the submitted Table 1 position (so ENU is the change since the
-  submission), and in WGS84 geodetic coordinates. A markdown table in the layout
-  of Table 1, and the posterior lever arm against its drawing-based prior.
-- Posterior covariance of all DOG positions in local ENU (m^2).
-- Linearized comparison at the MAP: J^T W J (W from the per-DOG sigma), its
-  condition number, the formal covariance (J^T W J)^-1 and its correlations,
-  against the posterior; also with AR(1) weighting.
-- Prior sensitivity: posterior sd / prior sd for each parameter.
+- Per-parameter MAP, mean, sd and percentiles; DOG positions also as ENU change
+  from the submitted Table 1 position and as WGS84 geodetic coordinates.
+- A markdown table in the Table 1 layout and the lever arm against its prior.
+- Posterior ENU covariance of the DOG positions (m^2).
+- Linearized (J^T W J)^-1 covariance at the MAP against the posterior.
+- Prior sensitivity: posterior sd / prior sd.
 
 Outputs go to Output/MCMC_Chains/<run_name>/analysis/.
 """
@@ -54,10 +50,9 @@ def reported_quantities(model, offsets, CDOG_reference):
 
     Returns names, units, the matrix A (n_quantities, n_params) and the constant
     b, so that quantities = theta @ A.T + b. Covers the lever arm, each DOG's
-    ECEF offset and ENU change since Table 1, Eq. 6 dt, each ESV split and their
-    mean (for "common_windows": the common series, each DOG's dc per window and
-    its offset, the mean over windows), drift, sigma and phi (log sigma is
-    exponentiated separately), and the paper's lever_z - DOG U.
+    ECEF offset and ENU change since Table 1, dt, the ESV parameters and their
+    means, drift, sigma and phi (log sigma is exponentiated separately), and
+    lever_z - DOG U.
     """
     layout = model["layout"]
     n_params = len(model["names"])
@@ -65,6 +60,7 @@ def reported_quantities(model, offsets, CDOG_reference):
     rows, constants, names, units = [], [], [], []
 
     def add(name, unit, coefficients, constant=0.0):
+        """Append one quantity to the linear map."""
         row = np.zeros(n_params)
         for index, value in coefficients:
             row[index] = value
@@ -103,9 +99,7 @@ def reported_quantities(model, offsets, CDOG_reference):
                 [(aug_start + a, rotation[e, a]) for a in range(3)],
                 offset_from_table1[e],
             )
-        add(
-            f"DOG{dog}_dt_Eq6", "s", [(layout["time_bias"].start + j, -1.0)], offsets[j]
-        )
+        add(f"DOG{dog}_dt", "s", [(layout["time_bias"].start + j, -1.0)], offsets[j])
         if "esv_common" in layout:
             offset = (layout["esv_offset"].start + j, 1.0)
             for k in range(splits):
@@ -135,6 +129,7 @@ def reported_quantities(model, offsets, CDOG_reference):
 
 
 def percentile_row(name, unit, draws, map_value):
+    """Summary row (MAP, mean, sd, percentiles) of one quantity's draws."""
     p2_5, p50, p97_5 = np.percentile(draws, [2.5, 50.0, 97.5])
     return {
         "quantity": name,
@@ -214,6 +209,7 @@ def table1_markdown(rows, model, run_name):
     value = {row["quantity"]: row for row in rows}
 
     def fmt(name, digits):
+        """Posterior mean ± sd of a quantity as text."""
         row = value[name]
         return f"{row['mean']:.{digits}f} ± {row['sd']:.{digits}f}"
 
@@ -242,7 +238,7 @@ def table1_markdown(rows, model, run_name):
             str(dog),
             f"[{xR}]",
             geodetic,
-            fmt(f"DOG{dog}_dt_Eq6", 6),
+            fmt(f"DOG{dog}_dt", 6),
             fmt(f"DOG{dog}_dc_mean", 4),
         ]
         if has_drift:
@@ -259,8 +255,8 @@ def table1_markdown(rows, model, run_name):
     lines.append("| Joint p (m) | " + f"[{lever}]" + " |" * (len(header) - 1))
     lines += [
         "",
-        "xR: ECEF offset from CDOG_reference. δt: Eq. 6 convention "
-        "(offset − time_bias). δ̄c: mean over the ESV splits or windows. cσε: sampled "
+        "xR: ECEF offset from CDOG_reference. δt: offset − time_bias. "
+        "δ̄c: mean over the ESV splits or windows. cσε: sampled "
         "residual sd in range at 1515 m/s.",
     ]
     return "\n".join(lines) + "\n"
@@ -335,11 +331,9 @@ def prior_sensitivity(theta, model, offsets, CDOG_reference):
 def linearized_comparison(theta, logpost, model, problem, offsets, CDOG_reference):
     """Formal (Gauss-Newton) covariance at the MAP against the posterior.
 
-    Returns standard-deviation rows, correlation rows for the pairs discussed in
-    Sec. 6.2, and the condition numbers. The formal covariance has no prior;
-    "iid" weights residuals by the MAP marginal sd of each DOG; "model" whitens
-    them with the run's own noise model at the MAP (AR(1), or AR(1) plus white
-    noise; equal to "iid" for the iid modes).
+    Returns sd rows, correlation rows for selected pairs, and condition numbers. The
+    formal covariance has no prior; "iid" weights residuals by each DOG's MAP
+    marginal sd, "model" whitens them with the run's noise model at the MAP.
     """
     best = int(np.argmax(logpost))
     theta_map = theta[best]
@@ -404,9 +398,9 @@ def linearized_comparison(theta, logpost, model, problem, offsets, CDOG_referenc
     pairs = []
     for dog in model["config"]["dogs"]:
         pairs += [
-            (f"DOG{dog}_dc_mean", f"DOG{dog}_dt_Eq6"),
+            (f"DOG{dog}_dc_mean", f"DOG{dog}_dt"),
             ("lever_z", f"DOG{dog}_U_minus_Table1"),
-            (f"lever_z_minus_DOG{dog}_U", f"DOG{dog}_dt_Eq6"),
+            (f"lever_z_minus_DOG{dog}_U", f"DOG{dog}_dt"),
             (f"lever_z_minus_DOG{dog}_U", f"DOG{dog}_dc_mean"),
             (f"DOG{dog}_U_minus_Table1", f"DOG{dog}_dc_mean"),
         ]

@@ -9,15 +9,7 @@ GPS_DATA_PATH = PROJECT_ROOT / "PuertoRico_Data"
 
 
 def gps_data_path(*paths: str | Path) -> Path:
-    """Return absolute path inside the ``Data`` directory.
-
-    Parameters may be provided either as separate path segments or as a
-    single string containing forward slashes. For example, the following
-    calls are equivalent::
-
-        gps_data_path("GPS_Data/Processed_GPS_Receivers_DOG_1.npz")
-        gps_data_path("GPS_Data", "Processed_GPS_Receivers_DOG_1.npz")
-    """
+    """Absolute path inside the ``Data`` directory, from segments or a "a/b" string."""
 
     return GPS_DATA_PATH.joinpath(*map(str, paths))
 

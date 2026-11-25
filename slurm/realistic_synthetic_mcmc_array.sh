@@ -1,6 +1,6 @@
 #!/bin/bash
-# Final-model MCMC on realistic synthetic surveys (Paper I revision): accuracy and
-# coverage of the model we publish, by track and by survey leg.
+# Final-model MCMC on realistic synthetic surveys: accuracy and coverage by track
+# and by survey leg.
 #
 # Array task i runs chain i % N_CHAINS of seed FIRST_SEED + i // N_CHAINS, with
 # N_SURVEYS and N_CHAINS from the config block of
@@ -29,8 +29,8 @@
 #       --export=ALL,SYN_MCMC_SUMMARY=1,SYN_TRACK=bermuda,SYN_RUN=ar1_common30 \
 #       slurm/realistic_synthetic_mcmc_array.sh
 #
-# --time: about 9 s per 1000 iterations on one core (M-series laptop, single
-# thread), so 440k iterations take 1-1.5 h; 4 h leaves margin for slower nodes.
+# --time: the same model on the real data takes 3.2-3.3 h per chain (440k
+# iterations, one core).
 #SBATCH --time=04:00:00
 #SBATCH --mem=4G
 #SBATCH --job-name=skb-synmcmc

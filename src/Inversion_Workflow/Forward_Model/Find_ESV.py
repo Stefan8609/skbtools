@@ -16,12 +16,10 @@ def load_esv_table(path):
 def find_esv(beta, dz, dz_array, angle_array, esv_matrix):
     """Effective sound velocity (m/s) at each (beta in deg, dz in m), bilinear.
 
-    Eqs. A16-A17 take the nearest table node; here the table is interpolated, which
-    keeps the modelled travel times continuous in the geometry. A stepwise lookup
-    moves a pair to the next table row (about 2 cm of range in the Bermuda table) as
-    soon as its vertical offset crosses a 1 m grid line, which makes the likelihood
-    jagged at the scale of the posterior. Queries outside the table are clamped to
-    its edges. ``esv_matrix`` is ``(len(dz_array), len(angle_array))``.
+    Interpolating, rather than taking the nearest node, keeps travel times continuous
+    in the geometry; a nearest-node lookup jumps ~2 cm of range per 1 m row. Queries
+    outside the table are clamped to its edges. ``esv_matrix`` is
+    ``(len(dz_array), len(angle_array))``.
     """
     esv = np.empty(dz.shape[0], dtype=np.float64)
     last_row = dz_array.shape[0] - 2

@@ -9,7 +9,7 @@ from bermuda_data import gps_data_path
 
 @njit
 def construct_esv(depth, cz):
-    """ESV table (Eq. A16): straight-line range over ray travel time.
+    """ESV table: straight-line range over ray travel time.
 
     Rows are receiver depths z (m; dz = z - z_a below the 2 m transducer), columns
     elevation angles of 20-90 deg. Returns ``(beta_array, z_array, esv_matrix)``.

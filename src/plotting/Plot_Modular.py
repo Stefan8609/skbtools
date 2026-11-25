@@ -194,8 +194,8 @@ def time_series_plot(
     # invert axis and plot
     axes[1, 0].set_ylabel(r"Residuals $\epsilon$ (ms)")
     axes[1, 0].set_title(
-        rf"$\sigma_\epsilon$ = {np.round(std, 2)} ms $\sim$ "
-        rf"{np.round(std * NOMINAL_SOUND_SPEED_MPS / 10, 2)} cm",
+        rf"$\sigma_\epsilon$ = {std:.3f} ms $\sim$ "
+        rf"{std * NOMINAL_SOUND_SPEED_MPS / 10:.2f} cm",
         fontsize=16,
     )
     axes[1, 0].set_xlabel("Density")
@@ -292,8 +292,8 @@ def time_series_plot(
 
     # invert axis and plot
     axes[1, 3].set_title(
-        rf"$\sigma_\epsilon$ = {np.round(std_zoom, 2)} "
-        rf"ms $\sim$ {np.round(std_zoom * NOMINAL_SOUND_SPEED_MPS / 10, 2)} cm",
+        rf"$\sigma_\epsilon$ = {std_zoom:.3f} "
+        rf"ms $\sim$ {std_zoom * NOMINAL_SOUND_SPEED_MPS / 10:.2f} cm",
         fontsize=16,
     )
     axes[1, 3].yaxis.set_label_position("right")

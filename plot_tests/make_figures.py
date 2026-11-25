@@ -1,4 +1,4 @@
-"""Draw every revision figure in plot_tests/ (one script per figure).
+"""Draw every figure in plot_tests/ (one script per figure).
 
 From the repository root:
 ``PYTHONPATH=src:plot_tests MPLBACKEND=Agg .venv/bin/python plot_tests/make_figures.py``

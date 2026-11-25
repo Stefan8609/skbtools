@@ -211,6 +211,7 @@ def compute_log_prior(
     esv_bias_scale,
     time_bias_scale,
 ):
+    """Independent Gaussian log prior about the initial values, up to a constant."""
     lp = 0.0
     lp += -0.5 * np.sum(((lever_guess - initial_lever_base) / lever_scale) ** 2)
     lp += -0.5 * np.sum(((gps1_grid_guess - initial_gps_grid) / gps_grid_scale) ** 2)

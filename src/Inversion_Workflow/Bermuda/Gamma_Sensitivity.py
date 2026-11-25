@@ -1,16 +1,10 @@
-"""Sensitivity of the solution to the pairing gate gamma (Eq. A20), R3 #14.
+"""Sensitivity of the solution to the pairing gate gamma.
 
-For each gamma of GAMMAS_S the whole Gauss-Newton workflow of
-Bermuda_Data_time_bias.py is rerun with that gate at every pairing stage: the fit
-after alignment, the lever-arm fits at each integer second of
-``gauss_newton_offset_search``, and the final fit (``final_bias_geiger``). The
-search window ``OFFSET_SEARCH_THRESHOLD_SECONDS`` of the offset scan and of the
-first lever-fit iterations is not gamma and stays fixed. The MCMC fixed pairs of
-FINAL_RUN are also re-made at each gamma (pair counts only; no chains are run).
-
-Reported per DOG and gamma: GN pairs inside the gate, GN pairs kept after the 6-MAD
-rejection, MCMC fixed pairs, c*sigma_eps, and the change of lever arm, delta_t and
-DOG position (local E, N, U) from the solution at ``PAIRING_GATE_S``.
+For each gamma in GAMMAS_S, reruns the Gauss-Newton workflow of
+Bermuda_Data_time_bias.py with that gate at every pairing stage, and re-makes the
+MCMC fixed pairs of FINAL_RUN (counts only). Reports per DOG and gamma the pair
+counts, c*sigma_eps, and the change of lever arm, delta_t and DOG ENU position from
+the solution at ``PAIRING_GATE_S``.
 
 Run from the repository root with ``PYTHONPATH=src`` (about 10 min). Outputs go to
 ``revision/analysis/gamma_sensitivity/`` (gitignored).

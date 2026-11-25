@@ -1,16 +1,9 @@
 """Separation between DOG positions estimated from two parts of the survey.
 
 Question: do two parts of the survey give the same DOG positions?
-Message: only if both parts share the same track and ocean. Two interleaved sets
-of 15-min blocks agree about as well as their posterior uncertainty allows
-(5 to 10 cm horizontally), but the first and second half of the survey, sailed
-hours apart on different arms of the track, are 44 to 82 cm apart horizontally and
-up to 2.3 m apart in height.
-
-Bars are the distance between the two posterior means. The error bar is the 95 %
-interval of that distance and the dashed line is the distance below which the two
-estimates would fall 95 % of the time if they differed only by their posterior
-uncertainty; both come from Gaussian draws with the sum of the two posterior
+Message: interleaved 15-min blocks agree within their uncertainty; the two halves,
+on different arms of the track, differ by 44-82 cm horizontally and up to 2.3 m in
+height. Error bars and the dashed 95 % line come from the summed posterior
 covariances.
 
 Input: MCMC runs of the final model on parts of the survey.
@@ -56,6 +49,7 @@ def separation_statistics(difference_cm, covariance, rng):
 
 
 def main():
+    """Draw and save the figure."""
     st.apply()
     final = fc.pooled_run(fc.FINAL_RUN)
     reference = {

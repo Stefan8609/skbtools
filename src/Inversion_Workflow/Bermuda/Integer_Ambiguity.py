@@ -1,10 +1,8 @@
 """Test whether the integer-second part of delta_t is uniquely identified.
 
-Starting from the best solution for one DOG, delta_t is shifted by
-k whole seconds and the emission/arrival pairing is re-derived from scratch with
-``two_pointer_index`` (paper Eq. A20, gate gamma). Travel-time residuals are then
-evaluated (a) with the best-solution parameters held fixed and (b) after
-re-fitting position, ESV bias and fine delta_t with ``final_bias_geiger``.
+Shifts delta_t of one DOG's best solution by k whole seconds, re-pairs with
+``two_pointer_index``, and evaluates the residuals with the parameters held fixed
+and after re-fitting with ``final_bias_geiger``.
 
 Run from the repository root with ``PYTHONPATH=src``. Outputs go to
 ``revision/analysis/integer_ambiguity/`` (gitignored).
@@ -41,18 +39,15 @@ from Inversion_Workflow.Inversion.Numba_xAline_Geiger_bias import (
 # Config
 DOG_num = 3
 N_SHIFT = 5
-GATE_SECONDS = PAIRING_GATE_S  # gamma of paper Eq. A20
-# Current table. Paper I (Table 1) used the table from before the 2026-10-08
-# ray-tracing fix, "ESV_Tables/global_table_esv_extended_before_ray_fix_20261008.mat",
-# with TABLE1_LEVER (set LEVER_SOURCE = "table1" to repeat that check).
+GATE_SECONDS = PAIRING_GATE_S
+# Table 1 used "ESV_Tables/global_table_esv_extended_before_ray_fix_20261008.mat"
+# with TABLE1_LEVER.
 ESV_TABLE = "ESV_Tables/global_table_esv_extended.mat"
-# "gauss_newton": the lever arm found by Bermuda_Data_time_bias.py (its saved
-# Plot_Data/integer_pick_metrics_DOG<n>.npz); "table1": TABLE1_LEVER.
+# "gauss_newton": lever arm saved by Bermuda_Data_time_bias.py; "table1": TABLE1_LEVER.
 LEVER_SOURCE = "gauss_newton"
 OUTPUT_DIR = Path(__file__).resolve().parents[3] / "revision/analysis/integer_ambiguity"
 
-# Table 1 lever arms and published values (delta_t in s, c*sigma_eps in cm with
-# c = 1515 m/s) are used for the check.
+# Table 1 lever arms, delta_t (s) and c*sigma_eps (cm, c = 1515 m/s).
 TABLE1_LEVER = {
     1: [-12.77, 9.58, -12.07],
     3: [-12.89, 9.45, -12.28],
@@ -161,6 +156,7 @@ def shifted_pairing_residuals(
 
 
 def rmse(residuals):
+    """Root-mean-square of the residuals."""
     return float(np.sqrt(np.mean(residuals**2)))
 
 
@@ -196,6 +192,7 @@ def mechanism_fit(pairing, velocity):
 
 
 def run_analysis(dog_num=DOG_num, n_shift=N_SHIFT, gate=GATE_SECONDS):
+    """Residuals of one DOG at integer shifts of delta_t, held fixed and re-fitted."""
     GPS_Coordinates, GPS_data, CDOG_data, esv_table = load_dog(dog_num)
     dz_array, angle_array, esv_matrix = esv_table
     lever = lever_arm(dog_num)

@@ -50,6 +50,7 @@ def running_abs_dev(data, window=50):
 
 
 def receiver_comparison(GNSS_start, GNSS_end):
+    """Compare the four Puerto Rico receivers on their common epochs (GNSS hours)."""
     paths = [
         gps_data_path("GPS_Data/Puerto_Rico/1_PortFwd/combined/0007-combined.mat"),
         gps_data_path("GPS_Data/Puerto_Rico/2_StbdFwd/combined/0007-combined.mat"),

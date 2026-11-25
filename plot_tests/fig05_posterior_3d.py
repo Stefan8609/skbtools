@@ -1,24 +1,13 @@
 """Posterior of four parameter triples of the final model as 3-D clouds.
 
-Question: how tightly do the data constrain a DOG position and the lever arm, and
-which parameters trade off against each other?
-Message: (a) the position of a DOG is a vertical needle, about 1 cm wide
-horizontally and 4 cm vertically; (b) the lever arm is determined to millimetres
-horizontally and about 1 cm vertically; (c) the ESV-bias offset and timing bias of
-a DOG and the height of the transducer above it, l_z − U, are almost perfectly
-correlated: the data fix one combination of the three far better than any one;
-(d) the east positions of the three DOGs move together, so the array shifts as a
-whole and the distances between DOGs are known better than the positions.
+Question: how tightly are a DOG position and the lever arm constrained, and which
+parameters trade off?
+Message: (a) a DOG position is a vertical needle, ~1 cm by 4 cm; (b) the lever arm is
+known to mm horizontally, ~1 cm vertically; (c) ESV-bias offset, timing bias and
+l_z − U are almost perfectly correlated; (d) the DOGs' east positions move together.
 
-Every point is one posterior draw, about the posterior mean; the same draws are
-projected on the three walls. Colour is the log posterior density of the three
-plotted parameters relative to its maximum, ln P − ln P_max (linear scale), from a
-3-D kernel density estimate of the draws; draws below the colour range take its
-end colour. The line on each wall is the 95 % ellipse of that projection (Gaussian
-with the posterior covariance). In panels a, b and d the three axes share one
-scale; in c each axis spans a fixed number of posterior standard deviations.
-
-Input: the final MCMC run.
+Points are posterior draws, coloured by ln P − ln P_max from a 3-D KDE, projected on
+the walls with 95 % ellipses. Input: the final MCMC run.
 """
 
 import matplotlib.pyplot as plt
@@ -143,6 +132,7 @@ def correlation_header(draws, symbols):
 
 
 def main():
+    """Draw and save the figure."""
     st.apply()
     plt.rcParams["figure.constrained_layout.use"] = False  # 3-D axes placed by hand
     pooled = fc.pooled_run(fc.FINAL_RUN)

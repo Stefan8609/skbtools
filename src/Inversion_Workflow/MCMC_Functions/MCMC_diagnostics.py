@@ -55,7 +55,7 @@ def pooled_run(run_name):
     """All saved draws of a run pooled into one dict, for plotting.
 
     Uses the per-draw keys of the chain files (``lever``, ``CDOG_aug``,
-    ``esv_bias``, ``dt`` in the Eq. 6 convention, ``drift_rate``, ``sigma_cm``,
+    ``esv_bias``, ``dt`` (offset - time_bias), ``drift_rate``, ``sigma_cm``,
     ``phi``, ``loglike``, ``logpost``, ``theta_samples``) concatenated over the
     chains, plus the run-level keys of the first chain. ``time_bias`` is added in
     the internal convention (offset - dt) for older plotting code.
@@ -162,6 +162,7 @@ def ess(draws):
 
 
 def ess_bulk(draws):
+    """Bulk effective sample size of draws (n_chains, n_draws)."""
     return ess(rank_normalize(split_chains(draws)))
 
 
@@ -241,6 +242,7 @@ def plot_traces_and_autocorrelation(chains, out_path, max_lag=200, per_page=6):
 
 
 def write_csv(rows, path):
+    """Write a list of dicts to a CSV file, columns from the first row."""
     with open(path, "w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
         writer.writeheader()

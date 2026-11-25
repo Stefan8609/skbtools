@@ -1,18 +1,10 @@
-"""Ensembles of realistic synthetic surveys, inverted with the paper's Gauss-Newton.
+"""Ensembles of realistic synthetic surveys, inverted with Gauss-Newton.
 
-Each realization generates DOGs 1, 3 and 4 from one seed (one ocean, one ship, three
-clocks; see ``realistic_synthetic``) and inverts each DOG with the paper's model
-(position, time bias, one constant dc, optionally a clock drift), the lever arm
-either fixed at its true value or free (see ``invert``).
-
-Per realization and DOG it records the position error (ENU, cm), the formal sd of
-the least-squares model (white residuals, and inflated for AR(1) residuals), the
-clock and dc estimates, and residual statistics: one CSV row in
-``OUTPUT_DIR/<experiment>.csv`` and one npz per realization in
-``OUTPUT_DIR/<experiment>/``. Every realization is reproducible from (seed, knobs).
-
-Experiments are defined in ``experiment_cells``; set ``EXPERIMENT`` and run the file.
-``summary_table`` condenses an experiment CSV to one row per cell and DOG.
+Each realization generates DOGs 1, 3 and 4 from one seed and inverts each DOG for
+position, time bias, one dc and optionally drift, with the lever arm fixed or free.
+Position errors (ENU, cm), formal sds, clock and dc estimates and residual
+statistics go to ``OUTPUT_DIR/<experiment>.csv`` (one row per realization and DOG)
+and one npz per realization. Set ``EXPERIMENT`` (see ``experiment_cells``) and run.
 """
 
 import csv
@@ -25,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 from acoustics.synthetic_esv_tables import ESV_GENERATE
-from bermuda_data import PROJECT_ROOT, gps_data_path
+from bermuda_data import PROJECT_ROOT, gps_data_path, gps_output_path
 from Inversion_Workflow.Forward_Model.Calculate_Times_Bias import (
     NOMINAL_SOUND_SPEED_MPS,
 )
@@ -61,15 +53,10 @@ OFFSET_SEARCH_DOWNSAMPLE = 10
 MIN_PAIRS = 100
 START_POSITION_SD_M = 20.0
 LEVER_START_SD_M = 0.3
-OUTPUT_DIR = PROJECT_ROOT / "revision/analysis/realistic_synthetic"
+OUTPUT_DIR = gps_output_path("Realistic_Synthetic")
 
-# Amplitudes of the three sources the acoustic data cannot constrain. "guess" is
-# the original assumption; "models_low" and "models_high" bracket ocean models at
-# the site on 16 June 2020:
-# - depth-mean current: GLORYS12 3.0 cm/s, HYCOM GOFS 3.1 11 cm/s;
-# - ESV gradient of a vertical ray, 0-4 km: GLORYS12 2.6 mm/s/km, HYCOM 8 mm/s/km;
-# - M2 tidal current: HAMTIDE11a maximum speed 0.9 cm/s (its ellipse is
-#   0.78 x 0.46 cm/s; the knob is circular).
+# Amplitudes of the sources the acoustic data cannot constrain: "guess", or the
+# range of ocean models at the site on 16 June 2020 (GLORYS12, HYCOM, HAMTIDE11a).
 AMPLITUDES = {
     "guess": {
         "current_speed_mps": 0.03,
@@ -93,7 +80,7 @@ COMMON = {
     "transmit_delay_s": 30e-6,  # tens of microseconds
     "gnss_common_sd_m": (0.02, 0.02, 0.05),  # kinematic PPP; guess
     "gnss_common_tau_s": 1800.0,
-    "timing_noise_s": 20e-6,  # paper, receive side
+    "timing_noise_s": 20e-6,  # receive side
     "dropouts": "real_pattern",
 }
 PRESETS = {
@@ -240,15 +227,12 @@ def load_table(name):
 
 
 def invert(CDOG_data, GPS_Coordinates, GPS_data, start, lever_start, settings, tables):
-    """Paper's Gauss-Newton inversion on every ``DOWNSAMPLE``-th epoch, then
-    ``final_bias_geiger`` on all epochs.
+    """Gauss-Newton inversion on decimated epochs, then ``final_bias_geiger`` on all.
 
-    ``"lever_fixed"`` keeps ``lever_start`` (an externally measured lever);
-    ``"lever_free"`` runs ``gauss_newton_offset_search`` for the integer second and
-    the lever arm. Returns ``(estimate, offset, lever, pairs, transponder)``:
-    ``estimate`` = [x, y, z, time_bias, esv_bias(, drift_rate)], the Eq. 6 clock
-    offset being ``offset - time_bias``; ``pairs`` is the rest of the output of
-    ``final_bias_geiger``.
+    ``settings["lever"]`` is "lever_fixed" (keep ``lever_start``) or "lever_free"
+    (``gauss_newton_offset_search``). Returns ``(estimate, offset, lever, pairs,
+    transponder)`` with ``estimate`` = [x, y, z, time_bias, esv_bias(, drift_rate)]
+    and ``pairs`` the rest of the ``final_bias_geiger`` output.
     """
     drift = settings["clock_drift"]
     ds = slice(None, None, DOWNSAMPLE)
@@ -295,7 +279,7 @@ def invert(CDOG_data, GPS_Coordinates, GPS_data, start, lever_start, settings, t
 
 
 def residual_summary(estimate, pairs, transponder, GPS_data, clock_drift):
-    """Residual statistics and the formal ENU sd of the paper's model, cm.
+    """Residual statistics and the formal ENU sd of the Gauss-Newton model, cm.
 
     Formal covariance sigma^2 (J^T J)^-1 with columns E, N, U, dt, dc (and drift);
     the AR(1) version multiplies it by (1 + phi) / (1 - phi), phi the lag-1

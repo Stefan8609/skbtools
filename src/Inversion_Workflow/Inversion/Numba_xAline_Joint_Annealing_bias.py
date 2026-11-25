@@ -86,8 +86,8 @@ def simulated_annealing_bias_joint(
     """Simulated annealing of one lever arm shared by all DOGs.
 
     Each DOG keeps its own position, time bias, ESV bias and offset, and with
-    ``clock_drift`` a ``drift_rate`` (s/s, Eq. 6 convention) in the sixth column of
-    the estimates. The objective is the sum of the DOG RMSEs; the moves are those of
+    ``clock_drift`` a ``drift_rate`` (s/s) in the sixth column of the estimates. The
+    objective is the sum of the DOG RMSEs; the moves are those of
     ``simulated_annealing_bias``. ``CDOG_data_array`` is a typed List of (N_j, 2)
     arrival arrays; ``GPS_data`` and ``GPS_Coordinates`` are shared;
     ``initial_guess_list`` is (n_dogs, 3) and ``initial_offset_list`` (n_dogs,).

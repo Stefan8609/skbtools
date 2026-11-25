@@ -1,13 +1,9 @@
 """Surface GNSS: vessel height and satellite geometry over the survey.
 
-Question: is the kinematic GNSS solution of the vessel continuous over the survey,
-and how good was the satellite geometry?
-Message: the ellipsoidal height of the vessel is continuous over 17 h (no steps at
-the hourly file boundaries) and its 10-min median follows the tide; 9 to 22
-satellites were tracked with a PDOP between 1.0 and 2.2.
+Message: the vessel height is continuous over 17 h and follows the tide; 9 to 22
+satellites with PDOP 1.0-2.2.
 
-Inputs: Processed_GPS_Receivers_DOG_1.npz (PRIDE PPP-AR positions of the four
-antennas) and PRIDE_final/Antenna1-camp.mat (PDOP and number of satellites).
+Inputs: Processed_GPS_Receivers_DOG_1.npz and PRIDE_final/Antenna1-camp.mat.
 """
 
 import numpy as np
@@ -28,6 +24,7 @@ DENSITY_RADIUS_M = 0.05
 
 
 def main():
+    """Draw and save the figure."""
     st.apply()
     processed = np.load(PROCESSED_FILE)
     gps_s = processed["GPS_data"]

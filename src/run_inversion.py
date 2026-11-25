@@ -62,9 +62,9 @@ TRAJECTORY = "bermuda"  # "bermuda" (real ship track) or "unaligned" (box patter
 ESV_TABLE_GENERATE = ESV_GENERATE  # table that makes the travel times
 TIME_NOISE_S = 2e-5  # sd of the arrival-time noise
 POSITION_NOISE_M = 2e-2  # sd of the noise on every GNSS coordinate
-TIME_BIAS_S = 0.0  # true time bias; the Eq. 6 offset is TRUE_OFFSET_S + TIME_BIAS_S
+TIME_BIAS_S = 0.0  # true time bias; dt = TRUE_OFFSET_S + TIME_BIAS_S
 ESV_BIAS_MPS = 0.0  # true dc
-DRIFT_RATE = 0.0  # true clock drift, s/s (Eq. 6 convention)
+DRIFT_RATE = 0.0  # true clock drift, s/s
 TRUE_OFFSET_S = None  # None: drawn from U(1000, 10000) s
 GPS_DOWNSAMPLE = 50  # keep every n-th GNSS epoch of the Bermuda track
 SEED = 0  # NumPy and Numba random state (synthetics, annealing)
@@ -77,7 +77,7 @@ INITIAL_LEVER_M = [-12.69796149, 9.51739301, -15.0743129]  # GPS1 to transducer,
 INITIAL_GUESS_M = CDOG_GUESS_AUGMENTS  # {DOG: ECEF offset (m) from CDOG_REFERENCE}
 # Integer second per DOG: Gauss-Newton must find it, annealing and "fixed" start at it
 OFFSET_HINT_S = OFFSET_HINTS_S
-ANNEALING_ITERATIONS = 300  # cooling scale of the lever-arm moves (Eq. A29)
+ANNEALING_ITERATIONS = 300  # cooling scale of the lever-arm moves
 CLOCK_DRIFT = False  # fit a linear clock drift (sixth entry of the estimate)
 
 # Output
@@ -101,6 +101,7 @@ METHOD_TAGS = {
 
 @njit
 def numba_seed(seed):
+    """Seed NumPy's RNG inside Numba-compiled code."""
     np.random.seed(seed)
 
 
@@ -163,7 +164,7 @@ def load_puertorico(dz_array, angle_array):
 
 
 def make_synthetic(DOG_num, dz_array, angle_array):
-    """Synthetic arrivals on the track of one Bermuda DOG or a box pattern (App. B).
+    """Synthetic arrivals on the track of one Bermuda DOG or a box pattern.
 
     Generated as in ``modular_synthetic``. The truth is kept under "truth".
     """
@@ -251,7 +252,7 @@ def make_synthetic(DOG_num, dz_array, angle_array):
         "reference": CDOG,
         "real_data": real_data,
         "paths": bermuda_data,
-        # The inversion recovers the Eq. 6 offset true_offset + TIME_BIAS_S.
+        # The inversion recovers dt = true_offset + TIME_BIAS_S.
         "truth": {"CDOG": CDOG, "lever": true_lever, "dt": true_offset + TIME_BIAS_S},
     }
 
@@ -464,7 +465,7 @@ def report(inputs, result, dz_array, angle_array, esv_matrix):
     time_bias = inversion_result[3]
     esv_bias = inversion_result[4]
     drift_rate = inversion_result[5] if CLOCK_DRIFT else 0.0
-    # Eq. 6 clock offset: dt = offset - time_bias
+    # Clock offset dt = offset - time_bias
     best_offset_eff = best_offset - time_bias
 
     diff_data_ms = (CDOG_full - GPS_full) * 1000.0
@@ -483,7 +484,7 @@ def report(inputs, result, dz_array, angle_array, esv_matrix):
     )
     print("RMSE:", np.round(RMSE_cm, 3), "cm")
     if CLOCK_DRIFT:
-        print(f"Drift rate: {drift_rate:.4e} s/s (Eq. 6 convention)")
+        print(f"Drift rate: {drift_rate:.4e} s/s")
     if "truth" in inputs:
         truth = inputs["truth"]
         position_error_cm = np.linalg.norm(inversion_guess - truth["CDOG"]) * 100

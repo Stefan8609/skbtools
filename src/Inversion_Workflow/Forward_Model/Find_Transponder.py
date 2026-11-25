@@ -6,7 +6,7 @@ from geometry.Numba_RigidBodyMovementProblem import findRotationAndDisplacement
 
 @njit(cache=True)
 def vessel_rotations(GPS_Coordinates, gps1_to_others):
-    """Rotations (N, 3, 3) and displacements (N, 3) fitted at each epoch (A10-A11).
+    """Rotations (N, 3, 3) and displacements (N, 3) fitted at each epoch.
 
     The rigid-body fit maps the receiver grid ``gps1_to_others`` (vessel frame, m
     from GPS1) onto the GPS positions (N, 4, 3) of each epoch. It does not depend on
@@ -29,7 +29,7 @@ def vessel_rotations(GPS_Coordinates, gps1_to_others):
 
 @njit(cache=True)
 def transponder_from_rotations(rotations, displacements, gps1_to_transponder):
-    """Transducer positions (N, 3), ECEF m: Eq. 1, ``R @ lever + d`` at each epoch."""
+    """Transducer positions (N, 3), ECEF m: ``R @ lever + d`` per epoch."""
     n = len(rotations)
     transponder_coordinates = np.zeros((n, 3))
     for i in range(n):
@@ -43,7 +43,7 @@ def transponder_from_rotations(rotations, displacements, gps1_to_transponder):
 def findTransponder(GPS_Coordinates, gps1_to_others, gps1_to_transponder):
     """Transducer positions (N, 3) from the GPS positions (N, 4, 3) of each epoch.
 
-    Eq. 1 with A7-A11: the rigid-body fit of the receiver grid ``gps1_to_others``
+    The rigid-body fit of the receiver grid ``gps1_to_others``
     (vessel frame, m from GPS1) to each epoch moves the lever arm
     ``gps1_to_transponder``. ECEF metres.
     """

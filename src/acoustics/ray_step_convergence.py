@@ -1,17 +1,9 @@
-"""Accuracy of the ray-integration step behind the ESV table (Eqs. A14-A16, R3 #16).
+"""Accuracy of the ray-integration step behind the ESV table.
 
-``ray_tracing`` sums Eqs. A14-A15 over the layers between consecutive SVP samples,
-so the integration step h is the spacing of the profile it is given. The Bermuda
-table (``ESV_table_Bermuda.py``) keeps every 20th sample of the 5.2 mm cast,
-h = 0.10 m. Here the same profile, thinned to steps from 5.2 mm (every sample, the
-reference) to 10 m and extended to 5350 m as in the production script, is traced
-for a few (dz, elevation) pairs. Two differences from the reference are reported:
-
-- fixed launch angle (the integrals alone): horizontal range x and travel time T;
-- fixed geometry (what the table stores): T = S / ESV for the straight-line range
-  S. The launch angle is found by bisection to 0.1 mm in x; T is moved to the exact
-  x with dT/dx = nu = sin(theta_0) / c(z_a), so the tolerance does not mask the
-  step error. The tolerance floor itself is reported separately.
+``ray_tracing`` integrates layer by layer, so its step is the profile spacing (0.10 m
+in the Bermuda table). The cast is thinned to steps from 5.2 mm (the reference) to
+10 m and traced for a few (dz, elevation) pairs; the range and travel-time errors are
+reported at a fixed launch angle and at fixed geometry (what the table stores).
 
 Run from the repository root with ``PYTHONPATH=src``. Outputs go to
 ``revision/analysis/ray_step/`` (gitignored).
@@ -38,7 +30,7 @@ DZ_M = (5150.0, 5200.0, 5225.0, 5300.0)
 # Bermuda data span 22.9-89.8 deg; the table starts at 20 deg
 ELEVATION_DEG = (20.0, 23.0, 30.0, 45.0, 60.0, 75.0, 90.0)
 TIMING_NOISE_S = 20e-6  # timing noise of the synthetics
-INTERPOLATION_RMS_S = 0.3e-6  # bilinear lookup error (R3 #17)
+INTERPOLATION_RMS_S = 0.3e-6  # bilinear lookup error
 OUTPUT_DIR = PROJECT_ROOT / "revision" / "analysis" / "ray_step"
 
 
@@ -81,6 +73,7 @@ def trace_at_geometry(dz, elevation_deg, depth, cz):
 
 
 def run():
+    """Trace every step, dz and elevation; return the rows of the comparison."""
     profiles = {stride: thinned_profile(stride) for stride in STRIDES}
     depth_ref, cz_ref, _ = profiles[REFERENCE_STRIDE]
     rows = []
@@ -106,7 +99,7 @@ def run():
                         "launch_elevation_ref_deg": launch_ref,
                         "slant_range_m": slant_m,
                         "travel_time_ref_s": t_ref,
-                        # fixed launch angle: Eqs. A14-A15 alone
+                        # fixed launch angle: the integrals alone
                         "dx_fixed_launch_mm": (x_h - x_ref) * 1e3,
                         "dT_fixed_launch_us": (t_h_launch - t_ref_launch) * 1e6,
                         # fixed geometry: the tabulated quantity
@@ -144,7 +137,7 @@ def plot(rows, path):
     steps = {r["stride"]: r["step_m"] for r in rows}
     h_prod, h_1m = steps[PRODUCTION_STRIDE], steps[200]
 
-    # (a) Eqs. A14-A15 as summed by ray_tracing: one straight segment per layer
+    # (a) Layer sum of ray_tracing: one straight segment per layer
     ax = axes[0, 0]
     layer_z = np.arange(0, 5)
     c_layer = np.array([1.00, 0.93, 0.86, 0.80])  # sound speed falling with depth
@@ -186,7 +179,7 @@ def plot(rows, path):
     ax.set_xlim(-3.3, x[-1] + 0.4)
     ax.set_ylim(4.3, -0.4)
     ax.axis("off")
-    ax.set_title("(a) Layer sum of Eqs. A14-A15 (not to scale)", loc="left")
+    ax.set_title("(a) Layer sum of the ray integrals (not to scale)", loc="left")
 
     # (b) convergence: |dT| at fixed geometry against step
     ax = axes[0, 1]
