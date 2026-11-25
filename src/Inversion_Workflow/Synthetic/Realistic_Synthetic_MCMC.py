@@ -1,4 +1,4 @@
-"""MCMC of the final model on realistic synthetic surveys: accuracy and coverage.
+"""The final model on realistic synthetic surveys: accuracy and coverage.
 
 Each seed generates one survey of DOGs 1, 3 and 4 (``PRESET`` on ``TRACK``) and
 samples it with ``RUN_VARIANT`` of ``MCMC_sampler.RUN_VARIANTS``. Only inputs the
@@ -10,14 +10,17 @@ rounded to ``OFFSET_ROUND_S``) and DOG 1's vessel positions for all DOGs.
 ("floor"), or the floor inverted with the wrong-profile ``PROFILE_ERROR_TABLE``
 ("esv_profile").
 
-``run_synthetic_chain`` writes ``OUTPUT_DIR/<run>/seed<seed>_chain<chain>.npz``;
-``summarize`` pools finished seeds into ``<run>.csv`` (per seed and DOG: posterior
-mean error, sd, interval coverage, dc error, noise and max R-hat).
+``summarize_laplace`` writes ``OUTPUT_DIR/<run>_laplace.csv`` from the sampler's
+Laplace approximation of each survey (seconds per survey): per seed and DOG, the
+posterior mean error, sd, interval coverage, dc error and noise. Chains check it on
+the first ``N_SURVEYS`` seeds: ``run_synthetic_chain`` writes
+``OUTPUT_DIR/<run>/seed<seed>_chain<chain>.npz`` and ``summarize`` pools them into
+``<run>.csv`` with the same columns.
 """
 
 import csv
-import json
 import os
+from multiprocessing import Pool
 
 import numpy as np
 
@@ -29,9 +32,9 @@ from Inversion_Workflow.MCMC_Functions.MCMC_diagnostics import (
 from Inversion_Workflow.MCMC_Functions.MCMC_sampler import (
     build_model,
     build_problem,
-    esv_bias_matrix,
+    derived_outputs,
+    laplace_approximation,
     load_chain,
-    noise_parameters,
     RUN_VARIANTS,
     run_chain,
     run_config,
@@ -64,7 +67,11 @@ RUN_VARIANT = os.environ.get("SYN_RUN", "ar1_common30")
 ONLY = os.environ.get("SYN_ONLY") or None
 FLOOR_GROUPS = ("timing_noise", "dropouts")
 PROFILE_ERROR_TABLE = ESV_MODERATE
-N_SURVEYS = 20
+N_LAPLACE_SURVEYS = 200
+N_LAPLACE_DRAWS = 4000
+N_WORKERS = 10
+# Surveys sampled with chains, to check the Laplace summary of the same seeds.
+N_SURVEYS = 3
 N_CHAINS = 2
 FIRST_SEED = 0
 # Sampler overrides, e.g. {"n_burn": 2000, "n_samples": 2000} for a quick check.
@@ -208,75 +215,59 @@ def interval_flags(draws, true_value):
     )
 
 
-def summarize(seeds):
-    """One CSV row per seed and DOG from every finished seed; return the rows."""
-    to_enu = enu_rotation()
-    rows = []
-    for seed in seeds:
-        truth_path, chain_paths = seed_paths(seed)
-        if not truth_path.exists() or not all(p.exists() for p in chain_paths):
-            continue
-        chains = [load_chain(path) for path in chain_paths]
-        if any(int(c["n_done"]) < int(c["n_total"]) for c in chains):
-            print(f"seed {seed}: chains unfinished, skipped")
-            continue
-        truth = np.load(truth_path)
-        n = min(len(c["theta_samples"]) for c in chains)
-        rhat = max(
-            rank_normalized_split_rhat(
-                np.stack([c["theta_samples"][:n, i] for c in chains])
-            )
-            for i in range(chains[0]["theta_samples"].shape[1])
-        )
-        model = build_model(json.loads(str(chains[0]["config_json"])))
-        theta = np.concatenate([c["theta_samples"] for c in chains])
-        aug = np.concatenate([c["CDOG_aug"] for c in chains])
-        lever = np.concatenate([c["lever"] for c in chains])
-        dt = np.concatenate([c["dt"] for c in chains])
-        dc = esv_bias_matrix(theta, model)
-        sigma, phi = np.array([noise_parameters(t, model) for t in theta]).mean(axis=0)
+def survey_rows(seed, truth, draws, pair_counts, max_rhat):
+    """CSV rows (one per DOG) of one survey.
 
-        lever_in68, lever_in95 = interval_flags(lever, truth["lever"])
-        for j, dog in enumerate(truth["dogs"]):
-            enu = (aug[:, j] - truth["CDOG_aug"][j]) @ to_enu.T * 100
-            in68, in95 = interval_flags(enu, 0.0)
-            dt_us = (dt[:, j] - truth["dt_s"][j]) * 1e6
-            dt_in68, dt_in95 = interval_flags(dt_us, 0.0)
-            prior_enu = (
-                to_enu @ (truth["prior_CDOG_aug_center_m"][j] - truth["CDOG_aug"][j])
-            ) * 100
-            row = {
-                "seed": seed,
-                "DOG": int(dog),
-                "max_rhat": rhat,
-                "n_draws": len(theta),
-                "n_pairs": int(chains[0]["pair_counts"][j]),
-            }
-            for a, axis in enumerate("ENU"):
-                row[f"{axis}_err_cm"] = enu[:, a].mean()
-                row[f"{axis}_sd_cm"] = enu[:, a].std()
-                row[f"{axis}_in68"] = int(in68[a])
-                row[f"{axis}_in95"] = int(in95[a])
-                row[f"{axis}_prior_center_err_cm"] = prior_enu[a]
-            for a, axis in enumerate("xyz"):
-                row[f"lever_{axis}_err_cm"] = (
-                    lever[:, a].mean() - truth["lever"][a]
-                ) * 100
-                row[f"lever_{axis}_sd_cm"] = lever[:, a].std() * 100
-                row[f"lever_{axis}_in95"] = int(lever_in95[a])
-            row["dt_err_us"] = dt_us.mean()
-            row["dt_sd_us"] = dt_us.std()
-            row["dt_in95"] = int(dt_in95)
-            dc_err = dc[:, j].mean(axis=0) - truth["dc_window_mps"][j]
-            row["dc_mean_err_mps"] = np.nanmean(dc_err)
-            row["dc_window_rms_err_mps"] = np.sqrt(np.nanmean(dc_err**2))
-            row["sigma_cm"] = sigma[j]
-            row["phi"] = phi[j]
-            rows.append(row)
+    ``draws`` holds posterior draws as ``derived_outputs`` arrays (``CDOG_aug`` m,
+    ``lever`` m, ``dt`` s, ``esv_bias`` m/s, ``sigma_cm``, ``phi``); ``truth`` is the
+    dict of ``synthetic_problem``. Errors are posterior mean minus truth.
+    """
+    to_enu = enu_rotation()
+    lever = draws["lever"]
+    _, lever_in95 = interval_flags(lever, truth["lever"])
+    rows = []
+    for j, dog in enumerate(truth["dogs"]):
+        enu = (draws["CDOG_aug"][:, j] - truth["CDOG_aug"][j]) @ to_enu.T * 100
+        in68, in95 = interval_flags(enu, 0.0)
+        dt_us = (draws["dt"][:, j] - truth["dt_s"][j]) * 1e6
+        _, dt_in95 = interval_flags(dt_us, 0.0)
+        prior_enu = (
+            to_enu @ (truth["prior_CDOG_aug_center_m"][j] - truth["CDOG_aug"][j])
+        ) * 100
+        row = {
+            "seed": seed,
+            "DOG": int(dog),
+            "max_rhat": max_rhat,
+            "n_draws": len(lever),
+            "n_pairs": int(pair_counts[j]),
+        }
+        for a, axis in enumerate("ENU"):
+            row[f"{axis}_err_cm"] = enu[:, a].mean()
+            row[f"{axis}_sd_cm"] = enu[:, a].std()
+            row[f"{axis}_in68"] = int(in68[a])
+            row[f"{axis}_in95"] = int(in95[a])
+            row[f"{axis}_prior_center_err_cm"] = prior_enu[a]
+        for a, axis in enumerate("xyz"):
+            row[f"lever_{axis}_err_cm"] = (lever[:, a].mean() - truth["lever"][a]) * 100
+            row[f"lever_{axis}_sd_cm"] = lever[:, a].std() * 100
+            row[f"lever_{axis}_in95"] = int(lever_in95[a])
+        row["dt_err_us"] = dt_us.mean()
+        row["dt_sd_us"] = dt_us.std()
+        row["dt_in95"] = int(dt_in95)
+        dc_err = draws["esv_bias"][:, j].mean(axis=0) - truth["dc_window_mps"][j]
+        row["dc_mean_err_mps"] = np.nanmean(dc_err)
+        row["dc_window_rms_err_mps"] = np.sqrt(np.nanmean(dc_err**2))
+        row["sigma_cm"] = draws["sigma_cm"][:, j].mean()
+        row["phi"] = draws["phi"][:, j].mean()
+        rows.append(row)
+    return rows
+
+
+def write_summary(rows, path):
+    """Write the rows of ``survey_rows`` to ``path`` and print the ENU statistics."""
     if not rows:
         print("no finished seeds")
-        return rows
-    path = OUTPUT_DIR / f"{run_name()}.csv"
+        return
     with open(path, "w", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=list(rows[0]))
         writer.writeheader()
@@ -290,15 +281,65 @@ def summarize(seeds):
             f"{np.median(sd):.1f} cm, 95 % coverage {100 * in95:.0f} %"
         )
     print(f"{len(rows)} rows -> {path}")
+
+
+def summarize(seeds):
+    """Write ``<run>.csv`` from the chains of every finished seed; return the rows."""
+    rows = []
+    for seed in seeds:
+        truth_path, chain_paths = seed_paths(seed)
+        if not truth_path.exists() or not all(p.exists() for p in chain_paths):
+            continue
+        chains = [load_chain(path) for path in chain_paths]
+        if any(int(c["n_done"]) < int(c["n_total"]) for c in chains):
+            print(f"seed {seed}: chains unfinished, skipped")
+            continue
+        n = min(len(c["theta_samples"]) for c in chains)
+        rhat = max(
+            rank_normalized_split_rhat(
+                np.stack([c["theta_samples"][:n, i] for c in chains])
+            )
+            for i in range(chains[0]["theta_samples"].shape[1])
+        )
+        keys = ("CDOG_aug", "lever", "dt", "esv_bias", "sigma_cm", "phi")
+        draws = {key: np.concatenate([c[key] for c in chains]) for key in keys}
+        truth = np.load(truth_path)
+        rows += survey_rows(seed, truth, draws, chains[0]["pair_counts"], rhat)
+    write_summary(rows, OUTPUT_DIR / f"{run_name()}.csv")
+    return rows
+
+
+def laplace_rows(seed):
+    """Rows of the survey of ``seed`` from the sampler's Laplace approximation.
+
+    Draws from the Gaussian at the posterior mode stand in for chain samples, so
+    the columns match ``summarize`` (``max_rhat`` is nan).
+    """
+    model, problem, truth = synthetic_problem(seed)
+    mode, covariance, _, _ = laplace_approximation(model, problem)
+    rng = np.random.default_rng([seed, 4000])
+    theta = rng.multivariate_normal(mode, covariance, N_LAPLACE_DRAWS)
+    draws = derived_outputs(theta, model, problem)
+    return survey_rows(seed, truth, draws, problem["pair_counts"], np.nan)
+
+
+def summarize_laplace(seeds):
+    """Write ``<run>_laplace.csv`` for ``seeds`` on ``N_WORKERS`` cores."""
+    with Pool(N_WORKERS) as pool:
+        rows = [row for result in pool.imap(laplace_rows, seeds) for row in result]
+    write_summary(rows, OUTPUT_DIR / f"{run_name()}_laplace.csv")
     return rows
 
 
 if __name__ == "__main__":
-    # slurm/realistic_synthetic_mcmc_array.sh sets these. Array task i runs chain
-    # i % N_CHAINS of seed FIRST_SEED + i // N_CHAINS; SYN_MCMC_SUMMARY=1 summarizes.
-    seeds = range(FIRST_SEED, FIRST_SEED + N_SURVEYS)
-    if os.environ.get("SYN_MCMC_SUMMARY") == "1":
-        summarize(seeds)
+    # SYN_LAPLACE=1 writes the Laplace summary; SYN_MCMC_SUMMARY=1 the chain
+    # summary. Otherwise slurm/realistic_synthetic_mcmc_array.sh runs one chain:
+    # array task i is chain i % N_CHAINS of seed FIRST_SEED + i // N_CHAINS.
+    if os.environ.get("SYN_LAPLACE") == "1":
+        os.environ.setdefault("NUMBA_NUM_THREADS", "1")
+        summarize_laplace(range(FIRST_SEED, FIRST_SEED + N_LAPLACE_SURVEYS))
+    elif os.environ.get("SYN_MCMC_SUMMARY") == "1":
+        summarize(range(FIRST_SEED, FIRST_SEED + N_SURVEYS))
     else:
         task = int(os.environ.get("SLURM_ARRAY_TASK_ID", "0"))
         run_synthetic_chain(FIRST_SEED + task // N_CHAINS, task % N_CHAINS)

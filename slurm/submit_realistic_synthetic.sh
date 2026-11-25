@@ -1,16 +1,15 @@
 #!/bin/bash
-# Submit the realistic-synthetic runs, from the repository root, one phase at a
-# time. The cluster allows one user 100 queued jobs per QOS, so the 360 chains go
-# in four batches: submit the next when squeue shows the last one has left.
-#   bash slurm/submit_realistic_synthetic.sh gauss_newton
-#   bash slurm/submit_realistic_synthetic.sh chains1    (then chains2, 3, 4)
-# When every chain has finished, write the MCMC summary CSVs. That needs no
-# cluster: run it wherever the chains are, with the project's Python active:
-#   bash slurm/submit_realistic_synthetic.sh summary
-# Gauss-Newton ensembles take about 120 core-h in all; each full-survey MCMC
-# chain takes 3.2-3.3 h (12 runs, up to about 1200 core-h).
+# Run the realistic synthetics, from the repository root, one phase at a time:
+#   bash slurm/submit_realistic_synthetic.sh gauss_newton   Slurm, about 120 core-h
+#   bash slurm/submit_realistic_synthetic.sh chains         Slurm, 18 chains of 3.3 h
+#   bash slurm/submit_realistic_synthetic.sh laplace        this shell, about 7 core-h
+#   bash slurm/submit_realistic_synthetic.sh summary        this shell, minutes
+# "laplace" writes every final-model summary from the sampler's Laplace
+# approximation. "chains" samples three surveys of three runs to check it, and
+# "summary" writes their CSVs once they have finished. The last two phases need
+# the project's Python active and no cluster.
 set -euo pipefail
-phase=${1:?phase: gauss_newton, chains1, chains2, chains3, chains4 or summary}
+phase=${1:?phase: gauss_newton, chains, laplace or summary}
 
 # Gauss-Newton ensembles: experiment, array tasks, seeds per task, amplitude set.
 gauss_newton() {
@@ -28,37 +27,34 @@ if [[ $phase == gauss_newton ]]; then
     gauss_newton currents 1 10
 fi
 
-# Final-model MCMC: batch, settings, then the number of surveys (default 20; two
-# chains each, so twice as many array tasks). The first batch compiles the Numba
-# kernels before its chains start.
-dependency=""
-if [[ $phase == chains1 ]]; then
-    dependency="--dependency=afterok:$(sbatch --parsable slurm/mcmc_warmup.sh)"
+# Final model: run settings, then "check" for the runs that also get chains
+# (N_SURVEYS x N_CHAINS = 6 array tasks each, after the Numba warm-up).
+if [[ $phase == chains ]]; then
+    warmup=$(sbatch --parsable slurm/mcmc_warmup.sh)
 fi
-mcmc() {
-    if [[ $phase == summary ]]; then
-        (cd src && env "$2" SYN_MCMC_SUMMARY=1 PYTHONPATH=. \
+final_model() {
+    if [[ $phase == laplace ]]; then
+        (cd src && env "$1" SYN_LAPLACE=1 PYTHONPATH=. \
             python -m Inversion_Workflow.Synthetic.Realistic_Synthetic_MCMC)
-    elif [[ $phase == chains$1 ]]; then
-        sbatch $dependency --array=0-$((2 * ${3:-20} - 1)) --export=ALL,$2 \
+    elif [[ ${2:-} == check && $phase == summary ]]; then
+        (cd src && env "$1" SYN_MCMC_SUMMARY=1 PYTHONPATH=. \
+            python -m Inversion_Workflow.Synthetic.Realistic_Synthetic_MCMC)
+    elif [[ ${2:-} == check && $phase == chains ]]; then
+        sbatch --dependency=afterok:$warmup --array=0-5 --export=ALL,$1 \
             slurm/realistic_synthetic_mcmc_array.sh
     fi
 }
 # Accuracy and coverage of the published model, by track.
-mcmc 1 SYN_TRACK=bermuda
-mcmc 1 SYN_TRACK=hourglass
+final_model SYN_TRACK=bermuda check
+final_model SYN_TRACK=hourglass check
 # The same with the dc(t) we estimated from the survey.
-mcmc 2 SYN_PRESET=observed
+final_model SYN_PRESET=observed
 # Do the synthetics reproduce the real subset behaviour? Each pairs by seed with
 # the full bermuda run above.
-mcmc 2 SYN_RUN=ar1_common30_legs
-mcmc 3 SYN_RUN=ar1_common30_half1
-mcmc 3 SYN_RUN=ar1_common30_half2
-# Error budget: the larger sources, one at a time over the measurement floor, on
-# 10 surveys (error sizes, not coverage).
-mcmc 2 SYN_ONLY=esv_profile 10
-mcmc 3 SYN_ONLY=dc_series 10
-mcmc 4 SYN_ONLY=floor 10
-mcmc 4 SYN_ONLY=dc_gradient 10
-mcmc 4 SYN_ONLY=current_steady 10
-mcmc 4 SYN_ONLY=gnss_common 10
+final_model SYN_RUN=ar1_common30_legs check
+final_model SYN_RUN=ar1_common30_half1
+final_model SYN_RUN=ar1_common30_half2
+# Error budget: the larger sources, one at a time over the measurement floor.
+for only in floor esv_profile dc_series dc_gradient current_steady gnss_common; do
+    final_model SYN_ONLY=$only
+done

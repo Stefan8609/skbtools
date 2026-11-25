@@ -234,3 +234,36 @@ def test_synthetic_mcmc_budget_knobs(monkeypatch):
     monkeypatch.setattr(sm, "ONLY", "transmit")
     with pytest.raises(ValueError, match="SYN_ONLY"):
         sm.survey_knobs(3)
+
+
+def test_survey_rows_report_error_width_and_coverage():
+    from Inversion_Workflow.Synthetic import Realistic_Synthetic_MCMC as sm
+
+    rng = np.random.default_rng(0)
+    n = 4000
+    truth = {
+        "dogs": np.array([3]),
+        "CDOG_aug": np.array([[100.0, 200.0, 300.0]]),
+        "prior_CDOG_aug_center_m": np.array([[101.0, 200.0, 300.0]]),
+        "lever": np.array([-12.0, 9.0, -14.0]),
+        "dt_s": np.array([1991.0]),
+        "dc_window_mps": np.array([[0.01, np.nan]]),
+    }
+    east = rs.enu_rotation()[0]
+    draws = {
+        # 10 cm east of the truth with 1 cm sd: outside the 95 % interval in E only.
+        "CDOG_aug": truth["CDOG_aug"] + 0.10 * east + rng.normal(0, 0.01, (n, 1, 3)),
+        "lever": truth["lever"] + rng.normal(0, 0.02, (n, 3)),
+        "dt": truth["dt_s"] + 5e-6 + rng.normal(0, 1e-6, (n, 1)),
+        "esv_bias": np.full((n, 1, 2), 0.03),
+        "sigma_cm": np.full((n, 1), 6.0),
+        "phi": np.full((n, 1), 0.7),
+    }
+    (row,) = sm.survey_rows(7, truth, draws, [1234], np.nan)
+    assert (row["seed"], row["DOG"], row["n_pairs"]) == (7, 3, 1234)
+    assert row["E_err_cm"] == pytest.approx(10.0, abs=0.1)
+    assert row["E_sd_cm"] == pytest.approx(1.0, rel=0.1)
+    assert (row["E_in95"], row["N_in95"], row["U_in95"]) == (0, 1, 1)
+    assert row["lever_x_in95"] == 1 and row["dt_in95"] == 0
+    assert row["dt_err_us"] == pytest.approx(5.0, abs=0.1)
+    assert row["dc_mean_err_mps"] == pytest.approx(0.02)
